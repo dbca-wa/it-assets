@@ -23,7 +23,6 @@ django-paging==0.2.5
 django-piston==0.2.3
 django-redis-sessions==0.5.0
 django-reversion==1.9.1
-django-sentry==1.13.5
 django-socialregistration==0.5.10
 django-staticfiles==1.2.1
 django-storages==1.1.8
