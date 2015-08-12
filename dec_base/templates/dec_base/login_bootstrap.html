@@ -1,0 +1,42 @@
+{% extends "dec_base/layout_bootstrap.html" %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+{% endblock %}
+
+{% block pagecontent %}
+<div class="row-fluid">
+    <div class="span12">
+        <h1>Log in with your DEC username and password</h1>
+        <div class="well">
+            <form action="" method="post">
+                {% csrf_token %}
+                <fieldset>
+                    {% if form.errors %}
+                        <div class="alert alert-error">Sorry, that's not a valid username or password.</div>
+                    {% endif %}
+                    <div class="clearfix">
+                        <label for="username">User name:</label>
+                        <input type="text" name="username" value="" id="username">
+                    </div>
+                    <div class="clearfix">
+                        <label for="password">Password:</label>
+                        <input type="password" name="password" value="" id="password">
+                    </div>
+                    <div class="actions">
+                        <input class="btn primary" type="submit" value="Log in" />
+                        <input type="hidden" name="next" value="{{ next }}" />
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(
+        CFInstall.check({
+         mode: "overlay"
+         });
+     );
+</script>
+{% endblock %}

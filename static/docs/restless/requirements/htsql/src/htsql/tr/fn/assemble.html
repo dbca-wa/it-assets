@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>assemble.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>assemble.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql.tr.fn.assemble</code></h1>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">...adapter</span> <span class="kn">import</span> <span class="n">adapts</span><span class="p">,</span> <span class="n">adapts_none</span>
+<span class="kn">from</span> <span class="nn">..assemble</span> <span class="kn">import</span> <span class="n">EvaluateBySignature</span>
+<span class="kn">from</span> <span class="nn">..frame</span> <span class="kn">import</span> <span class="n">FormulaPhrase</span>
+<span class="kn">from</span> <span class="nn">.signature</span> <span class="kn">import</span> <span class="p">(</span><span class="n">ConcatenateSig</span><span class="p">,</span> <span class="n">ExistsSig</span><span class="p">,</span> <span class="n">CountSig</span><span class="p">,</span> <span class="n">ContainsSig</span><span class="p">,</span>
+                        <span class="n">LikeSig</span><span class="p">,</span> <span class="n">IfSig</span><span class="p">,</span> <span class="n">SwitchSig</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateFunction</span><span class="p">(</span><span class="n">EvaluateBySignature</span><span class="p">):</span>
+
+    <span class="n">adapts_none</span><span class="p">()</span>
+
+    <span class="n">is_null_regular</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">is_predicate</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">arguments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">evaluate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_null_regular</span><span class="p">:</span>
+            <span class="n">is_nullable</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">is_nullable</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">arguments</span><span class="o">.</span><span class="n">cells</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_nullable</span>
+        <span class="n">phrase</span> <span class="o">=</span> <span class="n">FormulaPhrase</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+                               <span class="n">is_nullable</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">,</span>
+                               <span class="o">**</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_predicate</span><span class="p">:</span>
+            <span class="n">phrase</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">from_predicate</span><span class="p">(</span><span class="n">phrase</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">phrase</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateWrapExists</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">ExistsSig</span><span class="p">)</span>
+    <span class="n">is_null_regular</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_predicate</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateTakeCount</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">CountSig</span><span class="p">)</span>
+    <span class="n">is_null_regular</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateConcatenate</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">ConcatenateSig</span><span class="p">)</span>
+    <span class="n">is_null_regular</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateContains</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">ContainsSig</span><span class="p">)</span>
+    <span class="n">is_predicate</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvalutateLike</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">LikeSig</span><span class="p">)</span>
+    <span class="n">is_predicate</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateIf</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">IfSig</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">arguments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">evaluate</span><span class="p">)</span>
+        <span class="n">predicates</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s">&#39;predicates&#39;</span><span class="p">]</span>
+        <span class="n">consequents</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s">&#39;consequents&#39;</span><span class="p">]</span>
+        <span class="n">alternative</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s">&#39;alternative&#39;</span><span class="p">]</span>
+        <span class="n">predicates</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">to_predicate</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">predicates</span><span class="p">]</span>
+        <span class="n">is_nullable</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">is_nullable</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">consequents</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alternative</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">alternative</span><span class="o">.</span><span class="n">is_nullable</span><span class="p">:</span>
+            <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">phrase</span> <span class="o">=</span> <span class="n">FormulaPhrase</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">is_nullable</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="n">predicates</span><span class="o">=</span><span class="n">predicates</span><span class="p">,</span>
+                               <span class="n">consequents</span><span class="o">=</span><span class="n">consequents</span><span class="p">,</span>
+                               <span class="n">alternative</span><span class="o">=</span><span class="n">alternative</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">phrase</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateSwitch</span><span class="p">(</span><span class="n">EvaluateFunction</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">SwitchSig</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">arguments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">evaluate</span><span class="p">)</span>
+        <span class="n">consequents</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s">&#39;consequents&#39;</span><span class="p">]</span>
+        <span class="n">alternative</span> <span class="o">=</span> <span class="n">arguments</span><span class="p">[</span><span class="s">&#39;alternative&#39;</span><span class="p">]</span>
+        <span class="n">is_nullable</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">is_nullable</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">consequents</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alternative</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">alternative</span><span class="o">.</span><span class="n">is_nullable</span><span class="p">:</span>
+            <span class="n">is_nullable</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">phrase</span> <span class="o">=</span> <span class="n">FormulaPhrase</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">is_nullable</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="p">,</span> <span class="o">**</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">phrase</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

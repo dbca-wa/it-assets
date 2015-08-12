@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>extension.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>extension.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2008, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_ctl.extension</code></h1>
+<p>This module implements the <code>extension</code> routine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">.error</span> <span class="kn">import</span> <span class="n">ScriptError</span>
+<span class="kn">from</span> <span class="nn">.routine</span> <span class="kn">import</span> <span class="n">Routine</span><span class="p">,</span> <span class="n">Argument</span>
+<span class="kn">from</span> <span class="nn">htsql.validator</span> <span class="kn">import</span> <span class="n">StrVal</span>
+<span class="kn">from</span> <span class="nn">htsql.addon</span> <span class="kn">import</span> <span class="n">Addon</span>
+<span class="kn">import</span> <span class="nn">pkg_resources</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>def run(self):
+<pre>if self.addon is None:
+self.list_extensions()
+else:
+self.describe_extension()
+</pre>
+def list_extensions(self):
+entry_points = list(pkg_resources.iter_entry_points('htsql.addons'))
+entry_points.sort(key=(lambda e: e.name))
+self.ctl.out("Available extensions:")
+for entry_point in entry_points:
+try:
+<pre>addon_class = entry_point.load()
+except Exception:
+addon_class = None
+if not (isinstance(addon_class, type) and
+issubclass(addon_class, Addon) and
+addon_class.name == entry_point.name):
+addon_class = None
+self.ctl.out("  ", end="")
+if addon_class is not None:
+name = addon_class.name
+hint = addon_class.get_hint()
+if hint is not None:
+self.ctl.out("%-24s : %s" % (name, hint))
+else:
+self.ctl.out(name)
+else:
+self.ctl.out("%-24s : [BROKEN]" % entry_point.name)
+self.ctl.out()
+</pre>
+def describe_extension(self):
+entry_points = list(pkg_resources.iter_entry_points('htsql.addons',
+<pre>self.addon))
+if not entry_points:
+raise ScriptError("unknown extension %s" % self.addon)
+if len(entry_points) &gt; 1:
+raise ScriptError("multiple implementations of extension %s"
+% self.addon)
+[entry_point] = entry_points
+try:
+addon_class = entry_point.load()
+except Exception, exc:
+raise ScriptError("failed to load extension %s: %s"
+% self.addon, exc)
+if not (isinstance(addon_class, type) and
+issubclass(addon_class, Addon) and
+addon_class.name == entry_point.name):
+raise ScriptError("failed to load extension %s" % self.addon)
+hint = addon_class.get_hint()
+if hint is not None:
+self.ctl.out(addon_class.name.upper(), "-", hint)
+else:
+self.ctl.out(addon_class.name.upper())
+help = addon_class.get_help()
+if help is not None:
+self.ctl.out()
+self.ctl.out(help)
+if addon_class.parameters:
+self.ctl.out()
+self.ctl.out("Parameters:")
+for parameter in addon_class.parameters:
+signature = parameter.get_signature()
+hint = parameter.get_hint()
+self.ctl.out("  ", end="")
+if hint is not None:
+self.ctl.out("%-24s : %s" % (signature, hint))
+else:
+self.ctl.out(signature)
+self.ctl.out()
+</pre></p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ExtensionRoutine</span><span class="p">(</span><span class="n">Routine</span><span class="p">):</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;extension&#39;</span>
+    <span class="n">aliases</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;ext&#39;</span><span class="p">]</span>
+    <span class="n">arguments</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Argument</span><span class="p">(</span><span class="s">&#39;addon&#39;</span><span class="p">,</span> <span class="n">StrVal</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                     <span class="n">hint</span><span class="o">=</span><span class="s">&quot;&quot;&quot;the name of the extension&quot;&quot;&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">hint</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;list and describe HTSQL extensions&quot;&quot;&quot;</span>
+    <span class="n">help</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    Run &#39;</span><span class="si">%(executable)s</span><span class="s"> extension&#39; to get a list of available HTSQL</span>
+<span class="s">    extensions.</span>
+
+<span class="s">    Run &#39;</span><span class="si">%(executable)s</span><span class="s"> extension &lt;name&gt;&#39; to describe a specific</span>
+<span class="s">    extension.</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

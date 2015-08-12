@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>split_sql.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>split_sql.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_engine.sqlite.split_sql</code></h1>
+<p>This module implements the SQL splitter for SQLite.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.split_sql</span> <span class="kn">import</span> <span class="n">SQLToken</span><span class="p">,</span> <span class="n">SplitSQL</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Implements the SQL splitter for SQLite.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SplitSQLite</span><span class="p">(</span><span class="n">SplitSQL</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>This is a simple tokenizer for SQLite.  It does not verify
+that the statements are lexically valid and it may fail
+to recognize some valid statements, however it works for
+most common cases.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">tokens</span> <span class="o">=</span> <span class="p">[</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Whitespace between separate statements.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">SQLToken</span><span class="p">(</span><span class="s">r&quot;&quot;&quot;</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">                     [\ \t\r\n]+</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">                     | -- [^\r\n]* \r?\n</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">                     | /\* .*? \*/</span>
+<span class="s">#DIVIDER</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">            SQLToken(r&quot;&quot;&quot;</span> <span class="p">;</span> <span class="s">&quot;&quot;&quot;, only_level=1, delta=-1),</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">            SQLToken(r&quot;&quot;&quot;</span> <span class="p">;</span> <span class="s">&quot;&quot;&quot;, min_level=2),</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">            SQLToken(r&quot;&quot;&quot;</span> <span class="err">$</span> <span class="s">&quot;&quot;&quot;, only_level=1, delta=-1, is_end=True),</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">            SQLToken(r&quot;&quot;&quot;</span> <span class="err">$</span> <span class="s">&quot;&quot;&quot;, only_level=0, is_end=True),</span>
+<span class="s">    ]</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>whitespaces</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>or a SQL comment</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>or a C-style comment
+, only_level=0, is_junk=True),</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <h1>The beginning of a SQL statement.</h1>
+<p>SQLToken(r""" [a-zA-Z]+ """, only_level=0, delta=+1),</p>
+<h1>Start of the BEGIN/END block.</h1>
+<p>SQLToken(r""" b BEGIN b """, min_level=1, delta=+1),</p>
+<h1>End of the BEGIN/END block.</h1>
+<p>SQLToken(r""" b END b """, min_level=2, delta=-1),</p>
+<h1>A block of regular SQL tokens.</h1>
+<p>SQLToken(r"""
+<pre>(</p>
+<h1>whitespaces</h1>
+<p>[ trn]+</p>
+<h1>or a SQL comment</h1>
+<p>| -- [^rn]*r?n</p>
+<h1>or a C-style comment</h1>
+<p>| /* .*? */</p>
+<h1>or a string literal</h1>
+<p>| ' (?: [^'] | '' )* '</p>
+<h1>or a quoted name</h1>
+<p>| " (?: [^"]+ | "" )+ "</p>
+<h1>or a keyword or a name</h1>
+<p>| [a-zA-Z_][0-9a-zA-Z_]*</p>
+<h1>or a number</h1>
+<p>| [0-9]+ (?: . [0-9]* )? (?: [eE] [+-] [0-9]+ )?</p>
+<h1>or a symbol</h1>
+<p>| [().,&lt;&gt;=!&amp;|~*/%+-]
+)+
+, min_level=1),</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Semicolon at the top level indicates the statement end.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Semicolon within BEGIN/END block is just a separator.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>Same for EOF, but it also stops the splitter.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>EOF outside the statement stops the splitter.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

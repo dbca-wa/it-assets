@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>linksys.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>linksys.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>vi:ts=4:et</p>
+<p>linksys.py -- program settings on a Linkys router</p>
+<p>This tool is designed to help you recover from the occasional episodes
+of catatonia that afflict Linksys boxes. It allows you to batch-program
+them rather than manually entering values to the Web interface.  Commands
+are taken from the command line first, then standard input.</p>
+<p>The somewhat spotty coverage of status queries is because I only did the
+ones that were either (a) easy, or (b) necessary.  If you want to know the
+status of the box, look at the web interface.</p>
+<p>This code has been tested against the following hardware:</p>
+<p>Hardware    Firmware
+  ----------  ---------------------
+  BEFW11S4v2  1.44.2.1, Dec 20 2002</p>
+<p>The code is, of course, sensitive to changes in the names of CGI pages
+and field names.</p>
+<p>Note: to make the no-arguments form work, you'll need to have the following
+entry in your ~/.netrc file.  If you have changed the router IP address or
+name/password, modify accordingly.</p>
+<p>machine 192.168.1.1
+  login ""
+  password admin</p>
+<p>By Eric S. Raymond, August April 2003.  All rites reversed.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">copy</span><span class="o">,</span> <span class="nn">curl</span><span class="o">,</span> <span class="nn">exceptions</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">LinksysError</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">Exception</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">LinksysSession</span><span class="p">:</span>
+    <span class="n">months</span> <span class="o">=</span> <span class="s">&#39;Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec&#39;</span>
+
+    <span class="n">WAN_CONNECT_AUTO</span> <span class="o">=</span> <span class="s">&#39;1&#39;</span>
+    <span class="n">WAN_CONNECT_STATIC</span> <span class="o">=</span> <span class="s">&#39;2&#39;</span>
+    <span class="n">WAN_CONNECT_PPOE</span> <span class="o">=</span> <span class="s">&#39;3&#39;</span>
+    <span class="n">WAN_CONNECT_RAS</span> <span class="o">=</span> <span class="s">&#39;4&#39;</span>
+    <span class="n">WAN_CONNECT_PPTP</span> <span class="o">=</span> <span class="s">&#39;5&#39;</span>
+    <span class="n">WAN_CONNECT_HEARTBEAT</span> <span class="o">=</span> <span class="s">&#39;6&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>Substrings to check for on each page load.
+This may enable us to detect when a firmware change has hosed us.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">check_strings</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s">&quot;&quot;</span><span class="p">:</span>           <span class="s">&quot;basic setup functions&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Passwd.htm&quot;</span><span class="p">:</span> <span class="s">&quot;For security reasons,&quot;</span><span class="p">,</span>
+        <span class="s">&quot;DHCP.html&quot;</span><span class="p">:</span>  <span class="s">&quot;You can configure the router to act as a DHCP&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Log.html&quot;</span><span class="p">:</span>   <span class="s">&quot;There are some log settings and lists in this page.&quot;</span><span class="p">,</span>
+        <span class="s">&quot;Forward.htm&quot;</span><span class="p">:</span><span class="s">&quot;Port forwarding can be used to set up public services&quot;</span><span class="p">,</span>
+        <span class="p">}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="s">&quot;http://192.168.1.1&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span> <span class="o">=</span> <span class="p">{}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_verbosity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="n">flag</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>This is not a performance hack -- we need the page cache to do
+sanity checks at configure time.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">cache_load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">page</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span><span class="p">:</span>
+            <span class="n">fetch</span> <span class="o">=</span> <span class="n">curl</span><span class="o">.</span><span class="n">Curl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">)</span>
+            <span class="n">fetch</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">)</span>
+            <span class="n">fetch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span><span class="p">[</span><span class="n">page</span><span class="p">]</span> <span class="o">=</span> <span class="n">fetch</span><span class="o">.</span><span class="n">body</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">fetch</span><span class="o">.</span><span class="n">answered</span><span class="p">(</span><span class="s">&quot;401&quot;</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">LinksysError</span><span class="p">(</span><span class="s">&quot;authorization failure.&quot;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">fetch</span><span class="o">.</span><span class="n">answered</span><span class="p">(</span><span class="n">LinksysSession</span><span class="o">.</span><span class="n">check_strings</span><span class="p">[</span><span class="n">page</span><span class="p">]):</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span><span class="p">[</span><span class="n">page</span><span class="p">]</span>
+                <span class="k">raise</span> <span class="n">LinksysError</span><span class="p">(</span><span class="s">&quot;check string for page </span><span class="si">%s</span><span class="s"> missing!&quot;</span> <span class="o">%</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">page</span><span class="p">),</span> <span class="bp">False</span><span class="p">)</span>
+            <span class="n">fetch</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">cache_flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span> <span class="o">=</span> <span class="p">{}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>Primitives</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">screen_scrape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">,</span> <span class="n">template</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_load</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">template</span><span class="p">)</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span><span class="p">[</span><span class="n">page</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">result</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_MAC_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">screen_scrape</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">+</span><span class="s">r&quot;:[^M]*\(MAC Address: *([^)]*)&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_flag</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="s">&quot;1&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="s">&quot;0&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_IP_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">page</span><span class="p">,</span> <span class="n">cgi</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">octet</span> <span class="ow">in</span> <span class="n">ip</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;F1&quot;</span><span class="p">,</span> <span class="n">role</span> <span class="o">+</span> <span class="sb">`ind+1`</span><span class="p">,</span> <span class="n">octet</span><span class="p">))</span>
+            <span class="n">ind</span> <span class="o">+=</span> <span class="mi">1</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>Scrape configuration data off the main page</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_firmware_version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>This is fragile.  There is no distinguishing tag before the firmware
+version, so we have to key off the pattern of the version number.
+Our model is "&gt;1.44.2.1, Dec 20 2002&lt;"</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">screen_scrape</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;&gt;([0-9.v]*, (&quot;</span> <span class="o">+</span> \
+                                  <span class="n">LinksysSession</span><span class="o">.</span><span class="n">months</span> <span class="o">+</span> <span class="s">&quot;)[^&lt;]*)&lt;&quot;</span><span class="p">,</span> <span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_LAN_MAC</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_MAC_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">r&quot;LAN IP Address&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_Wireless_MAC</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_MAC_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">r&quot;Wireless&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_WAN_MAC</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_MAC_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">r&quot;WAN Connection Type&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p>Set configuration data on the main page</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_host_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;hostName&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_domain_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;DomainName&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_LAN_IP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_IP_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;ipAddr&quot;</span><span class="p">,</span> <span class="n">ip</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_LAN_netmask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ip</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;255.255.255.&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+        <span class="n">lastquad</span> <span class="o">=</span> <span class="n">ip</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">lastquad</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;0&quot;</span><span class="p">,</span> <span class="s">&quot;128&quot;</span><span class="p">,</span> <span class="s">&quot;192&quot;</span><span class="p">,</span> <span class="s">&quot;240&quot;</span><span class="p">,</span> <span class="s">&quot;252&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;netMask&quot;</span><span class="p">,</span> <span class="n">lastquad</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_wireless</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_flag</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;wirelessStatus&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_SSID</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ssid</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;wirelessESSID&quot;</span><span class="p">,</span> <span class="n">ssid</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_SSID_broadcast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_flag</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;broadcastSSID&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;wirelessChannel&quot;</span><span class="p">,</span> <span class="n">channel</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_WEP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_flag</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;WepType&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p>FIXME: Add support for setting WEP keys</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_connection_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;WANConnectionType&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_WAN_IP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_IP_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;aliasIP&quot;</span><span class="p">,</span> <span class="n">ip</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_WAN_netmask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_IP_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;aliasMaskIP&quot;</span><span class="p">,</span> <span class="n">ip</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_WAN_gateway_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_IP_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;routerIP&quot;</span><span class="p">,</span> <span class="n">ip</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_DNS_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_IP_address</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span> <span class="s">&quot;dns&quot;</span> <span class="o">+</span> <span class="s">&quot;ABC&quot;</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">ip</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>Set configuration data on the password page</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_password</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Passwd.htm&quot;</span><span class="p">,</span><span class="s">&quot;sysPasswd&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Passwd.htm&quot;</span><span class="p">,</span><span class="s">&quot;sysPasswdConfirm&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_UPnP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_flag</span><span class="p">(</span><span class="s">&quot;Passwd.htm&quot;</span><span class="p">,</span> <span class="s">&quot;UPnP_Work&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Passwd.htm&quot;</span><span class="p">,</span> <span class="s">&quot;FactoryDefaults&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>DHCP features</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_DHCP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span><span class="s">&quot;dhcpStatus&quot;</span><span class="p">,</span><span class="s">&quot;Enable&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span><span class="s">&quot;dhcpStatus&quot;</span><span class="p">,</span><span class="s">&quot;Disable&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_DHCP_starting_IP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span><span class="s">&quot;dhcpS4&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_DHCP_users</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span><span class="s">&quot;dhcpLen&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_DHCP_lease_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span><span class="s">&quot;leaseTime&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_DHCP_DNS_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">ip</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_IP_address</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span> <span class="s">&quot;dns&quot;</span> <span class="o">+</span> <span class="s">&quot;ABC&quot;</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">ip</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        <p>FIXME: add support for setting WINS key</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        <p>Logging features</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_logging</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flag</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">flag</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Log.htm&quot;</span><span class="p">,</span> <span class="s">&quot;rLog&quot;</span><span class="p">,</span> <span class="s">&quot;Enable&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Log.htm&quot;</span><span class="p">,</span> <span class="s">&quot;rLog&quot;</span><span class="p">,</span> <span class="s">&quot;Disable&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">set_log_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;DHCP.htm&quot;</span><span class="p">,</span><span class="s">&quot;trapAddr3&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        <p>The AOL parental control flag is not supported by design.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        <p>FIXME: add Filters and other advanced features</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s">&quot;Write configuration changes to the Linksys.&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="p">:</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache_flush</span><span class="p">()</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_load</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pagecache</span><span class="p">[</span><span class="n">page</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="k">print</span> <span class="o">&gt;&gt;</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;linksys: field </span><span class="si">%s</span><span class="s"> not found where expected in page </span><span class="si">%s</span><span class="s">!&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">page</span><span class="p">))</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">field</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        <p>Clearing the action list before fieldsping is deliberate.
+Otherwise we could get permanently wedged by a 401.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="bp">self</span><span class="o">.</span><span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">transaction</span> <span class="o">=</span> <span class="n">curl</span><span class="o">.</span><span class="n">Curl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">)</span>
+            <span class="n">transaction</span><span class="o">.</span><span class="n">set_verbosity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">)</span>
+            <span class="n">transaction</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;Gozila.cgi&quot;</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">fields</span><span class="p">))</span>
+            <span class="n">transaction</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">cmd</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        <p>Interpret commands to perform LinkSys programming actions.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">LinksysInterpreter</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">Cmd</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        <p>def <strong>init</strong>(self):
+<pre>cmd.Cmd.<strong>init</strong>(self)
+self.session = LinksysSession()
+if os.isatty(0):
+import readline
+print "Type ? or `help' for help."
+self.prompt = self.session.host + ": "
+else:
+self.prompt = ""
+print "Bar1"
+</pre>
+def flag_command(self, func, line):
+if line.strip() in ("on", "enable", "yes"):
+func(True)
+elif line.strip() in ("off", "disable", "no"):
+func(False)
+else:
+print &gt;&gt;sys.stderr, "linksys: unknown switch value"
+return 0</p>
+<p>def do_connect(self, line):
+newhost = line.strip()
+if newhost:
+self.session.host = newhost
+self.session.cache_flush()
+self.prompt = self.session.host + ": "
+else:
+print self.session.host
+return 0
+def help_connect(self):
+print "Usage: connect [<hostname-or-IP>]"
+print "Connect to a Linksys by name or IP address."
+print "If no argument is given, print the current host."</p>
+<p>def do_status(self, line):
+self.session.cache_load("")
+if "" in self.session.pagecache:
+print "Firmware:", self.session.get_firmware_version()
+print "LAN MAC:", self.session.get_LAN_MAC()
+print "Wireless MAC:", self.session.get_Wireless_MAC()
+print "WAN MAC:", self.session.get_WAN_MAC()
+print "."
+return 0
+def help_status(self):
+print "Usage: status"
+print "The status command shows the status of the Linksys."
+print "It is mainly useful as a sanity check to make sure"
+print "the box is responding correctly."</p>
+<p>def do_verbose(self, line):
+self.flag_command(self.session.set_verbosity, line)
+def help_verbose(self):
+print "Usage: verbose {on|off|enable|disable|yes|no}"
+print "Enables display of HTTP requests."</p>
+<p>def do_host(self, line):
+self.session.set_host_name(line)
+return 0
+def help_host(self):
+print "Usage: host <hostname>"
+print "Sets the Host field to be queried by the ISP."</p>
+<p>def do_domain(self, line):
+print "Usage: host <domainname>"
+self.session.set_domain_name(line)
+return 0
+def help_domain(self):
+print "Sets the Domain field to be queried by the ISP."</p>
+<p>def do_lan_address(self, line):
+self.session.set_LAN_IP(line)
+return 0
+def help_lan_address(self):
+print "Usage: lan_address <ip-address>"
+print "Sets the LAN IP address."</p>
+<p>def do_lan_netmask(self, line):
+self.session.set_LAN_netmask(line)
+return 0
+def help_lan_netmask(self):
+print "Usage: lan_netmask <ip-mask>"
+print "Sets the LAN subnetwork mask."</p>
+<p>def do_wireless(self, line):
+self.flag_command(self.session.set_wireless, line)
+return 0
+def help_wireless(self):
+print "Usage: wireless {on|off|enable|disable|yes|no}"
+print "Switch to enable or disable wireless features."</p>
+<p>def do_ssid(self, line):
+self.session.set_SSID(line)
+return 0
+def help_ssid(self):
+print "Usage: ssid <string>"
+print "Sets the SSID used to control wireless access."</p>
+<p>def do_ssid_broadcast(self, line):
+self.flag_command(self.session.set_SSID_broadcast, line)
+return 0
+def help_ssid_broadcast(self):
+print "Usage: ssid_broadcast {on|off|enable|disable|yes|no}"
+print "Switch to enable or disable SSID broadcast."</p>
+<p>def do_channel(self, line):
+self.session.set_channel(line)
+return 0
+def help_channel(self):
+print "Usage: channel <number>"
+print "Sets the wireless channel."</p>
+<p>def do_wep(self, line):
+self.flag_command(self.session.set_WEP, line)
+return 0
+def help_wep(self):
+print "Usage: wep {on|off|enable|disable|yes|no}"
+print "Switch to enable or disable WEP security."</p>
+<p>def do_wan_type(self, line):
+try:
+type=eval("LinksysSession.WAN_CONNECT_"+line.strip().upper())
+self.session.set_connection_type(type)
+except ValueError:
+print &gt;&gt;sys.stderr, "linksys: unknown connection type."
+return 0
+def help_wan_type(self):
+print "Usage: wan_type {auto|static|ppoe|ras|pptp|heartbeat}"
+print "Set the WAN connection type."</p>
+<p>def do_wan_address(self, line):
+self.session.set_WAN_IP(line)
+return 0
+def help_wan_address(self):
+print "Usage: wan_address <ip-address>"
+print "Sets the WAN IP address."</p>
+<p>def do_wan_netmask(self, line):
+self.session.set_WAN_netmask(line)
+return 0
+def help_wan_netmask(self):
+print "Usage: wan_netmask <ip-mask>"
+print "Sets the WAN subnetwork mask."</p>
+<p>def do_wan_gateway(self, line):
+self.session.set_WAN_gateway(line)
+return 0
+def help_wan_gateway(self):
+print "Usage: wan_gateway <ip-address>"
+print "Sets the LAN subnetwork mask."</p>
+<p>def do_dns(self, line):
+(index, address) = line.split()
+if index in ("1", "2", "3"):
+self.session.set_DNS_server(eval(index), address)
+else:
+print &gt;&gt;sys.stderr, "linksys: server index out of bounds."
+return 0
+def help_dns(self):
+print "Usage: dns {1|2|3} <ip-mask>"
+print "Sets a primary, secondary, or tertiary DNS server address."</p>
+<p>def do_password(self, line):
+self.session.set_password(line)
+return 0
+def help_password(self):
+print "Usage: password <string>"
+print "Sets the router password."</p>
+<p>def do_upnp(self, line):
+self.flag_command(self.session.set_UPnP, line)
+return 0
+def help_upnp(self):
+print "Usage: upnp {on|off|enable|disable|yes|no}"
+print "Switch to enable or disable Universal Plug and Play."</p>
+<p>def do_reset(self, line):
+self.session.reset()
+def help_reset(self):
+print "Usage: reset"
+print "Reset Linksys settings to factory defaults."</p>
+<p>def do_dhcp(self, line):
+self.flag_command(self.session.set_DHCP, line)
+def help_dhcp(self):
+print "Usage: dhcp {on|off|enable|disable|yes|no}"
+print "Switch to enable or disable DHCP features."</p>
+<p>def do_dhcp_start(self, line):
+self.session.set_DHCP_starting_IP(line)
+def help_dhcp_start(self):
+print "Usage: dhcp_start <number>"
+print "Set the start address of the DHCP pool."</p>
+<p>def do_dhcp_users(self, line):
+self.session.set_DHCP_users(line)
+def help_dhcp_users(self):
+print "Usage: dhcp_users <number>"
+print "Set number of address slots to allocate in the DHCP pool."</p>
+<p>def do_dhcp_lease(self, line):
+self.session.set_DHCP_lease(line)
+def help_dhcp_lease(self):
+print "Usage: dhcp_lease <number>"
+print "Set number of address slots to allocate in the DHCP pool."</p>
+<p>def do_dhcp_dns(self, line):
+(index, address) = line.split()
+if index in ("1", "2", "3"):
+self.session.set_DHCP_DNS_server(eval(index), address)
+else:
+print &gt;&gt;sys.stderr, "linksys: server index out of bounds."
+return 0
+def help_dhcp_dns(self):
+print "Usage: dhcp_dns {1|2|3} <ip-mask>"
+print "Sets primary, secondary, or tertiary DNS server address."</p>
+<p>def do_logging(self, line):
+self.flag_command(self.session.set_logging, line)
+def help_logging(self):
+print "Usage: logging {on|off|enable|disable|yes|no}"
+print "Switch to enable or disable session logging."</p>
+<p>def do_log_address(self, line):
+self.session.set_Log_address(line)
+def help_log_address(self):
+print "Usage: log_address <number>"
+print "Set the last quad of the address to which to log."</p>
+<p>def do_configure(self, line):
+self.session.configure()
+return 0
+def help_configure(self):
+print "Usage: configure"
+print "Writes the configuration to the Linksys."</p>
+<p>def do_cache(self, line):
+print self.session.pagecache
+def help_cache(self):
+print "Usage: cache"
+print "Display the page cache."</p>
+<p>def do_quit(self, line):
+return 1
+def help_quit(self, line):
+print "The quit command ends your linksys session without"
+print "writing configuration changes to the Linksys."
+def do_EOF(self, line):
+print ""
+self.session.configure()
+return 1
+def help_EOF(self):
+print "The EOF command writes the configuration to the linksys"
+print "and ends your session."</p>
+<p>def default(self, line):
+Pass the command through to be executed by the shell.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_help</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;On-line help is available through this command.&quot;</span>
+            <span class="k">print</span> <span class="s">&quot;? is a convenience alias for help.&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_introduction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;&quot;&quot;</span><span class="se">\</span>
+
+<span class="s">This program supports changing the settings on Linksys blue-box routers.  This</span>
+<span class="s">capability may come in handy when they freeze up and have to be reset.  Though</span>
+<span class="s">it can be used interactively (and will command-prompt when standard input is a</span>
+<span class="s">terminal) it is really designed to be used in batch mode. Commands are taken</span>
+<span class="s">from the command line first, then standard input.</span>
+
+<span class="s">By default, it is assumed that the Linksys is at http://192.168.1.1, the</span>
+<span class="s">default LAN address.  You can connect to a different address or IP with the</span>
+<span class="s">&#39;connect&#39; command.  Note that your .netrc must contain correct user/password</span>
+<span class="s">credentials for the router.  The entry corresponding to the defaults is:</span>
+
+<span class="s">machine 192.168.1.1</span>
+<span class="s">    login &quot;&quot;</span>
+<span class="s">    password admin</span>
+
+<span class="s">Most commands queue up changes but don&#39;t actually send them to the Linksys.</span>
+<span class="s">You can force pending changes to be written with &#39;configure&#39;.  Otherwise, they</span>
+<span class="s">will be shipped to the Linksys at the end of session (e.g.  when the program</span>
+<span class="s">running in batch mode encounters end-of-file or you type a control-D).  If you</span>
+<span class="s">end the session with `quit&#39;, pending changes will be discarded.</span>
+
+<span class="s">For more help, read the topics &#39;wan&#39;, &#39;lan&#39;, and &#39;wireless&#39;.&quot;&quot;&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_lan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s">The `lan_address&#39; and `lan_netmask&#39; commands let you set the IP location of</span>
+<span class="s">the Linksys on your LAN, or inside.  Normally you&#39;ll want to leave these</span>
+<span class="s">untouched.&quot;&quot;&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_wan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s">The WAN commands become significant if you are using the BEFSR41 or any of</span>
+<span class="s">the other Linksys boxes designed as DSL or cable-modem gateways.  You will</span>
+<span class="s">need to use `wan_type&#39; to declare how you expect to get your address.</span>
+
+<span class="s">If your ISP has issued you a static address, you&#39;ll need to use the</span>
+<span class="s">`wan_address&#39;, `wan_netmask&#39;, and `wan_gateway&#39; commands to set the address</span>
+<span class="s">of the router as seen from the WAN, the outside. In this case you will also</span>
+<span class="s">need to use the `dns&#39; command to declare which remote servers your DNS</span>
+<span class="s">requests should be forwarded to.</span>
+
+<span class="s">Some ISPs may require you to set host and domain for use with dynamic-address</span>
+<span class="s">allocation.&quot;&quot;&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_wireless</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s">The channel, ssid, ssid_broadcast, wep, and wireless commands control</span>
+<span class="s">wireless routing.&quot;&quot;&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_switches</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;Switches may be turned on with &#39;on&#39;, &#39;enable&#39;, or &#39;yes&#39;.&quot;</span>
+            <span class="k">print</span> <span class="s">&quot;Switches may be turned off with &#39;off&#39;, &#39;disable&#39;, or &#39;no&#39;.&quot;</span>
+            <span class="k">print</span> <span class="s">&quot;Switch commands include: wireless, ssid_broadcast.&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">help_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;An address argument must be a valid IP address;&quot;</span>
+            <span class="k">print</span> <span class="s">&quot;four decimal numbers separated by dots, each &quot;</span>
+            <span class="k">print</span> <span class="s">&quot;between 0 and 255.&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">emptyline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+    <span class="n">interpreter</span> <span class="o">=</span> <span class="n">LinksysInterpreter</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">interpreter</span><span class="o">.</span><span class="n">onecmd</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+    <span class="n">fatal</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">fatal</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">interpreter</span><span class="o">.</span><span class="n">cmdloop</span><span class="p">()</span>
+            <span class="n">fatal</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">except</span> <span class="n">LinksysError</span><span class="p">,</span> <span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">fatal</span><span class="p">):</span>
+            <span class="k">print</span> <span class="s">&quot;linksys:&quot;</span><span class="p">,</span> <span class="n">message</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        <p>The following sets edit modes for GNU EMACS
+Local Variables:
+mode:python
+End:</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

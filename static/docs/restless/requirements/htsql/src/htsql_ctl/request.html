@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>request.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>request.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2008, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_ctl.request</code></h1>
+<p>This module implements the <code>get</code> and <code>post</code> routines.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">.error</span> <span class="kn">import</span> <span class="n">ScriptError</span>
+<span class="kn">from</span> <span class="nn">.routine</span> <span class="kn">import</span> <span class="n">Argument</span><span class="p">,</span> <span class="n">Routine</span>
+<span class="kn">from</span> <span class="nn">.option</span> <span class="kn">import</span> <span class="p">(</span><span class="n">InputOption</span><span class="p">,</span> <span class="n">OutputOption</span><span class="p">,</span> <span class="n">PasswordOption</span><span class="p">,</span>
+                     <span class="n">RemoteUserOption</span><span class="p">,</span> <span class="n">WithHeadersOption</span><span class="p">,</span>
+                     <span class="n">ContentTypeOption</span><span class="p">,</span> <span class="n">ExtensionsOption</span><span class="p">,</span> <span class="n">ConfigOption</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.util</span> <span class="kn">import</span> <span class="n">DB</span><span class="p">,</span> <span class="n">maybe</span><span class="p">,</span> <span class="n">oneof</span><span class="p">,</span> <span class="n">listof</span><span class="p">,</span> <span class="n">tupleof</span><span class="p">,</span> <span class="n">dictof</span><span class="p">,</span> <span class="n">filelike</span>
+<span class="kn">from</span> <span class="nn">htsql.validator</span> <span class="kn">import</span> <span class="n">DBVal</span><span class="p">,</span> <span class="n">StrVal</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">wsgiref.util</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">import</span> <span class="nn">StringIO</span>
+<span class="kn">import</span> <span class="nn">mimetypes</span>
+<span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">yaml</span><span class="o">,</span> <span class="nn">yaml.constructor</span>
+
+
+<span class="n">BaseYAMLLoader</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">SafeLoader</span>
+<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">yaml</span><span class="p">,</span> <span class="s">&#39;CSafeLoader&#39;</span><span class="p">):</span>
+    <span class="n">BaseYAMLLoader</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">CSafeLoader</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>name_regexp = re.compile(name_pattern, re.X)
+dotted_name_pattern = ur"""
+<pre>^
+[a-zA-Z_-][0-9a-zA-Z_-]<em>
+(?: . [a-zA-Z_-][0-9a-zA-Z_-]</em> )*
+$</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ConfigYAMLLoader</span><span class="p">(</span><span class="n">BaseYAMLLoader</span><span class="p">):</span>
+
+    <span class="n">name_pattern</span> <span class="o">=</span> <span class="s">ur&quot;&quot;&quot;</span>
+<span class="s">        ^</span>
+<span class="s">        [a-zA-Z_-][0-9a-zA-Z_-]*</span>
+<span class="s">        $</span>
+<span class="s">#DIVIDER</span>
+<span class="s">    dotted_name_regexp = re.compile(dotted_name_pattern, re.X)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def load(self):</span>
+<span class="s">        return self.get_single_data()</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def construct_document(self, node):</span>
+<span class="s">        document_node = node</span>
+<span class="s">        if (not (isinstance(document_node, yaml.ScalarNode) and</span>
+<span class="s">                document_node.tag == u&#39;tag:yaml.org,2002:null&#39;) and</span>
+<span class="s">            not (isinstance(document_node, yaml.MappingNode) and</span>
+<span class="s">                 document_node.tag == u&#39;tag:yaml.org,2002:map&#39;)):</span>
+<span class="s">            raise yaml.constructor.ConstructorError(None, None,</span>
+<span class="s">                    &quot;invalid structure of configuration file&quot;,</span>
+<span class="s">                    document_node.start_mark)</span>
+<span class="s">        if isinstance(document_node, yaml.MappingNode):</span>
+<span class="s">            for name_node, addon_node in document_node.value:</span>
+<span class="s">                if not (isinstance(name_node, yaml.ScalarNode) and</span>
+<span class="s">                        name_node.tag == u&#39;tag:yaml.org,2002:str&#39; and</span>
+<span class="s">                        self.dotted_name_regexp.match(name_node.value)):</span>
+<span class="s">                    raise yaml.constructor.ConstructorError(None, None,</span>
+<span class="s">                            &quot;invalid addon name&quot;, name_node.start_mark)</span>
+<span class="s">            if (not (isinstance(addon_node, yaml.ScalarNode) and</span>
+<span class="s">                    addon_node.tag == u&#39;tag:yaml.org,2002:null&#39;) and</span>
+<span class="s">                not (isinstance(addon_node, yaml.MappingNode) and</span>
+<span class="s">                     addon_node.tag == u&#39;tag:yaml.org,2002:map&#39;)):</span>
+<span class="s">                raise yaml.constructor.ConstructorError(None, None,</span>
+<span class="s">                        &quot;invalid addon configuration&quot;, addon_node.start_mark)</span>
+<span class="s">                if isinstance(addon_node, yaml.MappingNode):</span>
+<span class="s">                    for attribute_node, value_node in addon_node.value:</span>
+<span class="s">                        if not (isinstance(attribute_node, yaml.ScalarNode) and</span>
+<span class="s">                                attribute_node.tag</span>
+<span class="s">                                    == u&#39;tag:yaml.org,2002:str&#39; and</span>
+<span class="s">                                self.name_regexp.match(attribute_node.value)):</span>
+<span class="s">                            raise yaml.constructor.ConstructorError(None, None,</span>
+<span class="s">                                    &quot;invalid parameter name&quot;,</span>
+<span class="s">                                    attribute_node.start_mark)</span>
+<span class="s">        return super(ConfigYAMLLoader, self).construct_document(document_node)</span>
+
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">class Request(object):</span>
+<span class="s">#DIVIDER</span>
+
+<span class="s">    @classmethod</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def prepare(cls, method, query, remote_user=None,</span>
+<span class="s">                content_type=None, content_body=None,</span>
+<span class="s">                extra_headers=None):</span>
+<span class="s">#DIVIDER</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        assert method in [&#39;GET&#39;, &#39;POST&#39;]</span>
+<span class="s">        assert isinstance(query, str)</span>
+<span class="s">        assert isinstance(remote_user, maybe(str))</span>
+<span class="s">        assert isinstance(content_type, maybe(str))</span>
+<span class="s">        assert isinstance(content_body, maybe(oneof(str, filelike())))</span>
+<span class="s">        assert isinstance(extra_headers, maybe(dictof(str, str)))</span>
+<span class="s">        if method == &#39;GET&#39;:</span>
+<span class="s">            assert content_type is None</span>
+<span class="s">            assert content_body is None</span>
+<span class="s">        if method == &#39;POST&#39;:</span>
+<span class="s">            assert content_body is not None</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        environ = {}</span>
+
+<span class="s">        environ[&#39;REQUEST_METHOD&#39;] = method</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        environ[&#39;SCRIPT_NAME&#39;] = &#39;&#39;</span>
+<span class="s">        if &#39;?&#39; in query:</span>
+<span class="s">            path_info, query_string = query.split(&#39;?&#39;, 1)</span>
+<span class="s">        else:</span>
+<span class="s">            path_info = query</span>
+<span class="s">            query_string = &#39;&#39;</span>
+<span class="s">        path_info = urllib.unquote(path_info)</span>
+<span class="s">        environ[&#39;PATH_INFO&#39;] = path_info</span>
+<span class="s">        environ[&#39;QUERY_STRING&#39;] = query_string</span>
+
+<span class="s">        if remote_user is not None:</span>
+<span class="s">            environ[&#39;REMOTE_USER&#39;] = remote_user</span>
+
+<span class="s">        if method == &#39;POST&#39;:</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">            if content_type is None:</span>
+<span class="s">                if hasattr(content_body, &#39;name&#39;):</span>
+<span class="s">                    content_type = mimetypes.guess_type(content_body.name)[0]</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">            if content_type is None:</span>
+<span class="s">                content_type = &#39;application/octet-stream&#39;</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">            if not isinstance(content_body, str):</span>
+<span class="s">                content_body = content_body.read()</span>
+<span class="s">            environ[&#39;CONTENT_TYPE&#39;] = content_type</span>
+<span class="s">            environ[&#39;CONTENT_LENGTH&#39;] = str(len(content_body))</span>
+<span class="s">            environ[&#39;wsgi.input&#39;] = StringIO.StringIO(content_body)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if extra_headers is not None:</span>
+<span class="s">            for key in extra_headers:</span>
+<span class="s">                variable = &#39;HTTP_</span><span class="si">%s</span><span class="s">&#39; % key.upper().replace(&#39;-&#39;, &#39;_&#39;)</span>
+<span class="s">                environ[variable] = extra_headers[key]</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        wsgiref.util.setup_testing_defaults(environ)</span>
+
+<span class="s">        return cls(environ)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def __init__(self, environ):</span>
+<span class="s">        assert isinstance(environ, dictof(str, object))</span>
+<span class="s">        self.environ = environ</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def execute(self, app):</span>
+<span class="s">#DIVIDER</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        response = Response()</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        def start_response(status, headers, exc_info=None):</span>
+<span class="s">            response.set(status=status, headers=headers)</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">            return StringIO.StringIO()</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        environ = self.environ.copy()</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        try:</span>
+<span class="s">            iterator = app(environ, start_response)</span>
+<span class="s">            try:</span>
+<span class="s">                response.set(body=&#39;&#39;.join(iterator))</span>
+<span class="s">            finally:</span>
+<span class="s">                if hasattr(iterator, &#39;close&#39;):</span>
+<span class="s">                    iterator.close()</span>
+<span class="s">        except Exception:</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">            response.set(exc_info=sys.exc_info())</span>
+
+<span class="s">        return response</span>
+
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">class Response(object):</span>
+<span class="s">#DIVIDER</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def __init__(self):</span>
+<span class="s">        self.status = None</span>
+<span class="s">        self.headers = None</span>
+<span class="s">        self.body = None</span>
+<span class="s">        self.exc_info = None</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def set(self, **attributes):</span>
+<span class="s">#DIVIDER</span>
+<span class="s">        for name in attributes:</span>
+<span class="s">            assert hasattr(self, name)</span>
+<span class="s">            setattr(self, name, attributes[name])</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def complete(self):</span>
+<span class="s">#DIVIDER</span>
+<span class="s">        return (isinstance(self.status, str) and</span>
+<span class="s">                self.status[:3].isdigit() and</span>
+<span class="s">                self.status[3:4] == &#39; &#39; and</span>
+<span class="s">                isinstance(self.headers, listof(tupleof(str, str))) and</span>
+<span class="s">                isinstance(self.body, str) and</span>
+<span class="s">                self.exc_info is None)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def dump(self, stream, with_headers=False):</span>
+<span class="s">#DIVIDER</span>
+<span class="s">        assert self.complete()</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if with_headers:</span>
+<span class="s">            stream.write(&quot;</span><span class="si">%s</span><span class="s">\r\n&quot; </span><span class="si">% s</span><span class="s">elf.status)</span>
+<span class="s">            for header, value in self.headers:</span>
+<span class="s">                stream.write(&quot;</span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">\r\n&quot; % (header, value))</span>
+<span class="s">            stream.write(&quot;\r\n&quot;)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        stream.write(self.body)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if self.body and self.body[-1] not in &quot;\r\n&quot;:</span>
+<span class="s">            if hasattr(stream, &#39;isatty&#39;) and stream.isatty():</span>
+<span class="s">                stream.write(&quot;\r\n&quot;)</span>
+
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">class GetPostBaseRoutine(Routine):</span>
+<span class="s">#DIVIDER</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    arguments = [</span>
+<span class="s">            Argument(&#39;db&#39;, DBVal(),</span>
+<span class="s">                     hint=&quot;&quot;&quot;</span><span class="n">the</span> <span class="n">connection</span> <span class="n">URI</span><span class="s">&quot;&quot;&quot;),</span>
+<span class="s">            Argument(&#39;query&#39;, StrVal(),</span>
+<span class="s">                     hint=&quot;&quot;&quot;</span><span class="n">the</span> <span class="n">HTSQL</span> <span class="n">query</span><span class="s">&quot;&quot;&quot;),</span>
+<span class="s">    ]</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">    options = [</span>
+<span class="s">            PasswordOption,</span>
+<span class="s">            ExtensionsOption,</span>
+<span class="s">            ConfigOption,</span>
+<span class="s">            RemoteUserOption,</span>
+<span class="s">            OutputOption,</span>
+<span class="s">            WithHeadersOption,</span>
+<span class="s">    ]</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">    method = None</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">    def run(self):</span>
+
+<span class="s">#DIVIDER</span>
+<span class="s">        db = self.db</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if self.password and db is not None:</span>
+<span class="s">            db = DB(engine=db.engine,</span>
+<span class="s">                    username=db.username,</span>
+<span class="s">                    password=getpass.getpass(),</span>
+<span class="s">                    host=db.host,</span>
+<span class="s">                    port=db.port,</span>
+<span class="s">                    database=db.database,</span>
+<span class="s">                    options=db.options)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        extensions = self.extensions</span>
+<span class="s">        if self.config is not None:</span>
+<span class="s">            stream = open(self.config, &#39;rb&#39;)</span>
+<span class="s">            loader = ConfigYAMLLoader(stream)</span>
+<span class="s">            try:</span>
+<span class="s">                config_extension = loader.load()</span>
+<span class="s">            except yaml.YAMLError, exc:</span>
+<span class="s">                raise ScriptError(&quot;failed to load application configuration:&quot;</span>
+<span class="s">                                  &quot; </span><span class="si">%s</span><span class="s">&quot; </span><span class="si">% e</span><span class="s">xc)</span>
+<span class="s">            extensions = extensions + [config_extension]</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        from htsql import HTSQL</span>
+<span class="s">        try:</span>
+<span class="s">            app = HTSQL(db, *extensions)</span>
+<span class="s">        except ImportError, exc:</span>
+<span class="s">            raise ScriptError(&quot;failed to construct application: </span><span class="si">%s</span><span class="s">&quot; </span><span class="si">% e</span><span class="s">xc)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if self.method == &#39;GET&#39;:</span>
+<span class="s">            request = Request.prepare(&#39;GET&#39;, self.query, self.remote_user)</span>
+<span class="s">        elif self.method == &#39;POST&#39;:</span>
+<span class="s">            if self.input is None:</span>
+<span class="s">                input_stream = self.ctl.stdin</span>
+<span class="s">            else:</span>
+<span class="s">                input_stream = open(self.input, &#39;rb&#39;)</span>
+<span class="s">            request = Request.prepare(&#39;POST&#39;, self.query, self.remote_user,</span>
+<span class="s">                                      self.content_type, input_stream)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        response = request.execute(app)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if response.exc_info is not None:</span>
+<span class="s">            exc_type, exc_value, exc_traceback = response.exc_info</span>
+<span class="s">            traceback.print_exception(exc_type, exc_value, exc_traceback,</span>
+<span class="s">                                      file=self.ctl.stderr)</span>
+<span class="s">            raise ScriptError(&quot;exception while executing an HTSQL request&quot;)</span>
+<span class="s">        if not response.complete():</span>
+<span class="s">            raise ScriptError(&quot;incomplete response&quot;)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if self.output is None:</span>
+<span class="s">            output_stream = self.ctl.stdout</span>
+<span class="s">        else:</span>
+<span class="s">            output_stream = open(self.output, &#39;wb&#39;)</span>
+<span class="s">        response.dump(output_stream, self.with_headers)</span>
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">        if not response.status.startswith(&#39;200&#39;):</span>
+<span class="s">            raise ScriptError(&quot;unexpected status code: </span><span class="si">%s</span><span class="s">&quot; </span><span class="si">% r</span><span class="s">esponse.status)</span>
+
+
+
+<span class="s">#DIVIDER</span>
+<span class="s">class GetRoutine(GetPostBaseRoutine):</span>
+<span class="s">#DIVIDER</span>
+
+<span class="s">    name = &#39;get&#39;</span>
+<span class="s">    hint = &quot;&quot;&quot;</span><span class="n">execute</span> <span class="ow">and</span> <span class="n">render</span> <span class="n">an</span> <span class="n">HTSQL</span> <span class="n">query</span><span class="s">&quot;&quot;&quot;</span>
+<span class="s">    help = &quot;&quot;&quot;</span>
+    <span class="n">The</span> <span class="n">routine</span> <span class="n">executes</span> <span class="n">an</span> <span class="n">HTSQL</span> <span class="n">query</span> <span class="ow">and</span> <span class="n">displays</span> <span class="n">the</span> <span class="n">response</span><span class="o">.</span>
+
+    <span class="n">The</span> <span class="n">DB</span> <span class="n">argument</span> <span class="n">specifies</span> <span class="n">database</span> <span class="n">connection</span> <span class="n">parameters</span><span class="p">;</span> <span class="n">must</span> <span class="n">have</span> <span class="n">the</span>
+    <span class="n">form</span><span class="p">:</span>
+    
+        <span class="n">engine</span><span class="p">:</span><span class="o">//</span><span class="n">username</span><span class="p">:</span><span class="n">password</span><span class="nd">@host</span><span class="p">:</span><span class="n">port</span><span class="o">/</span><span class="n">database</span>
+
+    <span class="n">Here</span><span class="p">,</span>
+    
+      <span class="o">-</span> <span class="n">ENGINE</span> <span class="ow">is</span> <span class="n">the</span> <span class="nb">type</span> <span class="n">of</span> <span class="n">the</span> <span class="n">database</span> <span class="n">server</span><span class="p">;</span> <span class="n">supported</span> <span class="n">values</span> <span class="n">are</span>
+        <span class="sb">`sqlite`</span><span class="p">,</span> <span class="sb">`pgsql`</span><span class="p">,</span> <span class="sb">`mysql`</span><span class="p">,</span> <span class="sb">`mssql`</span> <span class="ow">and</span> <span class="sb">`oracle`</span><span class="o">.</span>
+      <span class="o">-</span> <span class="n">The</span> <span class="n">parameters</span> <span class="n">USERNAME</span><span class="p">:</span><span class="n">PASSWORD</span> <span class="n">are</span> <span class="n">used</span> <span class="k">for</span> <span class="n">authentication</span><span class="o">.</span>
+      <span class="o">-</span> <span class="n">The</span> <span class="n">parameters</span> <span class="n">HOST</span><span class="p">:</span><span class="n">PORT</span> <span class="n">indicate</span> <span class="n">the</span> <span class="n">address</span> <span class="n">of</span> <span class="n">the</span> <span class="n">database</span>
+        <span class="n">server</span><span class="o">.</span>
+      <span class="o">-</span> <span class="n">DATABASE</span> <span class="ow">is</span> <span class="n">the</span> <span class="n">name</span> <span class="n">of</span> <span class="n">the</span> <span class="n">database</span><span class="p">;</span> <span class="k">for</span> <span class="n">SQLite</span><span class="p">,</span> <span class="n">the</span> <span class="n">path</span> <span class="n">to</span> <span class="n">the</span>
+        <span class="n">database</span> <span class="nb">file</span><span class="o">.</span>
+
+    <span class="n">All</span> <span class="n">parameters</span> <span class="k">except</span> <span class="n">ENGINE</span> <span class="ow">and</span> <span class="n">DATABASE</span> <span class="n">are</span> <span class="n">optional</span><span class="o">.</span>
+
+    <span class="n">The</span> <span class="n">QUERY</span> <span class="n">argument</span> <span class="ow">is</span> <span class="n">the</span> <span class="n">HTSQL</span> <span class="n">query</span> <span class="n">to</span> <span class="n">execute</span><span class="o">.</span>
+
+    <span class="n">Use</span> <span class="n">option</span> <span class="sb">`--remote-user USER`</span> <span class="n">to</span> <span class="n">specify</span> <span class="n">the</span> <span class="n">remote</span> <span class="n">user</span> <span class="n">of</span> <span class="n">the</span> <span class="n">HTTP</span>
+    <span class="n">request</span><span class="o">.</span>  <span class="n">By</span> <span class="n">default</span><span class="p">,</span> <span class="n">the</span> <span class="n">remote</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">set</span><span class="o">.</span>
+
+    <span class="n">Use</span> <span class="n">option</span> <span class="sb">`--output FILE`</span> <span class="n">to</span> <span class="n">specify</span> <span class="n">the</span> <span class="nb">file</span> <span class="n">to</span> <span class="n">write</span> <span class="n">the</span> <span class="n">response</span><span class="o">.</span>
+    <span class="n">If</span> <span class="n">the</span> <span class="n">option</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">set</span><span class="p">,</span> <span class="n">the</span> <span class="n">response</span> <span class="ow">is</span> <span class="n">written</span> <span class="n">to</span> <span class="n">the</span> <span class="n">console</span><span class="o">.</span>
+
+    <span class="n">Use</span> <span class="n">option</span> <span class="sb">`--with-headers`</span> <span class="n">to</span> <span class="n">indicate</span> <span class="n">that</span> <span class="n">the</span> <span class="n">response</span> <span class="n">status</span> <span class="n">code</span>
+    <span class="ow">and</span> <span class="n">headers</span> <span class="n">should</span> <span class="n">be</span> <span class="n">displayed</span><span class="o">.</span>  <span class="n">By</span> <span class="n">default</span><span class="p">,</span> <span class="n">only</span> <span class="n">the</span> <span class="n">response</span> <span class="n">body</span> <span class="ow">is</span>
+    <span class="n">written</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Implements</span> <span class="n">the</span> <span class="sb">`post`</span> <span class="n">routine</span><span class="o">.</span>
+
+    <span class="n">The</span> <span class="n">routine</span> <span class="n">executes</span> <span class="n">an</span> <span class="n">HTSQL</span> <span class="n">query</span> <span class="k">with</span> <span class="n">POST</span> <span class="n">data</span> <span class="n">over</span> <span class="n">the</span> <span class="n">specified</span>
+    <span class="n">database</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">method</span> <span class="o">=</span> <span class="s">&#39;POST&#39;</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p></pre>Represents a WSGI request.</p>
+<p><code>environ</code>
+<pre>A WSGI <code>environ</code> dictionary.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p></pre>Produces a :class:<code>Request</code> object from the given parameters.</p>
+<p><code>method</code> (<code>'GET'</code> or <code>'POST'</code>)
+<pre>The HTTP request method.
+</pre>
+<code>query</code> (a string)
+The path and the query parts of the URI.</p>
+<p><code>remote_user</code> (a string or <code>None</code>)
+The name of the authenticated user.</p>
+<p><code>content_type</code> (a string or <code>None</code>)
+The content type of the POST data, used only when <code>method</code> is
+<code>'POST'</code>.  If not provided, guessed from the file name of the
+<code>content_body</code> stream.  If that fails,
+<code>'application/octet-stream'</code> is used.</p>
+<p><code>content_body</code> (a string, a file or a file-like object or <code>None</code>)
+The body of the HTTP request, used only when <code>method</code> is
+<code>'POST'</code>.</p>
+<p><code>extra_headers</code> (a dictionary or <code>None</code>)
+A dictionary of HTTP headers.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Sanity check on the arguments</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>The WSGI <code>environ</code> variable, see PEP 333.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>Split <code>query</code> into components.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>When <code>content_type</code> is not explicitly provided,
+guess it from the file name if possible.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>If we can't guess the content type, use the default value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>If <code>content_body</code> is a file-like object, read its content.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>Transfer HTTP headers to the WSGI <code>environ</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        <p>Assign reasonable values of the missing WSGI parameters.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <p>Executes the request against the given WSGI application.</p>
+<p><code>app</code>
+<pre>A WSGI application.
+</pre>
+Returns a :class:<code>Response</code> object.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        <p>The container for the response data.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <p>A WSGI <code>start_response</code> function; saves the response data.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        <p>Note that we don't expect the application to use the returned
+stream object, so we don't keep it.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        <p>Copy the <code>environ</code> dictionary in case the application modifies it.
+TODO: that is not enough to make <code>execute()</code> truly re-entrant: for
+POST requests, we also need to save the <code>environ['wsgi.input']</code>
+stream.  For now, assume that a <code>Request</code> object could be executed
+only once.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        <p>Execute the WSGI request.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        <p>Save the exception data.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p>Represents a response to a WSGI request.</p>
+<p><code>status</code> (a string)
+<pre>The HTTP status line.
+</pre>
+<code>headers</code> (a list of pairs)
+The HTTP headers.</p>
+<p><code>body</code> (a string)
+The HTTP body.</p>
+<p><code>exc_info</code> (a tuple <code>(type, value, traceback)</code> or <code>None</code>)
+Any exception occured when the request was executed.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        <p>Updates the response parameters.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>Returns <code>True</code> if the response is complete; <code>False</code> otherwise.</p>
+<p>The response is considered valid if the HTTP status, headers and
+body are set and valid and no exception occured during the execution
+of the request.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        <p>Writes the response to the output stream.</p>
+<p><code>stream</code> (a file or a file-like object)
+<pre>The stream where to write the response.
+</pre>
+<code>with_headers</code>
+Indicates whether the status line and the headers should
+also be written.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>The response must be complete at this point.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p>Write the HTTP status code and headers if asked to.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        <p>Write the HTTP body.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        <p>Write CR if the body does not end with a new line and the
+output stream is a console.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        <p>Implements the common methods for the <code>get</code> and <code>post</code> routines.</p>
+<p>Both routines take a connection URI and an HTSQL query as arguments
+and execute an HTTP request.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        <p>The arguments are the same for both routines.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        <p>These are common options for both routines.  The <code>post</code> routine
+adds some extra options.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        <p>The HTTP method implemented by the routine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        <p>The database URI.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        <p>Ask for the database password if necessary.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        <p>Load addon configuration.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        <p>Create the HTSQL application.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        <p>Prepare a WSGI <code>environ</code> variable.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        <p>Execute the WSGI request.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        <p>Check for errors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        <p>Dump the response.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        <p>Complain when the response status is not <code>200 OK</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        <p>Implements the <code>get</code> routine.</p>
+<p>The routine executes an HTSQL query over the specified database.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        <p>method = 'GET'</p>
+<p>class PostRoutine(GetPostBaseRoutine):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        <p>name = 'post'
+options = [
+<pre>InputOption,
+ContentTypeOption,
+] + GetPostBaseRoutine.options
+hint = """execute and render an HTSQL query with POST data"""
+help = """
+The routine executes an HTSQL query with POST data and displays the
+response.
+</pre>
+The DB argument specifies database connection parameters; must have
+the form:</p>
+<p>engine://username:password@host:port/database</p>
+<p>Here,</p>
+<ul>
+<li>ENGINE is the type of the database server; supported values are
+<code>sqlite</code>, <code>pgsql</code>, <code>mysql</code>, <code>mssql</code> and <code>oracle</code>.</li>
+<li>The parameters USERNAME:PASSWORD are used for authentication.</li>
+<li>The parameters HOST:PORT indicate the address of the database
+server.</li>
+<li>DATABASE is the name of the database; for SQLite, the path to the
+database file.</li>
+</ul>
+<p>All parameters except ENGINE and DATABASE are optional.</p>
+<p>The QUERY argument is the HTSQL query to execute.</p>
+<p>Use option <code>--content-type TYPE</code> to specify the content type of the POST
+data.  If the option is not provided, the content type is guessed from
+the file name.</p>
+<p>Use option <code>--input FILE</code> to specify a file containing the POST data.
+If the option is not set, the routine reads the POST data from the
+console.</p>
+<p>Use option <code>--remote-user USER</code> to specify the remote user of the HTTP
+request.  By default, the remote user is not set.</p>
+<p>Use option <code>--output FILE</code> to specify the file to write the response.
+If the option is not set, the response is written to the console.</p>
+<p>Use option <code>--with-headers</code> to indicate that the response status code
+and headers should be displayed.  By default, only the response body is
+written.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

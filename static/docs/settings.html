@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>settings.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>settings.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Models for restless to store app links &amp; tests::</span>
+
+<span class="sd">    Copyright (C) 2011 Department of Environment &amp; Conservation</span>
+
+<span class="sd">    Authors:</span>
+<span class="sd">     * Adon Metcalfe</span>
+<span class="sd">     * Ashley Felton</span>
+
+<span class="sd">    This program is free software: you can redistribute it and/or modify</span>
+<span class="sd">    it under the terms of the GNU Affero General Public License as</span>
+<span class="sd">    published by the Free Software Foundation, either version 3 of the</span>
+<span class="sd">    License, or (at your option) any later version.</span>
+
+<span class="sd">    This program is distributed in the hope that it will be useful,</span>
+<span class="sd">    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="sd">    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="sd">    GNU Affero General Public License for more details.</span>
+
+<span class="sd">    You should have received a copy of the GNU Affero General Public License</span>
+<span class="sd">    along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="sd">&#39;&#39;&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>Database configuration</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">DATABASES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;default&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;NAME&#39;</span><span class="p">:</span><span class="s">&#39;assets_8208&#39;</span><span class="p">,</span>
+        <span class="s">&#39;HOST&#39;</span><span class="p">:</span><span class="s">&#39;pgsql-001&#39;</span><span class="p">,</span>
+        <span class="s">&#39;PORT&#39;</span><span class="p">:</span><span class="s">&#39;5440&#39;</span><span class="p">,</span>
+        <span class="s">&#39;USER&#39;</span><span class="p">:</span><span class="s">&#39;assets&#39;</span><span class="p">,</span>
+        <span class="s">&#39;PASSWORD&#39;</span><span class="p">:</span><span class="s">&#39;assets&#39;</span><span class="p">,</span>
+        <span class="s">&#39;ENGINE&#39;</span><span class="p">:</span><span class="s">&#39;django.contrib.gis.db.backends.postgis&#39;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Standard DEC settings template imported from dec_base
+pulls settings from dec_base/settings.py and dec_base/authentication.py</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">dec_base</span> <span class="kn">import</span> <span class="n">defaults</span><span class="p">;</span> <span class="n">defaults</span><span class="p">(</span><span class="n">exclude</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;AUTH_LDAP_USER_FLAGS_BY_GROUP&#39;</span><span class="p">])</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">----------------------------</span>
+<span class="sd">Custom settings beneath here</span>
+<span class="sd">----------------------------</span>
+<span class="sd">&#39;&#39;&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Make this unique, and don't share it with anybody.
+Use ./manage.py generate_secret_key after cloning this project.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">SECRET_KEY</span> <span class="o">=</span> <span class="s">&#39;7e8964cebd5a2c8f3cb402337a05c8b5c92cd266c252bd8c1ca003c41a3443f4&#39;</span>
+
+
+<span class="n">INSTALLED_APPS</span> <span class="o">+=</span> <span class="p">(</span>
+    <span class="s">&#39;assets&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">AUTH_LDAP_USER_FLAGS_BY_GROUP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&quot;is_staff&quot;</span><span class="p">:</span> <span class="s">&quot;CN=KENS-891-ICTSC All Users,OU=ICTSC Lists,OU=ICTSC,OU=Sites,DC=corporateict,DC=domain&quot;</span><span class="p">,</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>"is_superuser": "CN=Splunk Administrators,OU=Miscellaneous,OU=Groups,OU=Administrators,DC=corporateict,DC=domain"</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="p">}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Turn off caching for development</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">CACHES</span><span class="p">[</span><span class="s">&#39;mem&#39;</span><span class="p">][</span><span class="s">&#39;BACKEND&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;django.core.cache.backends.dummy.DummyCache&#39;</span>
+<span class="n">CACHES</span><span class="p">[</span><span class="s">&#39;default&#39;</span><span class="p">][</span><span class="s">&#39;BACKEND&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;django.core.cache.backends.dummy.DummyCache&#39;</span>
+<span class="n">CACHES</span><span class="p">[</span><span class="s">&#39;file&#39;</span><span class="p">][</span><span class="s">&#39;BACKEND&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;django.core.cache.backends.dummy.DummyCache&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Login to the admin</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">LOGIN_URL</span> <span class="o">=</span> <span class="s">&quot;/admin&quot;</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

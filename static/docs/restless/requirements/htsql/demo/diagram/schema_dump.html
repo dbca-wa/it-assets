@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>schema_dump.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>schema_dump.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">htsql</span> <span class="kn">import</span> <span class="n">HTSQL</span>
+<span class="kn">from</span> <span class="nn">htsql.request</span> <span class="kn">import</span> <span class="n">produce</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.lookup</span> <span class="kn">import</span> <span class="n">normalize</span><span class="p">,</span> <span class="n">lookup_attribute</span><span class="p">,</span> <span class="n">get_catalog</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.parse</span> <span class="kn">import</span> <span class="n">parse</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.bind</span> <span class="kn">import</span> <span class="n">bind</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">HTSQL</span><span class="p">(</span><span class="s">&quot;pgsql:htsql_regress&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <hr />
+<p>build the graph</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">graph</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">with</span> <span class="n">app</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>force introspection </p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">catalog</span> <span class="o">=</span> <span class="n">get_catalog</span><span class="p">()</span>
+    <span class="n">reverse</span> <span class="o">=</span> <span class="p">{}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>record all potential reverse links</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">for</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">schemas</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">tables</span><span class="p">:</span>
+            <span class="n">tname</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">fk</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">foreign_keys</span><span class="p">:</span>
+                <span class="n">fk_name</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">fk</span><span class="o">.</span><span class="n">target_name</span><span class="p">)</span>
+                <span class="n">reverse</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">fk_name</span><span class="p">,[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tname</span><span class="p">)</span>
+  </pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>traverse links and build graph   <br />
+</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">for</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">schemas</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">tables</span><span class="p">:</span>
+            <span class="n">forward_links</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">reverse_links</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">tname</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>create table binding to verify lookups</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">query</span> <span class="o">=</span> <span class="s">&quot;/</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">normalize</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">syntax</span> <span class="o">=</span> <span class="n">parse</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+            <span class="n">binding</span> <span class="o">=</span> <span class="n">bind</span><span class="p">(</span><span class="n">syntax</span><span class="p">)</span>
+            <span class="n">btable</span> <span class="o">=</span> <span class="n">binding</span><span class="o">.</span><span class="n">segment</span><span class="o">.</span><span class="n">seed</span>
+            </pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>add foreign keys that lookup</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">for</span> <span class="n">fk</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">foreign_keys</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>for parental links fk is subset of pk</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="n">is_parental</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">primary_key</span><span class="p">:</span>
+                    <span class="n">spk</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">primary_key</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">)</span>
+                    <span class="n">sfk</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fk</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">sfk</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">spk</span><span class="p">):</span>
+                        <span class="n">is_parental</span> <span class="o">=</span> <span class="bp">True</span>
+                 </pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>probe the binding for the link name</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="n">fk_name</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">fk</span><span class="o">.</span><span class="n">target_name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">lookup_attribute</span><span class="p">(</span><span class="n">btable</span><span class="p">,</span> <span class="n">fk_name</span><span class="p">):</span>
+                    <span class="n">forward_links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fk_name</span><span class="p">,</span> <span class="n">is_parental</span><span class="p">,</span> <span class="n">fk_name</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="mi">1</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">fk</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">):</span>
+                        <span class="n">oc_name</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">fk</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="k">if</span> <span class="n">lookup_attribute</span><span class="p">(</span><span class="n">btable</span><span class="p">,</span> <span class="n">oc_name</span><span class="p">):</span>
+                            <span class="n">forward_links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">oc_name</span><span class="p">,</span> <span class="n">is_parental</span><span class="p">,</span> 
+                                                  <span class="n">fk_name</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>add reverse links that lookup</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">for</span> <span class="n">fk_name</span> <span class="ow">in</span> <span class="n">reverse</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tname</span><span class="p">,[]):</span>
+                <span class="k">if</span> <span class="n">lookup_attribute</span><span class="p">(</span><span class="n">btable</span><span class="p">,</span> <span class="n">fk_name</span><span class="p">):</span>
+                    <span class="n">reverse_links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">fk_name</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="n">fk_name</span><span class="p">))</span>
+
+            <span class="n">graph</span><span class="p">[</span><span class="n">tname</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">forward_links</span><span class="p">),</span> <span class="nb">set</span><span class="p">(</span><span class="n">reverse_links</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>build the output JSON structure</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&quot;var t_</span><span class="si">%s</span><span class="s"> = graph.newNode({label: &#39;</span><span class="si">%s</span><span class="s">&#39;});&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="p">(</span><span class="n">forward</span><span class="p">,</span> <span class="n">reverse</span><span class="p">))</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">is_parent</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span> <span class="ow">in</span> <span class="n">forward</span><span class="p">:</span>
+        <span class="n">style</span> <span class="o">=</span> <span class="s">&#39;{}&#39;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">target</span><span class="p">:</span>
+            <span class="n">style</span> <span class="o">=</span> <span class="s">&#39;{label:&quot;</span><span class="si">%s</span><span class="s">&quot;}&#39;</span> <span class="o">%</span> <span class="n">name</span>
+        <span class="n">weight</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">is_parent</span><span class="p">:</span>
+           <span class="n">weight</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="k">print</span> <span class="s">&#39;    graph.newEdge(t_</span><span class="si">%s</span><span class="s">, t_</span><span class="si">%s</span><span class="s">, {});&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                 <span class="n">table</span><span class="p">,</span> <span class="n">target</span> <span class="p">)</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">is_parent</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span> <span class="ow">in</span> <span class="n">reverse</span><span class="p">:</span>
+        <span class="n">style</span> <span class="o">=</span> <span class="s">&#39;{}&#39;</span>
+        <span class="n">weight</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">print</span> <span class="s">&#39;    graph.newEdge(t_</span><span class="si">%s</span><span class="s">, t_</span><span class="si">%s</span><span class="s">, {});&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                 <span class="n">table</span><span class="p">,</span> <span class="n">target</span> <span class="p">)</span>
+
+
+<span class="k">if</span> <span class="mi">0</span><span class="p">:</span>
+	<span class="kn">import</span> <span class="nn">yaml</span>
+	<span class="k">print</span> <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

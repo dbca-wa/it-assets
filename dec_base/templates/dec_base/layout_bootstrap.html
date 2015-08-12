@@ -1,0 +1,73 @@
+{% extends "dec_base/base_bootstrap.html" %}
+
+{% block layout %}
+<!-- Header -->
+<div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container-fluid">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target="#navbar-header">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+            <a id="site-title" class="brand" href="/" style="font-family: 'Ubuntu', sans-serif;">
+                <img src="{{ STATIC_URL }}/img/dec_logo_navbar.png" style="width:40px; margin-bottom:-8px; margin-top:-8px;">
+                {{ sitetitle }} {{ application_version_no }}{% if production_site %}{% else %} ({% if hostenv %}{{ hostenv }}{% else %}non-production{% endif %}){% endif %}
+            </a>
+            <div class="nav-collapse" id="navbar-header">
+            {% if request.user.is_authenticated %}
+                <!-- Extra navbar list items -->
+                {{ navbar_extra_li|safe }}
+                {% if site_navbar %}{% include site_navbar %}{% endif %}
+                {% if user_navbar %}
+                    {% include user_navbar %}
+                {% else %}
+                    <p class="navbar-text pull-right">
+                    Welcome <strong>{% firstof request.user.first_name request.user.username %}</strong>
+                    | <a href="{% url logout %}" class="navbar" title="Log out">Log out</a>
+                    </p>
+                {% endif %}
+            {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container-fluid">
+{% if request.user.is_authenticated %}
+    <!-- Breadcrumbs -->
+    {% if breadcrumb_trail %}
+    <div class="row-fluid">
+        <div class="span12">
+            <ul class="breadcrumb">
+                {{ breadcrumb_trail|safe }}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- Messages  -->
+    {% if messages %}
+    <div class="row-fluid">
+        <div class="span12">
+            {% for message in messages %}
+            <div class="alert{% if message.tags %} alert-{{ message.tags }}{% endif %}">
+                {{ message|safe }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+{% endif %}
+    <!-- Page content -->
+    {% block pagecontent %}{% endblock %}
+</div>
+<div class="container-fluid" style="padding-left:0px; padding-right:0px;">
+    {% block extra_footer %}{% endblock %}
+    {{ extra_footer|safe }}
+    <!-- Footer -->
+    <div class="row-fluid">
+        <div class="span12" style="height:60px; background-color:#005072;">
+            <p style="color:#fff; padding-top:20px; padding-left:11px;">{% if application_version_no %}v{{ application_version_no }} {% endif %}&copy; 2012 Department of Environment and Conservation</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>parse.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>parse.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql.tr.parse</code></h1>
+<p>This module implements the HTSQL parser.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">..mark</span> <span class="kn">import</span> <span class="n">Mark</span>
+<span class="kn">from</span> <span class="nn">.scan</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">.token</span> <span class="kn">import</span> <span class="n">NameToken</span><span class="p">,</span> <span class="n">StringToken</span><span class="p">,</span> <span class="n">NumberToken</span><span class="p">,</span> <span class="n">SymbolToken</span><span class="p">,</span> <span class="n">EndToken</span>
+<span class="kn">from</span> <span class="nn">.syntax</span> <span class="kn">import</span> <span class="p">(</span><span class="n">QuerySyntax</span><span class="p">,</span> <span class="n">SegmentSyntax</span><span class="p">,</span> <span class="n">CommandSyntax</span><span class="p">,</span> <span class="n">SelectorSyntax</span><span class="p">,</span>
+                     <span class="n">FunctionSyntax</span><span class="p">,</span> <span class="n">MappingSyntax</span><span class="p">,</span> <span class="n">OperatorSyntax</span><span class="p">,</span>
+                     <span class="n">QuotientSyntax</span><span class="p">,</span> <span class="n">SieveSyntax</span><span class="p">,</span> <span class="n">LinkSyntax</span><span class="p">,</span> <span class="n">AssignmentSyntax</span><span class="p">,</span>
+                     <span class="n">SpecifierSyntax</span><span class="p">,</span> <span class="n">GroupSyntax</span><span class="p">,</span> <span class="n">IdentifierSyntax</span><span class="p">,</span>
+                     <span class="n">WildcardSyntax</span><span class="p">,</span> <span class="n">ComplementSyntax</span><span class="p">,</span> <span class="n">ReferenceSyntax</span><span class="p">,</span>
+                     <span class="n">StringSyntax</span><span class="p">,</span> <span class="n">NumberSyntax</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Implements an HTSQL parser.</p>
+<p>A parser takes a stream of tokens from the HTSQL scanner and
+produces a node of a syntax tree.</p>
+<p>This is an abstract class; see subclasses of :class:<code>Parser</code> for
+implementations of various parts of the HTSQL grammar.</p>
+<p><code>input</code> (a string)
+<pre>The input HTSQL expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Parser</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>FIXME: get rid of the metaclass and <code>&lt;&lt;</code>.  Implement <code>Parser</code>
+as an adapter with matching by rule of an LL(n) grammar.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">__metaclass__</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Implements a shortcut:
+  Parser &lt;&lt; tokens
+to call
+  Parser.process(tokens)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">__lshift__</span><span class="p">(</span><span class="n">parser_class</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">parser_class</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input</span> <span class="o">=</span> <span class="nb">input</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p></pre>Parses the input expression; returns the corresponding syntax node.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Tokenize the input query.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">tokens</span> <span class="o">=</span> <span class="n">scan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Parse the input query.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">syntax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>Ensure that we reached the end of the token stream.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">EndToken</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">syntax</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>Takes a stream of tokens; returns a syntax node.</p>
+<p>This function does not have to exhaust the token stream.</p>
+<p>The <code>&lt;&lt;</code> operator could be used as a synonym for :meth:<code>process</code>;
+the following expressions are equivalent::</p>
+<pre>Parser << tokens
+Parser.process(tokens)
+</pre>
+
+<p><code>tokens</code> (:class:<code>htsql.tr.scan.TokenStream</code>)
+The stream of tokens to parse.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>Override in subclasses.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>Parses an HTSQL query.</p>
+<p>Here is the grammar of HTSQL::</p>
+<pre>input           ::= segment END
+</pre>
+
+<p>segment         ::= '/' ( top command* )?
+command         ::= '/' ':' identifier ( '/' top? | call | flow )?</p>
+<pre>top             ::= flow ( direction | mapping )*
+direction       ::= '+' | '-'
+mapping         ::= ':' identifier ( flow | call )?
+</pre>
+
+<p>flow            ::= disjunction ( sieve | quotient | selection )<em>
+sieve           ::= '?' disjunction
+quotient        ::= '^' disjunction
+selection       ::= selector ( '.' atom )</em></p>
+<p>disjunction     ::= conjunction ( '|' conjunction )<em>
+conjunction     ::= negation ( '&amp;' negation )</em>
+negation        ::= '!' negation | comparison</p>
+<p>comparison      ::= expression ( ( '~' | '!~' |
+<pre>'&lt;=' | '&lt;' | '&gt;=' |  '&gt;' |
+'==' | '=' | '!==' | '!=' )
+expression )?
+</pre>
+expression      ::= term ( ( '+' | '-' ) term )<em>
+term            ::= factor ( ( '</em>' | '/' ) factor )*
+factor          ::= ( '+' | '-' ) factor | pointer</p>
+<p>pointer         ::= specifier ( link | assignment )?
+link            ::= '-&gt;' flow
+assignment      ::= ':=' top</p>
+<p>specifier       ::= atom ( '.' atom )<em>
+atom            ::= '</em>' index? | '^' | selector | group |
+identifier call? | reference | literal
+index           ::= NUMBER | '(' NUMBER ')'</p>
+<p>group           ::= '(' top ')'
+call            ::= '(' arguments? ')'
+selector        ::= '{' arguments? '}'
+arguments       ::= argument ( ',' argument )* ','?
+argument        ::= segment | top
+reference       ::= '$' identifier</p>
+<p>identifier      ::= NAME
+literal         ::= STRING | NUMBER</p>
+<p>Note that this grammar is almost LL(1); one notable exception is
+the postfix <code>+</code> and <code>-</code> operators.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">QueryParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p>Expect:
+  input       ::= segment END</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">segment</span> <span class="o">=</span> <span class="n">SegmentParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">return</span> <span class="n">QuerySyntax</span><span class="p">(</span><span class="n">segment</span><span class="p">,</span> <span class="n">segment</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <p>Parses a <code>segment</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SegmentParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <p>Expect:
+  segment     ::= '/' ( top command* )?
+  command     ::= '/' ':' identifier ( '/' top? | call | flow )?</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">head_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">])</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">EndToken</span><span class="p">)</span> <span class="ow">or</span>
+                <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">])):</span>
+            <span class="n">branch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">EndToken</span><span class="p">)</span> <span class="ow">or</span>
+                        <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">])):</span>
+                    <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;:&#39;</span><span class="p">])</span>
+                    <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">head_token</span><span class="p">,</span> <span class="n">branch</span><span class="p">)</span>
+                    <span class="n">lbranch</span> <span class="o">=</span> <span class="n">SegmentSyntax</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+                    <span class="n">identifier</span> <span class="o">=</span> <span class="n">IdentifierParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                    <span class="n">rbranches</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">EndToken</span><span class="p">)</span> <span class="ow">or</span>
+                            <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">])):</span>
+                        <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;:&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                                <span class="n">rbranch_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">])</span>
+                                <span class="n">rbranch</span> <span class="o">=</span> <span class="bp">None</span>
+                                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">EndToken</span><span class="p">)</span> <span class="ow">or</span>
+                                        <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span>
+                                                    <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">])):</span>
+                                    <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">rbranch_token</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+                                <span class="n">rbranch</span> <span class="o">=</span> <span class="n">SegmentSyntax</span><span class="p">(</span><span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+                                <span class="n">rbranches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">]):</span>
+                            <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">])</span>
+                            <span class="k">while</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">]):</span>
+                                <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                                    <span class="n">rbranch</span> <span class="o">=</span> <span class="n">SegmentParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                                <span class="k">else</span><span class="p">:</span>
+                                    <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                                <span class="n">rbranches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                                <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">]):</span>
+                                    <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">])</span>
+                            <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">])</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">FlowParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                            <span class="n">rbranches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">tail_token</span><span class="p">,</span> <span class="o">*</span><span class="n">rbranches</span><span class="p">)</span>
+                <span class="n">branch</span> <span class="o">=</span> <span class="n">CommandSyntax</span><span class="p">(</span><span class="n">identifier</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranches</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">head_token</span><span class="p">,</span> <span class="n">branch</span><span class="p">)</span>
+        <span class="n">segment</span> <span class="o">=</span> <span class="n">SegmentSyntax</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">segment</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        <p>Parses a <code>top</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">TopParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        <p>Expect:
+  top         ::= flow ( direction | mapping )*
+  direction   ::= '+' | '-'
+  mapping     ::= ':' identifier ( flow | call )?
+  FOLLOW(mapping) = ['+','-',':',',',')','}']</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">top</span> <span class="o">=</span> <span class="n">FlowParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="s">&#39;:&#39;</span><span class="p">]):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p>Parse <code>direction</code> decorator.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">]):</span>
+                <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">])</span>
+                <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">symbol_token</span><span class="p">)</span>
+                <span class="n">top</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        <p>Parse <code>mapping</code> application.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">else</span><span class="p">:</span>
+                <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;:&#39;</span><span class="p">])</span>
+                <span class="n">identifier</span> <span class="o">=</span> <span class="n">IdentifierParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                <span class="n">lbranch</span> <span class="o">=</span> <span class="n">top</span>
+                <span class="n">rbranches</span> <span class="o">=</span> <span class="p">[]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        <p>Mapping parameters in parentheses.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">]):</span>
+                    <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">])</span>
+                    <span class="k">while</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">]):</span>
+                        <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">SegmentParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                        <span class="n">rbranches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">]):</span>
+                            <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">])</span>
+                    <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">])</span>
+                    <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">tail_token</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        <p>No parenthesis: either no parameters or a single parameter.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="k">else</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        <p>Determine whether the mapping has a parameter or not.
+If not, must be followed by one of: <code>:</code> (next mapping),
+<code>,</code>, <code>)</code>, <code>}</code> (punctuation), or <code>+</code>, <code>-</code> (direction
+decorators).  We skip through <code>+</code> and <code>-</code> since they
+could also start a parameter as an unary prefix operator.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                    <span class="n">ahead</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="n">ahead</span><span class="p">):</span>
+                        <span class="n">ahead</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span>
+                                        <span class="p">[</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="n">ahead</span><span class="p">)</span> <span class="ow">or</span>
+                            <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">EndToken</span><span class="p">,</span> <span class="n">ahead</span><span class="o">=</span><span class="n">ahead</span><span class="p">)):</span>
+                        <span class="n">rbranch</span> <span class="o">=</span> <span class="n">FlowParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                        <span class="n">rbranches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                    <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="o">*</span><span class="n">rbranches</span><span class="p">)</span>
+                <span class="n">top</span> <span class="o">=</span> <span class="n">MappingSyntax</span><span class="p">(</span><span class="n">identifier</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranches</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">top</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>Parses a <code>flow</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">FlowParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>Expect:
+  flow        ::= disjunction ( sieve | quotient | selection )<em>
+  sieve       ::= '?' disjunction
+  quotient    ::= '^' disjunction
+  selection   ::= selector ( '.' atom )</em></p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">flow</span> <span class="o">=</span> <span class="n">DisjunctionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;?&#39;</span><span class="p">,</span> <span class="s">&#39;^&#39;</span><span class="p">,</span> <span class="s">&#39;{&#39;</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;?&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+                <span class="n">lbranch</span> <span class="o">=</span> <span class="n">flow</span>
+                <span class="n">rbranch</span> <span class="o">=</span> <span class="n">DisjunctionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+                <span class="n">flow</span> <span class="o">=</span> <span class="n">SieveSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;^&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+                <span class="n">lbranch</span> <span class="o">=</span> <span class="n">flow</span>
+                <span class="n">rbranch</span> <span class="o">=</span> <span class="n">DisjunctionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+                <span class="n">flow</span> <span class="o">=</span> <span class="n">QuotientSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;{&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+                <span class="n">lbranch</span> <span class="o">=</span> <span class="n">flow</span>
+                <span class="n">rbranches</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">while</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;}&#39;</span><span class="p">]):</span>
+                    <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                        <span class="n">rbranch</span> <span class="o">=</span> <span class="n">SegmentParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                    <span class="n">rbranches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;}&#39;</span><span class="p">]):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p>We know it's not going to be '}', but we put it into
+the list of accepted values to generate a better
+error message.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                        <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">])</span>
+                <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;}&#39;</span><span class="p">])</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">flow</span><span class="p">,</span> <span class="n">tail_token</span><span class="p">)</span>
+                <span class="n">flow</span> <span class="o">=</span> <span class="n">SelectorSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranches</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+                <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;.&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+                    <span class="n">lbranch</span> <span class="o">=</span> <span class="n">flow</span>
+                    <span class="n">rbranch</span> <span class="o">=</span> <span class="n">AtomParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                    <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">flow</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+                    <span class="n">flow</span> <span class="o">=</span> <span class="n">SpecifierSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        <p>Not reachable.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="k">assert</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="n">flow</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        <p>Parses a <code>disjunction</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">DisjunctionParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        <p>Parses the production:
+  disjunction ::= conjunction ( '|' conjunction )*</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">test</span> <span class="o">=</span> <span class="n">ConjunctionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;|&#39;</span><span class="p">]):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;|&#39;</span><span class="p">])</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">test</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">ConjunctionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">test</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">test</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        <p>Parses a <code>conjunction</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ConjunctionParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        <p>Expect:
+  conjunction ::= negation ( '&amp;' negation )*</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">test</span> <span class="o">=</span> <span class="n">NegationParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;&amp;&#39;</span><span class="p">]):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;&amp;&#39;</span><span class="p">])</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">test</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">NegationParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">test</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">test</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        <p>Parses a <code>negation</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">NegationParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        <p>Expect:
+  negation    ::= '!' negation | comparison</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">symbol_tokens</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;!&#39;</span><span class="p">]):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;!&#39;</span><span class="p">])</span>
+            <span class="n">symbol_tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">symbol_token</span><span class="p">)</span>
+        <span class="n">test</span> <span class="o">=</span> <span class="n">ComparisonParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">symbol_tokens</span><span class="p">:</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">symbol_tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">symbol_token</span><span class="p">,</span> <span class="n">test</span><span class="p">)</span>
+            <span class="n">test</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">test</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        <p>Parses a <code>comparison</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ComparisonParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        <p>Expect:
+  comparison  ::= expression ( ( '~' | '!~' |
+                                 '&lt;=' | '&lt;' | '&gt;=' |  '&gt;' |
+                                 '==' | '=' | '!==' | '!=' )
+                               expression )?</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">expression</span> <span class="o">=</span> <span class="n">ExpressionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span>
+                                   <span class="p">[</span><span class="s">&#39;~&#39;</span><span class="p">,</span> <span class="s">&#39;!~&#39;</span><span class="p">,</span> <span class="s">&#39;&lt;=&#39;</span><span class="p">,</span> <span class="s">&#39;&lt;&#39;</span><span class="p">,</span> <span class="s">&#39;&gt;=&#39;</span><span class="p">,</span> <span class="s">&#39;&gt;&#39;</span><span class="p">,</span>
+                                    <span class="s">&#39;==&#39;</span><span class="p">,</span> <span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="s">&#39;!==&#39;</span><span class="p">,</span> <span class="s">&#39;!=&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">symbol_token</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">expression</span>
+        <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">lbranch</span> <span class="o">=</span> <span class="n">expression</span>
+        <span class="n">rbranch</span> <span class="o">=</span> <span class="n">ExpressionParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+        <span class="n">comparison</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">comparison</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        <p>Parses an <code>expression</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ExpressionParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        <p>Expect:
+  expression  ::= term ( ( '+' | '-' ) term )*</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">expression</span> <span class="o">=</span> <span class="n">TermParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-58'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-58">#</a>
+        </div>
+        <p>Do a look-ahead to distinguish between infix and postfix <code>+</code> or <code>-</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">]):</span>
+            <span class="n">ahead</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="n">ahead</span><span class="p">):</span>
+                <span class="n">ahead</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;:&#39;</span><span class="p">,</span> <span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="n">ahead</span><span class="p">):</span>
+                <span class="k">break</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">])</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">expression</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TermParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">expression</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">expression</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-59'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-59">#</a>
+        </div>
+        <p>Parses a <code>term</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">TermParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-60'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-60">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-61'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-61">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-62'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-62">#</a>
+        </div>
+        <p>Expect:
+  term        ::= factor ( ( '<em>' | '/' ) factor )</em></p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">term</span> <span class="o">=</span> <span class="n">FactorParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;*&#39;</span><span class="p">])</span>
+               <span class="ow">or</span> <span class="p">(</span><span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                   <span class="ow">and</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;:&#39;</span><span class="p">],</span> <span class="n">ahead</span><span class="o">=</span><span class="mi">1</span><span class="p">))):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;*&#39;</span><span class="p">,</span> <span class="s">&#39;/&#39;</span><span class="p">])</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">term</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">FactorParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">term</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">term</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-63'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-63">#</a>
+        </div>
+        <p>Parses a <code>pointer</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">FactorParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-64'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-64">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-65'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-65">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-66'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-66">#</a>
+        </div>
+        <p>Expect:
+  factor      ::= ( '+' | '-' ) factor | pointer</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">symbol_tokens</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">]):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">])</span>
+            <span class="n">symbol_tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">symbol_token</span><span class="p">)</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">PointerParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">symbol_tokens</span><span class="p">:</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">symbol_tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol_token</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">symbol_token</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+            <span class="n">factor</span> <span class="o">=</span> <span class="n">OperatorSyntax</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">factor</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-67'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-67">#</a>
+        </div>
+        <p>Parses a <code>pointer</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">PointerParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-68'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-68">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-69'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-69">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-70'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-70">#</a>
+        </div>
+        <p>Expect:
+  pointer     ::= specifier ( link | assignment )?
+  link        ::= '-&gt;' flow
+  assignment  ::= ':=' top</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">pointer</span> <span class="o">=</span> <span class="n">SpecifierParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;-&gt;&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">pointer</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">FlowParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">pointer</span> <span class="o">=</span> <span class="n">LinkSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;:=&#39;</span><span class="p">],</span> <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">pointer</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">pointer</span> <span class="o">=</span> <span class="n">AssignmentSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pointer</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-71'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-71">#</a>
+        </div>
+        <p>Parses a <code>specifier</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SpecifierParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-72'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-72">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-73'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-73">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-74'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-74">#</a>
+        </div>
+        <p>Expect:
+  specifier   ::= atom ( '.' atom )*</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">specifier</span> <span class="o">=</span> <span class="n">AtomParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="k">while</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;.&#39;</span><span class="p">]):</span>
+            <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;.&#39;</span><span class="p">])</span>
+            <span class="n">lbranch</span> <span class="o">=</span> <span class="n">specifier</span>
+            <span class="n">rbranch</span> <span class="o">=</span> <span class="n">AtomParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">)</span>
+            <span class="n">specifier</span> <span class="o">=</span> <span class="n">SpecifierSyntax</span><span class="p">(</span><span class="n">lbranch</span><span class="p">,</span> <span class="n">rbranch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">specifier</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-75'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-75">#</a>
+        </div>
+        <p>Parses an <code>atom</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">AtomParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-76'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-76">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-77'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-77">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-78'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-78">#</a>
+        </div>
+        <p>Expect:
+  atom        ::= '<em>' index? | '^' | selector | group |
+                  identifier call? | reference | literal
+  index       ::= NUMBER | '(' NUMBER ')'
+  call        ::= '(' arguments? ')'
+  arguments   ::= argument ( ',' argument )</em> ','?
+  argument    ::= segment | top
+  reference   ::= '$' identifier
+  literal     ::= STRING | NUMBER</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-79'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-79">#</a>
+        </div>
+        <p>A wildcard expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;*&#39;</span><span class="p">]):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;*&#39;</span><span class="p">])</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">NumberToken</span><span class="p">):</span>
+                <span class="n">index_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">NumberToken</span><span class="p">)</span>
+                <span class="n">index</span> <span class="o">=</span> <span class="n">NumberSyntax</span><span class="p">(</span><span class="n">index_token</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">index_token</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">symbol_token</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+            <span class="n">wildcard</span> <span class="o">=</span> <span class="n">WildcardSyntax</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">wildcard</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-80'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-80">#</a>
+        </div>
+        <p>A complement atom.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;^&#39;</span><span class="p">]):</span>
+            <span class="n">symbol_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;^&#39;</span><span class="p">])</span>
+            <span class="n">complement</span> <span class="o">=</span> <span class="n">ComplementSyntax</span><span class="p">(</span><span class="n">symbol_token</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">complement</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-81'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-81">#</a>
+        </div>
+        <p>An expression in parentheses.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">]):</span>
+            <span class="n">group</span> <span class="o">=</span> <span class="n">GroupParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="k">return</span> <span class="n">group</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-82'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-82">#</a>
+        </div>
+        <p>A selector.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;{&#39;</span><span class="p">]):</span>
+            <span class="n">selector</span> <span class="o">=</span> <span class="n">SelectorParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="k">return</span> <span class="n">selector</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-83'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-83">#</a>
+        </div>
+        <p>An identifier or a function call.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">NameToken</span><span class="p">):</span>
+            <span class="n">identifier</span> <span class="o">=</span> <span class="n">IdentifierParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">]):</span>
+                <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">])</span>
+                <span class="n">branches</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">while</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">]):</span>
+                    <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                        <span class="n">rbranch</span> <span class="o">=</span> <span class="n">SegmentParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+                    <span class="n">branches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">]):</span>
+                        <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;)&#39;</span><span class="p">])</span>
+                <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">])</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">identifier</span><span class="p">,</span> <span class="n">tail_token</span><span class="p">)</span>
+                <span class="n">function</span> <span class="o">=</span> <span class="n">FunctionSyntax</span><span class="p">(</span><span class="n">identifier</span><span class="p">,</span> <span class="n">branches</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">function</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">identifier</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-84'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-84">#</a>
+        </div>
+        <p>A reference.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;$&#39;</span><span class="p">]):</span>
+            <span class="n">head_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;$&#39;</span><span class="p">])</span>
+            <span class="n">identifier</span> <span class="o">=</span> <span class="n">IdentifierParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">head_token</span><span class="p">,</span> <span class="n">identifier</span><span class="p">)</span>
+            <span class="n">reference</span> <span class="o">=</span> <span class="n">ReferenceSyntax</span><span class="p">(</span><span class="n">identifier</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">reference</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-85'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-85">#</a>
+        </div>
+        <p>A string literal.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">StringToken</span><span class="p">):</span>
+            <span class="n">token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">StringToken</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">StringSyntax</span><span class="p">(</span><span class="n">token</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">token</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-86'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-86">#</a>
+        </div>
+        <p>A numeric literal.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">elif</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">NumberToken</span><span class="p">):</span>
+            <span class="n">token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">NumberToken</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">NumberSyntax</span><span class="p">(</span><span class="n">token</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">token</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-87'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-87">#</a>
+        </div>
+        <p>We expect it to always produce an error message.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">NameToken</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-88'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-88">#</a>
+        </div>
+        <p>Not reachable.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-89'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-89">#</a>
+        </div>
+        <p>Parses a <code>group</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GroupParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-90'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-90">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-91'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-91">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-92'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-92">#</a>
+        </div>
+        <p>Expect:
+  group       ::= '(' top ')'</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">head_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;(&#39;</span><span class="p">])</span>
+        <span class="n">branch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+        <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;)&#39;</span><span class="p">])</span>
+        <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">head_token</span><span class="p">,</span> <span class="n">tail_token</span><span class="p">)</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">GroupSyntax</span><span class="p">(</span><span class="n">branch</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">group</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-93'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-93">#</a>
+        </div>
+        <p>Parses a <code>selector</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SelectorParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-94'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-94">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-95'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-95">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-96'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-96">#</a>
+        </div>
+        <p>Expect:
+  selector    ::= '{' arguments? '}'
+  arguments   ::= argument ( ',' argument )* ','?
+  argument    ::= segment | top</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">head_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;{&#39;</span><span class="p">])</span>
+        <span class="n">branches</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;}&#39;</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;/&#39;</span><span class="p">]):</span>
+                <span class="n">rbranch</span> <span class="o">=</span> <span class="n">SegmentParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">rbranch</span> <span class="o">=</span> <span class="n">TopParser</span> <span class="o">&lt;&lt;</span> <span class="n">tokens</span>
+            <span class="n">branches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbranch</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;}&#39;</span><span class="p">]):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-97'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-97">#</a>
+        </div>
+        <p>We know it's not going to be '}', but we put it into the list
+of accepted values to generate a better error message.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;,&#39;</span><span class="p">,</span> <span class="s">&#39;}&#39;</span><span class="p">])</span>
+        <span class="n">tail_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SymbolToken</span><span class="p">,</span> <span class="p">[</span><span class="s">&#39;}&#39;</span><span class="p">])</span>
+        <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">head_token</span><span class="p">,</span> <span class="n">tail_token</span><span class="p">)</span>
+        <span class="n">selector</span> <span class="o">=</span> <span class="n">SelectorSyntax</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">branches</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">selector</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-98'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-98">#</a>
+        </div>
+        <p>Parses an <code>identifier</code> production.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">IdentifierParser</span><span class="p">(</span><span class="n">Parser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-99'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-99">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-100'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-100">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-101'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-101">#</a>
+        </div>
+        <p>Expect:
+  identifier      ::= NAME</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">name_token</span> <span class="o">=</span> <span class="n">tokens</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">NameToken</span><span class="p">)</span>
+        <span class="n">identifier</span> <span class="o">=</span> <span class="n">IdentifierSyntax</span><span class="p">(</span><span class="n">name_token</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">name_token</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">identifier</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-102'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-102">#</a>
+        </div>
+        <p>Parses the input HTSQL query; returns the corresponding syntax node.</p>
+<p>In case of syntax errors, may raise :exc:<code>htsql.tr.error.ScanError</code>
+or :exc:<code>htsql.tr.error.ParseError</code>.</p>
+<p><code>input</code> (a string)
+<pre>An HTSQL query or an HTSQL expression.
+</pre>
+<code>Parser</code> (a subclass of :class:<code>Parser</code>)
+The parser to use for parsing the input expression.  By default,
+<code>input</code> is treated as a complete HTSQL query.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">Parser</span><span class="o">=</span><span class="n">QueryParser</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-103'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-103">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">parser</span> <span class="o">=</span> <span class="n">Parser</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">()</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

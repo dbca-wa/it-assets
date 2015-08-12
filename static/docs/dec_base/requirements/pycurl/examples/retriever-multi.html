@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>retriever-multi.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>retriever-multi.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>vi:ts=4:et
+$Id$</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>Usage: python retriever-multi.py <file with URLs to fetch> [&lt;# of
+         concurrent connections&gt;]</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pycurl</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>We should ignore SIGPIPE when using pycurl.NOSIGNAL - see
+the libcurl tutorial for more info.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">signal</span>
+    <span class="kn">from</span> <span class="nn">signal</span> <span class="kn">import</span> <span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">SIG_IGN</span>
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_IGN</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">pass</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Get args</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">num_conn</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;-&quot;</span><span class="p">:</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">num_conn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&quot;Usage: </span><span class="si">%s</span><span class="s"> &lt;file with URLs to fetch&gt; [&lt;# of concurrent connections&gt;]&quot;</span> <span class="o">%</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>Make a queue with (url, filename) tuples</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">queue</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">urls</span><span class="p">:</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">url</span> <span class="ow">or</span> <span class="n">url</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&quot;#&quot;</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="s">&quot;doc_</span><span class="si">%03d</span><span class="s">.dat&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">queue</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">url</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Check args</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">assert</span> <span class="n">queue</span><span class="p">,</span> <span class="s">&quot;no URLs given&quot;</span>
+<span class="n">num_urls</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">queue</span><span class="p">)</span>
+<span class="n">num_conn</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">num_conn</span><span class="p">,</span> <span class="n">num_urls</span><span class="p">)</span>
+<span class="k">assert</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">num_conn</span> <span class="o">&lt;=</span> <span class="mi">10000</span><span class="p">,</span> <span class="s">&quot;invalid number of concurrent connections&quot;</span>
+<span class="k">print</span> <span class="s">&quot;PycURL </span><span class="si">%s</span><span class="s"> (compiled against 0x</span><span class="si">%x</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">version</span><span class="p">,</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">COMPILE_LIBCURL_VERSION_NUM</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;----- Getting&quot;</span><span class="p">,</span> <span class="n">num_urls</span><span class="p">,</span> <span class="s">&quot;URLs using&quot;</span><span class="p">,</span> <span class="n">num_conn</span><span class="p">,</span> <span class="s">&quot;connections -----&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Pre-allocate a list of curl objects</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">m</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">CurlMulti</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">handles</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_conn</span><span class="p">):</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">fp</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">FOLLOWLOCATION</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">MAXREDIRS</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">CONNECTTIMEOUT</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">NOSIGNAL</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>Main loop</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">freelist</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">handles</span><span class="p">[:]</span>
+<span class="n">num_processed</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">while</span> <span class="n">num_processed</span> <span class="o">&lt;</span> <span class="n">num_urls</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>If there is an url to process and a free curl object, add to multi stack</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">while</span> <span class="n">queue</span> <span class="ow">and</span> <span class="n">freelist</span><span class="p">:</span>
+        <span class="n">url</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">freelist</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">fp</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&quot;wb&quot;</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">WRITEDATA</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">fp</span><span class="p">)</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">add_handle</span><span class="p">(</span><span class="n">c</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>store some info</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">c</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Run the internal curl state machine for the multi stack</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">ret</span><span class="p">,</span> <span class="n">num_handles</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">perform</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ret</span> <span class="o">!=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">E_CALL_MULTI_PERFORM</span><span class="p">:</span>
+            <span class="k">break</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Check for curl objects which have terminated, and add them to the freelist</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">num_q</span><span class="p">,</span> <span class="n">ok_list</span><span class="p">,</span> <span class="n">err_list</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">info_read</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ok_list</span><span class="p">:</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">fp</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">remove_handle</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s">&quot;Success:&quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">getinfo</span><span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">EFFECTIVE_URL</span><span class="p">)</span>
+            <span class="n">freelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">c</span><span class="p">,</span> <span class="n">errno</span><span class="p">,</span> <span class="n">errmsg</span> <span class="ow">in</span> <span class="n">err_list</span><span class="p">:</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">fp</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">remove_handle</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">print</span> <span class="s">&quot;Failed: &quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">c</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="n">errno</span><span class="p">,</span> <span class="n">errmsg</span>
+            <span class="n">freelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">num_processed</span> <span class="o">=</span> <span class="n">num_processed</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">ok_list</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">err_list</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">num_q</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">break</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>Currently no more I/O is pending, could do something in the meantime
+(display a progress bar, etc.).
+We just call select() to sleep until some more data is available.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">m</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>Cleanup</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">handles</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">fp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">c</span><span class="o">.</span><span class="n">fp</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">c</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

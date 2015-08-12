@@ -1,0 +1,35 @@
+{% extends "dec_base/layout.html" %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url site_home %}">Home</a> &gt; Log in
+{% endblock %}
+
+{% block pagecontent %}
+<div id="content-main">
+    {% if form.errors %}
+        <p class="errornote">Sorry, that's not a valid username or password.</p>
+    {% endif %}
+    <h1>LOG IN</h1>
+    <form action="" method="post">
+        <label for="username">User name:</label>
+        <input type="text" name="username" value="" id="username">
+        <label for="password">Password:</label>
+        <input type="password" name="password" value="" id="password">
+        <input type="submit" value="login" />
+        <input type="hidden" name="next" value="{{ next }}" />
+        {% csrf_token %}
+    </form>
+    <br>
+</div>
+<script>
+    $(document).ready(
+        CFInstall.check({
+         mode: "overlay"
+         });
+     );
+</script>
+{% endblock %}

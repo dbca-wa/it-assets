@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>locate.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>locate.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.adapter</span> <span class="kn">import</span> <span class="n">named</span>
+<span class="kn">from</span> <span class="nn">..resource.locate</span> <span class="kn">import</span> <span class="n">LocatePackage</span><span class="p">,</span> <span class="n">LocateRemote</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">LocateShell</span><span class="p">(</span><span class="n">LocatePackage</span><span class="p">):</span>
+
+    <span class="n">named</span><span class="p">(</span><span class="s">&#39;/shell/&#39;</span><span class="p">)</span>
+    <span class="n">package</span> <span class="o">=</span> <span class="n">__name__</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="s">&#39;static&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">LocateJQuery</span><span class="p">(</span><span class="n">LocateRemote</span><span class="p">):</span>
+
+    <span class="n">named</span><span class="p">(</span><span class="s">&#39;/shell/external/jquery/&#39;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;http://code.jquery.com/jquery-1.6.4.min.js&#39;</span>
+    <span class="n">md5</span> <span class="o">=</span> <span class="s">&#39;9118381924c51c89d9414a311ec9c97f&#39;</span>
+    <span class="n">cache</span> <span class="o">=</span> <span class="s">&#39;jquery-1.6.4&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">LocateCodeMirror</span><span class="p">(</span><span class="n">LocateRemote</span><span class="p">):</span>
+
+    <span class="n">named</span><span class="p">(</span><span class="s">&#39;/shell/external/codemirror/&#39;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;https://nodeload.github.com/marijnh/CodeMirror2/zipball/v2.13&#39;</span>
+    <span class="n">md5</span> <span class="o">=</span> <span class="s">&#39;ba0a4838ecb469ed40dfc43ce042fe67&#39;</span>
+    <span class="n">cache</span> <span class="o">=</span> <span class="s">&#39;codemirror-2.13&#39;</span>
+    <span class="n">is_zip</span> <span class="o">=</span> <span class="bp">True</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>dump.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>dump.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_engine.mssql.tr.dump</code></h1>
+<p>This module adapts the SQL serializer for MS SQL Server.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.adapter</span> <span class="kn">import</span> <span class="n">adapts</span>
+<span class="kn">from</span> <span class="nn">htsql.domain</span> <span class="kn">import</span> <span class="p">(</span><span class="n">BooleanDomain</span><span class="p">,</span> <span class="n">StringDomain</span><span class="p">,</span> <span class="n">IntegerDomain</span><span class="p">,</span>
+                          <span class="n">DecimalDomain</span><span class="p">,</span> <span class="n">DateDomain</span><span class="p">,</span> <span class="n">TimeDomain</span><span class="p">,</span> <span class="n">DateTimeDomain</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.error</span> <span class="kn">import</span> <span class="n">SerializeError</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.frame</span> <span class="kn">import</span> <span class="n">ColumnPhrase</span><span class="p">,</span> <span class="n">ReferencePhrase</span><span class="p">,</span> <span class="n">LiteralPhrase</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.dump</span> <span class="kn">import</span> <span class="p">(</span><span class="n">FormatName</span><span class="p">,</span> <span class="n">DumpBranch</span><span class="p">,</span> <span class="n">DumpBySignature</span><span class="p">,</span>
+                           <span class="n">DumpFromPredicate</span><span class="p">,</span> <span class="n">DumpToPredicate</span><span class="p">,</span>
+                           <span class="n">DumpIsTotallyEqual</span><span class="p">,</span> <span class="n">DumpBoolean</span><span class="p">,</span> <span class="n">DumpInteger</span><span class="p">,</span>
+                           <span class="n">DumpDecimal</span><span class="p">,</span> <span class="n">DumpFloat</span><span class="p">,</span> <span class="n">DumpDate</span><span class="p">,</span> <span class="n">DumpTime</span><span class="p">,</span>
+                           <span class="n">DumpDateTime</span><span class="p">,</span> <span class="n">DumpToInteger</span><span class="p">,</span>
+                           <span class="n">DumpToFloat</span><span class="p">,</span> <span class="n">DumpToDecimal</span><span class="p">,</span> <span class="n">DumpToString</span><span class="p">,</span>
+                           <span class="n">DumpToDate</span><span class="p">,</span> <span class="n">DumpToTime</span><span class="p">,</span> <span class="n">DumpToDateTime</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.fn.dump</span> <span class="kn">import</span> <span class="p">(</span><span class="n">DumpRound</span><span class="p">,</span> <span class="n">DumpRoundTo</span><span class="p">,</span> <span class="n">DumpTrunc</span><span class="p">,</span> <span class="n">DumpTruncTo</span><span class="p">,</span>
+                              <span class="n">DumpLength</span><span class="p">,</span> <span class="n">DumpConcatenate</span><span class="p">,</span> <span class="n">DumpSubstring</span><span class="p">,</span>
+                              <span class="n">DumpTrim</span><span class="p">,</span> <span class="n">DumpToday</span><span class="p">,</span> <span class="n">DumpNow</span><span class="p">,</span> <span class="n">DumpExtractYear</span><span class="p">,</span>
+                              <span class="n">DumpExtractMonth</span><span class="p">,</span> <span class="n">DumpExtractDay</span><span class="p">,</span>
+                              <span class="n">DumpExtractHour</span><span class="p">,</span> <span class="n">DumpExtractMinute</span><span class="p">,</span>
+                              <span class="n">DumpExtractSecond</span><span class="p">,</span> <span class="n">DumpMakeDate</span><span class="p">,</span> <span class="n">DumpMakeDateTime</span><span class="p">,</span>
+                              <span class="n">DumpDateIncrement</span><span class="p">,</span> <span class="n">DumpDateDecrement</span><span class="p">,</span>
+                              <span class="n">DumpDateTimeIncrement</span><span class="p">,</span> <span class="n">DumpDateTimeDecrement</span><span class="p">,</span>
+                              <span class="n">DumpDateDifference</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.signature</span> <span class="kn">import</span> <span class="n">FromPredicateSig</span><span class="p">,</span> <span class="n">ToPredicateSig</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.fn.signature</span> <span class="kn">import</span> <span class="n">SortDirectionSig</span>
+<span class="kn">from</span> <span class="nn">.signature</span> <span class="kn">import</span> <span class="n">RowNumberSig</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLFormatName</span><span class="p">(</span><span class="n">FormatName</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;[</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;]&quot;</span><span class="p">,</span> <span class="s">&quot;]]&quot;</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpBranch</span><span class="p">(</span><span class="n">DumpBranch</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">dump_select</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">aliases</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">select_aliases_by_tag</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">tag</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;SELECT &quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indent</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;TOP &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">limit</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">newline</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">phrase</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">select</span><span class="p">):</span>
+            <span class="n">alias</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">hook</span><span class="o">.</span><span class="n">with_aliases</span><span class="p">:</span>
+                <span class="n">alias</span> <span class="o">=</span> <span class="n">aliases</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">phrase</span><span class="p">,</span> <span class="n">ColumnPhrase</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">alias</span> <span class="o">==</span> <span class="n">phrase</span><span class="o">.</span><span class="n">column</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                        <span class="n">alias</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">phrase</span><span class="p">,</span> <span class="n">ReferencePhrase</span><span class="p">):</span>
+                    <span class="n">target_alias</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">select_aliases_by_tag</span>
+                                            <span class="p">[</span><span class="n">phrase</span><span class="o">.</span><span class="n">tag</span><span class="p">][</span><span class="n">phrase</span><span class="o">.</span><span class="n">index</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">alias</span> <span class="o">==</span> <span class="n">target_alias</span><span class="p">:</span>
+                        <span class="n">alias</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">if</span> <span class="n">alias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{selection} AS {alias:name}&quot;</span><span class="p">,</span>
+                            <span class="n">selection</span><span class="o">=</span><span class="n">phrase</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="n">alias</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{selection}&quot;</span><span class="p">,</span>
+                            <span class="n">selection</span><span class="o">=</span><span class="n">phrase</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">select</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;,&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">newline</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dedent</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">dump_group</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">group</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">newline</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;GROUP BY &quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">phrase</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">group</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{kernel}&quot;</span><span class="p">,</span> <span class="n">kernel</span><span class="o">=</span><span class="n">phrase</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">group</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;, &quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">dump_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpFromPredicate</span><span class="p">(</span><span class="n">DumpFromPredicate</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">is_nullable</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;(CASE WHEN {op} THEN 1 WHEN NOT {op} THEN 0 END)&quot;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;(CASE WHEN {op} THEN 1 ELSE 0 END)&quot;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpToPredicate</span><span class="p">(</span><span class="n">DumpToPredicate</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;({op} &lt;&gt; 0)&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpRowNumber</span><span class="p">(</span><span class="n">DumpBySignature</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">RowNumberSig</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;ROW_NUMBER() OVER (ORDER BY {ops:union{, }})&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpSortDirection</span><span class="p">(</span><span class="n">DumpBySignature</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">SortDirectionSig</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{base} {direction:switch{ASC|DESC}}&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpBoolean</span><span class="p">(</span><span class="n">DumpBoolean</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;1&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;0&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpInteger</span><span class="p">(</span><span class="n">DumpInteger</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">63</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">**</span><span class="mi">63</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">SerializeError</span><span class="p">(</span><span class="s">&quot;invalid integer value&quot;</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;CAST(</span><span class="si">%s</span><span class="s"> AS BIGINT)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpFloat</span><span class="p">(</span><span class="n">DumpFloat</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;inf&#39;</span><span class="p">,</span> <span class="s">&#39;-inf&#39;</span><span class="p">,</span> <span class="s">&#39;nan&#39;</span><span class="p">]</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s">&#39;e&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span> <span class="ow">and</span> <span class="s">&#39;E&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">+</span><span class="s">&#39;e0&#39;</span>
+        <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-&#39;</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDecimal</span><span class="p">(</span><span class="n">DumpDecimal</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">is_finite</span><span class="p">()</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s">&#39;E&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="s">&quot;CAST(</span><span class="si">%s</span><span class="s"> AS DECIMAL(38,19))&quot;</span> <span class="o">%</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="s">&#39;.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">.&quot;</span> <span class="o">%</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;-&#39;</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDate</span><span class="p">(</span><span class="n">DumpDate</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({value:literal} AS DATETIME)&quot;</span><span class="p">,</span>
+                    <span class="n">value</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpTime</span><span class="p">(</span><span class="n">DumpTime</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">hour</span><span class="o">*</span><span class="mi">3600</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">minute</span><span class="o">*</span><span class="mi">60</span> <span class="o">+</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">second</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">microsecond</span><span class="o">/</span><span class="mf">1000000.0</span><span class="p">)</span> <span class="o">/</span> <span class="mf">86400.0</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s">&#39;e&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span> <span class="ow">and</span> <span class="s">&#39;E&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">+</span><span class="s">&#39;e0&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateTime</span><span class="p">(</span><span class="n">DumpDateTime</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">microsecond</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({value:literal} AS DATETIME)&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpToInteger</span><span class="p">(</span><span class="n">DumpToInteger</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({base} AS INT)&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpToFloat</span><span class="p">(</span><span class="n">DumpToFloat</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({base} AS FLOAT)&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpToDecimal</span><span class="p">(</span><span class="n">DumpToDecimal</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({base} AS DECIMAL(38,19))&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpIntegerToDecimal</span><span class="p">(</span><span class="n">MSSQLDumpToDecimal</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">IntegerDomain</span><span class="p">,</span> <span class="n">DecimalDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({base} AS DECIMAL(38))&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpToString</span><span class="p">(</span><span class="n">DumpToString</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({base} AS VARCHAR(MAX))&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpBooleanToString</span><span class="p">(</span><span class="n">DumpToString</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">BooleanDomain</span><span class="p">,</span> <span class="n">StringDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">is_nullable</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;(CASE WHEN {base} &lt;&gt; 0 THEN &#39;true&#39;&quot;</span>
+                        <span class="s">&quot; WHEN NOT {base} = 0 THEN &#39;false&#39; END)&quot;</span><span class="p">,</span>
+                        <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;(CASE WHEN {base} &lt;&gt; 0 THEN &#39;true&#39; ELSE &#39;false&#39; END)&quot;</span><span class="p">,</span>
+                        <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateToString</span><span class="p">(</span><span class="n">DumpToString</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">DateDomain</span><span class="p">,</span> <span class="n">StringDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;SUBSTRING(CONVERT(VARCHAR, {base}, 21), 1, 10)&quot;</span><span class="p">,</span>
+                    <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpTimeToString</span><span class="p">(</span><span class="n">DumpToString</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">TimeDomain</span><span class="p">,</span> <span class="n">StringDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;SUBSTRING(CONVERT(VARCHAR, CAST({base} AS DATETIME), 21),&quot;</span>
+                    <span class="s">&quot; 12, 12)&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateTimeToString</span><span class="p">(</span><span class="n">DumpToString</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">DateTimeDomain</span><span class="p">,</span> <span class="n">StringDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CONVERT(VARCHAR, {base}, 21)&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpStringToDate</span><span class="p">(</span><span class="n">DumpToDate</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">StringDomain</span><span class="p">,</span> <span class="n">DateDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(FLOOR(CAST(CAST({base} AS DATETIME) AS FLOAT))&quot;</span>
+                    <span class="s">&quot; AS DATETIME)&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateTimeToDate</span><span class="p">(</span><span class="n">DumpToDate</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">DateTimeDomain</span><span class="p">,</span> <span class="n">DateDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(FLOOR(CAST({base} AS FLOAT)) AS DATETIME)&quot;</span><span class="p">,</span>
+                    <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpStringToTime</span><span class="p">(</span><span class="n">DumpToTime</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">StringDomain</span><span class="p">,</span> <span class="n">TimeDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(CAST(&#39;1900-01-01 &#39; + {base} AS DATETIME) AS FLOAT)&quot;</span><span class="p">,</span>
+                    <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateTimeToTime</span><span class="p">(</span><span class="n">DumpToTime</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">DateTimeDomain</span><span class="p">,</span> <span class="n">TimeDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;(CAST({base} AS FLOAT) - FLOOR(CAST({base} AS FLOAT)))&quot;</span><span class="p">,</span>
+                    <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpStringToDateTime</span><span class="p">(</span><span class="n">DumpToDateTime</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">StringDomain</span><span class="p">,</span> <span class="n">DateTimeDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST({base} AS DATETIME)&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-58'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-58">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateToDateTime</span><span class="p">(</span><span class="n">DumpToDateTime</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">DateDomain</span><span class="p">,</span> <span class="n">DateTimeDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-59'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-59">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;{base}&quot;</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-60'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-60">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpIsTotallyEqual</span><span class="p">(</span><span class="n">DumpIsTotallyEqual</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-61'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-61">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;((CASE WHEN ({lop} = {rop}) OR&quot;</span>
+                    <span class="s">&quot; ({lop} IS NULL AND {rop} IS NULL)&quot;</span>
+                    <span class="s">&quot; THEN 1 ELSE 0 END) {polarity:switch{&lt;&gt;|=}} 0)&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-62'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-62">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpRound</span><span class="p">(</span><span class="n">DumpRound</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-63'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-63">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">DecimalDomain</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(ROUND({op}, 0) AS DECIMAL(38))&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;ROUND({op}, 0)&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-64'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-64">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpRoundTo</span><span class="p">(</span><span class="n">DumpRoundTo</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-65'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-65">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">precision</span><span class="p">,</span> <span class="n">LiteralPhrase</span><span class="p">)</span> <span class="ow">and</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">precision</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">precision</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">scale</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">scale</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">scale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(ROUND({op}, {precision})&quot;</span>
+                        <span class="s">&quot; AS DECIMAL(38,{scale:pass}))&quot;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">scale</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;ROUND({op}, {precision})&quot;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-66'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-66">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpTrunc</span><span class="p">(</span><span class="n">DumpTrunc</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-67'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-67">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">DecimalDomain</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(ROUND({op} -&quot;</span>
+                        <span class="s">&quot; (CASE WHEN {op} &gt;= 0 THEN 0.5 ELSE -0.5 END), 0)&quot;</span>
+                        <span class="s">&quot; AS DECIMAL(38))&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;ROUND({op} -&quot;</span>
+                        <span class="s">&quot; (CASE WHEN {op} &gt;= 0 THEN 0.5 ELSE -0.5 END), 0)&quot;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-68'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-68">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpTruncTo</span><span class="p">(</span><span class="n">DumpTruncTo</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-69'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-69">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">precision</span><span class="p">,</span> <span class="n">LiteralPhrase</span><span class="p">)</span> <span class="ow">and</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">precision</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">precision</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">scale</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">scale</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">scale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;CAST(ROUND({op} -&quot;</span>
+                        <span class="s">&quot; (CASE WHEN {op} &gt;= 0 THEN 0.5 ELSE -0.5 END) /&quot;</span>
+                        <span class="s">&quot; CAST(POWER(10e0, {precision}) AS DECIMAL(38,19)),&quot;</span>
+                        <span class="s">&quot; {precision})&quot;</span>
+                        <span class="s">&quot; AS DECIMAL(38,{scale:pass}))&quot;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">scale</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;ROUND({op} -&quot;</span>
+                        <span class="s">&quot; (CASE WHEN {op} &gt;= 0 THEN 0.5 ELSE -0.5 END) /&quot;</span>
+                        <span class="s">&quot; CAST(POWER(10e0, {precision}) AS DECIMAL(38,19)),&quot;</span>
+                        <span class="s">&quot; {precision})&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-70'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-70">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpLength</span><span class="p">(</span><span class="n">DumpLength</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;LEN({op})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-71'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-71">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpConcatenate</span><span class="p">(</span><span class="n">DumpConcatenate</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;({lop} + {rop})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-72'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-72">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpSubstring</span><span class="p">(</span><span class="n">DumpSubstring</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-73'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-73">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">length</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;SUBSTRING({op}, {start}, LEN({op}))&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;SUBSTRING({op}, {start}, {length})&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-74'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-74">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpTrim</span><span class="p">(</span><span class="n">DumpTrim</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-75'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-75">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">is_left</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">is_right</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;LTRIM({op})&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">is_left</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">signature</span><span class="o">.</span><span class="n">is_right</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;RTRIM({op})&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&quot;LTRIM(RTRIM({op}))&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-76'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-76">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpToday</span><span class="p">(</span><span class="n">DumpToday</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;CAST(FLOOR(CAST(GETDATE() AS FLOAT)) AS DATETIME)&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-77'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-77">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpNow</span><span class="p">(</span><span class="n">DumpNow</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;GETDATE()&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-78'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-78">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpExtractYear</span><span class="p">(</span><span class="n">DumpExtractYear</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEPART(YEAR, {op})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-79'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-79">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpExtractMonth</span><span class="p">(</span><span class="n">DumpExtractMonth</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEPART(MONTH, {op})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-80'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-80">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpExtractDay</span><span class="p">(</span><span class="n">DumpExtractDay</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEPART(DAY, {op})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-81'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-81">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpExtractHour</span><span class="p">(</span><span class="n">DumpExtractHour</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEPART(HOUR, {op})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-82'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-82">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpExtractMinute</span><span class="p">(</span><span class="n">DumpExtractMinute</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEPART(MINUTE, {op})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-83'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-83">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpExtractSecond</span><span class="p">(</span><span class="n">DumpExtractSecond</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;(DATEPART(SECOND, {op}) +&quot;</span>
+                <span class="s">&quot; DATEPART(MILLISECOND, {op}) / 1000e0)&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-84'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-84">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpMakeDate</span><span class="p">(</span><span class="n">DumpMakeDate</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;DATEADD(DAY, {day} - 1,&quot;</span>
+                <span class="s">&quot; DATEADD(MONTH, {month} - 1,&quot;</span>
+                <span class="s">&quot; DATEADD(YEAR, {year} - 2001,&quot;</span>
+                <span class="s">&quot; CAST(&#39;2001-01-01&#39; AS DATETIME))))&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-85'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-85">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpMakeDateTime</span><span class="p">(</span><span class="n">DumpMakeDateTime</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-86'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-86">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;DATEADD(DAY, {day} - 1,&quot;</span>
+                    <span class="s">&quot; DATEADD(MONTH, {month} - 1,&quot;</span>
+                    <span class="s">&quot; DATEADD(YEAR, {year} - 2001,&quot;</span>
+                    <span class="s">&quot; CAST(&#39;2001-01-01&#39; AS DATETIME))))&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">hour</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEADD(HOUR, {hour}, </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">template</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">minute</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEADD(MINUTE, {minute}, </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">template</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phrase</span><span class="o">.</span><span class="n">second</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEADD(MILLISECOND, 1000 * {second}, </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="n">template</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">template</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-87'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-87">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateIncrement</span><span class="p">(</span><span class="n">DumpDateIncrement</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;({lop} + {rop})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-88'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-88">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateTimeIncrement</span><span class="p">(</span><span class="n">DumpDateTimeIncrement</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;({lop} + {rop})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-89'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-89">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateDecrement</span><span class="p">(</span><span class="n">DumpDateDecrement</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;({lop} - {rop})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-90'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-90">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateTimeDecrement</span><span class="p">(</span><span class="n">DumpDateTimeDecrement</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;({lop} - {rop})&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-91'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-91">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">MSSQLDumpDateDifference</span><span class="p">(</span><span class="n">DumpDateDifference</span><span class="p">):</span>
+
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&quot;DATEDIFF(DAY, {rop}, {lop})&quot;</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

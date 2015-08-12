@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>settings.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>settings.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Models for restless to store app links &amp; tests::</span>
+
+<span class="sd">    Copyright (C) 2011 Department of Environment &amp; Conservation</span>
+
+<span class="sd">    Authors:</span>
+<span class="sd">     * Adon Metcalfe</span>
+<span class="sd">     * Ashley Felton</span>
+
+<span class="sd">    This program is free software: you can redistribute it and/or modify</span>
+<span class="sd">    it under the terms of the GNU Affero General Public License as</span>
+<span class="sd">    published by the Free Software Foundation, either version 3 of the</span>
+<span class="sd">    License, or (at your option) any later version.</span>
+
+<span class="sd">    This program is distributed in the hope that it will be useful,</span>
+<span class="sd">    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="sd">    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="sd">    GNU Affero General Public License for more details.</span>
+
+<span class="sd">    You should have received a copy of the GNU Affero General Public License</span>
+<span class="sd">    along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="sd">&#39;&#39;&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>Template django settings for DEC</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">django</span><span class="o">,</span> <span class="nn">re</span>
+<span class="n">SITE_ROOT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">__file__</span><span class="p">))</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<span class="kn">from</span> <span class="nn">django.conf</span> <span class="kn">import</span> <span class="n">settings</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Celery message broker settings</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">BROKER_HOST</span> <span class="o">=</span> <span class="s">&quot;localhost&quot;</span>
+<span class="n">BROKER_PORT</span> <span class="o">=</span> <span class="mi">5672</span>
+<span class="n">BROKER_VHOST</span> <span class="o">=</span> <span class="s">&quot;local&quot;</span>
+<span class="n">BROKER_USER</span> <span class="o">=</span> <span class="s">&quot;local&quot;</span>
+<span class="n">BROKER_PASSWORD</span> <span class="o">=</span> <span class="s">&quot;local&quot;</span>
+<span class="n">celeryqueue</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">)</span>
+<span class="n">CELERY_QUEUES</span> <span class="o">=</span> <span class="p">{</span><span class="n">celeryqueue</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;exchange&quot;</span><span class="p">:</span> <span class="n">celeryqueue</span><span class="p">,</span> <span class="s">&quot;binding_key&quot;</span><span class="p">:</span> <span class="n">celeryqueue</span><span class="p">}}</span>
+<span class="n">CELERY_DEFAULT_QUEUE</span> <span class="o">=</span> <span class="n">celeryqueue</span>
+<span class="n">CELERY_TASK_TIME_LIMIT</span> <span class="o">=</span> <span class="mi">3600</span>
+<span class="n">CELERY_TASK_SOFT_TIME_LIMIT</span> <span class="o">=</span> <span class="mi">1800</span>
+<span class="n">CELERY_DISABLE_RATE_LIMITS</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Set port suffix for deployment with apache/nginx </p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">SITE_PORT</span> <span class="o">=</span> <span class="n">SITE_ROOT</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;_&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>setup gdal if it hasn't been correctly autodetected</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">django.contrib.gis</span> <span class="kn">import</span> <span class="n">gdal</span>
+<span class="k">if</span> <span class="n">gdal</span><span class="o">.</span><span class="n">HAS_GDAL</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+    <span class="n">GDAL_LIBRARY_PATH</span> <span class="o">=</span> <span class="s">&#39;/usr/lib/python2.6/dist-packages/osgeo/_gdal.so&#39;</span>
+    <span class="nb">reload</span><span class="p">(</span><span class="n">gdal</span><span class="p">)</span>
+
+<span class="n">HOSTNAME</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()</span>
+
+<span class="kn">from</span> <span class="nn">django.utils.http</span> <span class="kn">import</span> <span class="n">urlquote</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Build a unique sitename for this app to use when making service requests</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">SITE_NAME</span> <span class="o">=</span> <span class="n">urlquote</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">HOSTNAME</span><span class="p">)</span>
+
+<span class="n">SESSION_COOKIE_NAME</span> <span class="o">=</span> <span class="n">SITE_NAME</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="s">&quot;|&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&quot;ascii&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Setup directories for content</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">TEMPLATE_DIRS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">,</span> <span class="s">&#39;templates&#39;</span><span class="p">),</span> 
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">,</span> <span class="s">&#39;restless&#39;</span><span class="p">,</span> <span class="s">&#39;templates&#39;</span><span class="p">),</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">,</span> <span class="s">&#39;dec_base&#39;</span><span class="p">,</span> <span class="s">&#39;templates&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">STATICFILES_DIRS</span> <span class="o">=</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">,</span> <span class="s">&#39;static&#39;</span><span class="p">),</span> <span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>The 3 root directories are automatically served with nginx in front of apache, unsecured, no indexes
+To avoid fuzzing attacks pass secured assets through a view</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">MEDIA_ROOT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">,</span> <span class="s">&#39;media&#39;</span><span class="p">)</span>
+<span class="n">STATIC_ROOT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&quot;/var/www/django_static/{0}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">)))</span>
+<span class="k">try</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">STATIC_ROOT</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+<span class="n">MEDIA_URL</span> <span class="o">=</span> <span class="s">&#39;/media/&#39;</span>
+<span class="n">STATIC_URL</span> <span class="o">=</span> <span class="s">&#39;/static/&#39;</span>
+<span class="n">ADMIN_MEDIA_PREFIX</span> <span class="o">=</span> <span class="s">&#39;/static/admin/&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>If you set this to False, Django will make some optimizations so as not
+to load the internationalization machinery.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">USE_I18N</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="n">TIME_ZONE</span> <span class="o">=</span> <span class="s">&#39;Australia/Perth&#39;</span>
+<span class="n">LANGUAGE_CODE</span> <span class="o">=</span> <span class="s">&#39;en-us&#39;</span>
+<span class="n">SITE_ID</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">ROOT_URLCONF</span> <span class="o">=</span> <span class="s">&#39;urls&#39;</span>
+
+<span class="n">MIDDLEWARE_CLASSES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s">&#39;django.middleware.gzip.GZipMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.middleware.common.CommonMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.sessions.middleware.SessionMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.middleware.csrf.CsrfViewMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.auth.middleware.AuthenticationMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.messages.middleware.MessageMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.middleware.transaction.TransactionMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;reversion.middleware.RevisionMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;restless.middleware.AuthenticationMiddleware&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.redirects.middleware.RedirectFallbackMiddleware&#39;</span>
+<span class="p">)</span>
+
+<span class="n">TEMPLATE_LOADERS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s">&#39;django.template.loaders.filesystem.Loader&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.template.loaders.app_directories.Loader&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">TEMPLATE_CONTEXT_PROCESSORS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s">&#39;django.contrib.auth.context_processors.auth&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.messages.context_processors.messages&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.core.context_processors.media&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.core.context_processors.request&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.core.context_processors.csrf&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.core.context_processors.static&#39;</span>
+<span class="p">)</span>
+
+<span class="n">INSTALLED_APPS</span> <span class="o">=</span> <span class="p">(</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>Django includes</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="s">&#39;django.contrib.admin&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.admindocs&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.auth&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.contenttypes&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.gis&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.markup&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.messages&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.sessions&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.staticfiles&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.redirects&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.sites&#39;</span><span class="p">,</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Standard includes</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="s">&#39;treebeard&#39;</span><span class="p">,</span> <span class="c"># Hierarchical model helpers</span>
+    <span class="s">&#39;south&#39;</span><span class="p">,</span> <span class="c"># Schema migrations</span>
+    <span class="s">&#39;taggit&#39;</span><span class="p">,</span> <span class="c"># Tagging</span>
+    <span class="s">&#39;uni_form&#39;</span><span class="p">,</span> <span class="c"># More accessible forms</span>
+    <span class="s">&#39;sentry&#39;</span><span class="p">,</span> <span class="c"># Exception logging to database</span>
+    <span class="s">&#39;sentry.client&#39;</span><span class="p">,</span>
+    <span class="s">&#39;tinymce&#39;</span><span class="p">,</span> <span class="c"># Provides a WYSIWYG textfield editor</span>
+    <span class="s">&#39;reversion&#39;</span><span class="p">,</span> <span class="c"># Provides version control for models</span>
+    <span class="s">&#39;djcelery&#39;</span><span class="p">,</span> <span class="c"># Scheduled &amp; async tasks</span>
+    <span class="s">&#39;restless&#39;</span><span class="p">,</span> <span class="c"># The bees knees =)</span>
+    <span class="s">&#39;dec_base&#39;</span><span class="p">,</span> <span class="c"># Templates for standard DEC apps</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>'dec_base.example_app', # Example DEC application</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="p">)</span>
+
+<span class="n">CACHES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;mem&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;BACKEND&#39;</span><span class="p">:</span> <span class="s">&#39;django.core.cache.backends.memcached.MemcachedCache&#39;</span><span class="p">,</span>
+        <span class="s">&#39;LOCATION&#39;</span><span class="p">:</span> <span class="s">&#39;localhost:11211&#39;</span><span class="p">,</span>
+        <span class="s">&#39;OPTIONS&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;MAX_ENTRIES&#39;</span><span class="p">:</span> <span class="mi">1000000</span><span class="p">,</span>
+            <span class="s">&#39;CULL_FREQUENCY&#39;</span><span class="p">:</span> <span class="mi">2</span>
+        <span class="p">},</span>
+        <span class="s">&#39;KEY_PREFIX&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">)</span>
+    <span class="p">},</span>
+    <span class="s">&#39;default&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;BACKEND&#39;</span><span class="p">:</span> <span class="s">&#39;django.core.cache.backends.db.DatabaseCache&#39;</span><span class="p">,</span>
+        <span class="s">&#39;LOCATION&#39;</span><span class="p">:</span> <span class="s">&#39;django_cache&#39;</span><span class="p">,</span>
+        <span class="s">&#39;OPTIONS&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;MAX_ENTRIES&#39;</span><span class="p">:</span> <span class="mi">50000</span><span class="p">,</span>
+            <span class="s">&#39;CULL_FREQEUNCY&#39;</span><span class="p">:</span> <span class="mi">2</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s">&#39;file&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;BACKEND&#39;</span><span class="p">:</span> <span class="s">&#39;django.core.cache.backends.filebased.FileBasedCache&#39;</span><span class="p">,</span>
+        <span class="s">&#39;LOCATION&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">MEDIA_ROOT</span><span class="p">,</span> <span class="s">&#39;django_cache&#39;</span><span class="p">),</span>
+        <span class="s">&#39;OPTIONS&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;MAX_ENTRIES&#39;</span><span class="p">:</span> <span class="mi">1000000</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">DEBUG_MIDDLEWARE_CLASSES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s">&#39;debug_toolbar.middleware.DebugToolbarMiddleware&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">DEBUG_INSTALLED_APPS</span> <span class="o">=</span> <span class="p">(</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>Development includes</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="s">&#39;django_extensions&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar&#39;</span><span class="p">,</span>
+<span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">show_debug_toolbar</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">GET</span><span class="o">.</span><span class="n">has_key</span><span class="p">(</span><span class="s">&quot;debug&quot;</span><span class="p">):</span> <span class="k">return</span> <span class="n">settings</span><span class="o">.</span><span class="n">DEBUG</span>
+
+<span class="n">DEBUG_TOOLBAR_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;SHOW_TOOLBAR_CALLBACK&#39;</span><span class="p">:</span> <span class="n">show_debug_toolbar</span><span class="p">,</span>
+    <span class="s">&#39;INTERCEPT_REDIRECTS&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s">&#39;HIDE_DJANGO_SQL&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>'TAG': 'div',</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="p">}</span>
+
+<span class="n">DEBUG_TOOLBAR_PANELS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s">&#39;debug_toolbar.panels.version.VersionDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.timer.TimerDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.settings_vars.SettingsVarsDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.headers.HeaderDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.request_vars.RequestVarsDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.template.TemplateDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.sql.SQLDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.signals.SignalDebugPanel&#39;</span><span class="p">,</span>
+    <span class="s">&#39;debug_toolbar.panels.logger.LoggingPanel&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">LOGGING</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;version&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">&#39;formatters&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;verbose&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;format&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="si">%(levelname)s</span><span class="s"> </span><span class="si">%(asctime)s</span><span class="s"> </span><span class="si">%(module)s</span><span class="s"> </span><span class="si">%(process)d</span><span class="s"> </span><span class="si">%(thread)d</span><span class="s"> </span><span class="si">%(message)s</span><span class="s">&#39;</span>
+        <span class="p">},</span>
+        <span class="s">&#39;database&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;format&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="si">%(levelname)s</span><span class="s"> </span><span class="si">%(asctime)s</span><span class="s"> </span><span class="si">%(module)s</span><span class="s"> </span><span class="si">%(param)s</span><span class="s"> </span><span class="si">%(duration)d</span><span class="s"> </span><span class="si">%(sql)s</span><span class="s"> </span><span class="si">%(message)s</span><span class="s">&#39;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;file&#39;</span><span class="p">:{</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;INFO&#39;</span><span class="p">,</span>
+            <span class="s">&#39;class&#39;</span><span class="p">:</span> <span class="s">&#39;logging.handlers.RotatingFileHandler&#39;</span><span class="p">,</span>
+            <span class="s">&#39;filename&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">MEDIA_ROOT</span><span class="p">,</span> <span class="s">&quot;django.log&quot;</span><span class="p">),</span>
+            <span class="s">&#39;formatter&#39;</span><span class="p">:</span> <span class="s">&#39;verbose&#39;</span><span class="p">,</span>
+            <span class="s">&#39;maxBytes&#39;</span><span class="p">:</span> <span class="s">&#39;16777216&#39;</span>
+        <span class="p">},</span>
+        <span class="s">&#39;mail-admins&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;ERROR&#39;</span><span class="p">,</span>
+            <span class="s">&#39;class&#39;</span><span class="p">:</span> <span class="s">&#39;django.utils.log.AdminEmailHandler&#39;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s">&#39;loggers&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;django.request&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;file&#39;</span><span class="p">,</span> <span class="s">&#39;mail-admins&#39;</span><span class="p">],</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;INFO&#39;</span>
+        <span class="p">},</span> 
+        <span class="s">&#39;log&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;file&#39;</span><span class="p">],</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;INFO&#39;</span>
+        <span class="p">},</span> 
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">DEBUG_LOGGING</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;version&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">&#39;formatters&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;verbose&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;format&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="si">%(levelname)s</span><span class="s"> </span><span class="si">%(asctime)s</span><span class="s"> </span><span class="si">%(module)s</span><span class="s"> </span><span class="si">%(process)d</span><span class="s"> </span><span class="si">%(thread)d</span><span class="s"> </span><span class="si">%(message)s</span><span class="s">&#39;</span>
+        <span class="p">},</span>
+        <span class="s">&#39;database&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;format&#39;</span><span class="p">:</span> <span class="s">&#39;</span><span class="si">%(levelname)s</span><span class="s"> </span><span class="si">%(asctime)s</span><span class="s"> </span><span class="si">%(module)s</span><span class="s"> </span><span class="si">%(param)s</span><span class="s"> </span><span class="si">%(duration)d</span><span class="s"> </span><span class="si">%(sql)s</span><span class="s"> </span><span class="si">%(message)s</span><span class="s">&#39;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;file&#39;</span><span class="p">:{</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;DEBUG&#39;</span><span class="p">,</span>
+            <span class="s">&#39;class&#39;</span><span class="p">:</span> <span class="s">&#39;logging.handlers.RotatingFileHandler&#39;</span><span class="p">,</span>
+            <span class="s">&#39;filename&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">MEDIA_ROOT</span><span class="p">,</span> <span class="s">&quot;django.log&quot;</span><span class="p">),</span>
+            <span class="s">&#39;formatter&#39;</span><span class="p">:</span> <span class="s">&#39;verbose&#39;</span><span class="p">,</span>
+            <span class="s">&#39;maxBytes&#39;</span><span class="p">:</span> <span class="s">&#39;16777216&#39;</span>
+        <span class="p">},</span>
+        <span class="s">&#39;db&#39;</span><span class="p">:{</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;DEBUG&#39;</span><span class="p">,</span>
+            <span class="s">&#39;class&#39;</span><span class="p">:</span> <span class="s">&#39;logging.handlers.RotatingFileHandler&#39;</span><span class="p">,</span>
+            <span class="s">&#39;filename&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">MEDIA_ROOT</span><span class="p">,</span> <span class="s">&quot;djangodb.log&quot;</span><span class="p">),</span>
+            <span class="s">&#39;formatter&#39;</span><span class="p">:</span> <span class="s">&#39;verbose&#39;</span><span class="p">,</span>
+            <span class="s">&#39;maxBytes&#39;</span><span class="p">:</span> <span class="s">&#39;16777216&#39;</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="s">&#39;loggers&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s">&#39;django_auth_ldap&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;file&#39;</span><span class="p">],</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;DEBUG&#39;</span>
+        <span class="p">},</span> 
+        <span class="s">&#39;django.request&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;file&#39;</span><span class="p">],</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;DEBUG&#39;</span>
+        <span class="p">},</span> 
+        <span class="s">&#39;django.db.backends.disabled&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;db&#39;</span><span class="p">],</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;DEBUG&#39;</span>
+        <span class="p">},</span> 
+        <span class="s">&#39;log&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;file&#39;</span><span class="p">],</span>
+            <span class="s">&#39;level&#39;</span><span class="p">:</span> <span class="s">&#39;DEBUG&#39;</span>
+        <span class="p">},</span> 
+    <span class="p">}</span>
+<span class="p">}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>TinyMCE settings</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">TINYMCE_JS_URL</span> <span class="o">=</span> <span class="n">STATIC_URL</span> <span class="o">+</span> <span class="s">&#39;js/tiny_mce/tiny_mce.js&#39;</span>
+<span class="n">TINYMCE_JS_ROOT</span> <span class="o">=</span> <span class="n">STATIC_URL</span> <span class="o">+</span> <span class="s">&#39;js/tiny_mce&#39;</span>
+<span class="n">TINYMCE_DEFAULT_CONFIG</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;theme&#39;</span><span class="p">:</span><span class="s">&#39;simple&#39;</span><span class="p">,</span> <span class="s">&#39;relative_urls&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>Email settings</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">EMAIL_HOST</span> <span class="o">=</span> <span class="s">&#39;alerts.corporateict.domain&#39;</span>
+<span class="n">EMAIL_PORT</span> <span class="o">=</span> <span class="mi">25</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        <p>Set debug flag if hostname contains dev</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">if</span> <span class="bp">True</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SITE_ROOT</span><span class="p">,</span> <span class="s">&quot;debug&quot;</span><span class="p">)):</span>
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">LOGGING</span> <span class="o">=</span> <span class="n">DEBUG_LOGGING</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="k">if</span> <span class="n">DEBUG</span><span class="p">:</span>
+    <span class="n">MIDDLEWARE_CLASSES</span> <span class="o">+=</span> <span class="n">DEBUG_MIDDLEWARE_CLASSES</span>
+    <span class="n">INSTALLED_APPS</span> <span class="o">+=</span> <span class="n">DEBUG_INSTALLED_APPS</span>
+<span class="k">else</span><span class="p">:</span> <span class="c"># cache templates</span>
+    <span class="n">TEMPLATE_LOADERS</span> <span class="o">=</span> <span class="p">((</span><span class="s">&#39;django.template.loaders.cached.Loader&#39;</span><span class="p">,</span> <span class="n">TEMPLATE_LOADERS</span><span class="p">),</span> <span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p>Login and redirect URLs</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">LOGIN_URL</span> <span class="o">=</span> <span class="s">&#39;/login/&#39;</span>
+<span class="n">LOGIN_REDIRECT_URL</span> <span class="o">=</span> <span class="s">&#39;/&#39;</span>
+<span class="n">LOGOUT_URL</span> <span class="o">=</span> <span class="s">&#39;/logout/&#39;</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

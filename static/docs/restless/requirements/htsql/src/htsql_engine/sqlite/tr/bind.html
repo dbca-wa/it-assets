@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>bind.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>bind.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+Authors: Clark C. Evans <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#99;&#101;&#64;&#99;&#108;&#97;&#114;&#107;&#101;&#118;&#97;&#110;&#115;&#46;&#99;&#111;&#109;">&#99;&#99;&#101;&#64;&#99;&#108;&#97;&#114;&#107;&#101;&#118;&#97;&#110;&#115;&#46;&#99;&#111;&#109;</a>,
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_engine.sqlite.tr.bind</code></h1>
+<p>This module adapts HTSQL binder for SQLite.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.domain</span> <span class="kn">import</span> <span class="n">IntegerDomain</span><span class="p">,</span> <span class="n">FloatDomain</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.fn.bind</span> <span class="kn">import</span> <span class="p">(</span><span class="n">correlates</span><span class="p">,</span> <span class="n">CorrelateDecimalRoundTo</span><span class="p">,</span>
+                              <span class="n">CorrelateDecimalTruncTo</span><span class="p">,</span>
+                              <span class="n">CorrelateDecimalAvg</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.fn.signature</span> <span class="kn">import</span> <span class="n">RoundToSig</span><span class="p">,</span> <span class="n">TruncToSig</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SQLiteCorrelateDecimalAvg</span><span class="p">(</span><span class="n">CorrelateDecimalAvg</span><span class="p">):</span>
+
+    <span class="n">domains</span> <span class="o">=</span> <span class="p">[</span><span class="n">FloatDomain</span><span class="p">()]</span>
+    <span class="n">codomain</span> <span class="o">=</span> <span class="n">FloatDomain</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SQLiteCorrelateFloatRoundTo</span><span class="p">(</span><span class="n">CorrelateDecimalRoundTo</span><span class="p">):</span>
+
+    <span class="n">correlates</span><span class="p">(</span><span class="n">RoundToSig</span><span class="p">,</span> <span class="p">(</span><span class="n">FloatDomain</span><span class="p">,</span> <span class="n">IntegerDomain</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SQLiteCorrelateFloatTruncTo</span><span class="p">(</span><span class="n">CorrelateDecimalTruncTo</span><span class="p">):</span>
+
+    <span class="n">correlates</span><span class="p">(</span><span class="n">TruncToSig</span><span class="p">,</span> <span class="p">(</span><span class="n">FloatDomain</span><span class="p">,</span> <span class="n">IntegerDomain</span><span class="p">))</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

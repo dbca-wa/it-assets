@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>{{ pagetitle }}</title>
+    <meta name="description" content="{{ page_description }}">
+    <meta name="author" content="{{ page_author }}">
+    {% block extrahead %}{% endblock %} 
+    
+    <!-- Favicon and Apple Touch icon -->
+    <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico">
+    <link rel="apple-touch-icon" href="{{ STATIC_URL }}img/apple-touch-icon.png">
+    
+	<!-- The 1600px Grid -->
+	<link rel="stylesheet" href="{{ STATIC_URL }}css/1600.css" type="text/css" media="screen" />
+	<!--[if lte IE 9]>
+	<link rel="stylesheet" href="{{ STATIC_URL }}css/ie.css" type="text/css" media="screen" />
+	<![endif]-->
+	<!-- Make minor type adjustments for 1024 monitors -->
+	<link rel="stylesheet" href="{{ STATIC_URL }}css/smallerscreen.css" media="only screen and (max-width: 1023px)" />
+    
+    <!-- Styles reset and basic style definitions -->
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/{% if style_css_overide %}{{ style_css_overide }}{% else %}style.css{% endif %}" type="text/css" />
+    <!-- jQuery UI styles -->
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/smoothness/jquery-ui-1.8.14.custom.css" />
+    <!-- Tablesorter plugin styles -->
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/tablesorter-style.css" type="text/css" />
+    <!-- Django template variable for any extra CSS to be inserted in every template -->
+    {{ extrastyle|safe }}
+
+    {% block extrastyle %}{% endblock %}
+
+    <!-- Modernizr javascript library, which enables HTML5 elements & feature detects -->
+    <script src="{{ STATIC_URL }}js/modernizr-2.0.6.min.js"></script>
+    <!-- jQuery library and plugin imports -->
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery-ui-1.8.14.custom.min.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery.daterangepicker.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery-ui-timepicker-addon.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery.tablesorter.min.js"></script>
+    {% block extra_js %}{% endblock %}
+
+</head>
+<body>
+{% block layout %}{% endblock %}
+</body>
+</html>

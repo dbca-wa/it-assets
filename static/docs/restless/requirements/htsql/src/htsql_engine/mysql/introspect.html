@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>introspect.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>introspect.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_engine.mysql.introspect</code></h1>
+<p>This module implements the introspection adapter for MySQL.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.introspect</span> <span class="kn">import</span> <span class="n">Introspect</span>
+<span class="kn">from</span> <span class="nn">htsql.entity</span> <span class="kn">import</span> <span class="p">(</span><span class="n">CatalogEntity</span><span class="p">,</span> <span class="n">SchemaEntity</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">,</span>
+                          <span class="n">ColumnEntity</span><span class="p">,</span> <span class="n">UniqueKeyEntity</span><span class="p">,</span> <span class="n">PrimaryKeyEntity</span><span class="p">,</span>
+                          <span class="n">ForeignKeyEntity</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.domain</span> <span class="kn">import</span> <span class="p">(</span><span class="n">MySQLBooleanDomain</span><span class="p">,</span> <span class="n">MySQLIntegerDomain</span><span class="p">,</span>
+                     <span class="n">MySQLDecimalDomain</span><span class="p">,</span> <span class="n">MySQLFloatDomain</span><span class="p">,</span> <span class="n">MySQLStringDomain</span><span class="p">,</span>
+                     <span class="n">MySQLEnumDomain</span><span class="p">,</span> <span class="n">MySQLDateDomain</span><span class="p">,</span> <span class="n">MySQLTimeDomain</span><span class="p">,</span>
+                     <span class="n">MySQLDateTimeDomain</span><span class="p">,</span> <span class="n">MySQLOpaqueDomain</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.connect</span> <span class="kn">import</span> <span class="n">Connect</span>
+<span class="kn">from</span> <span class="nn">htsql.util</span> <span class="kn">import</span> <span class="n">Record</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Loads raw meta-data from <code>information_schema</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">connect</span> <span class="o">=</span> <span class="n">Connect</span><span class="p">()</span>
+        <span class="n">connection</span> <span class="o">=</span> <span class="n">connect</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schemata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span>
+                <span class="s">&#39;information_schema.schemata&#39;</span><span class="p">,</span>
+                <span class="p">[</span><span class="s">&#39;schema_name&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span>
+                <span class="s">&#39;information_schema.tables&#39;</span><span class="p">,</span>
+                <span class="p">[</span><span class="s">&#39;table_schema&#39;</span><span class="p">,</span> <span class="s">&#39;table_name&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span>
+                <span class="s">&#39;information_schema.columns&#39;</span><span class="p">,</span>
+                <span class="p">[</span><span class="s">&#39;table_schema&#39;</span><span class="p">,</span> <span class="s">&#39;table_name&#39;</span><span class="p">,</span> <span class="s">&#39;ordinal_position&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span>
+                <span class="s">&#39;information_schema.table_constraints&#39;</span><span class="p">,</span>
+                <span class="p">[</span><span class="s">&#39;table_schema&#39;</span><span class="p">,</span> <span class="s">&#39;table_name&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;constraint_schema&#39;</span><span class="p">,</span> <span class="s">&#39;constraint_name&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span>
+                <span class="s">&#39;information_schema.key_column_usage&#39;</span><span class="p">,</span>
+                <span class="p">[</span><span class="s">&#39;table_schema&#39;</span><span class="p">,</span> <span class="s">&#39;table_name&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;constraint_schema&#39;</span><span class="p">,</span> <span class="s">&#39;constraint_name&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;ordinal_position&#39;</span><span class="p">])</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&quot;SELECT DATABASE()&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_database</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tables_by_schema</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tables</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schemata</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns_by_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tables</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constraints_by_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tables</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key_columns_by_constraint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key_columns</span><span class="p">,</span>
+                                                    <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span>
+        <span class="n">connection</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="n">connection</span><span class="o">.</span><span class="n">release</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">id_names</span><span class="p">):</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s">&quot;SELECT * FROM </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">table_name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">items</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">():</span>
+            <span class="n">attributes</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">kind</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cursor</span><span class="o">.</span><span class="n">description</span><span class="p">,</span> <span class="n">items</span><span class="p">):</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">kind</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                    <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+                <span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">id_names</span><span class="p">)</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="n">Record</span><span class="p">(</span><span class="o">**</span><span class="n">attributes</span><span class="p">)</span>
+            <span class="n">rows</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">record</span>
+        <span class="k">return</span> <span class="n">rows</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">bases</span><span class="p">):</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">targets</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">bases</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">groups</span>
+        <span class="n">target_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">target_length</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">)</span>
+        <span class="n">base_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">base_length</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">base_length</span> <span class="o">&lt;</span> <span class="n">target_length</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span>
+            <span class="n">groups</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">targets</span><span class="p">):</span>
+            <span class="n">base_key</span> <span class="o">=</span> <span class="n">key</span><span class="p">[:</span><span class="n">base_length</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="n">base_key</span> <span class="ow">in</span> <span class="n">groups</span>
+            <span class="n">groups</span><span class="p">[</span><span class="n">base_key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">groups</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>Implements the introspection adapter for MySQL.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">IntrospectMySQL</span><span class="p">(</span><span class="n">Introspect</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">IntrospectMySQL</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">Meta</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_catalog</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_catalog</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">schemas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_schemas</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">CatalogEntity</span><span class="p">(</span><span class="n">schemas</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">permit_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">schema_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;mysql&#39;</span><span class="p">,</span> <span class="s">&#39;information_schema&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">permit_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">permit_column</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">column_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_schemas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">schemas</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">schemata</span><span class="p">):</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">schemata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">schema_name</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">permit_schema</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_tables</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">priority</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">current_database</span><span class="p">:</span>
+                <span class="n">priority</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">schema</span> <span class="o">=</span> <span class="n">SchemaEntity</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">tables</span><span class="p">,</span> <span class="n">priority</span><span class="p">)</span>
+            <span class="n">schemas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+        <span class="n">schemas</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">schemas</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_key</span><span class="p">):</span>
+        <span class="n">tables</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">tables_by_schema</span><span class="p">[</span><span class="n">schema_key</span><span class="p">]:</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">tables</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">table_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;BASE TABLE&#39;</span><span class="p">,</span> <span class="s">&#39;VIEW&#39;</span><span class="p">]:</span>
+                <span class="k">continue</span>
+            <span class="n">schema_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_schema</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_name</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">permit_table</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_columns</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">unique_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_unique_keys</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">foreign_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_foreign_keys</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="n">TableEntity</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+                                <span class="n">columns</span><span class="p">,</span> <span class="n">unique_keys</span><span class="p">,</span> <span class="n">foreign_keys</span><span class="p">)</span>
+            <span class="n">tables</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+        <span class="n">tables</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="p">(</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">tables</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_key</span><span class="p">):</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">columns_by_table</span><span class="p">[</span><span class="n">table_key</span><span class="p">]:</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="n">schema_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_schema</span>
+            <span class="n">table_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_name</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">column_name</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">permit_column</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">introspect_domain</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">is_nullable</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">is_nullable</span> <span class="o">==</span> <span class="s">&#39;YES&#39;</span><span class="p">)</span>
+            <span class="n">has_default</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">column_default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="n">column</span> <span class="o">=</span> <span class="n">ColumnEntity</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span>
+                                  <span class="n">is_nullable</span><span class="p">,</span> <span class="n">has_default</span><span class="p">)</span>
+            <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">columns</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_unique_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_key</span><span class="p">):</span>
+        <span class="n">unique_keys</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">constraints_by_table</span><span class="p">[</span><span class="n">table_key</span><span class="p">]:</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">constraints</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">constraint_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;PRIMARY KEY&#39;</span><span class="p">,</span> <span class="s">&#39;UNIQUE&#39;</span><span class="p">]:</span>
+                <span class="k">continue</span>
+            <span class="n">schema_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_schema</span>
+            <span class="n">table_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_name</span>
+            <span class="n">column_names</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">column_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">key_columns_by_constraint</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+                <span class="n">column_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">key_columns</span><span class="p">[</span><span class="n">column_key</span><span class="p">]</span>
+                <span class="n">column_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">column_record</span><span class="o">.</span><span class="n">column_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">permit_column</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">column_name</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">column_names</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">constraint_type</span> <span class="o">==</span> <span class="s">&#39;PRIMARY KEY&#39;</span><span class="p">:</span>
+                <span class="n">unique_key</span> <span class="o">=</span> <span class="n">PrimaryKeyEntity</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span>
+                                              <span class="n">column_names</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">unique_key</span> <span class="o">=</span> <span class="n">UniqueKeyEntity</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span>
+                                             <span class="n">column_names</span><span class="p">)</span>
+            <span class="n">unique_keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">unique_key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">unique_keys</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_foreign_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_key</span><span class="p">):</span>
+        <span class="n">foreign_keys</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">constraints_by_table</span><span class="p">[</span><span class="n">table_key</span><span class="p">]:</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">constraints</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">constraint_type</span> <span class="o">!=</span> <span class="s">&#39;FOREIGN KEY&#39;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">schema_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_schema</span>
+            <span class="n">target_schema_name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">table_name</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">table_name</span>
+            <span class="n">target_table_name</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">column_names</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">target_column_names</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">column_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">key_columns_by_constraint</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+                <span class="n">column_record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">key_columns</span><span class="p">[</span><span class="n">column_key</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">target_schema_name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">target_schema_name</span> <span class="o">=</span> <span class="n">column_record</span><span class="o">.</span><span class="n">referenced_table_schema</span>
+                <span class="k">if</span> <span class="n">target_table_name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">target_table_name</span> <span class="o">=</span> <span class="n">column_record</span><span class="o">.</span><span class="n">referenced_table_name</span>
+                <span class="n">column_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">column_record</span><span class="o">.</span><span class="n">column_name</span><span class="p">)</span>
+                <span class="n">target_column_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">column_record</span><span class="o">.</span><span class="n">referenced_column_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">permit_schema</span><span class="p">(</span><span class="n">target_schema_name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">permit_table</span><span class="p">(</span><span class="n">target_schema_name</span><span class="p">,</span> <span class="n">target_table_name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">permit_column</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">column_name</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">column_names</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">permit_column</span><span class="p">(</span><span class="n">target_schema_name</span><span class="p">,</span>
+                                          <span class="n">target_table_name</span><span class="p">,</span>
+                                          <span class="n">target_column_name</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">target_column_name</span> <span class="ow">in</span> <span class="n">target_column_names</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">foreign_key</span> <span class="o">=</span> <span class="n">ForeignKeyEntity</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span>
+                                           <span class="n">column_names</span><span class="p">,</span>
+                                           <span class="n">target_schema_name</span><span class="p">,</span>
+                                           <span class="n">target_table_name</span><span class="p">,</span>
+                                           <span class="n">target_column_names</span><span class="p">)</span>
+            <span class="n">foreign_keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">foreign_key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">foreign_keys</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">introspect_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">data_type</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">data_type</span>
+        <span class="n">character_maximum_length</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">character_maximum_length</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">character_maximum_length</span><span class="p">,</span> <span class="nb">long</span><span class="p">):</span>
+            <span class="n">character_maximum_length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">character_maximum_length</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">character_maximum_length</span><span class="p">,</span> <span class="nb">long</span><span class="p">):</span> <span class="c"># LONGTEXT</span>
+                <span class="n">character_maximum_length</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">numeric_precision</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">numeric_precision</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">numeric_precision</span><span class="p">,</span> <span class="nb">long</span><span class="p">):</span>
+            <span class="n">numeric_precision</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">numeric_precision</span><span class="p">)</span>
+        <span class="n">numeric_scale</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">numeric_scale</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">numeric_scale</span><span class="p">,</span> <span class="nb">long</span><span class="p">):</span>
+            <span class="n">numeric_scale</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">numeric_scale</span><span class="p">)</span>
+        <span class="n">column_type</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">column_type</span>
+        <span class="k">if</span> <span class="n">data_type</span> <span class="o">==</span> <span class="s">&#39;char&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MySQLStringDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span>
+                                     <span class="n">length</span><span class="o">=</span><span class="n">character_maximum_length</span><span class="p">,</span>
+                                     <span class="n">is_varying</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;varchar&#39;</span><span class="p">,</span> <span class="s">&#39;tinytext&#39;</span><span class="p">,</span>
+                           <span class="s">&#39;text&#39;</span><span class="p">,</span> <span class="s">&#39;mediumtext&#39;</span><span class="p">,</span> <span class="s">&#39;longtext&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">MySQLStringDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span>
+                                     <span class="n">length</span><span class="o">=</span><span class="n">character_maximum_length</span><span class="p">,</span>
+                                     <span class="n">is_varying</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">data_type</span> <span class="o">==</span> <span class="s">&#39;enum&#39;</span> <span class="ow">and</span> <span class="n">column_type</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;enum(&#39;</span><span class="p">)</span> <span class="ow">and</span>
+                                      <span class="n">column_type</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;)&#39;</span><span class="p">)):</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">column_type</span><span class="p">[</span><span class="mi">5</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="n">MySQLEnumDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="o">==</span> <span class="s">&#39;tinyint&#39;</span> <span class="ow">and</span> <span class="n">column_type</span> <span class="o">==</span> <span class="s">&#39;tinyint(1)&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MySQLBooleanDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;tinyint&#39;</span><span class="p">,</span> <span class="s">&#39;smallint&#39;</span><span class="p">,</span> <span class="s">&#39;mediumint&#39;</span><span class="p">,</span>
+                           <span class="s">&#39;int&#39;</span><span class="p">,</span> <span class="s">&#39;bigint&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">MySQLIntegerDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="o">==</span> <span class="s">&#39;decimal&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MySQLDecimalDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span>
+                                      <span class="n">precision</span><span class="o">=</span><span class="n">numeric_precision</span><span class="p">,</span>
+                                      <span class="n">scale</span><span class="o">=</span><span class="n">numeric_scale</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;float&#39;</span><span class="p">,</span> <span class="s">&#39;double&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">MySQLFloatDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="o">==</span> <span class="s">&#39;date&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MySQLDateDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="o">==</span> <span class="s">&#39;time&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MySQLTimeDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">data_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;datetime&#39;</span><span class="p">,</span> <span class="s">&#39;timestamp&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">MySQLDateTimeDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">MySQLOpaqueDomain</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

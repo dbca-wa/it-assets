@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  </head>
+<body>
+
+Current User: {{ request.user }}
+
+<a href="#" onclick="javascript:FB.logout(function(response){ document.location = '/admin/logout' })">Logout</a>
+
+{% load openid_tags %}
+{% openid_form %}
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>setup_win32_ssl.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>setup_win32_ssl.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>vi:ts=4:et
+$Id$</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">string</span>
+<span class="k">assert</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s">&quot;win32&quot;</span><span class="p">,</span> <span class="s">&quot;Only for building on Win32 with SSL and zlib&quot;</span>
+
+
+<span class="n">CURL_DIR</span> <span class="o">=</span> <span class="s">r&quot;c:\src\build\pycurl\curl-7.19.0-ssl&quot;</span>
+<span class="n">OPENSSL_DIR</span> <span class="o">=</span> <span class="s">r&quot;c:\src\build\pycurl\openssl-0.9.7g&quot;</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s">&quot;--curl-dir=&quot;</span> <span class="o">+</span> <span class="n">CURL_DIR</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">setup</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">setup_args</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;pycurl-ssl&quot;</span>
+
+<span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&quot;libeay32.lib&quot;</span><span class="p">,</span> <span class="s">&quot;ssleay32.lib&quot;</span><span class="p">,):</span>
+    <span class="n">ext</span><span class="o">.</span><span class="n">extra_objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">OPENSSL_DIR</span><span class="p">,</span> <span class="s">&quot;out32&quot;</span><span class="p">,</span> <span class="n">l</span><span class="p">))</span>
+
+<span class="n">define_macros</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&#39;HAVE_CURL_SSL&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<span class="n">define_macros</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&#39;HAVE_CURL_OPENSSL&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="n">pool</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\\</span><span class="s">&quot;</span> <span class="o">+</span> <span class="s">r&quot;pool\win32\vc6&quot;</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\\</span><span class="s">&quot;</span>
+<span class="k">if</span> <span class="n">string</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="p">,</span> <span class="s">&quot;MSC v.1310&quot;</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\\</span><span class="s">&quot;</span> <span class="o">+</span> <span class="s">r&quot;pool\win32\vc71&quot;</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\\</span><span class="s">&quot;</span>
+<span class="n">ext</span><span class="o">.</span><span class="n">extra_objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">r&quot;c:\src\pool\zlib-1.2.2&quot;</span> <span class="o">+</span> <span class="n">pool</span> <span class="o">+</span> <span class="s">&quot;zlib.lib&quot;</span><span class="p">)</span>
+<span class="n">ext</span><span class="o">.</span><span class="n">extra_objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">r&quot;c:\src\pool\c-ares-20050411&quot;</span> <span class="o">+</span> <span class="n">pool</span> <span class="o">+</span> <span class="s">&quot;ares.lib&quot;</span><span class="p">)</span>
+<span class="n">ext</span><span class="o">.</span><span class="n">extra_objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">r&quot;c:\src\pool\libidn-0.5.15&quot;</span> <span class="o">+</span> <span class="n">pool</span> <span class="o">+</span> <span class="s">&quot;idn.lib&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">ext</span><span class="o">.</span><span class="n">extra_objects</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">o</span><span class="p">),</span> <span class="n">o</span>
+    <span class="nb">apply</span><span class="p">(</span><span class="n">setup</span><span class="p">,</span> <span class="p">(),</span> <span class="n">setup_args</span><span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

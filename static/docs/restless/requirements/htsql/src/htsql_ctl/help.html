@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>help.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>help.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2008, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_ctl.help</code></h1>
+<p>This module implements the <code>help</code> routine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">.error</span> <span class="kn">import</span> <span class="n">ScriptError</span>
+<span class="kn">from</span> <span class="nn">.routine</span> <span class="kn">import</span> <span class="n">Routine</span><span class="p">,</span> <span class="n">Argument</span>
+<span class="kn">from</span> <span class="nn">htsql.validator</span> <span class="kn">import</span> <span class="n">WordVal</span>
+<span class="kn">import</span> <span class="nn">os</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Implements the <code>help</code> routine.</p>
+<p>When called without any parameters, it describes the application.
+When called with a routine name, it describes the routine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">HelpRoutine</span><span class="p">(</span><span class="n">Routine</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>def run(self):
+<pre># If called without any parameters, describe the application;</p>
+<h1>if called with a routine name, describe the routine; if called</h1>
+<h1>with a routine name and a section name, display the section.</h1>
+<p>if self.routine is None:
+self.describe_script()
+else:
+if self.routine not in self.ctl.routine_by_name:
+raise ScriptError("unknown routine %r" % self.routine)
+routine_class = self.ctl.routine_by_name[self.routine]
+if self.feature is None:
+self.describe_routine(routine_class)
+else:
+feature_class = routine_class.get_feature(self.feature)
+self.describe_feature(feature_class)
+</pre>
+def describe_script(self):</p>
+<h1>Display the following information:</h1>
+<h1>{EXECUTABLE} - {hint}</h1>
+<h1>{copyright}</h1>
+<h1>Usage: {executable} <routine> [options] [arguments]</h1>
+<h1 />
+<h1>{help}</h1>
+<h1 />
+<h1>Available routines:</h1>
+<h1>{routine.name(s)} : {routine.hint}</h1>
+<h1>...</h1>
+<h1 />
+<p>executable = os.path.basename(self.executable)
+hint = self.ctl.get_hint()
+if hint is not None:
+self.ctl.out(executable.upper(), '-', hint)
+else:
+self.ctl.out(executable.upper())
+copyright = self.ctl.get_copyright()
+if copyright is not None:
+self.ctl.out(copyright)
+self.ctl.out("Usage:", executable, "<routine> [options] [arguments]")
+help = self.ctl.get_help(executable=executable)
+if help is not None:
+self.ctl.out()
+self.ctl.out(help)
+self.ctl.out()
+self.ctl.out("Available routines:")
+for routine_class in self.ctl.routines:
+if not routine_class.name:
+continue
+name = routine_class.name
+if routine_class.aliases:
+name = "%s (%s)" % (name, ", ".join(routine_class.aliases))
+self.ctl.out("  ", end="")
+hint = routine_class.get_hint()
+if hint is not None:
+self.ctl.out("%-24s : %s" % (name, hint))
+else:
+self.ctl.out(name)
+self.ctl.out()</p>
+<p>def describe_routine(self, routine_class):</p>
+<h1>Display the following information:</h1>
+<h1>{NAME} - {hint}</h1>
+<h1>Usage: {executable} {signature}</h1>
+<h1 />
+<h1>{help}</h1>
+<h1 />
+<h1>Arguments:</h1>
+<h1>{argument.signature} : {argument.hint}</h1>
+<h1>...</h1>
+<h1 />
+<h1>Valid options:</h1>
+<h1>{option.signature} : {option.hint}</h1>
+<h1>...</h1>
+<h1 />
+<p>executable = os.path.basename(self.executable)
+hint = routine_class.get_hint()
+if hint is not None:
+self.ctl.out(routine_class.name.upper(), "-", hint)
+else:
+self.ctl.out(routine_class.name.upper())
+signature = routine_class.get_signature()
+self.ctl.out("Usage:", executable, signature)
+help = routine_class.get_help(executable=executable)
+if help is not None:
+self.ctl.out()
+self.ctl.out(help)
+if routine_class.arguments:
+self.ctl.out()
+self.ctl.out("Arguments:")
+for argument in routine_class.arguments:
+signature = argument.get_signature()
+self.ctl.out("  ", end="")
+hint = argument.get_hint()
+if hint is not None:
+<pre>self.ctl.out("%-24s : %s" % (signature, hint))
+else:
+self.ctl.out(signature)
+if routine_class.options:
+self.ctl.out()
+self.ctl.out("Valid options:")
+for option in routine_class.options:
+signature = option.get_signature()
+self.ctl.out("  ", end="")
+hint = option.get_hint()
+if hint is not None:
+self.ctl.out("%-24s : %s" % (signature, hint))
+else:
+self.ctl.out(signature)
+self.ctl.out()
+</pre>
+def describe_feature(self, feature_class):</p>
+<h1>Display the following information:</h1>
+<h1>{NAME} - {hint}</h1>
+<h1 />
+<h1>{help}</h1>
+<p>name = feature_class.name.upper()
+hint = feature_class.get_hint()
+help = feature_class.get_help()
+if hint is None:
+self.ctl.out(name)
+else:
+self.ctl.out("%s - %s" % (name, hint))
+if help is not None:
+self.ctl.out()
+self.ctl.out(help)
+self.ctl.out()</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;help&#39;</span>
+    <span class="n">aliases</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;h&#39;</span><span class="p">,</span> <span class="s">&#39;?&#39;</span><span class="p">]</span>
+    <span class="n">arguments</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Argument</span><span class="p">(</span><span class="s">&#39;routine&#39;</span><span class="p">,</span> <span class="n">WordVal</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                     <span class="n">hint</span><span class="o">=</span><span class="s">&quot;&quot;&quot;the name of the routine to describe&quot;&quot;&quot;</span><span class="p">),</span>
+            <span class="n">Argument</span><span class="p">(</span><span class="s">&#39;feature&#39;</span><span class="p">,</span> <span class="n">WordVal</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                     <span class="n">hint</span><span class="o">=</span><span class="s">&quot;&quot;&quot;the feature to describe&quot;&quot;&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">hint</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;describe the usage of the application and its routines&quot;&quot;&quot;</span>
+    <span class="n">help</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    Run &#39;</span><span class="si">%(executable)s</span><span class="s"> help&#39; to describe the usage of the application and</span>
+<span class="s">    get the list of available routines.</span>
+
+<span class="s">    Run &#39;</span><span class="si">%(executable)s</span><span class="s"> help &lt;routine&gt;&#39; to describe the usage of the</span>
+<span class="s">    specified routine.</span>
+
+<span class="s">    Some routines may contain separate descriptions of some features.</span>
+<span class="s">    Run &#39;</span><span class="si">%(executable)s</span><span class="s"> help &lt;routine&gt; &lt;feature&gt;&#39; to describe a specific</span>
+<span class="s">    feature.</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

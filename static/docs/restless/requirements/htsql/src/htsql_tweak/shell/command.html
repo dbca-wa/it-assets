@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>command.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>command.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql</span> <span class="kn">import</span> <span class="n">__version__</span>
+<span class="kn">from</span> <span class="nn">htsql.util</span> <span class="kn">import</span> <span class="n">maybe</span>
+<span class="kn">from</span> <span class="nn">htsql.context</span> <span class="kn">import</span> <span class="n">context</span>
+<span class="kn">from</span> <span class="nn">htsql.adapter</span> <span class="kn">import</span> <span class="n">Adapter</span><span class="p">,</span> <span class="n">adapts</span><span class="p">,</span> <span class="n">named</span>
+<span class="kn">from</span> <span class="nn">htsql.error</span> <span class="kn">import</span> <span class="n">HTTPError</span>
+<span class="kn">from</span> <span class="nn">htsql.domain</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Domain</span><span class="p">,</span> <span class="n">BooleanDomain</span><span class="p">,</span> <span class="n">NumberDomain</span><span class="p">,</span> <span class="n">DateTimeDomain</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.cmd.command</span> <span class="kn">import</span> <span class="n">UniversalCmd</span><span class="p">,</span> <span class="n">Command</span>
+<span class="kn">from</span> <span class="nn">htsql.cmd.act</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Act</span><span class="p">,</span> <span class="n">RenderAction</span><span class="p">,</span> <span class="n">UnsupportedActionError</span><span class="p">,</span>
+                           <span class="n">produce</span><span class="p">,</span> <span class="n">safe_produce</span><span class="p">,</span> <span class="n">analyze</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.error</span> <span class="kn">import</span> <span class="n">TranslateError</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.syntax</span> <span class="kn">import</span> <span class="n">StringSyntax</span><span class="p">,</span> <span class="n">NumberSyntax</span><span class="p">,</span> <span class="n">SegmentSyntax</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.binding</span> <span class="kn">import</span> <span class="n">CommandBinding</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.signature</span> <span class="kn">import</span> <span class="n">Signature</span><span class="p">,</span> <span class="n">Slot</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.error</span> <span class="kn">import</span> <span class="n">BindError</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.fn.bind</span> <span class="kn">import</span> <span class="n">BindCommand</span>
+<span class="kn">from</span> <span class="nn">htsql.fmt.entitle</span> <span class="kn">import</span> <span class="n">guess_title</span>
+<span class="kn">from</span> <span class="nn">htsql.fmt.json</span> <span class="kn">import</span> <span class="n">escape</span>
+<span class="kn">from</span> <span class="nn">..resource.locate</span> <span class="kn">import</span> <span class="n">locate</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">cgi</span>
+<span class="kn">import</span> <span class="nn">wsgiref.util</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ShellCmd</span><span class="p">(</span><span class="n">Command</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">is_implicit</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_implicit</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span> <span class="o">=</span> <span class="n">query</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_implicit</span> <span class="o">=</span> <span class="n">is_implicit</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateCmd</span><span class="p">(</span><span class="n">Command</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">page</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span> <span class="o">=</span> <span class="n">query</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action</span> <span class="o">=</span> <span class="n">action</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">page</span> <span class="o">=</span> <span class="n">page</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ShellSig</span><span class="p">(</span><span class="n">Signature</span><span class="p">):</span>
+
+    <span class="n">slots</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Slot</span><span class="p">(</span><span class="s">&#39;query&#39;</span><span class="p">,</span> <span class="n">is_mandatory</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+    <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EvaluateSig</span><span class="p">(</span><span class="n">Signature</span><span class="p">):</span>
+
+    <span class="n">slots</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Slot</span><span class="p">(</span><span class="s">&#39;query&#39;</span><span class="p">),</span>
+            <span class="n">Slot</span><span class="p">(</span><span class="s">&#39;action&#39;</span><span class="p">,</span> <span class="n">is_mandatory</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+            <span class="n">Slot</span><span class="p">(</span><span class="s">&#39;page&#39;</span><span class="p">,</span> <span class="n">is_mandatory</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+    <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">BindShell</span><span class="p">(</span><span class="n">BindCommand</span><span class="p">):</span>
+
+    <span class="n">named</span><span class="p">(</span><span class="s">&#39;shell&#39;</span><span class="p">)</span>
+    <span class="n">signature</span> <span class="o">=</span> <span class="n">ShellSig</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">query</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">StringSyntax</span><span class="p">):</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">SegmentSyntax</span><span class="p">):</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">BindError</span><span class="p">(</span><span class="s">&quot;a query is required&quot;</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="n">ShellCmd</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CommandBinding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syntax</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">BindEvaluate</span><span class="p">(</span><span class="n">BindCommand</span><span class="p">):</span>
+
+    <span class="n">named</span><span class="p">(</span><span class="s">&#39;evaluate&#39;</span><span class="p">)</span>
+    <span class="n">signature</span> <span class="o">=</span> <span class="n">EvaluateSig</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">page</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">StringSyntax</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">BindError</span><span class="p">(</span><span class="s">&quot;a string literal is required&quot;</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">StringSyntax</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">BindError</span><span class="p">(</span><span class="s">&quot;a string literal is required&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;produce&#39;</span><span class="p">,</span> <span class="s">&#39;analyze&#39;</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="n">BindError</span><span class="p">(</span><span class="s">&quot;&#39;produce&#39; or &#39;analyze&#39; is expected&quot;</span><span class="p">,</span>
+                                <span class="n">action</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">page</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">NumberSyntax</span><span class="p">)</span> <span class="ow">and</span> <span class="n">page</span><span class="o">.</span><span class="n">is_integer</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">BindError</span><span class="p">(</span><span class="s">&quot;an integer literal is required&quot;</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+            <span class="n">page</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="n">EvaluateCmd</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">page</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CommandBinding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">scope</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syntax</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">RenderShell</span><span class="p">(</span><span class="n">Act</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">ShellCmd</span><span class="p">,</span> <span class="n">RenderAction</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="o">.</span><span class="n">query</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="n">locate</span><span class="p">(</span><span class="s">&#39;/shell/index.html&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">resource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+        <span class="n">database_name</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">htsql</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">database</span>
+        <span class="n">server_name</span> <span class="o">=</span> <span class="s">&#39;HTSQL &#39;</span> <span class="o">+</span> <span class="n">__version__</span>
+        <span class="n">server_root</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">tweak</span><span class="o">.</span><span class="n">shell</span><span class="o">.</span><span class="n">server_root</span>
+        <span class="k">if</span> <span class="n">server_root</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">server_root</span> <span class="o">=</span> <span class="n">wsgiref</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">application_uri</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="o">.</span><span class="n">environ</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">server_root</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">):</span>
+            <span class="n">server_root</span> <span class="o">=</span> <span class="n">server_root</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">resource_root</span> <span class="o">=</span> <span class="p">(</span><span class="n">server_root</span> <span class="o">+</span> <span class="s">&#39;/</span><span class="si">%s</span><span class="s">/shell/&#39;</span>
+                         <span class="o">%</span> <span class="n">context</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">tweak</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">indicator</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">query</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">query</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="s">&#39;/&#39;</span><span class="p">]:</span>
+            <span class="n">query_on_start</span> <span class="o">=</span> <span class="n">query</span>
+            <span class="n">evaluate_on_start</span> <span class="o">=</span> <span class="s">&#39;true&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">query_on_start</span> <span class="o">=</span> <span class="s">&#39;/&#39;</span>
+            <span class="n">evaluate_on_start</span> <span class="o">=</span> <span class="s">&#39;false&#39;</span>
+        <span class="n">implicit</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="o">.</span><span class="n">is_implicit</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;base href&#39;</span><span class="p">,</span> <span class="n">resource_root</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;data-database-name&#39;</span><span class="p">,</span> <span class="n">database_name</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;data-server-name&#39;</span><span class="p">,</span> <span class="n">server_name</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;data-server-root&#39;</span><span class="p">,</span> <span class="n">server_root</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;data-query-on-start&#39;</span><span class="p">,</span> <span class="n">query_on_start</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;data-evaluate-on-start&#39;</span><span class="p">,</span> <span class="n">evaluate_on_start</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s">&#39;data-implicit-shell&#39;</span><span class="p">,</span> <span class="n">implicit</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">&#39;200 OK&#39;</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s">&#39;text/html; charset=UTF-8&#39;</span><span class="p">)]</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">patch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s">r&#39;=&quot;[^&quot;]*&quot;&#39;</span>
+        <span class="n">replacement</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;=&quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">cgi</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">subn</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">replacement</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">data</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">RenderEvaluate</span><span class="p">(</span><span class="n">Act</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">EvaluateCmd</span><span class="p">,</span> <span class="n">RenderAction</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">addon</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">tweak</span><span class="o">.</span><span class="n">shell</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">&quot;200 OK&quot;</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s">&#39;application/javascript&#39;</span><span class="p">)]</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="n">UniversalCmd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="o">.</span><span class="n">query</span><span class="p">)</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;analyze&#39;</span><span class="p">:</span>
+                <span class="n">plan</span> <span class="o">=</span> <span class="n">analyze</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="o">.</span><span class="n">page</span>
+                <span class="k">if</span> <span class="n">page</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">page</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">addon</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">limit</span> <span class="o">=</span> <span class="n">page</span><span class="o">*</span><span class="n">addon</span><span class="o">.</span><span class="n">limit</span>
+                <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">product</span> <span class="o">=</span> <span class="n">safe_produce</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">limit</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">product</span> <span class="o">=</span> <span class="n">produce</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">UnsupportedActionError</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_unsupported</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">HTTPError</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_error</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="o">.</span><span class="n">action</span> <span class="o">==</span> <span class="s">&#39;analyze&#39;</span><span class="p">:</span>
+                <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_sql</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">product</span><span class="p">:</span>
+                    <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_product</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_empty</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">render_unsupported</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="s">&quot;{</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">type</span><span class="se">\&quot;</span><span class="s">: </span><span class="se">\&quot;</span><span class="s">unsupported</span><span class="se">\&quot;\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;}</span><span class="se">\n</span><span class="s">&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">render_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">detail</span>
+        <span class="n">first_line</span> <span class="o">=</span> <span class="s">&#39;null&#39;</span>
+        <span class="n">first_column</span> <span class="o">=</span> <span class="s">&#39;null&#39;</span>
+        <span class="n">last_line</span> <span class="o">=</span> <span class="s">&#39;null&#39;</span>
+        <span class="n">last_column</span> <span class="o">=</span> <span class="s">&#39;null&#39;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">TranslateError</span><span class="p">)</span> <span class="ow">and</span> <span class="n">exc</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">input</span><span class="p">:</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">mark</span>
+            <span class="n">first_break</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mark</span><span class="o">.</span><span class="n">start</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+            <span class="n">last_break</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mark</span><span class="o">.</span><span class="n">end</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span>
+            <span class="n">first_line</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">first_break</span><span class="p">)</span>
+            <span class="n">last_line</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">last_break</span><span class="p">)</span>
+            <span class="n">first_column</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">start</span><span class="o">-</span><span class="n">first_break</span>
+            <span class="n">last_column</span> <span class="o">=</span> <span class="n">mark</span><span class="o">.</span><span class="n">end</span><span class="o">-</span><span class="n">last_break</span>
+        <span class="k">yield</span> <span class="s">&quot;{</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">type</span><span class="se">\&quot;</span><span class="s">: </span><span class="se">\&quot;</span><span class="s">error</span><span class="se">\&quot;</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">detail</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">escape</span><span class="p">(</span><span class="n">cgi</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">detail</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">first_line</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">first_line</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">first_column</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">first_column</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">last_line</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">last_line</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">last_column</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">last_column</span>
+        <span class="k">yield</span> <span class="s">&quot;}</span><span class="se">\n</span><span class="s">&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">render_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">limit</span><span class="p">):</span>
+        <span class="n">style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_style</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_head</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_body</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
+        <span class="n">more</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_more</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="s">&quot;{</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">type</span><span class="se">\&quot;</span><span class="s">: </span><span class="se">\&quot;</span><span class="s">product</span><span class="se">\&quot;</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">style</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">style</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">head</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">head</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">body</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">body</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">more</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">more</span>
+        <span class="k">yield</span> <span class="s">&quot;}</span><span class="se">\n</span><span class="s">&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">render_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="s">&quot;{</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">type</span><span class="se">\&quot;</span><span class="s">: </span><span class="se">\&quot;</span><span class="s">empty</span><span class="se">\&quot;\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;}</span><span class="se">\n</span><span class="s">&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">render_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plan</span><span class="p">):</span>
+        <span class="n">sql</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">sql</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sql</span><span class="p">:</span>
+            <span class="n">sql</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        <span class="k">yield</span> <span class="s">&quot;{</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">type</span><span class="se">\&quot;</span><span class="s">: </span><span class="se">\&quot;</span><span class="s">sql</span><span class="se">\&quot;</span><span class="s">,</span><span class="se">\n</span><span class="s">&quot;</span>
+        <span class="k">yield</span> <span class="s">&quot;  </span><span class="se">\&quot;</span><span class="s">sql</span><span class="se">\&quot;</span><span class="s">: </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">escape</span><span class="p">(</span><span class="n">cgi</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">sql</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="s">&quot;}</span><span class="se">\n</span><span class="s">&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">make_style</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">):</span>
+        <span class="n">domains</span> <span class="o">=</span> <span class="p">[</span><span class="n">element</span><span class="o">.</span><span class="n">domain</span>
+                   <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">product</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">segment</span><span class="o">.</span><span class="n">elements</span><span class="p">]</span>
+        <span class="n">styles</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_style</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span> <span class="k">for</span> <span class="n">domain</span> <span class="ow">in</span> <span class="n">domains</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s">&quot;[</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="n">escape</span><span class="p">(</span><span class="n">cgi</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">style</span><span class="p">))</span>
+                                   <span class="k">if</span> <span class="n">style</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="s">&quot;null&quot;</span><span class="p">)</span>
+                                  <span class="k">for</span> <span class="n">style</span> <span class="ow">in</span> <span class="n">styles</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">make_head</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">):</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="n">guess_title</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">binding</span><span class="p">)</span>
+                   <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">product</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">segment</span><span class="o">.</span><span class="n">elements</span><span class="p">]</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">)</span> <span class="k">for</span> <span class="n">header</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">)</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">product</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">segment</span><span class="o">.</span><span class="n">elements</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">height</span><span class="p">):</span>
+            <span class="n">cells</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">while</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">:</span>
+                <span class="k">while</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">width</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="n">width</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="n">is_spanning</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">line</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">colspan</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">is_spanning</span><span class="p">:</span>
+                    <span class="k">while</span> <span class="p">(</span><span class="n">idx</span><span class="o">+</span><span class="n">colspan</span> <span class="o">&lt;</span> <span class="n">width</span> <span class="ow">and</span>
+                           <span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="o">+</span><span class="n">colspan</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">line</span><span class="o">+</span><span class="mi">1</span> <span class="ow">and</span>
+                           <span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="p">][:</span><span class="n">line</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span>
+                               <span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="o">+</span><span class="n">colspan</span><span class="p">][:</span><span class="n">line</span><span class="o">+</span><span class="mi">1</span><span class="p">]):</span>
+                        <span class="n">colspan</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">rowspan</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="o">==</span> <span class="n">line</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">rowspan</span> <span class="o">=</span> <span class="n">height</span><span class="o">-</span><span class="n">line</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="n">escape</span><span class="p">(</span><span class="n">cgi</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">headers</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="n">line</span><span class="p">]))</span>
+                <span class="n">cell</span> <span class="o">=</span> <span class="s">&quot;[</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">colspan</span><span class="p">,</span> <span class="n">rowspan</span><span class="p">)</span>
+                <span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+                <span class="n">idx</span> <span class="o">+=</span> <span class="n">colspan</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;[</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cells</span><span class="p">))</span>
+        <span class="k">return</span> <span class="s">&quot;[</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">make_body</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">limit</span><span class="p">):</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">domains</span> <span class="o">=</span> <span class="p">[</span><span class="n">element</span><span class="o">.</span><span class="n">domain</span>
+                   <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">product</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">segment</span><span class="o">.</span><span class="n">elements</span><span class="p">]</span>
+        <span class="n">formats</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_format</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span> <span class="k">for</span> <span class="n">domain</span> <span class="ow">in</span> <span class="n">domains</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">product</span><span class="p">:</span>
+            <span class="n">cells</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">value</span><span class="p">,</span> <span class="n">format</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">formats</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">cell</span> <span class="o">=</span> <span class="s">&quot;null&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cell</span> <span class="o">=</span> <span class="n">escape</span><span class="p">(</span><span class="n">cgi</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+                <span class="n">cells</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;[</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cells</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[:</span><span class="n">limit</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s">&quot;[</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">make_more</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">limit</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">product</span><span class="o">.</span><span class="n">records</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">limit</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;true&quot;</span>
+        <span class="k">return</span> <span class="s">&quot;false&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GetStyle</span><span class="p">(</span><span class="n">Adapter</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">Domain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GetStyleForBoolean</span><span class="p">(</span><span class="n">GetStyle</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">BooleanDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;boolean&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GetStyleForNumber</span><span class="p">(</span><span class="n">GetStyle</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">NumberDomain</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;number&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GetFormat</span><span class="p">(</span><span class="n">Adapter</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">Domain</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">UnicodeDecodeError</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GetFormatForBoolean</span><span class="p">(</span><span class="n">GetFormat</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">BooleanDomain</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;true&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;false&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">GetFormatForDateTime</span><span class="p">(</span><span class="n">GetFormat</span><span class="p">):</span>
+
+    <span class="n">adapts</span><span class="p">(</span><span class="n">DateTimeDomain</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">time</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">date</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">get_style</span><span class="p">(</span><span class="n">domain</span><span class="p">):</span>
+    <span class="n">get_style</span> <span class="o">=</span> <span class="n">GetStyle</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">get_style</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">get_format</span><span class="p">(</span><span class="n">domain</span><span class="p">):</span>
+    <span class="n">get_format</span> <span class="o">=</span> <span class="n">GetFormat</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">get_format</span><span class="p">()</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

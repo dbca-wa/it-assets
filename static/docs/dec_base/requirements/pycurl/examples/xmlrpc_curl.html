@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>xmlrpc_curl.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>xmlrpc_curl.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>vi:ts=4:et
+$Id$</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>We should ignore SIGPIPE when using pycurl.NOSIGNAL - see
+the libcurl tutorial for more info.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">signal</span>
+    <span class="kn">from</span> <span class="nn">signal</span> <span class="kn">import</span> <span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">SIG_IGN</span>
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_IGN</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">pass</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">cStringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">StringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="kn">import</span> <span class="nn">xmlrpclib</span><span class="o">,</span> <span class="nn">pycurl</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Handles a cURL HTTP transaction to an XML-RPC server.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">CURLTransport</span><span class="p">(</span><span class="n">xmlrpclib</span><span class="o">.</span><span class="n">Transport</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>xmlrpc_h = [ "Content-Type: text/xml" ]</p>
+<p>def <strong>init</strong>(self, username=None, password=None):
+<pre>self.c = pycurl.Curl()
+self.c.setopt(pycurl.POST, 1)
+self.c.setopt(pycurl.NOSIGNAL, 1)
+self.c.setopt(pycurl.CONNECTTIMEOUT, 30)
+self.c.setopt(pycurl.HTTPHEADER, self.xmlrpc_h)
+if username != None and password != None:
+self.c.setopt(pycurl.USERPWD, '%s:%s' % (username, password))
+self._use_datetime = False
+</pre>
+def request(self, host, handler, request_body, verbose=0):
+b = StringIO()
+self.c.setopt(pycurl.URL, 'http://%s%s' % (host, handler))
+self.c.setopt(pycurl.POSTFIELDS, request_body)
+self.c.setopt(pycurl.WRITEFUNCTION, b.write)
+self.c.setopt(pycurl.VERBOSE, verbose)
+self.verbose = verbose
+try:
+self.c.perform()
+except pycurl.error, v:
+raise xmlrpclib.ProtocolError(
+<pre>host + handler,
+v[0], v[1], None
+)
+b.seek(0)
+return self.parse_response(b)
+</pre></p>
+<p>if <strong>name</strong> == "<strong>main</strong>":</p>
+<h2>Test</h2>
+<p>server = xmlrpclib.ServerProxy("http://betty.userland.com",
+<pre>transport=CURLTransport())
+print server
+try:
+print server.examples.getStateName(41)
+except xmlrpclib.Error, v:
+print "ERROR", v
+</pre></p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

@@ -1,0 +1,10 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ request.SITE_NAME }} site admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">{{ request.SITE_NAME }} administration</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

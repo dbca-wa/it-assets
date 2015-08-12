@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>data_generator.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>data_generator.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">csv</span><span class="o">,</span> <span class="nn">datetime</span><span class="o">,</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+
+<span class="n">RANDOM_SEED</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">INSTRUCTOR_NAME_SEED</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">STUDENT_NAME_SEED</span> <span class="o">=</span> <span class="mi">200</span>
+
+<span class="n">CURDATE</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="s">&#39;2011-06-01&#39;</span><span class="p">,</span> <span class="s">&#39;%Y-%m-</span><span class="si">%d</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">NameGenerator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_male</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_female</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gender</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">gender</span> <span class="o">==</span> <span class="s">&#39;m&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_male</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_female</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">StatNameData</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">MAN_NAMES_FILE</span> <span class="o">=</span> <span class="s">&quot;dist.male.first&quot;</span>      <span class="c"># male first name statistics file</span>
+    <span class="n">WOMAN_NAMES_FILE</span> <span class="o">=</span> <span class="s">&quot;dist.female.first&quot;</span>  <span class="c"># female first name statistics file</span>
+    <span class="n">LAST_NAMES_FILE</span> <span class="o">=</span> <span class="s">&quot;dist.all.last&quot;</span>       <span class="c"># last name statistics file</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">basedir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">MAN_NAMES_FILE</span><span class="p">)</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">man_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">man_total</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_names</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">WOMAN_NAMES_FILE</span><span class="p">)</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">woman_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">woman_total</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_names</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">LAST_NAMES_FILE</span><span class="p">)</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_total</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_names</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_names</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">):</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">dialect</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">Dialect</span>
+        <span class="n">dialect</span><span class="o">.</span><span class="n">skipinitialspace</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">dialect</span><span class="o">.</span><span class="n">quoting</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">QUOTE_MINIMAL</span>
+        <span class="n">dialect</span><span class="o">.</span><span class="n">quotechar</span> <span class="o">=</span> <span class="s">&#39;&quot;&#39;</span>
+        <span class="n">dialect</span><span class="o">.</span><span class="n">lineterminator</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\r\n</span><span class="s">&#39;</span>
+        <span class="n">fileReader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">),</span> <span class="n">dialect</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fileReader</span><span class="p">:</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">{</span> <span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;bound&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="p">}</span> <span class="p">)</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">names</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="s">&quot;bound&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">names</span><span class="p">,</span> <span class="n">total</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">StatNameGenerator</span><span class="p">(</span><span class="n">NameGenerator</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name_data</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_data</span> <span class="o">=</span> <span class="n">name_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rg</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">binary_search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">high</span><span class="p">,</span> <span class="n">low</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">high</span> <span class="o">==</span> <span class="n">low</span> <span class="ow">or</span> <span class="p">(</span><span class="n">high</span> <span class="o">-</span> <span class="n">low</span> <span class="o">==</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">names</span><span class="p">[</span><span class="n">high</span><span class="p">][</span><span class="s">&quot;name&quot;</span><span class="p">]</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">low</span> <span class="o">+</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">high</span> <span class="o">-</span> <span class="n">low</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span><span class="p">))</span>
+        <span class="n">shift_bound</span> <span class="o">=</span> <span class="n">names</span><span class="p">[</span><span class="n">shift</span><span class="p">][</span><span class="s">&quot;bound&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">shift_bound</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">binary_search</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">high</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">binary_search</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">shift</span><span class="p">,</span> <span class="n">low</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_random_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">total</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rg</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">total</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">binary_search</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_female</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_random_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">woman_names</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">woman_total</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_random_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">last_names</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">last_total</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">first</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">last</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_male</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_random_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">man_names</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">man_total</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_random_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">last_names</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">name_data</span><span class="o">.</span><span class="n">last_total</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">first</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">last</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Dictionary</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">departments</span> <span class="o">=</span> <span class="p">{}</span>           <span class="c"># map dep_code -&gt; course_count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">semesters</span> <span class="o">=</span> <span class="p">[]</span>             <span class="c"># list of tuples (year, season, begin_date, end_date)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">school_programs</span> <span class="o">=</span> <span class="p">{}</span>       <span class="c"># map school_code -&gt; list of program_code</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">program_req</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classification_tree</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">courses</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">course_prereq</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classified_courses</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">course_classification</span> <span class="o">=</span> <span class="p">{}</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">CollectionDictionaryLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">Dictionary</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">dequote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;&#39;&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">val</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&quot;&#39;&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">val</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="n">colname</span><span class="p">):</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">columns</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">colname</span><span class="p">)</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s">&#39;null&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dequote</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">val</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_date</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="n">colname</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="n">colname</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s">&#39;%Y-%m-</span><span class="si">%d</span><span class="s">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">val</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">table_content</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+            <span class="n">table_name</span> <span class="o">=</span> <span class="n">table_content</span><span class="p">[</span><span class="s">&#39;table&#39;</span><span class="p">]</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="n">table_content</span><span class="p">[</span><span class="s">&#39;columns&#39;</span><span class="p">]</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">table_content</span><span class="p">[</span><span class="s">&#39;data&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;ad.program&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_school_programs</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;ad.course&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_courses</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;cd.semester&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_semesters</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;rd.prerequisite&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_course_prereq</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;rd.classification&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_classification</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;rd.course_classification&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_classified_courses</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">table_name</span> <span class="o">==</span> <span class="s">&#39;rd.program_requirement&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_program_req</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_school_programs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">school</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;school_code&#39;</span><span class="p">)</span>
+            <span class="n">program</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;code&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">school</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">school_programs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">school_programs</span><span class="p">[</span><span class="n">school</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">school_programs</span><span class="p">[</span><span class="n">school</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">program</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_courses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">dep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;department_code&#39;</span><span class="p">)</span>
+            <span class="n">course</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;no&#39;</span><span class="p">)</span>
+            <span class="n">credits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;credits&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">credits</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">credits</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">courses</span><span class="p">[(</span><span class="n">dep</span><span class="p">,</span> <span class="n">course</span><span class="p">)]</span> <span class="o">=</span> <span class="n">credits</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        <p>count courses per department</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="n">dep</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">departments</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">departments</span><span class="p">[</span><span class="n">dep</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">departments</span><span class="p">[</span><span class="n">dep</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">departments</span><span class="p">[</span><span class="n">dep</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_semesters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">semesters</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s">&#39;year&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;year&#39;</span><span class="p">),</span>
+                <span class="s">&#39;season&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;season&#39;</span><span class="p">),</span>
+                <span class="s">&#39;begin_date&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_date</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;begin_date&#39;</span><span class="p">),</span>
+                <span class="s">&#39;end_date&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_date</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;end_date&#39;</span><span class="p">)</span>
+                <span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">semesters</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">semesters</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">&#39;begin_date&#39;</span><span class="p">])</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_classification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;code&#39;</span><span class="p">)</span>
+            <span class="n">part_of</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;part_of&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">code</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classification_tree</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classification_tree</span><span class="p">[</span><span class="n">code</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">part_of</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classification_tree</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classification_tree</span><span class="p">[</span><span class="n">part_of</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classification_tree</span><span class="p">[</span><span class="n">part_of</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">code</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_program_req</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">school</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;school_code&#39;</span><span class="p">)</span>
+            <span class="n">program</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;program_code&#39;</span><span class="p">)</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">school</span><span class="p">,</span> <span class="n">program</span><span class="p">)</span>
+            <span class="n">req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;classification_code&#39;</span><span class="p">)</span>
+            <span class="n">credits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;credit_hours&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">program_req</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">program_req</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="nb">map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">program_req</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="nb">map</span><span class="p">[</span><span class="n">req</span><span class="p">]</span> <span class="o">=</span> <span class="n">credits</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_course_prereq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">of_dep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;of_department_code&#39;</span><span class="p">)</span>
+            <span class="n">of_course</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;of_course_no&#39;</span><span class="p">)</span>
+            <span class="n">on_dep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;on_department_code&#39;</span><span class="p">)</span>
+            <span class="n">on_course</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;on_course_no&#39;</span><span class="p">)</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">of_dep</span><span class="p">,</span> <span class="n">of_course</span><span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="p">(</span><span class="n">on_dep</span><span class="p">,</span> <span class="n">on_course</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">load_classified_courses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">dep_code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;department_code&#39;</span><span class="p">)</span>
+            <span class="n">course_no</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;course_no&#39;</span><span class="p">)</span>
+            <span class="n">course_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">dep_code</span><span class="p">,</span> <span class="n">course_no</span><span class="p">)</span>
+            <span class="n">classif</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">record</span><span class="p">,</span> <span class="s">&#39;classification_code&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">classif</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classified_courses</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classified_courses</span><span class="p">[</span><span class="n">classif</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">classified_courses</span><span class="p">[</span><span class="n">classif</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">course_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">course_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">course_classification</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">course_classification</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="o">.</span><span class="n">course_classification</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">classif</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">DbDictionaryLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">SELECT_DEPARTMENTS</span> <span class="o">=</span> <span class="s">&#39;SELECT department_code, count(*) FROM ad.course GROUP BY department_code&#39;</span>
+    <span class="n">SELECT_SEMESTERS</span> <span class="o">=</span> <span class="s">&#39;SELECT year, season, begin_date, end_date FROM cd.semester&#39;</span>
+    <span class="n">SELECT_SCHOOL_PROGRAMS</span> <span class="o">=</span> <span class="s">&#39;SELECT s.code, p.code FROM ad.school s INNER JOIN ad.program p ON p.school_code = s.code&#39;</span>
+    <span class="n">SELECT_CLASSIFICATION</span> <span class="o">=</span> <span class="s">&#39;SELECT code, part_of FROM rd.classification&#39;</span>
+    <span class="n">SELECT_PROGRAM_REQ</span> <span class="o">=</span> <span class="s">&#39;SELECT school_code, program_code, classification_code, credit_hours FROM rd.program_requirement&#39;</span>
+    <span class="n">SELECT_COURSE_PREREQ</span> <span class="o">=</span> <span class="s">&#39;SELECT of_department_code, of_course_no, on_department_code, on_course_no FROM rd.prerequisite&#39;</span>
+    <span class="n">SELECT_COURSES</span> <span class="o">=</span> <span class="s">&#39;SELECT department_code, no, credits FROM ad.course&#39;</span>
+    <span class="n">SELECT_CLASSIFIED_COURSES</span> <span class="o">=</span> <span class="s">&#39;SELECT department_code, course_no, classification_code FROM rd.course_classification&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        <p>TBD</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>Generic parameters</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">BaseDataGenerator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        <p>NULL_PERCENT = 5                        # percent of nulls in nullable columns
+MAN_WOMAN_BORDER = 40                   # percent of men</p>
+<p>def quote(self, val):
+if val is None:
+return 'null'
+if isinstance(val, str):
+return "'" + val + "'"
+if isinstance(val, (datetime.datetime, datetime.date)):
+return "'" + str(val) + "'"
+return str(val)</p>
+<p>def get(self, columns, record, colname):
+idx = columns.index(colname)
+return record[idx]</p>
+<p>def make_unique_code(self, map, code):
+if code not in map:
+return code
+i = 1
+while (code + str(i)) in map:
+i += 1
+return (code + str(i))</p>
+<p>def generate_gender(self, gen):
+if gen.randint(1,100) &lt;= self.MAN_WOMAN_BORDER:
+return "m"
+return "f"</p>
+<p>def get_rand_item(self, arr, gen):
+return arr[gen.randint(0, len(arr) - 1)]</p>
+<p>def generate_date(self, start, end, gen):
+delta = end - start
+return start + datetime.timedelta(gen.randint(1, delta.days))</p>
+<p>def make_insert_map(self, table, columns, data):
+return {
+"table": table,
+"columns": columns,
+"data": data
+}</p>
+<p>def generate_content(self):
+pass</p>
+<p>def get_content(self):
+pass</p>
+<p>class InstructorGenerator(BaseDataGenerator):</p>
+<p>Generate instructors</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">INSTRUCTOR_TITLES</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;mr&#39;</span><span class="p">,</span> <span class="s">&#39;dr&#39;</span><span class="p">,</span> <span class="s">&#39;prof&#39;</span><span class="p">,</span> <span class="s">&#39;ms&#39;</span><span class="p">]</span>
+    <span class="n">HALF_TIME_PERCENT</span> <span class="o">=</span> <span class="mi">15</span>
+    <span class="n">COURSES_PER_INSTRUCTOR</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+    <span class="n">INSTRUCTOR_TABLE</span> <span class="o">=</span> <span class="s">&quot;id.instructor&quot;</span>
+    <span class="n">CONFIDENTIAL_TABLE</span> <span class="o">=</span> <span class="s">&quot;id.confidential&quot;</span>
+    <span class="n">APPOINTMENT_TABLE</span> <span class="o">=</span> <span class="s">&quot;id.appointment&quot;</span>
+    <span class="n">INSTRUCTOR_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;code&quot;</span><span class="p">,</span> <span class="s">&quot;full_name&quot;</span><span class="p">,</span> <span class="s">&quot;title&quot;</span><span class="p">,</span> <span class="s">&quot;phone&quot;</span><span class="p">,</span> <span class="s">&quot;email&quot;</span><span class="p">]</span>
+    <span class="n">CONFIDENTIAL_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;instructor_code&quot;</span><span class="p">,</span> <span class="s">&quot;SSN&quot;</span><span class="p">,</span> <span class="s">&quot;pay_grade&quot;</span><span class="p">,</span> <span class="s">&quot;home_phone&quot;</span><span class="p">]</span>
+    <span class="n">APPOINTMENT_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;instructor_code&quot;</span><span class="p">,</span> <span class="s">&quot;department_code&quot;</span><span class="p">,</span> <span class="s">&quot;fraction&quot;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name_generator</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_generator</span> <span class="o">=</span> <span class="n">name_generator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">dictionary</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">instructors</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">instructor_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">confidential_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">appointment_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gender_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">phone_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">email_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ssn_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">paygrade_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fraction_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_phone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phone_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NULL_PERCENT</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p>7-digit phone</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">tel</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phone_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="mi">9999999</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">tel</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;-&#39;</span> <span class="o">+</span> <span class="n">tel</span><span class="p">[</span><span class="mi">3</span><span class="p">:]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">email_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NULL_PERCENT</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="s">&#39;@example.com&#39;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_name</span><span class="p">):</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="n">full_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">code</span> <span class="o">+=</span> <span class="n">names</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="p">(</span><span class="n">code</span> <span class="o">+</span> <span class="n">names</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_unique_code</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instructors</span><span class="p">,</span> <span class="n">code</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_ssn</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        <p>9-digit ssn</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">ssn</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ssn_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">100000000</span><span class="p">,</span> <span class="mi">999999999</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">ssn</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;-&#39;</span> <span class="o">+</span> <span class="n">ssn</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;-&#39;</span> <span class="o">+</span> <span class="n">ssn</span><span class="p">[</span><span class="mi">5</span><span class="p">:]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_home_phone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">phone</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_phone</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">phone</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&#39;702-&#39;</span> <span class="o">+</span> <span class="n">phone</span>
+        <span class="k">return</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_instructor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gender</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_gender</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gender_gen</span><span class="p">)</span>
+        <span class="n">full_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">gender</span><span class="p">)</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_code</span><span class="p">(</span><span class="n">full_name</span><span class="p">)</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">INSTRUCTOR_TITLES</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">title_gen</span><span class="p">)</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">title</span> <span class="o">==</span> <span class="s">&#39;mr&#39;</span> <span class="ow">and</span> <span class="n">gender</span> <span class="o">==</span> <span class="s">&#39;f&#39;</span><span class="p">)</span> \
+                <span class="ow">or</span> <span class="p">(</span><span class="n">title</span> <span class="o">==</span> <span class="s">&#39;ms&#39;</span> <span class="ow">and</span> <span class="n">gender</span> <span class="o">==</span> <span class="s">&#39;m&#39;</span><span class="p">):</span>
+            <span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">INSTRUCTOR_TITLES</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">title_gen</span><span class="p">)</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">code</span><span class="p">,</span>
+            <span class="n">full_name</span><span class="p">,</span>
+            <span class="n">title</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">generate_phone</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">generate_email</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">record</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_confidential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instructor_code</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">instructor_code</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">generate_ssn</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">paygrade_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">generate_home_phone</span><span class="p">()</span>
+        <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_appointment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instructor_code</span><span class="p">,</span> <span class="n">depcode</span><span class="p">):</span>
+        <span class="n">fraction</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fraction_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">NULL_PERCENT</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fraction_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">HALF_TIME_PERCENT</span><span class="p">:</span>
+                <span class="n">fraction</span> <span class="o">=</span> <span class="mf">0.50</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fraction</span> <span class="o">=</span> <span class="mf">1.00</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">instructor_code</span><span class="p">,</span>
+            <span class="n">depcode</span><span class="p">,</span>
+            <span class="n">fraction</span>
+        <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">load_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">depcode</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">departments</span><span class="p">):</span>
+            <span class="n">load</span> <span class="o">=</span> <span class="n">load_gen</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">COURSES_PER_INSTRUCTOR</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">COURSES_PER_INSTRUCTOR</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">total_courses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">departments</span><span class="p">[</span><span class="n">depcode</span><span class="p">]</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">total_courses</span> <span class="o">/</span> <span class="n">load</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">depcode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span><span class="p">[</span><span class="n">depcode</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+                <span class="p">(</span><span class="n">instructor_code</span><span class="p">,</span> <span class="n">record</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_instructor</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">instructor_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">instructors</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">instructor_code</span><span class="p">)</span>
+                <span class="n">confidential</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_confidential</span><span class="p">(</span><span class="n">instructor_code</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">confidential_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">confidential</span><span class="p">)</span>
+                <span class="n">appointment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_appointment</span><span class="p">(</span><span class="n">instructor_code</span><span class="p">,</span> <span class="n">depcode</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">appointment_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">appointment</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span><span class="p">[</span><span class="n">depcode</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">appointment</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_insert_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">INSTRUCTOR_TABLE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">INSTRUCTOR_COLUMNS</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instructor_data</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_insert_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CONFIDENTIAL_TABLE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CONFIDENTIAL_COLUMNS</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">confidential_data</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_insert_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">APPOINTMENT_TABLE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">APPOINTMENT_COLUMNS</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">appointment_data</span><span class="p">),</span>
+        <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ClassGenerator</span><span class="p">(</span><span class="n">BaseDataGenerator</span><span class="p">):</span>
+
+    <span class="n">CLASS_FILL_LIMIT</span> <span class="o">=</span> <span class="mi">40</span>
+    <span class="n">YEARLY_CLASS_PERCENT</span> <span class="o">=</span> <span class="mi">80</span>
+    <span class="n">MISSING_CLASS_PERCENT</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">NULL_INSTRUCTOR_PERCENT</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="n">CLASS_TABLE</span> <span class="o">=</span> <span class="s">&#39;cd.class&#39;</span>
+    <span class="n">CLASS_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;department_code&#39;</span><span class="p">,</span> <span class="s">&#39;course_no&#39;</span><span class="p">,</span> <span class="s">&#39;year&#39;</span><span class="p">,</span> <span class="s">&#39;season&#39;</span><span class="p">,</span> <span class="s">&#39;section&#39;</span><span class="p">,</span> <span class="s">&#39;instructor_code&#39;</span><span class="p">,</span> <span class="s">&#39;class_seq&#39;</span><span class="p">]</span>
+    <span class="n">CLASS_SEQ_OFFSET</span> <span class="o">=</span> <span class="mi">1000</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meta</span><span class="p">,</span> <span class="n">dep_app</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">meta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span> <span class="o">=</span> <span class="n">dep_app</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_seq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CLASS_SEQ_OFFSET</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">instructor_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_class_fill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">class_seq</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">class_seq</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span><span class="p">[</span><span class="n">class_seq</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span><span class="p">[</span><span class="n">class_seq</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">return</span> <span class="mi">0</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">take_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">class_seq</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">class_seq</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span><span class="p">[</span><span class="n">class_seq</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span><span class="p">[</span><span class="n">class_seq</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">next_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">section</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&#39;</span><span class="si">%03d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">val</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">_is_empty_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">class_record</span><span class="p">):</span>
+        <span class="n">class_seq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="p">,</span> <span class="n">class_record</span><span class="p">,</span> <span class="s">&#39;class_seq&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">class_seq</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_fill_map</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">drop_empty_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_data</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_empty_class</span><span class="p">(</span><span class="n">c</span><span class="p">)]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inst_code</span><span class="p">,</span> <span class="n">course_key</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">section</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        <p>instructor is nullable ?!</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">instructor_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NULL_INSTRUCTOR_PERCENT</span><span class="p">:</span>
+            <span class="n">inst</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">inst</span> <span class="o">=</span> <span class="n">inst_code</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_seq</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">clazz</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">course_key</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">course_key</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">semester</span><span class="p">[</span><span class="s">&#39;year&#39;</span><span class="p">],</span>
+            <span class="n">semester</span><span class="p">[</span><span class="s">&#39;season&#39;</span><span class="p">],</span>
+            <span class="n">section</span><span class="p">,</span>
+            <span class="n">inst</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">class_seq</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">class_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">clazz</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">clazz</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">depcode</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span><span class="p">):</span>
+            <span class="n">dep_courses</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">courses</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">course_key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">depcode</span><span class="p">:</span>
+                    <span class="n">dep_courses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">course_key</span><span class="p">)</span>
+            <span class="n">staff</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">app</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span><span class="p">[</span><span class="n">depcode</span><span class="p">]:</span>
+                <span class="n">fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">InstructorGenerator</span><span class="o">.</span><span class="n">APPOINTMENT_COLUMNS</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="s">&#39;fraction&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">fraction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">staff</span> <span class="o">=</span> <span class="n">staff</span> <span class="o">+</span> <span class="n">fraction</span>
+            <span class="k">if</span> <span class="n">staff</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">load</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dep_courses</span><span class="p">)</span><span class="o">/</span><span class="n">staff</span>
+            <span class="k">for</span> <span class="n">app</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_app</span><span class="p">[</span><span class="n">depcode</span><span class="p">]:</span>
+                <span class="n">fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">InstructorGenerator</span><span class="o">.</span><span class="n">APPOINTMENT_COLUMNS</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="s">&#39;fraction&#39;</span><span class="p">)</span>
+                <span class="n">inst_code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">InstructorGenerator</span><span class="o">.</span><span class="n">APPOINTMENT_COLUMNS</span><span class="p">,</span> <span class="n">app</span><span class="p">,</span> <span class="s">&#39;instructor_code&#39;</span><span class="p">)</span>
+                <span class="n">course_count</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">fraction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">course_count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">load</span><span class="o">/</span><span class="n">fraction</span><span class="p">))</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">course_count</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dep_courses</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">course</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="n">dep_courses</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span><span class="p">)</span>
+                    <span class="n">dep_courses</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">course</span><span class="p">)</span>
+                    <span class="n">course_season</span> <span class="o">=</span> <span class="bp">None</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">YEARLY_CLASS_PERCENT</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+                            <span class="n">course_season</span> <span class="o">=</span> <span class="s">&#39;fall&#39;</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">course_season</span> <span class="o">=</span> <span class="s">&#39;spring&#39;</span>
+                    <span class="k">for</span> <span class="n">semester</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">semesters</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">semester</span><span class="p">[</span><span class="s">&#39;begin_date&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">CURDATE</span> <span class="ow">and</span> <span class="n">semester</span><span class="p">[</span><span class="s">&#39;season&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s">&#39;summer&#39;</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">course_season</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">course_season</span> <span class="o">!=</span> <span class="n">semester</span><span class="p">[</span><span class="s">&#39;season&#39;</span><span class="p">]:</span>
+                                <span class="k">continue</span>
+                            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">MISSING_CLASS_PERCENT</span><span class="p">:</span>
+                                <span class="k">continue</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">generate_class</span><span class="p">(</span><span class="n">inst_code</span><span class="p">,</span> <span class="n">course</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="s">&#39;001&#39;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_insert_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CLASS_TABLE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">class_data</span><span class="p">)</span>
+        <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-58'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-58">#</a>
+        </div>
+        <p>Decrease male grades using this rate</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EnrollmentGenerator</span><span class="p">(</span><span class="n">BaseDataGenerator</span><span class="p">):</span>
+
+    <span class="n">CREDITS_PER_SEMESTER</span> <span class="o">=</span> <span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-59'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-59">#</a>
+        </div>
+        <p>According the request:
+'Women on average receive higher grades than men'</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">MALE_MISFORTUNE</span> <span class="o">=</span> <span class="mf">0.95</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-60'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-60">#</a>
+        </div>
+        <p>SELECT_CLASSES_BY_SEMESTER = """SELECT class_seq, department_code, course_no FROM cd.class WHERE
+   year=%s AND season=%s and section='001' """</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">ENROLLMENT_STATUS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;enr&#39;</span><span class="p">,</span> <span class="s">&#39;inc&#39;</span><span class="p">,</span> <span class="s">&#39;ngr&#39;</span><span class="p">]</span>
+
+    <span class="n">ENROLLMENT_TABLE</span> <span class="o">=</span> <span class="s">&#39;ed.enrollment&#39;</span>
+    <span class="n">ENROLLMENT_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;class_seq&#39;</span><span class="p">,</span> <span class="s">&#39;student_id&#39;</span><span class="p">,</span> <span class="s">&#39;status&#39;</span><span class="p">,</span> <span class="s">&#39;grade&#39;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-61'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-61">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="n">student</span><span class="p">,</span> <span class="n">classgen</span><span class="p">,</span> <span class="n">rand</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">dictionary</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-62'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-62">#</a>
+        </div>
+        <p>make a student map</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">student</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">StudentGenerator</span><span class="o">.</span><span class="n">STUDENT_COLUMNS</span><span class="p">,</span> <span class="n">student</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-63'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-63">#</a>
+        </div>
+        <pre><code>   self.classes = classes
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">classgen</span><span class="p">,</span> <span class="n">ClassGenerator</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span> <span class="o">=</span> <span class="n">classgen</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_level</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">free_courses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enrollment_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">semester_classes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grade_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">rand</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100000</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">rand</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100000</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">rand</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100000</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sorted_courses</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dictionary</span><span class="o">.</span><span class="n">courses</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-64'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-64">#</a>
+        </div>
+        <p>returns random course by specified classification (or its children if required),
+None if no suitable courses found</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_course_by_classification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">classification</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">classification</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">classified_courses</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">course_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">classified_courses</span><span class="p">[</span><span class="n">classification</span><span class="p">]</span>
+        <span class="n">candidate_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">course</span> <span class="ow">in</span> <span class="n">course_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">course</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="p">:</span>
+                <span class="n">candidate_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">course</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidate_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="n">candidate_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">classification_tree</span><span class="p">[</span><span class="n">classification</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_course_by_classification</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-65'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-65">#</a>
+        </div>
+        <p>adds course to the list of taken courses with all prerequisites</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">add_course</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">course_key</span><span class="p">,</span> <span class="n">classif_list</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">course_key</span><span class="p">)</span>
+        <span class="n">credits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">courses</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">classif</span> <span class="ow">in</span> <span class="n">classif_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">classif</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span><span class="p">[</span><span class="n">classif</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span><span class="p">[</span><span class="n">classif</span><span class="p">]</span> <span class="o">+</span> <span class="n">credits</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span><span class="p">[</span><span class="n">classif</span><span class="p">]</span> <span class="o">=</span> <span class="n">credits</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-66'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-66">#</a>
+        </div>
+        <p>add requirements</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">req_course</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">[</span><span class="n">course_key</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">req_course</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_course</span><span class="p">(</span><span class="n">req_course</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_classification</span><span class="p">[</span><span class="n">req_course</span><span class="p">])</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-67'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-67">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">fill_required_courses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">[</span><span class="s">&#39;school_code&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">[</span><span class="s">&#39;program_code&#39;</span><span class="p">])</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">program_req</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">program_req</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">[</span><span class="s">&#39;school_code&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">[</span><span class="s">&#39;program_code&#39;</span><span class="p">])]</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">r</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span><span class="p">[</span><span class="n">req</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">fill_req_map</span><span class="p">[</span><span class="n">req</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">r</span><span class="p">[</span><span class="n">req</span><span class="p">]:</span>
+                <span class="n">course_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_course_by_classification</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">course_key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_course</span><span class="p">(</span><span class="n">course_key</span><span class="p">,</span> <span class="p">[</span><span class="n">req</span><span class="p">])</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-68'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-68">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">correct_req_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">course_key</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">course_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">:</span>
+            <span class="n">cur_level</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cur_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">cur_level</span> <span class="o">&gt;</span> <span class="n">level</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">level</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-69'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-69">#</a>
+        </div>
+        <p>update min level</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="n">level</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_level</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">min_level</span> <span class="o">=</span> <span class="n">level</span>
+            <span class="k">if</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">req_course</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">[</span><span class="n">course_key</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">correct_req_level</span><span class="p">(</span><span class="n">req_course</span><span class="p">,</span> <span class="n">level</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-70'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-70">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">distribute_courses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span> <span class="ow">and</span> <span class="n">course_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">req_course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">[</span><span class="n">course_key</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">correct_req_level</span><span class="p">(</span><span class="n">req_course_key</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">):</span>
+            <span class="n">level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_level</span>
+            <span class="k">if</span> <span class="n">level</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span><span class="p">[</span><span class="n">level</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span><span class="p">[</span><span class="n">level</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">course_key</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">course_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">free_courses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">course_key</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-71'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-71">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_semester_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span><span class="o">.</span><span class="n">class_data</span><span class="p">:</span>
+            <span class="n">dep</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;department_code&#39;</span><span class="p">)]</span>
+            <span class="n">no</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;course_no&#39;</span><span class="p">)]</span>
+            <span class="n">year</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;year&#39;</span><span class="p">)]</span>
+            <span class="n">season</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;season&#39;</span><span class="p">)]</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">setdefault</span><span class="p">((</span><span class="n">year</span><span class="p">,</span> <span class="n">season</span><span class="p">),</span> <span class="p">{})</span>
+            <span class="n">res</span><span class="p">[</span><span class="n">year</span><span class="p">,</span> <span class="n">season</span><span class="p">]</span><span class="o">.</span><span class="n">setdefault</span><span class="p">((</span><span class="n">dep</span><span class="p">,</span> <span class="n">no</span><span class="p">),</span> <span class="p">[])</span>
+            <span class="n">res</span><span class="p">[</span><span class="n">year</span><span class="p">,</span> <span class="n">season</span><span class="p">][</span><span class="n">dep</span><span class="p">,</span> <span class="n">no</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">semester_classes</span> <span class="o">=</span> <span class="n">res</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-72'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-72">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">can_take</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">course_key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">req_course_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">course_prereq</span><span class="p">[</span><span class="n">course_key</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">req_course_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-73'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-73">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_class_by_course</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">course_key</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">classes_by_semester</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">course_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">classes_by_semester</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">sections</span> <span class="o">=</span> <span class="n">classes_by_semester</span><span class="p">[</span><span class="n">course_key</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-74'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-74">#</a>
+        </div>
+        <p>more than one section means that previous classes are full
+so we choose class with max section value</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">sections</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;section&#39;</span><span class="p">)]))</span>
+        <span class="n">cls</span> <span class="o">=</span> <span class="n">sections</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">class_seq</span> <span class="o">=</span> <span class="n">cls</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;class_seq&#39;</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span><span class="o">.</span><span class="n">get_class_fill</span><span class="p">(</span><span class="n">class_seq</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_FILL_LIMIT</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span><span class="o">.</span><span class="n">take_class</span><span class="p">(</span><span class="n">class_seq</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">class_seq</span>
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">cls</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;instructor_code&#39;</span><span class="p">)]</span>
+        <span class="n">section</span> <span class="o">=</span> <span class="n">cls</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;section&#39;</span><span class="p">)]</span>
+        <span class="n">section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span><span class="o">.</span><span class="n">next_section</span><span class="p">(</span><span class="n">section</span><span class="p">)</span>
+        <span class="n">cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span><span class="o">.</span><span class="n">generate_class</span><span class="p">(</span><span class="n">inst</span><span class="p">,</span> <span class="n">course_key</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">section</span><span class="p">)</span>
+        <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+        <span class="n">class_seq</span> <span class="o">=</span> <span class="n">cls</span><span class="p">[</span><span class="n">ClassGenerator</span><span class="o">.</span><span class="n">CLASS_COLUMNS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;class_seq&#39;</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classgen</span><span class="o">.</span><span class="n">take_class</span><span class="p">(</span><span class="n">class_seq</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">class_seq</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-75'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-75">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">choose_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">classes_by_semester</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>    <span class="c"># just to avoid endless cycle</span>
+            <span class="k">if</span> <span class="n">level</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span><span class="p">[</span><span class="n">level</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span><span class="p">[</span><span class="n">level</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span><span class="p">)</span>
+                <span class="n">cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_class_by_course</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">classes_by_semester</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">courses_by_level</span><span class="p">[</span><span class="n">level</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">free_courses</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">free_courses</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span><span class="p">)</span>
+                <span class="n">cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_class_by_course</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">classes_by_semester</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">free_courses</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sorted_courses</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">course_gen</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_take</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
+                <span class="n">cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_class_by_course</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">semester</span><span class="p">,</span> <span class="n">classes_by_semester</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">taken_courses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-76'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-76">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_random_grade</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">semester</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">CURDATE</span> <span class="o">&lt;</span> <span class="n">semester</span><span class="p">[</span><span class="s">&#39;end_date&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grade_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NULL_PERCENT</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-77'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-77">#</a>
+        </div>
+        <p>since python 2.6
+       val = self.grade_gen.triangular(0.0, 4.0, 2.5)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grade_gen</span><span class="o">.</span><span class="n">normalvariate</span><span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-78'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-78">#</a>
+        </div>
+        <p>cut both ends
+Women on average receive higher grades than men</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="mi">4</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">student</span><span class="p">[</span><span class="s">&#39;gender&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;m&#39;</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-79'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-79">#</a>
+        </div>
+        <p>val = val * self.MALE_MISFORTUNE
+return round(val, 1)</p>
+<p>def generate_enrollment(self, class_id, semester):
+status = self.get_rand_item(self.ENROLLMENT_STATUS, self.status_gen)
+return [
+class_id,
+self.student['id'],
+status,
+self.get_random_grade(semester)
+]</p>
+<p>def generate_content(self):
+self.fill_required_courses()
+self.distribute_courses()
+self.get_semester_classes()
+level = 0
+credits_gen = random.Random(RANDOM_SEED)
+for semester in self.dictionary.semesters:
+study_time = (semester["end_date"] - self.student["start_date"]).days
+if study_time &gt; 0 and study_time &lt; 4 * 356 
+<pre>and semester['season'] != 'summer' 
+and semester["begin_date"] &lt; CURDATE:
+credits = credits_gen.uniform(self.CREDITS_PER_SEMESTER[0], self.CREDITS_PER_SEMESTER[1])
+classes_by_semester = self.semester_classes[semester['year'], semester['season']].copy()
+credits_taken = 0
+while credits_taken &lt; credits:
+(class_seq, course_key) = self.choose_class(level, semester, classes_by_semester)
+credits_taken = credits_taken + self.dictionary.courses[course_key]</p>
+<h1>make enrollment</h1>
+<p>enr = self.generate_enrollment(class_seq, semester)
+self.enrollment_data.append(enr)
+</pre></p>
+<h1>if all courses of the current lavel are off, move to the next</h1>
+<p>if level in self.courses_by_level and len(self.courses_by_level[level]) == 0:
+level = level + 1</p>
+<p>def get_content(self):
+return [
+self.make_insert_map(self.ENROLLMENT_TABLE, self.ENROLLMENT_COLUMNS, self.enrollment_data)
+]</p>
+<p>class StudentGenerator(BaseDataGenerator):</p>
+<p>Generate students</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">ADMISSION_SIZE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">125</span><span class="p">)</span>
+    <span class="n">ADMISSION_AGE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+    <span class="n">STUDENT_ID_OFFSET</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="n">INACTIVE_PERCENT</span> <span class="o">=</span> <span class="mi">5</span>
+
+    <span class="n">STUDENT_TABLE</span> <span class="o">=</span> <span class="s">&quot;ed.student&quot;</span>
+    <span class="n">STUDENT_COLUMNS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;id&quot;</span><span class="p">,</span> <span class="s">&quot;name&quot;</span><span class="p">,</span> <span class="s">&quot;gender&quot;</span><span class="p">,</span> <span class="s">&quot;dob&quot;</span><span class="p">,</span> <span class="s">&quot;school_code&quot;</span><span class="p">,</span> <span class="s">&quot;program_code&quot;</span><span class="p">,</span> <span class="s">&quot;start_date&quot;</span><span class="p">,</span> <span class="s">&quot;is_active&quot;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-80'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-80">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name_generator</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_generator</span> <span class="o">=</span> <span class="n">name_generator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span> <span class="o">=</span> <span class="n">dictionary</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">student_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cur_year</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">year</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">student_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gender_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dob_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">school_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">program_gen</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">school_code</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">school_programs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">program_gen</span><span class="p">[</span><span class="n">school_code</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-81'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-81">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_student</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">semester</span><span class="p">):</span>
+        <span class="n">gender</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_gender</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gender_gen</span><span class="p">)</span>
+        <span class="n">full_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">gender</span><span class="p">)</span>
+        <span class="n">dob_end</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="n">semester</span><span class="p">[</span><span class="s">&quot;year&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ADMISSION_AGE</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">31</span><span class="p">)</span>
+        <span class="n">dob_start</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="n">semester</span><span class="p">[</span><span class="s">&quot;year&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ADMISSION_AGE</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">dob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_date</span><span class="p">(</span><span class="n">dob_start</span><span class="p">,</span> <span class="n">dob_end</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dob_gen</span><span class="p">)</span>
+        <span class="n">school</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">school_programs</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">school_gen</span><span class="p">)</span>
+        <span class="n">program</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_rand_item</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">school_programs</span><span class="p">[</span><span class="n">school</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">program_gen</span><span class="p">[</span><span class="n">school</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">student_counter</span> <span class="o">+=</span> <span class="mi">1</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-82'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-82">#</a>
+        </div>
+        <p>what about masters and doctors?</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">active</span> <span class="o">=</span> <span class="p">(</span><span class="n">CURDATE</span> <span class="o">-</span> <span class="n">semester</span><span class="p">[</span><span class="s">&quot;begin_date&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">days</span> <span class="o">&lt;</span> <span class="mi">4</span> <span class="o">*</span> <span class="mi">365</span>
+        <span class="k">if</span> <span class="n">active</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">INACTIVE_PERCENT</span><span class="p">:</span>
+            <span class="n">active</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">STUDENT_ID_OFFSET</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">student_counter</span><span class="p">,</span>
+            <span class="n">full_name</span><span class="p">,</span>
+            <span class="n">gender</span><span class="p">,</span>
+            <span class="n">dob</span><span class="p">,</span>
+            <span class="n">school</span><span class="p">,</span>
+            <span class="n">program</span><span class="p">,</span>
+            <span class="n">semester</span><span class="p">[</span><span class="s">&quot;begin_date&quot;</span><span class="p">],</span>
+            <span class="n">active</span>
+        <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-83'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-83">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">generate_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">admission_gen</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">semester</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dictionary</span><span class="o">.</span><span class="n">semesters</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">semester</span><span class="p">[</span><span class="s">&quot;season&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;fall&#39;</span> <span class="ow">and</span> <span class="n">semester</span><span class="p">[</span><span class="s">&quot;begin_date&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">CURDATE</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-84'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-84">#</a>
+        </div>
+        <p>make admission</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="n">student_count</span> <span class="o">=</span> <span class="n">admission_gen</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ADMISSION_SIZE</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">ADMISSION_SIZE</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">student_count</span><span class="p">):</span>
+                    <span class="n">student</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_student</span><span class="p">(</span><span class="n">semester</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">student_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">student</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-85'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-85">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">make_insert_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">STUDENT_TABLE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">STUDENT_COLUMNS</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">student_data</span><span class="p">)</span>
+        <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-86'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-86">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
+    <span class="n">dictionary</span> <span class="o">=</span> <span class="n">CollectionDictionaryLoader</span><span class="p">()</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+    <span class="n">name_data</span> <span class="o">=</span> <span class="n">StatNameData</span><span class="p">()</span>
+    <span class="n">inst_namegen</span> <span class="o">=</span> <span class="n">StatNameGenerator</span><span class="p">(</span><span class="n">name_data</span><span class="p">,</span> <span class="n">INSTRUCTOR_NAME_SEED</span><span class="p">)</span>
+
+    <span class="n">instgen</span> <span class="o">=</span> <span class="n">InstructorGenerator</span><span class="p">(</span><span class="n">inst_namegen</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">)</span>
+    <span class="n">instgen</span><span class="o">.</span><span class="n">generate_content</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">instgen</span><span class="o">.</span><span class="n">get_content</span><span class="p">()</span>
+
+    <span class="n">classgen</span> <span class="o">=</span> <span class="n">ClassGenerator</span><span class="p">(</span><span class="n">dictionary</span><span class="p">,</span> <span class="n">instgen</span><span class="o">.</span><span class="n">dep_app</span><span class="p">)</span>
+    <span class="n">classgen</span><span class="o">.</span><span class="n">generate_content</span><span class="p">()</span>
+
+    <span class="n">stud_namegen</span> <span class="o">=</span> <span class="n">StatNameGenerator</span><span class="p">(</span><span class="n">name_data</span><span class="p">,</span> <span class="n">STUDENT_NAME_SEED</span><span class="p">)</span>
+    <span class="n">studgen</span> <span class="o">=</span> <span class="n">StudentGenerator</span><span class="p">(</span><span class="n">stud_namegen</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">)</span>
+    <span class="n">studgen</span><span class="o">.</span><span class="n">generate_content</span><span class="p">()</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">studgen</span><span class="o">.</span><span class="n">get_content</span><span class="p">())</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">RANDOM_SEED</span><span class="p">)</span>
+    <span class="n">enr_result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">student</span> <span class="ow">in</span> <span class="n">studgen</span><span class="o">.</span><span class="n">student_data</span><span class="p">:</span>
+        <span class="n">enrgen</span> <span class="o">=</span> <span class="n">EnrollmentGenerator</span><span class="p">(</span><span class="n">dictionary</span><span class="p">,</span> <span class="n">student</span><span class="p">,</span> <span class="n">classgen</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+        <span class="n">enrgen</span><span class="o">.</span><span class="n">generate_content</span><span class="p">()</span>
+        <span class="n">enr_result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">enrgen</span><span class="o">.</span><span class="n">get_content</span><span class="p">())</span>
+
+    <span class="n">classgen</span><span class="o">.</span><span class="n">drop_empty_classes</span><span class="p">()</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">classgen</span><span class="o">.</span><span class="n">get_content</span><span class="p">())</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">enr_result</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

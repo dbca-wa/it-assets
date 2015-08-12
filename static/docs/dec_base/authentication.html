@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>authentication.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>authentication.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">ldap</span>
+<span class="kn">from</span> <span class="nn">django_auth_ldap.config</span> <span class="kn">import</span> <span class="n">LDAPSearch</span><span class="p">,</span> <span class="n">GroupOfNamesType</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>Baseline configuration.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">AUTH_LDAP_SERVER_URI</span> <span class="o">=</span> <span class="s">&quot;ldap://corporateict.domain:3268&quot;</span>
+
+<span class="n">AUTH_LDAP_BIND_DN</span> <span class="o">=</span> <span class="s">&quot;atlassian-admin@corporateict.domain&quot;</span>
+<span class="n">AUTH_LDAP_BIND_PASSWORD</span> <span class="o">=</span> <span class="s">&quot;p7_9Yyzzal&quot;</span>
+<span class="n">AUTH_LDAP_USER_SEARCH</span> <span class="o">=</span> <span class="n">LDAPSearch</span><span class="p">(</span><span class="s">&quot;DC=corporateict,DC=domain&quot;</span><span class="p">,</span>
+    <span class="n">ldap</span><span class="o">.</span><span class="n">SCOPE_SUBTREE</span><span class="p">,</span> <span class="s">&quot;(sAMAccountName=</span><span class="si">%(user)s</span><span class="s">)&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Set up the basic group parameters.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">AUTH_LDAP_GROUP_SEARCH</span> <span class="o">=</span> <span class="n">LDAPSearch</span><span class="p">(</span><span class="s">&quot;DC=corporateict,DC=domain&quot;</span><span class="p">,</span>
+    <span class="n">ldap</span><span class="o">.</span><span class="n">SCOPE_SUBTREE</span><span class="p">,</span> <span class="s">&quot;(objectClass=group)&quot;</span>
+<span class="p">)</span>
+
+<span class="n">AUTH_LDAP_GLOBAL_OPTIONS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ldap</span><span class="o">.</span><span class="n">OPT_X_TLS_REQUIRE_CERT</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="n">ldap</span><span class="o">.</span><span class="n">OPT_REFERRALS</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+<span class="p">}</span> 
+
+<span class="n">AUTH_LDAP_GROUP_TYPE</span> <span class="o">=</span> <span class="n">GroupOfNamesType</span><span class="p">(</span><span class="n">name_attr</span><span class="o">=</span><span class="s">&quot;cn&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Only users in this group can log in.
+AUTH_LDAP_REQUIRE_GROUP = "cn=enabled,ou=django,ou=groups,dc=example,dc=com"</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>Populate the Django user from the LDAP directory.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">AUTH_LDAP_USER_ATTR_MAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&quot;first_name&quot;</span><span class="p">:</span> <span class="s">&quot;givenName&quot;</span><span class="p">,</span>
+    <span class="s">&quot;last_name&quot;</span><span class="p">:</span> <span class="s">&quot;sn&quot;</span><span class="p">,</span>
+    <span class="s">&quot;email&quot;</span><span class="p">:</span> <span class="s">&quot;mail&quot;</span>
+<span class="p">}</span>
+
+<span class="n">AUTH_LDAP_USER_FLAGS_BY_GROUP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&quot;is_staff&quot;</span><span class="p">:</span> <span class="s">&quot;CN=Atlassian Admins,OU=Crowd,OU=_Global,OU=Sites,DC=corporateict,DC=domain&quot;</span><span class="p">,</span>
+    <span class="s">&quot;is_superuser&quot;</span><span class="p">:</span> <span class="s">&quot;CN=Atlassian Admins,OU=Crowd,OU=_Global,OU=Sites,DC=corporateict,DC=domain&quot;</span>
+<span class="p">}</span>
+
+<span class="n">AUTH_LDAP_ALWAYS_UPDATE_USER</span> <span class="o">=</span> <span class="bp">False</span> 
+<span class="n">AUTH_LDAP_AUTHORIZE_ALL_USERS</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Use LDAP group membership to calculate group permissions.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">AUTH_LDAP_FIND_GROUP_PERMS</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="n">AUTH_LDAP_MIRROR_GROUPS</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Cache group memberships for an hour to minimize LDAP traffic</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">AUTH_LDAP_CACHE_GROUPS</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>AUTH_LDAP_GROUP_CACHE_TIMEOUT = 300</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>Keep ModelBackend around for per-user permissions and maybe a local
+superuser.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">AUTHENTICATION_BACKENDS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s">&#39;django_auth_ldap.backend.LDAPBackend&#39;</span><span class="p">,</span>
+    <span class="s">&#39;django.contrib.auth.backends.ModelBackend&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;django_auth_ldap&#39;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">())</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

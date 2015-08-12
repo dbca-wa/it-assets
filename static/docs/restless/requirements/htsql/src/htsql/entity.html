@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>entity.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>entity.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql.entity</code></h1>
+<p>This module implements the HTSQL catalog and catalog entities.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="n">listof</span>
+<span class="kn">from</span> <span class="nn">.domain</span> <span class="kn">import</span> <span class="n">Domain</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Represents a database metadata object.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Entity</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Represents a database object with a name.</p>
+<p><code>name</code> (a string)
+<pre>The object name</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">NamedEntity</span><span class="p">(</span><span class="n">Entity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>Sanity check on the argument.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p></pre>Implements an ordered collection of named entities.</p>
+<p>:class:<code>EntitySet</code> provides a read-only mapping interface to a collection
+of named entities.  The only deviation from the mapping interface is that
+iteration generates entities in the original order (instead of entity
+names in an arbitrary order).</p>
+<p><code>entities</code>
+<pre>A list of named entities.  Entity names must be unique.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EntitySet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entities</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>Sanity check on the argument.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">NamedEntity</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>An ordered list of entities.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">entities</span> <span class="o">=</span> <span class="n">entities</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        <p>A mapping: name -&gt; entity.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">entity_by_name</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">entity</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">entity</span><span class="p">)</span>
+                                   <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">entities</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p>Verify that the names are unique.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_by_name</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <p></pre>Checks if the collection contains an entity with the given name.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="p">(</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_by_name</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        <p>Returns an entity with the given name.</p>
+<p>Raises :exc:<code>KeyError</code> if there is no entity with the given name
+in the collection.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_by_name</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        <p>Generates entities in the original order.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        <p>Returns the number of entities in the collection.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p>Returns an entity with the given name.</p>
+<p>If the collection does not contain an entity with the given name,
+returns the <code>default</code> value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_by_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        <p>Returns a list of entity names in the original order.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        <p>Returns a list of entities in the original order.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">[:]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        <p>Returns a list of pairs <code>(name, entity)</code> in the original order.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="p">[(</span><span class="n">entity</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">entity</span><span class="p">)</span> <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entities</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>Encapsulates database metadata.</p>
+<p><code>schemas</code> (a list of :class:<code>SchemaEntity</code>)
+<pre>A list of schemas.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">CatalogEntity</span><span class="p">(</span><span class="n">Entity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schemas</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        <p>Sanity check on the argument.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">schemas</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">SchemaEntity</span><span class="p">))</span>
+        <span class="n">name_to_schema</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">schema</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">schema</span><span class="p">)</span> <span class="k">for</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">schemas</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">origin_schema</span> <span class="ow">in</span> <span class="n">schemas</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">origin_table</span> <span class="ow">in</span> <span class="n">origin_schema</span><span class="o">.</span><span class="n">tables</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">fk</span> <span class="ow">in</span> <span class="n">origin_table</span><span class="o">.</span><span class="n">foreign_keys</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="n">fk</span><span class="o">.</span><span class="n">target_schema_name</span> <span class="ow">in</span> <span class="n">name_to_schema</span><span class="p">,</span> <span class="n">fk</span>
+                    <span class="n">schema</span> <span class="o">=</span> <span class="n">name_to_schema</span><span class="p">[</span><span class="n">fk</span><span class="o">.</span><span class="n">target_schema_name</span><span class="p">]</span>
+                    <span class="k">assert</span> <span class="n">fk</span><span class="o">.</span><span class="n">target_name</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">tables</span><span class="p">,</span> <span class="n">fk</span>
+                    <span class="n">table</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">tables</span><span class="p">[</span><span class="n">fk</span><span class="o">.</span><span class="n">target_name</span><span class="p">]</span>
+                    <span class="k">assert</span> <span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+                                <span class="o">.</span><span class="n">issuperset</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">fk</span><span class="o">.</span><span class="n">target_column_names</span><span class="p">))),</span> <span class="n">fk</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        <p>An ordered mapping: name -&gt; schema.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">schemas</span> <span class="o">=</span> <span class="n">EntitySet</span><span class="p">(</span><span class="n">schemas</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        <p></pre>Represents a database schema.</p>
+<p><code>name</code> (a string)
+<pre>The schema name.
+</pre>
+<code>tables</code> (a list of :class:<code>TableEntity</code>)
+A list of tables in the schema.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SchemaEntity</span><span class="p">(</span><span class="n">NamedEntity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">tables</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">TableEntity</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">schema_name</span> <span class="o">==</span> <span class="n">name</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">priority</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">SchemaEntity</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        <p>An ordered mapping: name -&gt; table.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">tables</span> <span class="o">=</span> <span class="n">EntitySet</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">priority</span> <span class="o">=</span> <span class="n">priority</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        <p>Represents a database table or a view.</p>
+<p><code>schema_name</code> (a string)
+<pre>The name of the schema to which the table belongs.
+</pre>
+<code>name</code> (a string)
+The table name.</p>
+<p><code>columns</code> (a list of :class:<code>ColumnEntity</code>)
+A list of columns of the table.</p>
+<p><code>unique_keys</code> (a list of :class:<code>UniqueKeyEntity</code>)
+A list of unique key constraints applied to the table.</p>
+<p><code>foreign_keys</code> (a list of :class:<code>ForeignKeyEntity</code>)
+A list of foreign key constraints applied to the table.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">TableEntity</span><span class="p">(</span><span class="n">NamedEntity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">unique_keys</span><span class="p">,</span> <span class="n">foreign_keys</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">ColumnEntity</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">((</span><span class="n">column</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">column</span><span class="o">.</span><span class="n">table_name</span><span class="p">)</span>
+                        <span class="o">==</span> <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">),</span> \
+               <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">columns</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unique_keys</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">UniqueKeyEntity</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">((</span><span class="n">uk</span><span class="o">.</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="n">uk</span><span class="o">.</span><span class="n">origin_name</span><span class="p">)</span>
+                        <span class="o">==</span> <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">uk</span> <span class="ow">in</span> <span class="n">unique_keys</span><span class="p">),</span> \
+               <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">unique_keys</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">)</span><span class="o">.</span><span class="n">issuperset</span><span class="p">(</span>
+                <span class="nb">set</span><span class="p">(</span><span class="n">column_name</span> <span class="k">for</span> <span class="n">uk</span> <span class="ow">in</span> <span class="n">unique_keys</span>
+                                <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">uk</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">)),</span> \
+               <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">unique_keys</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">foreign_keys</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">ForeignKeyEntity</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">((</span><span class="n">fk</span><span class="o">.</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="n">fk</span><span class="o">.</span><span class="n">origin_name</span><span class="p">)</span>
+                        <span class="o">==</span> <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">fk</span> <span class="ow">in</span> <span class="n">foreign_keys</span><span class="p">),</span> \
+               <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">foreign_keys</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">)</span><span class="o">.</span><span class="n">issuperset</span><span class="p">(</span>
+                <span class="nb">set</span><span class="p">(</span><span class="n">column_name</span> <span class="k">for</span> <span class="n">fk</span> <span class="ow">in</span> <span class="n">foreign_keys</span>
+                                <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">fk</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">)),</span> \
+               <span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">foreign_keys</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">TableEntity</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema_name</span> <span class="o">=</span> <span class="n">schema_name</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        <p>An ordered mapping: name -&gt; column.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">EntitySet</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unique_keys</span> <span class="o">=</span> <span class="n">unique_keys</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        <p>Find the primary key if it exists.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">primary_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">uk</span> <span class="k">for</span> <span class="n">uk</span> <span class="ow">in</span> <span class="n">unique_keys</span> <span class="k">if</span> <span class="n">uk</span><span class="o">.</span><span class="n">is_primary</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">primary_keys</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">primary_keys</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">primary_key</span> <span class="o">=</span> <span class="n">primary_keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">foreign_keys</span> <span class="o">=</span> <span class="n">foreign_keys</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        <p>Represents a column of a table.</p>
+<p><code>schema_name</code>, <code>table_name</code> (strings)
+<pre>The schema name and the name of the table to which the column belongs.
+</pre>
+<code>name</code> (a string)
+The name of the column.</p>
+<p><code>domain</code> (:class:<code>htsql.domain.Domain</code>)
+The column type.</p>
+<p><code>is_nullable</code> (Boolean)
+Indicates if the column admits <code>NULL</code> values.</p>
+<p><code>has_default</code> (Boolean)
+Indicates if the column has some (explicitly set) default value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ColumnEntity</span><span class="p">(</span><span class="n">NamedEntity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema_name</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+                 <span class="n">domain</span><span class="p">,</span> <span class="n">is_nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">has_default</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">schema_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">table_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">Domain</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_nullable</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">has_default</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">ColumnEntity</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema_name</span> <span class="o">=</span> <span class="n">schema_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">table_name</span> <span class="o">=</span> <span class="n">table_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_nullable</span> <span class="o">=</span> <span class="n">is_nullable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_default</span> <span class="o">=</span> <span class="n">has_default</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        <p>Represents a unique key constraint.</p>
+<p>Class attributes:</p>
+<p><code>is_primary</code> (Boolean)
+<pre>Indicates if the constraint represents a primary key.
+</pre>
+The constructor accepts the following parameters:</p>
+<p><code>origin_schema_name</code>, <code>origin_name</code> (strings)
+The schema name and the name of the table to which the constraint
+is applied.</p>
+<p><code>origin_column_names</code> (a list of strings)
+The names of the columns which the constraint comprises.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">UniqueKeyEntity</span><span class="p">(</span><span class="n">Entity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-58'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-58">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_primary</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-59'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-59">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin_schema_name</span><span class="p">,</span> <span class="n">origin_name</span><span class="p">,</span> <span class="n">origin_column_names</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-60'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-60">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin_column_names</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">origin_column_names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin_schema_name</span> <span class="o">=</span> <span class="n">origin_schema_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin_name</span> <span class="o">=</span> <span class="n">origin_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin_column_names</span> <span class="o">=</span> <span class="n">origin_column_names</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-61'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-61">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-62'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-62">#</a>
+        </div>
+        <p>Generate a string of the form:
+  schema.table(column,...)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin_name</span><span class="p">,</span>
+                              <span class="s">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-63'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-63">#</a>
+        </div>
+        <p>Represents a primary key constraint.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">PrimaryKeyEntity</span><span class="p">(</span><span class="n">UniqueKeyEntity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-64'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-64">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_primary</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-65'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-65">#</a>
+        </div>
+        <p>Represents a foreign key constraint.</p>
+<p><code>origin_schema_name</code>, <code>origin_name</code> (strings)
+<pre>The schema name and the name of the table to which the constraint
+is applied.
+</pre>
+<code>origin_column_names</code> (a list of strings)
+The names of the columns which the constraint comprises.</p>
+<p><code>target_schema_name</code>, <code>target_name</code> (strings)
+The schema name and the name of the referenced table.</p>
+<p><code>target_column_names</code> (a list of strings)
+The names of the columns which the constraint refers to.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ForeignKeyEntity</span><span class="p">(</span><span class="n">Entity</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-66'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-66">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-67'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-67">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin_schema_name</span><span class="p">,</span> <span class="n">origin_name</span><span class="p">,</span> <span class="n">origin_column_names</span><span class="p">,</span>
+                 <span class="n">target_schema_name</span><span class="p">,</span> <span class="n">target_name</span><span class="p">,</span> <span class="n">target_column_names</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-68'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-68">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin_column_names</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_schema_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_column_names</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">origin_column_names</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_column_names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin_schema_name</span> <span class="o">=</span> <span class="n">origin_schema_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin_name</span> <span class="o">=</span> <span class="n">origin_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin_column_names</span> <span class="o">=</span> <span class="n">origin_column_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_schema_name</span> <span class="o">=</span> <span class="n">target_schema_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_name</span> <span class="o">=</span> <span class="n">target_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_column_names</span> <span class="o">=</span> <span class="n">target_column_names</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-69'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-69">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-70'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-70">#</a>
+        </div>
+        <p>Generate a string of the form:
+  schema.table(column,...) -&gt; schema.table(column,...)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">) -&gt; </span><span class="si">%s</span><span class="s">.</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&quot;</span> \
+                <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin_name</span><span class="p">,</span>
+                   <span class="s">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">),</span>
+                   <span class="bp">self</span><span class="o">.</span><span class="n">target_schema_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_name</span><span class="p">,</span>
+                   <span class="s">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_column_names</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-71'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-71">#</a>
+        </div>
+        <p>Represents a join condition between two tables.</p>
+<p>This is an abstract case class with two subclasses: :class:<code>DirectJoin</code>
+and :class:<code>ReverseJoin</code>.</p>
+<p>Class attributes:</p>
+<p><code>is_direct</code> (Boolean)
+<pre>Indicates that the join follows a foreign key
+(set for an instance of :class:<code>DirectJoin</code>).
+</pre>
+<code>is_reverse</code> (Boolean)
+Indicates that the join follows the opposite direction
+to a foreign key (set for an instance of :class:<code>ReverseJoin</code>).</p>
+<p>Attributes:</p>
+<p><code>origin</code> (:class:<code>TableEntity</code>)
+The origin table of the join.</p>
+<p><code>target</code> (:class:<code>TableEntity</code>)
+The target table of the join.</p>
+<p><code>is_expanding</code> (Boolean)
+Indicates that for each row of the origin table there is
+at least one row of the target table that satisfies
+the join condition.</p>
+<p><code>is_contracting</code> (Boolean)
+Indicates that for each row of the origin table there is
+no more than one row of the target table that satisfies
+the join condition.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Join</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-72'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-72">#</a>
+        </div>
+        <p>FIXME: do joins belong to <code>entity.py</code>?</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_direct</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_reverse</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-73'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-73">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">is_expanding</span><span class="p">,</span> <span class="n">is_contracting</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-74'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-74">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_expanding</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_contracting</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_expanding</span> <span class="o">=</span> <span class="n">is_expanding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_contracting</span> <span class="o">=</span> <span class="n">is_contracting</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-75'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-75">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-76'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-76">#</a>
+        </div>
+        <p>Generate a string of the form:
+  schema.table -&gt; schema.table</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> -&gt; </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-77'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-77">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;&lt;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-78'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-78">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-79'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-79">#</a>
+        </div>
+        <p>Since joins are used in comparison operations of code and space
+objects, we need to override hash and equality operators to
+provide comparison by value.  Override in subclasses.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-80'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-80">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-81'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-81">#</a>
+        </div>
+        <p>Since joins are used in comparison operations of code and space
+objects, we need to override hash and equality operators to
+provide comparison by value.  Override in subclasses.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-82'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-82">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-83'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-83">#</a>
+        </div>
+        <p>Since we override <code>==</code>, we also need to override <code>!=</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span> <span class="o">==</span> <span class="n">other</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-84'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-84">#</a>
+        </div>
+        <p>Represents a join condition corresponding to a foreign key.</p>
+<p><code>origin</code> (:class:<code>TableEntity</code>)
+<pre>The origin table of the join.
+</pre>
+<code>target</code> (:class:<code>TableEntity</code>)
+The target table of the join.</p>
+<p><code>foreign_key</code> (:class:<code>ForeignKeyEntity</code>)
+The foreign key that generates the join condition.  Note
+that the origin and the target of the key must coincide with
+the <code>origin</code> and <code>target</code> parameters.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">DirectJoin</span><span class="p">(</span><span class="n">Join</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-85'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-85">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_direct</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-86'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-86">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">foreign_key</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-87'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-87">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">foreign_key</span><span class="p">,</span> <span class="n">ForeignKeyEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="p">((</span><span class="n">origin</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">origin</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span>
+                <span class="p">(</span><span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_name</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="p">((</span><span class="n">target</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span>
+                <span class="p">(</span><span class="n">foreign_key</span><span class="o">.</span><span class="n">target_schema_name</span><span class="p">,</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">target_name</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-88'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-88">#</a>
+        </div>
+        <p>The columns that form the join condition.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">origin_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">origin</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                               <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">target</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                               <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">target_column_names</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-89'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-89">#</a>
+        </div>
+        <p>If all referencing columns are <code>NOT NULL</code>, the target row
+always exists.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">is_expanding</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="ow">not</span> <span class="n">column</span><span class="o">.</span><span class="n">is_nullable</span>
+                           <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin_columns</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-90'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-90">#</a>
+        </div>
+        <p>For a join condition corresponding to a foreign key, there is always
+no more than one row in the target table.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">is_contracting</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">DirectJoin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span>
+                                         <span class="n">is_expanding</span><span class="p">,</span> <span class="n">is_contracting</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">foreign_key</span> <span class="o">=</span> <span class="n">foreign_key</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-91'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-91">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-92'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-92">#</a>
+        </div>
+        <p>Provide comparison by value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">foreign_key</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-93'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-93">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-94'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-94">#</a>
+        </div>
+        <p>Provide comparison by value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">DirectJoin</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">foreign_key</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">foreign_key</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-95'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-95">#</a>
+        </div>
+        <p>Represents a join condition that joins tables in the opposite direction
+to some foreign key.</p>
+<p><code>origin</code> (:class:<code>TableEntity</code>)
+<pre>The origin table of the join.
+</pre>
+<code>target</code> (:class:<code>TableEntity</code>)
+The target table of the join.</p>
+<p><code>foreign_key</code> (:class:<code>ForeignKeyEntity</code>)
+The foreign key that generates the join condition.  Note
+that the origin and the target of the key must coincide with
+the <code>target</code> and <code>origin</code> parameters respectively.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ReverseJoin</span><span class="p">(</span><span class="n">Join</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-96'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-96">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_reverse</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-97'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-97">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">foreign_key</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-98'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-98">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">TableEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">foreign_key</span><span class="p">,</span> <span class="n">ForeignKeyEntity</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="p">((</span><span class="n">origin</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">origin</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span>
+                <span class="p">(</span><span class="n">foreign_key</span><span class="o">.</span><span class="n">target_schema_name</span><span class="p">,</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">target_name</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="p">((</span><span class="n">target</span><span class="o">.</span><span class="n">schema_name</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span>
+                <span class="p">(</span><span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_schema_name</span><span class="p">,</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_name</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">foreign_key</span><span class="p">,</span> <span class="n">ForeignKeyEntity</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-99'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-99">#</a>
+        </div>
+        <p>The columns that form the join condition.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">origin_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">origin</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                               <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">target_column_names</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">target</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                               <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-100'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-100">#</a>
+        </div>
+        <p>Unset since we do not know if all rows in the target table
+of a foreign key are referenced.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">is_expanding</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-101'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-101">#</a>
+        </div>
+        <p>Set if the foreign key is one-to-one.  It is so if and only if
+the referencing columns form a unique key.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">is_contracting</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">uk</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">unique_keys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">column_name</span> <span class="ow">in</span> <span class="n">foreign_key</span><span class="o">.</span><span class="n">origin_column_names</span>
+                   <span class="k">for</span> <span class="n">column_name</span> <span class="ow">in</span> <span class="n">uk</span><span class="o">.</span><span class="n">origin_column_names</span><span class="p">):</span>
+                <span class="n">is_contracting</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">ReverseJoin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span>
+                                          <span class="n">is_expanding</span><span class="p">,</span> <span class="n">is_contracting</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">foreign_key</span> <span class="o">=</span> <span class="n">foreign_key</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-102'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-102">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-103'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-103">#</a>
+        </div>
+        <p>Provide comparison by value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">foreign_key</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-104'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-104">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-105'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-105">#</a>
+        </div>
+        <p>Provide comparison by value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ReverseJoin</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">foreign_key</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">foreign_key</span><span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>models.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>models.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">absolute_import</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;log.&quot;</span><span class="o">+</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">import</span> <span class="nn">locale</span>
+
+<span class="kn">from</span> <span class="nn">restless.abstract2</span> <span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">Audit</span><span class="p">,</span> <span class="n">AuditAdmin</span>
+<span class="kn">from</span> <span class="nn">restless.models</span> <span class="kn">import</span> <span class="n">Permission</span><span class="p">,</span> <span class="n">shorthash</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>Returns a nice age like "25 days" or "3 months", with appropriate
+resolution.</p>
+<p>Requires a timedelta object as an argument.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">get_nice_age</span><span class="p">(</span><span class="n">d</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">days</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span>
+    <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">&gt;=</span> <span class="mi">730</span><span class="p">:</span>
+        <span class="n">years</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span><span class="o">/</span><span class="mi">365</span>
+        <span class="n">months</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">-</span> <span class="n">years</span><span class="o">*</span><span class="mi">365</span><span class="p">)</span><span class="o">/</span><span class="mi">30</span>
+        <span class="k">if</span> <span class="n">months</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s"> years, </span><span class="si">%d</span><span class="s"> months&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">years</span><span class="p">,</span> <span class="n">months</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s"> years&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">years</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">&gt;=</span> <span class="mi">365</span><span class="p">:</span>
+        <span class="n">months</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">-</span> <span class="mi">365</span><span class="p">)</span><span class="o">/</span><span class="mi">30</span>
+        <span class="k">if</span> <span class="n">months</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;1 year, </span><span class="si">%d</span><span class="s"> months&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">months</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;1 year&quot;</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">&gt;=</span> <span class="mi">60</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s"> months&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">days</span><span class="o">/</span><span class="mi">30</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">&gt;=</span> <span class="mi">30</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;1 month&quot;</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s"> days&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">days</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">days</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;1 day&quot;</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="mi">7200</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s"> hours&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">seconds</span><span class="o">/</span><span class="mi">3600</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="mi">3600</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;1 hour&quot;</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="mi">120</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s"> minutes&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">seconds</span><span class="o">/</span><span class="mi">60</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="mi">60</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;1 minute&quot;</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> seconds&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">seconds</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span><span class="o">.</span><span class="n">seconds</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Things exactly the same are probably date objects, so max. 1-day
+resolution</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;1 day&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;1 second&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Supplier</span><span class="p">(</span><span class="n">Audit</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;eg. Dell, Cisco&quot;</span><span class="p">)</span>
+    <span class="n">account_rep</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">contact_email</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">contact_phone</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">website</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">URLField</span><span class="p">(</span><span class="n">verify_exists</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">notes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+    </pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>Returns the account rep's name as a clickable email link.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_account_rep</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact_email</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;mailto:</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%s</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">contact_email</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">account_rep</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">account_rep</span>
+    <span class="n">get_account_rep</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">get_account_rep</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Account Rep&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>Returns the website as a clickable link.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_website</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">website</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%s</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">website</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">website</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+    <span class="n">get_website</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">get_website</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Website&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Returns the number of assets entered against this manufacturer.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_set</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="n">model</span><span class="o">.</span><span class="n">asset_set</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">total</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;../asset/?model__manufacturer__id__exact=</span><span class="si">%d</span><span class="s">&#39;&gt;</span><span class="si">%d</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Assets&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Model</span><span class="p">(</span><span class="n">Audit</span><span class="p">):</span>
+    <span class="n">type_choices</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s">&#39;Air conditioner&#39;</span><span class="p">,</span> <span class="s">&#39;Air conditioner&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Camera - Compact&#39;</span><span class="p">,</span> <span class="s">&#39;Camera - Compact&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Camera - SLR&#39;</span><span class="p">,</span> <span class="s">&#39;Camera - SLR&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Camera - Security (IP)&#39;</span><span class="p">,</span> <span class="s">&#39;Camera - Security (IP)&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Camera - Security (non-IP)&#39;</span><span class="p">,</span> <span class="s">&#39;Camera - Security (non-IP)&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Camera - Other&#39;</span><span class="p">,</span> <span class="s">&#39;Camera - Other&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Chassis&#39;</span><span class="p">,</span> <span class="s">&#39;Chassis&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Desktop&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Desktop&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Docking station&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Docking station&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Input device&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Input device&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Laptop&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Laptop&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Monitor&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Monitor&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Tablet PC&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Tablet PC&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Computer - Other&#39;</span><span class="p">,</span> <span class="s">&#39;Computer - Other&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Environmental monitor&#39;</span><span class="p">,</span> <span class="s">&#39;Environmental monitor&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Hub&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Hub&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Media converter&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Media converter&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Modem&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Modem&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Module or card&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Module or card&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Power injector&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Power injector&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Router&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Router&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Switch (Ethernet)&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Switch (Ethernet)&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Switch (FC)&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Switch (FC)&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Wireless AP&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Wireless AP&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Wireless bridge&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Wireless bridge&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Wireless controller&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Wireless controller&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Network - Other&#39;</span><span class="p">,</span> <span class="s">&#39;Network - Other&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Phone - Desk&#39;</span><span class="p">,</span> <span class="s">&#39;Phone - Desk&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Phone - Mobile&#39;</span><span class="p">,</span> <span class="s">&#39;Phone - Mobile&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Phone - Wireless or portable&#39;</span><span class="p">,</span> <span class="s">&#39;Phone - Wireless or portable&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Phone - Other&#39;</span><span class="p">,</span> <span class="s">&#39;Phone - Other&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Power Distribution Unit&#39;</span><span class="p">,</span> <span class="s">&#39;Power Distribution Unit&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Printer - Fax machine&#39;</span><span class="p">,</span> <span class="s">&#39;Printer - Fax machine&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Printer - Multifunction copier&#39;</span><span class="p">,</span> <span class="s">&#39;Printer - Multifunction copier&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Printer - Plotter&#39;</span><span class="p">,</span> <span class="s">&#39;Printer - Plotter&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Printer - Workgroup&#39;</span><span class="p">,</span> <span class="s">&#39;Printer - Workgroup&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Printer - Other&#39;</span><span class="p">,</span> <span class="s">&#39;Printer - Other&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Projector&#39;</span><span class="p">,</span> <span class="s">&#39;Projector&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Rack&#39;</span><span class="p">,</span> <span class="s">&#39;Rack&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Server - Blade&#39;</span><span class="p">,</span> <span class="s">&#39;Server - Blade&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Server - Rackmount&#39;</span><span class="p">,</span> <span class="s">&#39;Server - Rackmount&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Server - Tower&#39;</span><span class="p">,</span> <span class="s">&#39;Server - Tower&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Storage - Disk array&#39;</span><span class="p">,</span> <span class="s">&#39;Storage - Disk array&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Storage - NAS&#39;</span><span class="p">,</span> <span class="s">&#39;Storage - NAS&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Storage - SAN&#39;</span><span class="p">,</span> <span class="s">&#39;Storage - SAN&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Storage - Other&#39;</span><span class="p">,</span> <span class="s">&#39;Storage - Other&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Speaker&#39;</span><span class="p">,</span> <span class="s">&#39;Speaker&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Tablet&#39;</span><span class="p">,</span> <span class="s">&#39;Tablet&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Tape autoloader&#39;</span><span class="p">,</span> <span class="s">&#39;Tape autoloader&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Tape drive&#39;</span><span class="p">,</span> <span class="s">&#39;Tape drive&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;UPS&#39;</span><span class="p">,</span> <span class="s">&#39;UPS&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Other&#39;</span><span class="p">,</span> <span class="s">&#39;Other&#39;</span><span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">model_type</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">type_choices</span><span class="p">,</span> <span class="n">verbose_name</span><span class="o">=</span><span class="s">&quot;type&quot;</span><span class="p">)</span>
+    <span class="n">manufacturer</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Supplier</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the short model number here (eg. &#39;7945G&#39; for a Cisco 7956G phone). Do not enter the class (eg. &#39;7900 series&#39;) or the product code (eg. &#39;WS-7945G=&#39;)&quot;</span><span class="p">)</span>
+    <span class="n">lifecycle</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter in years how long we should keep items of this model before they get decomissioned. Desktops should generally be three years, servers and networking equipment five years.&quot;</span><span class="p">)</span>
+    <span class="n">notes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;manufacturer&#39;</span><span class="p">,</span> <span class="s">&#39;model&#39;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">u&quot;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manufacturer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>Returns the number of assets entered against this model.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_set</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">total</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;../asset/?model__model=</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%d</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Assets&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Location</span><span class="p">(</span><span class="n">Audit</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter a specific location - a cupboard or room number.&quot;</span><span class="p">)</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;eg. &#39;Block 10&#39; (if applicable)&quot;</span><span class="p">)</span>
+    <span class="n">site</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the standard DEC site, eg. &#39;Kensington&#39; or &#39;Northcliffe&#39;. If the device is portable, enter &#39;Portable&#39;.&quot;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;site&#39;</span><span class="p">,</span> <span class="s">&#39;block&#39;</span><span class="p">,</span> <span class="s">&#39;name&#39;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">block</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">u&quot;</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">block</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">site</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">site</span> <span class="o">==</span> <span class="s">&quot;Portable&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">u&quot;</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">site</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        <p>Returns the number of assets entered against this location.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_set</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">total</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;../asset/?location__id__exact=</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%d</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Assets&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Invoice</span><span class="p">(</span><span class="n">Audit</span><span class="p">):</span>
+    <span class="n">supplier</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Supplier</span><span class="p">)</span>
+    <span class="n">supplier_ref</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the supplier&#39;s reference or invoice number for this order.&quot;</span><span class="p">)</span>
+    <span class="n">job_number</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the DEC job number relating to this order.&quot;</span><span class="p">)</span>
+    <span class="n">date</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;The date as shown on the invoice&quot;</span><span class="p">)</span>
+    <span class="n">cost_centre_name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;The name of the cost centre that owns this asset for financial purposes.&quot;</span><span class="p">)</span>
+    <span class="n">cost_centre_number</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;The cost centre that owns this asset for financial purposes.&quot;</span><span class="p">)</span>
+    <span class="n">etj_number</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">verbose_name</span><span class="o">=</span><span class="s">&quot;ETJ number&quot;</span><span class="p">)</span>
+    <span class="n">total_value</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span><span class="n">max_digits</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">decimal_places</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the total value of the invoice, excluding GST.&quot;</span><span class="p">)</span>
+    <span class="n">notes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;-job_number&#39;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">job_number</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> #</span><span class="si">%s</span><span class="s"> - </span><span class="si">%2f</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">supplier</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">job_number</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_value</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_value</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> - </span><span class="si">%2f</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">supplier</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">supplier</span><span class="o">.</span><span class="n">name</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        <p>Returns the number of assets entered against this invoice.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_set</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">total</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;../asset/?invoice__id__exact=</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%d</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">get_assets</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Assets&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Asset</span><span class="p">(</span><span class="n">Audit</span><span class="p">):</span>
+    <span class="n">asset_tag</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">finance_asset_tag</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;The asset number for this sevices, as issued by Finance (leave blank if unsure)&quot;</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Model</span><span class="p">)</span>
+    <span class="n">status_choices</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s">&#39;In storage&#39;</span><span class="p">,</span> <span class="s">&#39;In storage&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Deployed&#39;</span><span class="p">,</span> <span class="s">&#39;Deployed&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s">&#39;Disposed&#39;</span><span class="p">,</span> <span class="s">&#39;Disposed&#39;</span><span class="p">),</span>
+            <span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">status_choices</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s">&quot;In storage.&quot;</span><span class="p">)</span>
+    <span class="n">serial</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;For Dell machines, enter the Service Tag.&quot;</span><span class="p">)</span>
+    <span class="n">date_purchased</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+    <span class="n">invoice</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Invoice</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">purchased_value</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span><span class="n">max_digits</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">decimal_places</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the amount paid for this asset, inclusive of any permanent modules or upgrades, and excluding GST.&quot;</span><span class="p">)</span>
+    <span class="n">location</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">Location</span><span class="p">)</span>
+    <span class="n">assigned_user</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s">&quot;Enter the username of the assigned user.&quot;</span><span class="p">)</span>
+    <span class="n">notes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;-asset_tag&#39;</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">asset_tag</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_age</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">date_purchased</span>
+        <span class="n">max_age</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">lifecycle</span> <span class="o">*</span> <span class="mi">365</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="n">max_age</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">lifecycle</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="s">&quot;year&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="s">&quot;years&quot;</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;font color=&#39;#FF0000&#39;&gt;&lt;b&gt;</span><span class="si">%s</span><span class="s">&lt;/b&gt;&lt;/font&gt; (max </span><span class="si">%d</span><span class="s"> </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">get_nice_age</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">lifecycle</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">get_nice_age</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="n">get_age</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Age&quot;</span>
+    <span class="n">get_age</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>Return the purchased value as a currency.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_purchased_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">purchased_value</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;Unknown&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">locale</span><span class="o">.</span><span class="n">setlocale</span><span class="p">(</span><span class="n">locale</span><span class="o">.</span><span class="n">LC_ALL</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;en_AU&#39;</span><span class="p">,</span> <span class="s">&#39;UTF-8&#39;</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">locale</span><span class="o">.</span><span class="n">currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">purchased_value</span><span class="p">)</span>
+    <span class="n">get_purchased_value</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Purchased value&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        <p>Return a clickable assigned_user field.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_assigned_user</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">assigned_user</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;?assigned_user=</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%s</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">assigned_user</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">assigned_user</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+    <span class="n">get_assigned_user</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Assigned user&quot;</span>
+    <span class="n">get_assigned_user</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p>Return a clickable model field.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;?model__model=</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%s</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+    <span class="n">get_model</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Model&quot;</span>
+    <span class="n">get_model</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        <p>Return a clickable type field.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&lt;a href=&#39;?model__model_type=</span><span class="si">%s</span><span class="s">&#39;&gt;</span><span class="si">%s</span><span class="s">&lt;/a&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">model_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">model_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+    <span class="n">get_type</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s">&quot;Type&quot;</span>
+    <span class="n">get_type</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="bp">True</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

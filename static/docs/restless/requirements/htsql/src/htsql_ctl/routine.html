@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>routine.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>routine.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql_ctl.routine</code></h1>
+<p>This module defines basic classes for implementing script routines.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">.error</span> <span class="kn">import</span> <span class="n">ScriptError</span>
+<span class="kn">from</span> <span class="nn">htsql.validator</span> <span class="kn">import</span> <span class="n">Validator</span>
+<span class="kn">from</span> <span class="nn">htsql.util</span> <span class="kn">import</span> <span class="n">maybe</span><span class="p">,</span> <span class="n">trim_doc</span>
+<span class="kn">import</span> <span class="nn">re</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Indicates that the argument has no default value and thus cannot be omitted.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">MANDATORY_ARGUMENT</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Describes an argument of a script routine.</p>
+<p><code>attribute</code> (a string)
+<pre>The name of the routine attribute.  When the routine is
+initialized, the value of the argument is assigned to
+the attribute.
+</pre>
+<code>validator</code> (:class:<code>htsql.validator.Validator</code>)
+The validator for the argument value.</p>
+<p><code>default</code>
+The default value of the argument.  If <code>default</code> is not
+provided, the argument value is always required.
+The <code>is_mandatory</code> attribute indicates if the default
+value is omitted.</p>
+<p><code>is_list</code> (Boolean)
+If set, the argument may accept more than one parameter.
+In this case, the argument value is a list of parameters.</p>
+<p><code>hint</code> (a string or <code>None</code>)
+A short one-line description of the argument.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Argument</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">validator</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="n">MANDATORY_ARGUMENT</span><span class="p">,</span> <span class="n">is_list</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">hint</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s">r&#39;^[a-zA-Z_][0-9a-zA-Z_]*$&#39;</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">validator</span><span class="p">,</span> <span class="n">Validator</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_list</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hint</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">attribute</span> <span class="o">=</span> <span class="n">attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validator</span> <span class="o">=</span> <span class="n">validator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_mandatory</span> <span class="o">=</span> <span class="p">(</span><span class="n">default</span> <span class="ow">is</span> <span class="n">MANDATORY_ARGUMENT</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_list</span> <span class="o">=</span> <span class="n">is_list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hint</span> <span class="o">=</span> <span class="n">hint</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>Returns a short one-line description of the argument.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_hint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">hint</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>Returns the argument signature.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_signature</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">signature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_list</span><span class="p">:</span>
+            <span class="n">signature</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">...&quot;</span> <span class="o">%</span> <span class="n">signature</span>
+        <span class="k">return</span> <span class="n">signature</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Describes a script routine.</p>
+<p>:class:<code>Routine</code> is a base abstract class for implementing
+a script routine.  To create a concrete routine, subclass
+:class:<code>Routine</code>, declare the routine name, arguments and
+options, and override :meth:<code>run</code>.</p>
+<p>The following class attributes should be overridden.</p>
+<p><code>name</code> (a string)
+<pre>The name of the routine.  The name must be unique across
+all routines of the script.  If equal to <code>''</code>, the
+routine is called when the script is executed without
+any parameters.
+</pre>
+<code>aliases</code> (a list of strings)
+The list of alternative routine names.</p>
+<p><code>arguments</code> (a list of :class:<code>Argument</code>)
+The list of routine arguments.</p>
+<p><code>options</code> (a list of :class:<code>htsql.ctl.option.Option</code>)
+The list of routine options.</p>
+<p><code>hint</code> (a string or <code>None</code>)
+A one-line description of the routine.</p>
+<p><code>help</code> (a string or <code>None</code>)
+A long description of the routine.  Keep the line width
+at 72 characters.</p>
+<p>The constructor of :class:<code>Routine</code> accepts the following arguments:</p>
+<p><code>ctl</code>
+The script; an instance of :class:<code>htsql.ctl.script.Script</code> or
+of its subclass.</p>
+<p><code>attributes</code>
+A dictionary mapping attribute names to attribute values.
+The attribute names correspond to the routine arguments and
+options; the values are obtained by parsing the command-line
+parameters.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Routine</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">aliases</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">arguments</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">hint</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">help</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>Returns a short one-line description of the routine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_hint</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">hint</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>Returns a long description of the routine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_help</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">substitutes</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">help</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">trim_doc</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">help</span> <span class="o">%</span> <span class="n">substitutes</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        <p>Returns the routine signature.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_signature</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p>The routine signature has the form:
+{name} {arg}... [{arg} [...]]</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">signature</span> <span class="o">=</span> <span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">bracket_depth</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">argument</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">arguments</span><span class="p">):</span>
+            <span class="n">argument_signature</span> <span class="o">=</span> <span class="n">argument</span><span class="o">.</span><span class="n">get_signature</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">argument</span><span class="o">.</span><span class="n">is_mandatory</span><span class="p">:</span>
+                <span class="n">argument_signature</span> <span class="o">=</span> <span class="s">&quot;[</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">argument_signature</span>
+                <span class="n">bracket_depth</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">arguments</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">bracket_depth</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">argument_signature</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s%s</span><span class="s">&quot;</span> \
+                                     <span class="o">%</span> <span class="p">(</span><span class="n">argument_signature</span><span class="p">,</span> <span class="s">&quot;]&quot;</span><span class="o">*</span><span class="n">bracket_depth</span><span class="p">)</span>
+            <span class="n">signature</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">argument_signature</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">signature</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <p>Finds some routine feature by name.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_feature</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">raise</span> <span class="n">ScriptError</span><span class="p">(</span><span class="s">&quot;routine </span><span class="si">%r</span><span class="s"> does not support pluggable features&quot;</span>
+                          <span class="o">%</span> <span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">name</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctl</span><span class="p">,</span> <span class="n">attributes</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctl</span> <span class="o">=</span> <span class="n">ctl</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">attributes</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">])</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <p>Executes the routine.  Returns an exit code.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        <p>Override when subclassing.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">raise</span> <span class="n">ScriptError</span><span class="p">(</span><span class="s">&quot;routine </span><span class="si">%r</span><span class="s"> is not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

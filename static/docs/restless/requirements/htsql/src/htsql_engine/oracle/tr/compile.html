@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>compile.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>compile.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.domain</span> <span class="kn">import</span> <span class="n">BooleanDomain</span><span class="p">,</span> <span class="n">IntegerDomain</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.term</span> <span class="kn">import</span> <span class="n">PermanentTerm</span><span class="p">,</span> <span class="n">FilterTerm</span><span class="p">,</span> <span class="n">OrderTerm</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.flow</span> <span class="kn">import</span> <span class="n">LiteralCode</span><span class="p">,</span> <span class="n">FormulaCode</span><span class="p">,</span> <span class="n">ScalarUnit</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.coerce</span> <span class="kn">import</span> <span class="nb">coerce</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.signature</span> <span class="kn">import</span> <span class="n">CompareSig</span>
+<span class="kn">from</span> <span class="nn">.signature</span> <span class="kn">import</span> <span class="n">RowNumSig</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.compile</span> <span class="kn">import</span> <span class="n">CompileOrdered</span>
+<span class="kn">from</span> <span class="nn">htsql.tr.stitch</span> <span class="kn">import</span> <span class="n">arrange</span><span class="p">,</span> <span class="n">spread</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">OracleCompileOrdered</span><span class="p">(</span><span class="n">CompileOrdered</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">OracleCompileOrdered</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__call__</span><span class="p">()</span>
+        <span class="n">left_limit</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">left_limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="mi">1</span>
+        <span class="n">right_limit</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">right_limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">limit</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">offset</span><span class="o">+</span><span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">right_limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">limit</span><span class="o">+</span><span class="mi">1</span>
+        <span class="n">kid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">base</span><span class="p">,</span>
+                                 <span class="n">baseline</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="n">arrange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="p">)</span>
+        <span class="n">codes</span> <span class="o">=</span> <span class="p">[</span><span class="n">code</span> <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">direction</span> <span class="ow">in</span> <span class="n">order</span><span class="p">]</span>
+        <span class="n">kid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">inject</span><span class="p">(</span><span class="n">kid</span><span class="p">,</span> <span class="p">[</span><span class="n">code</span> <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">direction</span> <span class="ow">in</span> <span class="n">order</span><span class="p">])</span>
+        <span class="n">routes</span> <span class="o">=</span> <span class="n">kid</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">unit</span> <span class="ow">in</span> <span class="n">spread</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="p">):</span>
+            <span class="n">routes</span><span class="p">[</span><span class="n">unit</span><span class="p">]</span> <span class="o">=</span> <span class="n">routes</span><span class="p">[</span><span class="n">unit</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">flow</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone</span><span class="p">)]</span>
+        <span class="n">kid</span> <span class="o">=</span> <span class="n">OrderTerm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tag</span><span class="p">(),</span> <span class="n">kid</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="n">kid</span> <span class="o">=</span> <span class="n">PermanentTerm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tag</span><span class="p">(),</span> <span class="n">kid</span><span class="p">,</span>
+                            <span class="n">kid</span><span class="o">.</span><span class="n">flow</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">baseline</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+        <span class="n">row_num_code</span> <span class="o">=</span> <span class="n">FormulaCode</span><span class="p">(</span><span class="n">RowNumSig</span><span class="p">(),</span> <span class="nb">coerce</span><span class="p">(</span><span class="n">IntegerDomain</span><span class="p">()),</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">binding</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">right_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">right_limit_code</span> <span class="o">=</span> <span class="n">LiteralCode</span><span class="p">(</span><span class="n">right_limit</span><span class="p">,</span>
+                                           <span class="nb">coerce</span><span class="p">(</span><span class="n">IntegerDomain</span><span class="p">()),</span>
+                                           <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">binding</span><span class="p">)</span>
+            <span class="n">right_filter</span> <span class="o">=</span> <span class="n">FormulaCode</span><span class="p">(</span><span class="n">CompareSig</span><span class="p">(</span><span class="s">&#39;&lt;&#39;</span><span class="p">),</span>
+                                       <span class="nb">coerce</span><span class="p">(</span><span class="n">BooleanDomain</span><span class="p">()),</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">binding</span><span class="p">,</span>
+                                       <span class="n">lop</span><span class="o">=</span><span class="n">row_num_code</span><span class="p">,</span>
+                                       <span class="n">rop</span><span class="o">=</span><span class="n">right_limit_code</span><span class="p">)</span>
+            <span class="n">kid</span> <span class="o">=</span> <span class="n">FilterTerm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tag</span><span class="p">(),</span> <span class="n">kid</span><span class="p">,</span> <span class="n">right_filter</span><span class="p">,</span>
+                             <span class="n">kid</span><span class="o">.</span><span class="n">flow</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">baseline</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">kid</span> <span class="o">=</span> <span class="n">WrapperTerm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tag</span><span class="p">(),</span> <span class="n">kid</span><span class="p">,</span>
+                              <span class="n">kid</span><span class="o">.</span><span class="n">flow</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">baseline</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+        <span class="n">routes</span> <span class="o">=</span> <span class="n">kid</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">left_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">row_num_unit</span> <span class="o">=</span> <span class="n">ScalarUnit</span><span class="p">(</span><span class="n">row_num_code</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">base</span><span class="p">,</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">binding</span><span class="p">)</span>
+            <span class="n">routes</span><span class="p">[</span><span class="n">row_num_unit</span><span class="p">]</span> <span class="o">=</span> <span class="n">kid</span><span class="o">.</span><span class="n">tag</span>
+        <span class="n">kid</span> <span class="o">=</span> <span class="n">PermanentTerm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tag</span><span class="p">(),</span> <span class="n">kid</span><span class="p">,</span>
+                            <span class="n">kid</span><span class="o">.</span><span class="n">flow</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">left_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">left_limit_code</span> <span class="o">=</span> <span class="n">LiteralCode</span><span class="p">(</span><span class="n">left_limit</span><span class="p">,</span>
+                                          <span class="nb">coerce</span><span class="p">(</span><span class="n">IntegerDomain</span><span class="p">()),</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">binding</span><span class="p">)</span>
+            <span class="n">left_filter</span> <span class="o">=</span> <span class="n">FormulaCode</span><span class="p">(</span><span class="n">CompareSig</span><span class="p">(</span><span class="s">&#39;&gt;=&#39;</span><span class="p">),</span>
+                                      <span class="nb">coerce</span><span class="p">(</span><span class="n">BooleanDomain</span><span class="p">()),</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">flow</span><span class="o">.</span><span class="n">binding</span><span class="p">,</span>
+                                      <span class="n">lop</span><span class="o">=</span><span class="n">row_num_unit</span><span class="p">,</span>
+                                      <span class="n">rop</span><span class="o">=</span><span class="n">left_limit_code</span><span class="p">)</span>
+            <span class="n">kid</span> <span class="o">=</span> <span class="n">FilterTerm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">tag</span><span class="p">(),</span> <span class="n">kid</span><span class="p">,</span> <span class="n">left_filter</span><span class="p">,</span>
+                             <span class="n">kid</span><span class="o">.</span><span class="n">flow</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">baseline</span><span class="p">,</span> <span class="n">kid</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">kid</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

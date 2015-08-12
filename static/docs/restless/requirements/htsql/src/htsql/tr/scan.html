@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>scan.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>scan.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql.tr.scan</code></h1>
+<p>This module implements the HTSQL scanner.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">.token</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Token</span><span class="p">,</span> <span class="n">SpaceToken</span><span class="p">,</span> <span class="n">NameToken</span><span class="p">,</span> <span class="n">StringToken</span><span class="p">,</span> <span class="n">NumberToken</span><span class="p">,</span>
+                    <span class="n">SymbolToken</span><span class="p">,</span> <span class="n">EndToken</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.error</span> <span class="kn">import</span> <span class="n">ScanError</span><span class="p">,</span> <span class="n">ParseError</span>
+<span class="kn">from</span> <span class="nn">..mark</span> <span class="kn">import</span> <span class="n">Mark</span>
+<span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="n">maybe</span><span class="p">,</span> <span class="n">listof</span>
+<span class="kn">import</span> <span class="nn">re</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>A sequence of tokens.</p>
+<p>:class:<code>TokenStream</code> wraps a list of tokens with a convenient interface
+for consumption and look-ahead.</p>
+<p><code>tokens</code> (a list of :class:<code>htsql.tr.token.Token</code> objects)
+<pre>A list of tokens.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">TokenStream</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tokens</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">Token</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>The list of tokens.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">tokens</span> <span class="o">=</span> <span class="n">tokens</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>The position of the active token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p></pre>Returns the active token.</p>
+<p>If the parameter <code>ahead</code> is non-zero, the method will return
+the next <code>ahead</code> token after the active one.</p>
+<p>When <code>token_class</code> is set, the method checks if the token is an
+instance of the given class.  When <code>values</code> is set, the method
+checks if the token value belongs to the given list of values.
+If any of the checks fail, the method either raises
+:exc:<code>htsql.tr.error.ParseError</code> or returns <code>None</code> depending
+on the value of the <code>do_force</code> parameter.</p>
+<p>This method advances the active pointer to the next token if
+<code>do_pop</code> is enabled.</p>
+<p><code>token_class</code> (a subclass of :class:<code>htsql.tr.token.Token</code> or <code>None</code>)
+<pre>If not <code>None</code>, the method checks that the returned token
+is an instance of <code>token_class</code>.
+</pre>
+<code>values</code> (a list of strings or <code>None</code>)
+If not <code>None</code>, the method checks that the value of the
+returned token belongs to the list.</p>
+<p><code>ahead</code> (an integer)
+The position of the returned token relative to the active one.</p>
+<p><code>do_pop</code> (Boolean)
+If set, the method will advance the active pointer.</p>
+<p><code>do_force</code> (Boolean)
+This flag affects the method behavior when any of the token
+checks fail.  If set, the method will raise
+:exc:<code>htsql.tr.error.ParseError</code>; otherwise it will return
+<code>None</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">peek</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ahead</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+             <span class="n">do_pop</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">do_force</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>Sanity check on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="n">token_class</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">token_class</span><span class="p">,</span> <span class="n">Token</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="n">listof</span><span class="p">(</span><span class="nb">str</span><span class="p">)))</span>
+        <span class="k">assert</span> <span class="n">token_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">values</span> <span class="ow">is</span> <span class="bp">None</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ahead</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ahead</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="o">+</span><span class="n">ahead</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tokens</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">do_pop</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">do_force</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p>Get the token we are going to return.  It is the responsibility
+of the caller to ensure that the index is in the list bounds.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokens</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="o">+</span><span class="n">ahead</span><span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Indicates if the token passed the given tests.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">is_expected</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">token_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Check the token type.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">token_class</span><span class="p">):</span>
+                <span class="n">is_expected</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>Check the token value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                    <span class="k">if</span> <span class="n">token</span><span class="o">.</span><span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+                        <span class="n">is_expected</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>The token failed the checks.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_expected</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>If <code>do_force</code> is not set, return <code>None</code>; otherwise generate
+an error message of the form:
+  expected {token_class.NAME} ('{values[0]}', ...);
+  got {token.NAME} '{token.value}'</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="ow">not</span> <span class="n">do_force</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">None</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">token_class</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">values</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">expected</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">expected</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> (</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">expected</span><span class="p">,</span>
+                                            <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                                                      <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">))</span>
+            <span class="n">got</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">token</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="n">token</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ParseError</span><span class="p">(</span><span class="s">&quot;expected </span><span class="si">%s</span><span class="s">; got </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">got</span><span class="p">),</span>
+                             <span class="n">token</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>Advance the pointer.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">do_pop</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">+=</span> <span class="n">ahead</span><span class="o">+</span><span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">token</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>Returns the active token and advances the pointer to the next token.</p>
+<p>When <code>token_class</code> is set, the method checks if the token is an
+instance of the given class.  When <code>values</code> is set, the method
+checks if the token value belongs to the given list of values.
+If any of the checks fail, the method raises
+:exc:<code>htsql.tr.error.ParseError</code>.</p>
+<p><code>token_class</code> (a subclass of :class:<code>htsql.tr.token.Token</code> or <code>None</code>)
+<pre>If not <code>None</code>, the method checks that the active token
+is an instance of <code>token_class</code>.
+</pre>
+<code>values</code> (a list of strings or <code>None</code>)
+If not <code>None</code>, the method checks that the value of the active
+token belongs to the list.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">peek</span><span class="p">(</span><span class="n">token_class</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span>
+                         <span class="n">do_pop</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">do_force</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p>Implements the HTSQL scanner.</p>
+<p>The scanner tokenizes the input query and produces a stream of tokens.</p>
+<p>The first step of scanning is decoding <code>%</code>-escape sequences.  Then
+the scanner splits the input query to a list of tokens.  The following
+token types are emitted:</p>
+<p><em>NAME</em>
+<pre>Represents an HTSQL identifier: a sequence of alphanumeric characters
+that does not start with a digit.  Alphanumeric characters include
+characters <code>a</code>-<code>z</code>, <code>A</code>-<code>Z</code>, <code>0</code>-<code>9</code>, <code>_</code>, and those
+Unicode characters that are classified as alphanumeric.
+</pre>
+<em>NUMBER</em>
+Represents a number literal: integer, float and scientific notations
+are recognized.</p>
+<p><em>STRING</em>
+Represents a string literal enclosed in single quotes; any single
+quote character should be doubled.</p>
+<p><em>SYMBOL</em>
+Represents a valid symbol in HTSQL grammar; one of the following
+symbols:</p>
+<p><em>comparison operators</em>
+<pre><code>=</code>, <code>!=</code>, <code>==</code>, <code>!==</code>, <code>~</code>, <code>!~</code>,
+<code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>.
+</pre>
+<em>logical operators</em>
+<code>!</code>, <code>&amp;</code>, <code>|</code>, <code>?</code>.</p>
+<p><em>arithmetic operators</em>
+<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code>.</p>
+<p><em>assignment operator</em>
+<code>:=</code>.</p>
+<p><em>punctuation</em>
+<code>(</code>, <code>)</code>, <code>[</code>, <code>]</code>, <code>{</code>, <code>}</code>,
+<code>.</code>, <code>,</code>, <code>-&gt;</code>, <code>/</code>, <code>:</code>, <code>$</code>.</p>
+<p>There are also two special token types:</p>
+<p><em>WHITESPACE</em>
+Represents a whitespace character, one of: space, tab, LF, CR, FF, VT,
+and those Unicode characters that are classified as space.  The
+whitespace token are immediately discarded by the scanner and never
+emitted.</p>
+<p><em>END</em>
+Indicates the end of the query; it is always the last token emitted.</p>
+<p>The :class:<code>Scanner</code> constructor takes the following argument:</p>
+<p><code>input</code>
+An HTSQL query.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Scanner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        <p>List of tokens generated by the scanner.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">tokens</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">SpaceToken</span><span class="p">,</span>
+            <span class="n">NameToken</span><span class="p">,</span>
+            <span class="n">NumberToken</span><span class="p">,</span>
+            <span class="n">StringToken</span><span class="p">,</span>
+            <span class="n">SymbolToken</span><span class="p">,</span>
+            <span class="n">EndToken</span><span class="p">,</span>
+    <span class="p">]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        <p>A regular expression that matches an HTSQL token.  The expression
+is compiled from individual token patterns on the first instantiation
+of the scanner.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">regexp</span> <span class="o">=</span> <span class="bp">None</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <p>The regular expression to match %-escape sequences.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">escape_pattern</span> <span class="o">=</span> <span class="s">r&quot;&quot;&quot;%(?P&lt;code&gt;[0-9A-Fa-f]{2})?&quot;&quot;&quot;</span>
+    <span class="n">escape_regexp</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">escape_pattern</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input</span> <span class="o">=</span> <span class="nb">input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_regexp</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">init_regexp</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        <p>Compile the regular expression that matches all token types.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        <p>If it is already done, return.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="n">cls</span><span class="o">.</span><span class="n">regexp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p>Get patterns for each token type grouped by the class name.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">token_patterns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">token_class</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">tokens</span><span class="p">:</span>
+            <span class="n">pattern</span> <span class="o">=</span> <span class="s">r&quot;(?P&lt;</span><span class="si">%s</span><span class="s">&gt; </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">token_class</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">token_class</span><span class="o">.</span><span class="n">pattern</span><span class="p">)</span>
+            <span class="n">token_patterns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        <p>Combine the individual patterns and compile the expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">pattern</span> <span class="o">=</span> <span class="s">r&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">token_patterns</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">regexp</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">X</span><span class="o">|</span><span class="n">re</span><span class="o">.</span><span class="n">U</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">unquote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        <p>Decode %-escape sequences.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">def</span> <span class="nf">replace</span><span class="p">(</span><span class="n">match</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>Two hexdecimal digits that encode a byte value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">code</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;code&#39;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        <p>Complain if we get <code>%</code> not followed by two hexdecimal digits.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="ow">not</span> <span class="n">code</span><span class="p">:</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">string</span><span class="p">,</span> <span class="n">match</span><span class="o">.</span><span class="n">start</span><span class="p">(),</span> <span class="n">match</span><span class="o">.</span><span class="n">end</span><span class="p">())</span>
+                <span class="k">raise</span> <span class="n">ScanError</span><span class="p">(</span><span class="s">&quot;invalid escape sequence&quot;</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        <p>Return the character corresponding to the escape sequence.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">return</span> <span class="nb">chr</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="mi">16</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>Apply <code>replace</code> to all <code>%</code>-escape sequences and return the result.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">escape_regexp</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">replace</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p>Tokenizes the query; returns a :class:<code>TokenStream</code> instance.</p>
+<p>In case of syntax errors, raises :exc:<code>htsql.tr.error.ScanError</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        <p>Decode %-escape sequences.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">unquoted_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        <p>Since we want the <code>\w</code> pattern to match Unicode characters
+classified as alphanumeric, we have to convert the input query
+to Unicode.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">try</span><span class="p">:</span>
+            <span class="n">decoded_input</span> <span class="o">=</span> <span class="n">unquoted_input</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">UnicodeDecodeError</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="p">(</span><span class="n">unquoted_input</span><span class="p">,</span> <span class="n">exc</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">exc</span><span class="o">.</span><span class="n">end</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ScanError</span><span class="p">(</span><span class="s">&quot;cannot decode an UTF-8 character: </span><span class="si">%s</span><span class="s">&quot;</span>
+                            <span class="o">%</span> <span class="n">exc</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        <p>The beginning of the next token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        <p>The beginning of the mark slice.  Both <code>start</code> and <code>mark_start</code>
+point to the same position in the query string; however <code>start</code>
+is measured in Unicode characters while <code>mark_start</code> is measured
+in octets.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">mark_start</span> <span class="o">=</span> <span class="mi">0</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        <p>Have we reached the final token?</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">is_end</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        <p>The list of generated tokens.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">tokens</span> <span class="o">=</span> <span class="p">[]</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        <p>Loop till we get the final token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">while</span> <span class="ow">not</span> <span class="n">is_end</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        <p>Match the next token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">regexp</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">decoded_input</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="p">(</span><span class="n">unquoted_input</span><span class="p">,</span> <span class="n">mark_start</span><span class="p">,</span> <span class="n">mark_start</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">ScanError</span><span class="p">(</span><span class="s">&quot;unexpected character </span><span class="si">%r</span><span class="s">&quot;</span>
+                                <span class="o">%</span> <span class="n">decoded_input</span><span class="p">[</span><span class="n">start</span><span class="p">]</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">),</span> <span class="n">mark</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        <p>Find the token class that matched the token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">for</span> <span class="n">token_class</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tokens</span><span class="p">:</span>
+                <span class="n">group</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="n">token_class</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">group</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        <p>Unreachable.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>                <span class="k">assert</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        <p>The raw string that matched the token pattern.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">group</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        <p>Unquote the token value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">value</span> <span class="o">=</span> <span class="n">token_class</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">group</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        <p>The end of the mark slice.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">mark_end</span> <span class="o">=</span> <span class="n">mark_start</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        <p>Skip whitespace tokens; otherwise produce the next token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="ow">not</span> <span class="n">token_class</span><span class="o">.</span><span class="n">is_ws</span><span class="p">:</span>
+                <span class="n">mark</span> <span class="o">=</span> <span class="n">Mark</span><span class="p">(</span><span class="n">unquoted_input</span><span class="p">,</span> <span class="n">mark_start</span><span class="p">,</span> <span class="n">mark_end</span><span class="p">)</span>
+                <span class="n">token</span> <span class="o">=</span> <span class="n">token_class</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">mark</span><span class="p">)</span>
+                <span class="n">tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">token</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        <p>Check if we reached the final token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="n">token_class</span><span class="o">.</span><span class="n">is_end</span><span class="p">:</span>
+                <span class="n">is_end</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        <p>Advance the pointers to the beginning of the next token.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">start</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+            <span class="n">mark_start</span> <span class="o">=</span> <span class="n">mark_end</span>
+
+        <span class="k">return</span> <span class="n">TokenStream</span><span class="p">(</span><span class="n">tokens</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        <p>Tokenizes the input HTSQL query or expression.</p>
+<p>Returns a stream of tokens (a :class:<code>TokenStream</code> instance).</p>
+<p>In case of syntax errors, raises :exc:<code>htsql.tr.error.ScanError</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">scanner</span> <span class="o">=</span> <span class="n">Scanner</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">scanner</span><span class="o">.</span><span class="n">scan</span><span class="p">()</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

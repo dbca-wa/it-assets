@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>test_multi6.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>test_multi6.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>vi:ts=4:et
+$Id$</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">select</span><span class="o">,</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">pycurl</span>
+
+<span class="n">c1</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+<span class="n">c2</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+<span class="n">c3</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+<span class="n">c1</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c1</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="s">&quot;http://www.python.org&quot;</span><span class="p">)</span>
+<span class="n">c2</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c2</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="s">&quot;http://curl.haxx.se&quot;</span><span class="p">)</span>
+<span class="n">c3</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c3</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="s">&quot;http://slashdot.org&quot;</span><span class="p">)</span>
+<span class="n">c1</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&quot;doc1&quot;</span><span class="p">,</span> <span class="s">&quot;wb&quot;</span><span class="p">)</span>
+<span class="n">c2</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&quot;doc2&quot;</span><span class="p">,</span> <span class="s">&quot;wb&quot;</span><span class="p">)</span>
+<span class="n">c3</span><span class="o">.</span><span class="n">body</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&quot;doc3&quot;</span><span class="p">,</span> <span class="s">&quot;wb&quot;</span><span class="p">)</span>
+<span class="n">c1</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c1</span><span class="o">.</span><span class="n">WRITEFUNCTION</span><span class="p">,</span> <span class="n">c1</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">write</span><span class="p">)</span>
+<span class="n">c2</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c2</span><span class="o">.</span><span class="n">WRITEFUNCTION</span><span class="p">,</span> <span class="n">c2</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">write</span><span class="p">)</span>
+<span class="n">c3</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c3</span><span class="o">.</span><span class="n">WRITEFUNCTION</span><span class="p">,</span> <span class="n">c3</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">write</span><span class="p">)</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">CurlMulti</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_handle</span><span class="p">(</span><span class="n">c1</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_handle</span><span class="p">(</span><span class="n">c2</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add_handle</span><span class="p">(</span><span class="n">c3</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>Number of seconds to wait for a timeout to happen</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">SELECT_TIMEOUT</span> <span class="o">=</span> <span class="mf">1.0</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Stir the state machine into action</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">ret</span><span class="p">,</span> <span class="n">num_handles</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">perform</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">ret</span> <span class="o">!=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">E_CALL_MULTI_PERFORM</span><span class="p">:</span>
+        <span class="k">break</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Keep going until all the connections have terminated</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">while</span> <span class="n">num_handles</span><span class="p">:</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p>The select method uses fdset internally to determine which file descriptors
+to check.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">m</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">SELECT_TIMEOUT</span><span class="p">)</span>
+    <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">ret</span><span class="p">,</span> <span class="n">num_handles</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">perform</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Print the message, if any</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">print</span> <span class="n">m</span><span class="o">.</span><span class="n">info_read</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ret</span> <span class="o">!=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">E_CALL_MULTI_PERFORM</span><span class="p">:</span>
+            <span class="k">break</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p>Cleanup</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">m</span><span class="o">.</span><span class="n">remove_handle</span><span class="p">(</span><span class="n">c3</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">remove_handle</span><span class="p">(</span><span class="n">c2</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">remove_handle</span><span class="p">(</span><span class="n">c1</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">c1</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">c2</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">c3</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">c1</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">c2</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">c3</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="k">print</span> <span class="s">&quot;http://www.python.org is in file doc1&quot;</span>
+<span class="k">print</span> <span class="s">&quot;http://curl.haxx.se is in file doc2&quot;</span>
+<span class="k">print</span> <span class="s">&quot;http://slashdot.org is in file doc3&quot;</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

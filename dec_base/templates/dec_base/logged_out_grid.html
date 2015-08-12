@@ -1,0 +1,14 @@
+{% extends "dec_base/layout_grid.html" %}
+
+{% block breadcrumbs %}
+<a href="{% url site_home %}">Home</a> &gt; Logged out
+{% endblock %}
+
+{% block pagecontent %}
+<div id="content-main">
+    <h1>LOGGED OUT</h1>
+    <p>You are now logged out of the application.</p>
+    <p><a href="{% url login %}">Log in again</a></p>
+</div>
+{% endblock %}
+

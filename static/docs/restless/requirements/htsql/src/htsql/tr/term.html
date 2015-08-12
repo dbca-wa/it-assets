@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>term.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>term.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql.tr.term</code></h1>
+<p>This module declares term nodes.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">..util</span> <span class="kn">import</span> <span class="p">(</span><span class="n">listof</span><span class="p">,</span> <span class="n">dictof</span><span class="p">,</span> <span class="n">oneof</span><span class="p">,</span> <span class="n">tupleof</span><span class="p">,</span> <span class="n">maybe</span><span class="p">,</span>
+                    <span class="n">Clonable</span><span class="p">,</span> <span class="n">Printable</span><span class="p">,</span> <span class="n">Comparable</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..domain</span> <span class="kn">import</span> <span class="n">BooleanDomain</span>
+<span class="kn">from</span> <span class="nn">.flow</span> <span class="kn">import</span> <span class="n">Expression</span><span class="p">,</span> <span class="n">Flow</span><span class="p">,</span> <span class="n">Code</span><span class="p">,</span> <span class="n">Unit</span><span class="p">,</span> <span class="n">QueryExpr</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Represents a join condition.</p>
+<p><code>lop</code> (:class:<code>htsql.tr.flow.Code</code>)
+<pre>The left operand of join expression.
+</pre>
+<code>rop</code> (:class:<code>htsql.tr.flow.Code</code>)
+The right operand of join expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Joint</span><span class="p">(</span><span class="n">Comparable</span><span class="p">,</span> <span class="n">Clonable</span><span class="p">,</span> <span class="n">Printable</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lop</span><span class="p">,</span> <span class="n">rop</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lop</span><span class="p">,</span> <span class="n">Code</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rop</span><span class="p">,</span> <span class="n">Code</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Joint</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">equality_vector</span><span class="o">=</span><span class="p">(</span><span class="n">lop</span><span class="p">,</span> <span class="n">rop</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lop</span> <span class="o">=</span> <span class="n">lop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rop</span> <span class="o">=</span> <span class="n">rop</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Returns the pair of expressions that form the joint.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="nb">iter</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">lop</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rop</span><span class="p">])</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>Represents a term node.</p>
+<p>A term represents a relational algebraic expression.  :class:<code>PreTerm</code>
+is an abstract class, each its subclass represents a specific relational
+operation.</p>
+<p>The term tree is an intermediate stage of the HTSQL translator. A term
+tree is translated from the expression graph by the <em>compiling</em> process.
+It is then translated to the frame tree by the <em>assembling</em> process.</p>
+<p>The following adapters are associated with the compiling process and
+generate new term nodes::</p>
+<pre>Compile: (Flow, CompilingState) -> Term
+Inject: (Unit, Term, CompilingState) -> Term
+</pre>
+
+<p>See :class:<code>htsql.tr.compile.Compile</code> and
+:class:<code>htsql.tr.compile.Inject</code> for more detail.</p>
+<p>The following adapter implements the assembling process::</p>
+<p>Assemble: (Term, AssemblingState) -&gt; Frame</p>
+<p>See :class:<code>htsql.tr.assemble.Assemble</code> for more detail.</p>
+<p>Arguments:</p>
+<p><code>expression</code> (:class:<code>htsql.tr.code.Expression</code>)
+The expression node which gave rise to the term node; used only for
+presentation or error reporting.</p>
+<p>Other attributes:</p>
+<p><code>binding</code> (:class:<code>htsql.tr.binding.Binding</code>)
+The binding node which gave rise to the term node; for debugging.</p>
+<p><code>syntax</code> (:class:<code>htsql.tr.syntax.Syntax</code>)
+The syntax node which gave rise to the term node; for debugging.</p>
+<p><code>mark</code> (:class:<code>htsql.mark.Mark</code>)
+The location of the node in the original query; for error reporting.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">PreTerm</span><span class="p">(</span><span class="n">Clonable</span><span class="p">,</span> <span class="n">Printable</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">Expression</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expression</span> <span class="o">=</span> <span class="n">expression</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">binding</span> <span class="o">=</span> <span class="n">expression</span><span class="o">.</span><span class="n">binding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">syntax</span> <span class="o">=</span> <span class="n">expression</span><span class="o">.</span><span class="n">syntax</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mark</span> <span class="o">=</span> <span class="n">expression</span><span class="o">.</span><span class="n">mark</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>Represents a relational algebraic expression.</p>
+<p>There are three classes of terms: nullary, unary and binary.
+Nullary terms represents terminal expressions (for example,
+:class:<code>TableTerm</code>), unary terms represent relational expressions
+with a single operand (for example, :class:<code>FilterTerm</code>), and binary
+terms represent relational expressions with two arguments (for example,
+:class:<code>JoinTerm</code>).</p>
+<p>Each term represents some flow, called <em>the term flow</em>.  It means
+that, <em>as a part of some relational expression</em>, the term will produce
+the rows of the flow.  Note that taken alone, the term does not
+necessarily generates the rows of the flow: some of the operations
+that comprise the flow may be missing from the term.  Thus the term
+flow represents a promise: once the term is tied with some other
+appropriate term, it will generate the rows of the flow.</p>
+<p>Each term node has a unique (in the context of the term tree) identifier,
+called the term <em>tag</em>.  Tags are used to refer to term objects indirectly.</p>
+<p>Each term maintains a table of units it is capable to produce.
+For each unit, the table contains a reference to a node directly
+responsible for evaluating the unit.</p>
+<p>Class attributes:</p>
+<p><code>is_nullary</code> (Boolean)
+<pre>Indicates that the term represents a nullary expression.
+</pre>
+<code>is_unary</code> (Boolean)
+Indicates that the term represents a unary expression.</p>
+<p><code>is_binary</code> (Boolean)
+Indicates that the term represents a binary expression.</p>
+<p>Arguments:</p>
+<p><code>tag</code> (an integer)
+A unique identifier of the node.</p>
+<p><code>kids</code> (a list of zero, one or two :class:<code>Term</code> objects)
+The operands of the relational expression.</p>
+<p><code>flow</code> (:class:<code>htsql.tr.code.Flow</code>)
+The flow represented by the term.</p>
+<p><code>routes</code> (a mapping from :class:<code>htsql.tr.code.Unit</code> to term tag)
+A mapping from unit objects to term tags that specifies the units
+which the term is capable to produce.</p>
+<p>A key of the mapping is either a :class:<code>htsql.tr.code.Unit</code>
+or a :class:<code>htsql.tr.code.Flow</code> node.  A value of the mapping
+is a term tag, either of the term itself or of one of its
+descendants.</p>
+<p>The presence of a unit object in the <code>routes</code> table indicates
+that the term is able to evaluate the unit.  The respective
+term tag indicates the term directly responsible for evaluating
+the unit.</p>
+<p>A flow node being a key in the <code>routes</code> table indicates that
+any column of the flow could be produced by the term.</p>
+<p>Other attributes:</p>
+<p><code>backbone</code> (:class:<code>htsql.tr.code.Flow</code>)
+The inflation of the term flow.</p>
+<p><code>baseline</code> (:class:<code>htsql.tr.code.Flow</code>)
+The leftmost axis of the term flow that the term is capable
+to produce.</p>
+<p><code>offsprings</code> (a dictionary <code>tag -&gt; tag</code>)
+Maps a descendant term to the immediate child whose subtree
+contains the term.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">Term</span><span class="p">(</span><span class="n">PreTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_nullary</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_unary</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">is_binary</span> <span class="o">=</span> <span class="bp">False</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kids</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kids</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">Term</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">flow</span><span class="p">,</span> <span class="n">Flow</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">baseline</span><span class="p">,</span> <span class="n">Flow</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">flow</span><span class="o">.</span><span class="n">concludes</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">baseline</span><span class="o">.</span><span class="n">is_inflated</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">routes</span><span class="p">,</span> <span class="n">dictof</span><span class="p">(</span><span class="n">Unit</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>The inflation of the term flow.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">backbone</span> <span class="o">=</span> <span class="n">flow</span><span class="o">.</span><span class="n">inflate</span><span class="p">()</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>For each descendant term, determine the immediate child whose
+subtree contain the descendant.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">offsprings</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">kid</span> <span class="ow">in</span> <span class="n">kids</span><span class="p">:</span>
+            <span class="n">offsprings</span><span class="p">[</span><span class="n">kid</span><span class="o">.</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">kid</span><span class="o">.</span><span class="n">tag</span>
+            <span class="k">for</span> <span class="n">offspring</span> <span class="ow">in</span> <span class="n">kid</span><span class="o">.</span><span class="n">offsprings</span><span class="p">:</span>
+                <span class="n">offsprings</span><span class="p">[</span><span class="n">offspring</span><span class="p">]</span> <span class="o">=</span> <span class="n">kid</span><span class="o">.</span><span class="n">tag</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Term</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">flow</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tag</span> <span class="o">=</span> <span class="n">tag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kids</span> <span class="o">=</span> <span class="n">kids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flow</span> <span class="o">=</span> <span class="n">flow</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span> <span class="o">=</span> <span class="n">backbone</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">baseline</span> <span class="o">=</span> <span class="n">baseline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">routes</span> <span class="o">=</span> <span class="n">routes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">offsprings</span> <span class="o">=</span> <span class="n">offsprings</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>Represents a terminal relational algebraic expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">NullaryTerm</span><span class="p">(</span><span class="n">Term</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_nullary</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">NullaryTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="p">[],</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <p>Represents a unary relational algebraic expression.</p>
+<p><code>kid</code> (:class:<code>Term</code>)
+<pre>The operand of the expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">UnaryTerm</span><span class="p">(</span><span class="n">Term</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_unary</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="p">[</span><span class="n">kid</span><span class="p">],</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kid</span> <span class="o">=</span> <span class="n">kid</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <p></pre>Represents a binary relational algebraic expression.</p>
+<p><code>lkid</code> (:class:<code>Term</code>)
+<pre>The left operand of the expression.
+</pre>
+<code>rkid</code> (:class:<code>Term</code>)
+The right operand of the expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">BinaryTerm</span><span class="p">(</span><span class="n">Term</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">is_binary</span> <span class="o">=</span> <span class="bp">True</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">lkid</span><span class="p">,</span> <span class="n">rkid</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BinaryTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="p">[</span><span class="n">lkid</span><span class="p">,</span> <span class="n">rkid</span><span class="p">],</span>
+                                         <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lkid</span> <span class="o">=</span> <span class="n">lkid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rkid</span> <span class="o">=</span> <span class="n">rkid</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        <p>Represents a scalar term.</p>
+<p>A scalar term is a terminal relational expression that produces
+exactly one row.</p>
+<p>A scalar term generates the following SQL clause::</p>
+<pre>(SELECT ... FROM DUAL)
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ScalarTerm</span><span class="p">(</span><span class="n">NullaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        <p>The flow itself is not required to be a scalar, but it
+should not contain any other axes.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="n">flow</span><span class="o">.</span><span class="n">family</span><span class="o">.</span><span class="n">is_scalar</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ScalarTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;I&quot;</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        <p></pre>Represents a table term.</p>
+<p>A table term is a terminal relational expression that produces
+all the rows of a table.</p>
+<p>A table term generates the following SQL clause::</p>
+<pre>(SELECT ... FROM <table>)
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">TableTerm</span><span class="p">(</span><span class="n">NullaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        <p>We assume that the table of the term is the prominent table
+of the term flow.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="n">flow</span><span class="o">.</span><span class="n">family</span><span class="o">.</span><span class="n">is_table</span>
+        <span class="k">assert</span> <span class="n">flow</span> <span class="o">==</span> <span class="n">baseline</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TableTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">table</span> <span class="o">=</span> <span class="n">flow</span><span class="o">.</span><span class="n">family</span><span class="o">.</span><span class="n">table</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>Display:
+  <schema>.<table></p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p></pre>Represents a filter term.</p>
+<p>A filter term is a unary relational expression that produces all the rows
+of its operand that satisfy the given predicate expression.</p>
+<p>A filter term generates the following SQL clause::</p>
+<pre>(SELECT ... FROM <kid> WHERE <filter>)
+</pre>
+
+<p><code>kid</code> (:class:<code>Term</code>)
+The operand of the filter expression.</p>
+<p><code>filter</code> (:class:<code>htsql.tr.code.Code</code>)
+The conditional expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">FilterTerm</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="nb">filter</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="n">Code</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="nb">filter</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">BooleanDomain</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FilterTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filter</span> <span class="o">=</span> <span class="nb">filter</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        <p>Display:
+  (<kid> ? <filter>)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s"> ? </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        <p>Represents a join term.</p>
+<p>A join term takes two operands and produces a set of pairs satisfying
+the given join conditions.</p>
+<p>Two types of joins are supported by a join term.  When the join is
+<em>inner</em>, given the operands <code>A</code> and <code>B</code>, the term produces a set of
+pairs <code>(a, b)</code>, where <code>a</code> is from <code>A</code>, <code>b</code> is from <code>B</code> and the pair
+satisfies the given tie conditions.</p>
+<p>A <em>left outer join</em> produces the same rows as the inner join, but
+also includes rows of the form <code>(a, NULL)</code> for each <code>a</code> from <code>A</code>
+such that there are no rows <code>b</code> from <code>B</code> such that <code>(a, b)</code> satisfies
+the given conditions.  Similarly, a <em>right outer join</em> includes rows
+of the form <code>(NULL, b)</code> for each <code>b</code> from <code>B</code> such that there are no
+corresponding rows <code>a</code> from <code>A</code>.</p>
+<p>A join term generates the following SQL clause::</p>
+<pre>(SELECT ... FROM <lkid> (INNER | LEFT OUTER) JOIN <rkid> ON (<joints>))
+</pre>
+
+<p><code>lkid</code> (:class:<code>Term</code>)
+The left operand of the join.</p>
+<p><code>rkid</code> (:class:<code>Term</code>)
+The right operand of the join.</p>
+<p><code>joints</code> (a list of pairs of :class:<code>htsql.tr.code.Code</code>)
+A list of pairs <code>(lop, rop)</code> that establish join conditions
+of the form <code>lop = rop</code>.</p>
+<p><code>is_left</code> (Boolean)
+Indicates that the join is left outer.</p>
+<p><code>is_right</code> (Boolean)
+Indicates that the join is right outer.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">JoinTerm</span><span class="p">(</span><span class="n">BinaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">lkid</span><span class="p">,</span> <span class="n">rkid</span><span class="p">,</span> <span class="n">joints</span><span class="p">,</span>
+                 <span class="n">is_left</span><span class="p">,</span> <span class="n">is_right</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">joints</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">Joint</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_left</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">is_right</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        <p>Note: currently we never generate right outer joins.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="n">is_right</span> <span class="ow">is</span> <span class="bp">False</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">JoinTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">lkid</span><span class="p">,</span> <span class="n">rkid</span><span class="p">,</span>
+                                       <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">joints</span> <span class="o">=</span> <span class="n">joints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_left</span> <span class="o">=</span> <span class="n">is_left</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_right</span> <span class="o">=</span> <span class="n">is_right</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-45'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-45">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-46'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-46">#</a>
+        </div>
+        <p>Display, for inner join:
+  (<lkid> ++ <rkid> | <lop>=<rop>, ...)
+or, for left outer join:
+  (<lkid> +* <rkid> | <lop>=<rop>, ...)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">conditions</span> <span class="o">=</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">lop</span><span class="p">,</span> <span class="n">rop</span><span class="p">)</span>
+                               <span class="k">for</span> <span class="n">lop</span><span class="p">,</span> <span class="n">rop</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">joints</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">conditions</span><span class="p">:</span>
+            <span class="n">conditions</span> <span class="o">=</span> <span class="s">&quot; | </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">conditions</span>
+        <span class="n">symbol</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">is_outer</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">is_right</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_left</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">is_outer</span><span class="p">:</span>
+                <span class="n">symbol</span> <span class="o">+=</span> <span class="s">&quot;*&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">symbol</span> <span class="o">+=</span> <span class="s">&quot;+&quot;</span>
+        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s"> </span><span class="si">%s%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lkid</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rkid</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-47'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-47">#</a>
+        </div>
+        <p>Represents an embedding term.</p>
+<p>An embedding term implants a correlated term into a term tree.</p>
+<p>An embedding term has two children: the left child is a regular term
+and the right child is a correlation term.</p>
+<p>The joint condition of the correlation term connects it to the left
+child.  That is, the left child serves as the <em>link</em> term for the right
+child.</p>
+<p>An embedding term generates the following SQL clause::</p>
+<pre>(SELECT ... (SELECT ... FROM <rkid>) ... FROM <lkid>)
+</pre>
+
+<p><code>lkid</code> (:class:<code>Term</code>)
+The main term.</p>
+<p><code>rkid</code> (:class:<code>CorrelationTerm</code>)
+The correlated term.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">EmbeddingTerm</span><span class="p">(</span><span class="n">BinaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-48'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-48">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-49'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-49">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">lkid</span><span class="p">,</span> <span class="n">rkid</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-50'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-50">#</a>
+        </div>
+        <p>Verify that the right child is a correlation term and the left
+child is its link term.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rkid</span><span class="p">,</span> <span class="n">CorrelationTerm</span><span class="p">)</span> <span class="ow">and</span> <span class="n">rkid</span><span class="o">.</span><span class="n">link</span> <span class="ow">is</span> <span class="n">lkid</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EmbeddingTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">lkid</span><span class="p">,</span> <span class="n">rkid</span><span class="p">,</span>
+                                            <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-51'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-51">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-52'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-52">#</a>
+        </div>
+        <p>Display:
+  (<lkid> // <rkid>)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s"> // </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lkid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rkid</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-53'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-53">#</a>
+        </div>
+        <p>Represents a correlation term.</p>
+<p>A correlation term connects the child term with a <em>link</em> term using
+the given joint condition.  Note that the link term is not a part
+of the sub-tree under the correlation term.</p>
+<p>A correlation term must always be embedded into the term tree with
+a :class:<code>EmbeddingTerm</code> instance.  The left child of the embedding
+term must coincide with the link term.</p>
+<p><code>kid</code> (:class:<code>Term</code>)
+<pre>The operand of the correlation condition.
+</pre>
+<code>link</code> (:class:<code>Term</code>)
+The term to link to.</p>
+<p><code>joints</code> (a list of pairs of :class:<code>htsql.tr.code.Code</code>)
+A list of pairs <code>(lop, rop)</code> that establish join conditions
+of the form <code>lop = rop</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">CorrelationTerm</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-54'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-54">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-55'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-55">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">link</span><span class="p">,</span> <span class="n">joints</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">Term</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">joints</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">Joint</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CorrelationTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span>
+                                              <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">link</span> <span class="o">=</span> <span class="n">link</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">joints</span> <span class="o">=</span> <span class="n">joints</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-56'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-56">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-57'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-57">#</a>
+        </div>
+        <p>Display:
+  (<kid> | <lop>=<rop>, ...)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">conditions</span> <span class="o">=</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">joint</span> <span class="k">for</span> <span class="n">joint</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">joints</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">conditions</span><span class="p">:</span>
+            <span class="n">conditions</span> <span class="o">=</span> <span class="s">&quot; | </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">conditions</span>
+        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kid</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-58'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-58">#</a>
+        </div>
+        <p>Represents a projection term.</p>
+<p>Given an operand term and a function on it (called the <em>kernel</em>), the
+kernel naturally establishes an equivalence relation on the operand.
+That is, two rows from the operand are equivalent if their images under
+the kernel are equal to each other.  A projection term produces rows
+of the quotient set corresponding to the equivalence relation.</p>
+<p>A projection term generates the following SQL clause::</p>
+<pre>(SELECT ... FROM <kid> GROUP BY <kernels>)
+</pre>
+
+<p><code>kid</code> (:class:<code>Term</code>)
+The operand of the projection.</p>
+<p><code>kernels</code> (a list of :class:<code>htsql.tr.code.Code</code>)
+The kernel expressions.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ProjectionTerm</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-59'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-59">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-60'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-60">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">kernels</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kernels</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">Code</span><span class="p">))</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ProjectionTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernels</span> <span class="o">=</span> <span class="n">kernels</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-61'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-61">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-62'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-62">#</a>
+        </div>
+        <p>Display:
+  (<kid> ^ <code>, <code>, ...)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernels</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s"> ^)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kid</span>
+        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s"> ^ </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kid</span><span class="p">,</span>
+                              <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernels</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-63'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-63">#</a>
+        </div>
+        <p>Represents an order term.</p>
+<p>An order term reorders the rows of its operand and optionally extracts
+a slice of the operand.</p>
+<p>An order term generates the following SQL clause::</p>
+<pre>(SELECT ... FROM <kid> ORDER BY <order> LIMIT <limit> OFFSET <offset>)
+</pre>
+
+<p><code>kid</code> (:class:<code>Term</code>)
+The operand.</p>
+<p><code>order</code> (a list of pairs <code>(code, direction)</code>)
+Expressions to sort the rows by.</p>
+<p>Here <code>code</code> is a :class:<code>htsql.tr.code.Code</code> instance, <code>direction</code>
+is either <code>+1</code> (indicates ascending order) or <code>-1</code> (indicates
+descending order).</p>
+<p><code>limit</code> (a non-negative integer or <code>None</code>)
+If set, the first <code>limit</code> rows of the operand are extracted and
+the remaining rows are discared.</p>
+<p><code>offset</code> (a non-negative integer or <code>None</code>)
+If set, indicates that when extracting rows from the operand,
+the first <code>offset</code> rows should be skipped.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">OrderTerm</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-64'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-64">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-65'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-65">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span>
+                 <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">tupleof</span><span class="p">(</span><span class="n">Code</span><span class="p">,</span> <span class="nb">int</span><span class="p">)))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">limit</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="n">limit</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">limit</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">offset</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">offset</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OrderTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">order</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-66'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-66">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-67'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-67">#</a>
+        </div>
+        <p>Display:
+  <kid> [<code>,...;<offset>:<limit>+<offset>]
+FIXME: duplicated from <code>OrderedFlow.__str__</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">indicators</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">:</span>
+            <span class="n">indicator</span> <span class="o">=</span> <span class="s">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">code</span><span class="p">)</span> <span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="nb">dir</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">)</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">indicator</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">:</span><span class="si">%s</span><span class="s">+</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">indicator</span> <span class="o">=</span> <span class="s">&quot;:</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">limit</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">indicator</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">:&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span>
+        <span class="n">indicators</span> <span class="o">=</span> <span class="s">&quot;;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indicators</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> [</span><span class="si">%s</span><span class="s">]&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kid</span><span class="p">,</span> <span class="n">indicators</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-68'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-68">#</a>
+        </div>
+        <p>Represents a no-op operation.</p>
+<p>A wrapper term represents exactly the same rows as its operand.  It is
+used by the assembler to wrap nullary terms when SQL syntax requires
+a non-terminal expression.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">WrapperTerm</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-69'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-69">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-70'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-70">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-71'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-71">#</a>
+        </div>
+        <p>Display:
+  (<kid>)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kid</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-72'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-72">#</a>
+        </div>
+        <p>Represents a no-op operation.</p>
+<p>A permanent term is never collapsed with the outer term.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">PermanentTerm</span><span class="p">(</span><span class="n">WrapperTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-73'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-73">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-74'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-74">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-75'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-75">#</a>
+        </div>
+        <p>Display:
+  (!<kid>!)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;(!</span><span class="si">%s</span><span class="s">!)&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">kid</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-76'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-76">#</a>
+        </div>
+        <p>Represents a segment term.</p>
+<p>A segment term evaluates the given expressions on the rows of the operand.</p>
+<p>A segment term generates the following SQL clause::</p>
+<pre>(SELECT <elements> FROM <kid>)
+</pre>
+
+<p><code>kid</code> (:class:<code>Term</code>)
+The operand.</p>
+<p><code>elements</code> (a list of :class:<code>htsql.tr.code.Code</code>)
+A list of expressions to produce.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">SegmentTerm</span><span class="p">(</span><span class="n">UnaryTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-77'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-77">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-78'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-78">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span> <span class="n">elements</span><span class="p">,</span> <span class="n">flow</span><span class="p">,</span> <span class="n">routes</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">Code</span><span class="p">))</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="n">flow</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">is_root</span><span class="p">:</span>
+            <span class="n">root</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">base</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SegmentTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">kid</span><span class="p">,</span>
+                                          <span class="n">flow</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">routes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">elements</span> <span class="o">=</span> <span class="n">elements</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-79'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-79">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-80'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-80">#</a>
+        </div>
+        <p>Display:
+  <kid> {<element>,...}</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s"> {</span><span class="si">%s</span><span class="s">}&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kid</span><span class="p">,</span> <span class="s">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+                                               <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">elements</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-81'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-81">#</a>
+        </div>
+        <p>Represents a whole HTSQL query.</p>
+<p><code>segment</code> (:class:<code>SegmentTerm</code> or <code>None</code>)
+<pre>The query segment.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">QueryTerm</span><span class="p">(</span><span class="n">PreTerm</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-82'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-82">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-83'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-83">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">segment</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">segment</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="n">SegmentTerm</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">QueryExpr</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">QueryTerm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">expression</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segment</span> <span class="o">=</span> <span class="n">segment</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

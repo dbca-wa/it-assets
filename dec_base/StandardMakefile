@@ -1,0 +1,33 @@
+# makefile for modern ubuntu systems django quicksetup
+# note: makefiles use tabs not softtabs (press ctrl-v before tabbing in vim with softabs)
+
+.PHONY: help install quickdeploy htmldocs clean
+
+help:
+	@echo "Please use \`make <target>' where <target> is one of"
+	@echo "  install        install new virtualenv"
+	@echo "  quickdeploy	set permissions on directories apache uses to www-data"
+	@echo "  clean          remove existing virtualenv and docs"
+
+install:
+	mkdir media static tomcat/temp; return 0
+	cd dec_base && python dec_base.py install
+
+quickdeploy:
+	sudo ./manage.py collectstatic --noinput -l || sudo ./manage.py collectstatic --clear --noinput -l
+	sudo chown -RL :www-data tomcat/ media/; return 0
+	sudo chown root:root cronjobs; sudo chmod a=r,u=rw cronjobs; return 0
+	sudo chmod -R a=rX /var/www/django_static/
+	sudo chmod -R a=rwX tomcat/ media/; return 0
+	sudo chmod -R o+w /var/www/django_static/
+	sudo chmod -R g+rX ./
+
+htmldocs:
+	mkdir -p static/docs; rm -rf static/docs/*
+	find -name \*.py | grep -v "virtualenv/" | grep -v "mapproxy/" > static/docs/sources.txt
+	virtualenv/bin/pycco `cat static/docs/sources.txt` -d static/docs -p
+	for i in `find static/docs -type d`; do cp static/docs/pycco.css $$i; done
+
+clean:
+	sudo chmod +w virtualenv
+	rm -rf virtualenv/*

@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>util.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>util.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql.util</code></h1>
+<p>This module provides various hard-to-categorize utilities.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+<span class="kn">import</span> <span class="nn">pkgutil</span>
+<span class="kn">import</span> <span class="nn">datetime</span><span class="o">,</span> <span class="nn">time</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Database connection parameters.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>Represents parameters of a database connection.</p>
+<p><code>engine</code>
+<pre>The type of the database server; currently supported are <code>'pgsql'</code>
+and <code>'sqlite'</code>.
+</pre>
+<code>username</code>
+The user name used to authenticate; <code>None</code> to use the default.</p>
+<p><code>password</code>
+The password used to authenticate; <code>None</code> to authenticate
+without providing a password.</p>
+<p><code>host</code>
+The host address; <code>None</code> to use the default.</p>
+<p><code>port</code>
+The port number; <code>None</code> to use the default.</p>
+<p><code>database</code>
+The database name.</p>
+<p>For SQLite, the path to the database file.</p>
+<p><code>options</code>
+A dictionary containing extra connection parameters.</p>
+<p>Currently ignored by all engines.</p>
+<p>The parameters <code>username</code>, <code>password</code>, <code>host</code>, <code>port</code> are
+ignored by the SQLite engine.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">DB</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <p>Regular expression for parsing a connection URI of the form:
+'engine://username:password@host:port/database?options'.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">key_chars</span> <span class="o">=</span> <span class="s">r&#39;&#39;&#39;[%0-9a-zA-Z_.-]+&#39;&#39;&#39;</span>
+    <span class="n">value_chars</span> <span class="o">=</span> <span class="s">r&#39;&#39;&#39;[%0-9a-zA-Z`~!#$^*()_+\\|\[\]{};&#39;&quot;,.&lt;&gt;/-]+&#39;&#39;&#39;</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="s">r&#39;&#39;&#39;(?x)</span>
+<span class="s">        ^</span>
+<span class="s">        (?P&lt;engine&gt; </span><span class="si">%(key_chars)s</span><span class="s"> )</span>
+<span class="s">        :</span>
+<span class="s">        (?: //</span>
+<span class="s">            (?: (?P&lt;username&gt; </span><span class="si">%(key_chars)s</span><span class="s"> )?</span>
+<span class="s">                (?: : (?P&lt;password&gt; </span><span class="si">%(value_chars)s</span><span class="s"> )? )? @ )?</span>
+<span class="s">            (?: (?P&lt;host&gt; </span><span class="si">%(key_chars)s</span><span class="s"> )?</span>
+<span class="s">                (?: : (?P&lt;port&gt; </span><span class="si">%(key_chars)s</span><span class="s"> )? )? )?</span>
+<span class="s">            /</span>
+<span class="s">        )?</span>
+<span class="s">        (?P&lt;database&gt; </span><span class="si">%(value_chars)s</span><span class="s"> )</span>
+<span class="s">        (?: \?</span>
+<span class="s">            (?P&lt;options&gt;</span>
+<span class="s">                </span><span class="si">%(key_chars)s</span><span class="s"> = (?: </span><span class="si">%(value_chars)s</span><span class="s"> )?</span>
+<span class="s">                (?: &amp; </span><span class="si">%(key_chars)s</span><span class="s"> = (?: </span><span class="si">%(value_chars)s</span><span class="s"> )? )* )? )?</span>
+<span class="s">        $</span>
+<span class="s">    &#39;&#39;&#39;</span> <span class="o">%</span> <span class="nb">vars</span><span class="p">()</span>
+    <span class="n">regexp</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">database</span><span class="p">,</span>
+                 <span class="n">options</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p>Sanity checking on the arguments.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="n">dictof</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="n">host</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="o">=</span> <span class="n">database</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">options</span>
+
+    <span class="nd">@classmethod</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p>Parses a connection URI and returns a corresponding
+:class:<code>DB</code> instance.</p>
+<p>A connection URI is a string of the form::</p>
+<pre>engine://username:password@host:port/database?options
+</pre>
+
+<p><code>engine</code>
+The type of the database server; supported values are <code>pgsql</code>
+and <code>sqlite</code>.</p>
+<p><code>username:password</code>
+Used for authentication.</p>
+<p><code>host:port</code>
+The server address.</p>
+<p><code>database</code>
+The name of the database.</p>
+<p>For SQLite, the path to the database file.</p>
+<p><code>options</code>
+A string of the form <code>key=value&amp;...</code> providing extra
+connection parameters.</p>
+<p>The parameters <code>engine</code> and <code>database</code> are required, all the other
+parameters are optional.</p>
+<p>If a parameter contains a character which cannot be represented
+literally (such as <code>:</code>, <code>/</code>, <code>@</code> or <code>?</code>), it should be
+escaped using <code>%</code>-encoding.</p>
+<p>If the connection URI is not in a valid format, :exc:<code>ValueError</code>
+is raised.</p>
+<p>Besides a connection URI, the function also accepts instances
+of :class:<code>DB</code> and dictionaries.  An instance of :class:<code>DB</code> is
+returned as is.  A dictionary is assumed to contain connection
+parameters.  The corresponding instance of :class:<code>DB</code> is returned.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <p><code>value</code> must be one of:</p>
+<ul>
+<li>an instance of <code>DB</code>;</li>
+<li>a connection URI in the form
+  'engine://username:password@host:port/database?options';</li>
+<li>a dictionary with the keys:
+  'engine', 'username', 'password', 'host', 'port',
+  'database', 'options'.</li>
+</ul>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;a connection URI is expected; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p>Instances of <code>DB</code> are returned as is.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">cls</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p>We expect a connection URI to be a regular string, but we allow
+Unicode strings too.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p>If a string is given, assume it is a connection URI and parse it.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">regexp</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;expected a connection URI of the form&quot;</span>
+                                 <span class="s">&quot; &#39;engine://username:password@host:port&quot;</span>
+                                 <span class="s">&quot;/database?options&#39;; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;engine&#39;</span><span class="p">)</span>
+            <span class="n">username</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;username&#39;</span><span class="p">)</span>
+            <span class="n">password</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;password&#39;</span><span class="p">)</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;host&#39;</span><span class="p">)</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;port&#39;</span><span class="p">)</span>
+            <span class="n">database</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;database&#39;</span><span class="p">)</span>
+            <span class="n">options</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s">&#39;options&#39;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p>We assume that values are URI-quoted; unquote them here.
+Also perform necessary type conversion.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="n">engine</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">username</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">username</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">password</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">host</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">host</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">port</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;expected port to be an integer;&quot;</span>
+                                     <span class="s">&quot; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">port</span><span class="p">)</span>
+            <span class="n">database</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">database</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">options</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">options</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">urllib</span><span class="o">.</span><span class="n">unquote</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+                               <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;&amp;&#39;</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p>If a dictionary is given, assume it is a dictionary with
+the fixed set of keys.  Extract the values.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;engine&#39;</span><span class="p">,</span> <span class="s">&#39;username&#39;</span><span class="p">,</span> <span class="s">&#39;password&#39;</span><span class="p">,</span>
+                               <span class="s">&#39;host&#39;</span><span class="p">,</span> <span class="s">&#39;port&#39;</span><span class="p">,</span> <span class="s">&#39;database&#39;</span><span class="p">,</span> <span class="s">&#39;options&#39;</span><span class="p">]:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;unexpected key: </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s">&#39;engine&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;key &#39;engine&#39; is not found in </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s">&#39;database&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;key &#39;database&#39; is not found in </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s">&#39;engine&#39;</span><span class="p">]</span>
+            <span class="n">username</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;username&#39;</span><span class="p">)</span>
+            <span class="n">password</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;password&#39;</span><span class="p">)</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;host&#39;</span><span class="p">)</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;port&#39;</span><span class="p">)</span>
+            <span class="n">database</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s">&#39;database&#39;</span><span class="p">]</span>
+            <span class="n">options</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;options&#39;</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p>Sanity check on the values.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                <span class="n">engine</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;engine must be a string; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">engine</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                <span class="n">username</span> <span class="o">=</span> <span class="n">username</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;username must be a string; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">username</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                <span class="n">password</span> <span class="o">=</span> <span class="n">password</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;password must be a string; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">password</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                <span class="n">host</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">str</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;host must be a string; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">host</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">)):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="nb">int</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;port must be an integer; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">port</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                <span class="n">database</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;database must be a string; got </span><span class="si">%r</span><span class="s">&quot;</span>
+                                 <span class="o">%</span> <span class="n">database</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="n">dictof</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">))):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;options must be a dictionary with&quot;</span>
+                                 <span class="s">&quot; string keys and values; got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">options</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p>We are done, produce an instance.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">database</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        <p>Generate a connection URI corresponding to the instance.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <h1>The generated URI should only contain ASCII characters because</h1>
+<h1>we want it to translate to Unicode without decoding errors.</h1>
+<p>chunks = []
+chunks.append(self.engine)
+chunks.append('://')
+if ((self.username is not None or self.password is not None) or
+<pre>(self.host is None and self.port is not None)):
+if self.username is not None:
+chunks.append(urllib.quote(self.username, safe=''))
+if self.password is not None:
+chunks.append(':')
+chunks.append(urllib.quote(self.password, safe=''))
+chunks.append('@')
+if self.host is not None:
+chunks.append(urllib.quote(self.host, safe=''))
+if self.port is not None:
+chunks.append(':')
+chunks.append(str(self.port))
+chunks.append('/')
+chunks.append(urllib.quote(self.database))
+if self.options is not None:
+chunks.append('?')
+is_first = True
+for key in sorted(self.options):
+if is_first:
+is_first = False
+else:
+chunks.append('&amp;')
+chunks.append(urllib.quote(key, safe=''))
+chunks.append('=')
+chunks.append(urllib.quote(self.options[key]))
+return ''.join(chunks)
+</pre>
+def <strong>repr</strong>(self):
+return "&lt;%s %s&gt;" % (self.<strong>class</strong>.<strong>name</strong>, self)</p>
+<h1 />
+<h1>Type checking helpers.</h1>
+<h1 />
+<p>class maybe(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">either</span> <span class="sb">``</span><span class="bp">None</span><span class="sb">``</span> <span class="ow">or</span> <span class="n">an</span> <span class="n">instance</span> <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="nb">type</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">maybe</span><span class="p">(</span><span class="n">T</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(oneof(...)) == isinstance(object)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em>*kwds):
+return object
+</pre>
+def <strong>init</strong>(self, value_type):
+self.value_type = value_type</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return (value is None or isinstance(value, self.value_type))</p>
+<p>class oneof(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">an</span> <span class="n">instance</span> <span class="n">of</span> <span class="n">one</span> <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="n">types</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">oneof</span><span class="p">(</span><span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">,</span> <span class="o">...</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(oneof(...)) == isinstance(object)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em><em>kwds):
+return object
+</pre>
+def <strong>init</strong>(self, </em>value_types):
+self.value_types = value_types</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return any(isinstance(value, value_type)
+<pre>for value_type in self.value_types)
+</pre></p>
+<p>class listof(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">a</span> <span class="nb">list</span> <span class="n">containing</span> <span class="n">elements</span> <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="nb">type</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+    
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">listof</span><span class="p">(</span><span class="n">T</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(listof(...)) == isinstance(list)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em>*kwds):
+return list
+</pre>
+def <strong>init</strong>(self, item_type):
+self.item_type = item_type</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return (isinstance(value, list) and
+<pre>all(isinstance(item, self.item_type) for item in value))
+</pre></p>
+<p>class setof(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">a</span> <span class="nb">set</span> <span class="n">containing</span> <span class="n">elements</span> <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="nb">type</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+    
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">setof</span><span class="p">(</span><span class="n">T</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(setof(...)) == isinstance(list)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em>*kwds):
+return set
+</pre>
+def <strong>init</strong>(self, item_type):
+self.item_type = item_type</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return (isinstance(value, set) and
+<pre>all(isinstance(item, self.item_type) for item in value))
+</pre></p>
+<p>class tupleof(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">a</span> <span class="nb">tuple</span> <span class="k">with</span> <span class="n">the</span> <span class="n">fixed</span> <span class="n">number</span> <span class="n">of</span> <span class="n">elements</span>
+    <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="n">types</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">tupleof</span><span class="p">(</span><span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">TN</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(tupleof(...)) == isinstance(tuple)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em><em>kwds):
+return tuple
+</pre>
+def <strong>init</strong>(self, </em>item_types):
+self.item_types = item_types</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return (isinstance(value, tuple) and
+<pre>len(value) == len(self.item_types) and
+all(isinstance(item, item_type)
+for item, item_type in zip(value, self.item_types)))
+</pre></p>
+<p>class dictof(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">a</span> <span class="n">dictionary</span> <span class="k">with</span> <span class="n">keys</span> <span class="ow">and</span> <span class="n">elements</span> <span class="n">of</span>
+    <span class="n">the</span> <span class="n">specified</span> <span class="n">types</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+    
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dictof</span><span class="p">(</span><span class="n">T1</span><span class="p">,</span> <span class="n">T2</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(dictof(...)) == isinstance(dict)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em>*kwds):
+return dict
+</pre>
+def <strong>init</strong>(self, key_type, item_type):
+self.key_type = key_type
+self.item_type = item_type</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return (isinstance(value, dict) and
+<pre>all(isinstance(key, self.key_type) and
+isinstance(value[key], self.item_type)
+for key in value))
+</pre></p>
+<p>class subclassof(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Check</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">a</span> <span class="n">subclass</span> <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="n">class</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">subclassof</span><span class="p">(</span><span class="n">T</span><span class="p">))</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(subclassof(...)) == isinstance(type)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em>*kwds):
+return type
+</pre>
+def <strong>init</strong>(self, class_type):
+self.class_type = class_type</p>
+<p>def <strong>instancecheck</strong>(self, value):
+return (isinstance(value, type) and issubclass(value, self.class_type))</p>
+<p>class filelike(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Checks</span> <span class="k">if</span> <span class="n">a</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">a</span> <span class="nb">file</span> <span class="ow">or</span> <span class="n">a</span> <span class="nb">file</span><span class="o">-</span><span class="n">like</span> <span class="nb">object</span><span class="o">.</span>
+
+    <span class="n">Usage</span><span class="p">::</span>
+    
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">filelike</span><span class="p">())</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        <h1>For Python 2.5, we can't use <code>__instancecheck__</code>; in this case,</h1>
+<h1>we let <code>isinstance(filelike()) == isinstance(object)</code>.</h1>
+<p>if sys.version_info &lt; (2, 6):
+<pre>def <strong>new</strong>(cls, <em>args, </em>*kwds):
+return object
+</pre>
+def <strong>instancecheck</strong>(self, value):
+return (hasattr(value, 'read') or hasattr(value, 'write'))</p>
+<p>def aresubclasses(subclasses, superclasses):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Takes</span> <span class="n">two</span> <span class="n">lists</span><span class="p">;</span> <span class="n">checks</span> <span class="k">if</span> <span class="n">each</span> <span class="n">element</span> <span class="n">of</span> <span class="n">the</span> <span class="n">first</span> <span class="nb">list</span> <span class="ow">is</span>
+    <span class="n">a</span> <span class="n">subclass</span> <span class="n">of</span> <span class="n">the</span> <span class="n">corresponding</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">second</span> <span class="nb">list</span><span class="o">.</span>
+
+    <span class="sb">`subclasses`</span> <span class="p">(</span><span class="n">a</span> <span class="n">sequence</span> <span class="n">of</span> <span class="n">types</span><span class="p">)</span>
+        <span class="n">A</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">potential</span> <span class="n">subclasses</span><span class="o">.</span>
+
+    <span class="sb">`superclasses`</span> <span class="p">(</span><span class="n">a</span> <span class="n">sequence</span> <span class="n">of</span> <span class="n">types</span><span class="p">)</span>
+        <span class="n">A</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">potential</span> <span class="n">superclasses</span><span class="o">.</span>
+
+    <span class="n">Returns</span> <span class="sb">``</span><span class="bp">True</span><span class="sb">``</span> <span class="k">if</span> <span class="n">the</span> <span class="n">check</span> <span class="n">succeeds</span><span class="p">;</span> <span class="sb">``</span><span class="bp">False</span><span class="sb">``</span> <span class="n">otherwise</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p>return (len(subclasses) == len(superclasses) and
+<pre>all(issubclass(subclass, superclass)
+for subclass, superclass in zip(subclasses, superclasses)))
+</pre></p>
+<h1 />
+<h1>Text formatting.</h1>
+<h1 />
+<p>def trim_doc(doc):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Unindent</span> <span class="ow">and</span> <span class="n">remove</span> <span class="n">leading</span> <span class="ow">and</span> <span class="n">trailing</span> <span class="n">blank</span> <span class="n">lines</span><span class="o">.</span>
+
+    <span class="n">Useful</span> <span class="k">for</span> <span class="n">stripping</span> <span class="n">indentation</span> <span class="kn">from</span> <span class="nn">docstrings.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        <p>assert isinstance(doc, maybe(str))
+if doc is None:
+<pre>return None
+lines = doc.splitlines()
+while lines and not lines[0].strip():
+lines.pop(0)
+while lines and not lines[-1].strip():
+lines.pop(-1)
+indent = None
+for line in lines:
+short_line = line.lstrip()
+if short_line:
+line_indent = len(line)-len(short_line)
+if indent is None or line_indent &lt; indent:
+indent = line_indent
+if indent:
+lines = [line[indent:] for line in lines]
+return "n".join(lines)
+</pre></p>
+<h1 />
+<h1>Topological sorting.</h1>
+<h1 />
+<p>def toposort(elements, order, is_total=False):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Implements</span> <span class="n">topological</span> <span class="n">sort</span><span class="o">.</span>
+
+    <span class="n">Takes</span> <span class="n">a</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">elements</span> <span class="ow">and</span> <span class="n">a</span> <span class="n">partial</span> <span class="n">order</span> <span class="n">relation</span><span class="o">.</span>  <span class="n">Returns</span>
+    <span class="n">the</span> <span class="n">elements</span> <span class="n">reordered</span> <span class="n">to</span> <span class="n">satisfy</span> <span class="n">the</span> <span class="n">given</span> <span class="n">order</span><span class="o">.</span>
+
+    <span class="n">A</span> <span class="p">(</span><span class="n">finite</span><span class="p">)</span> <span class="n">order</span> <span class="n">relation</span> <span class="ow">is</span> <span class="n">an</span> <span class="n">acyclic</span> <span class="n">directed</span> <span class="n">graph</span><span class="o">.</span>
+
+    <span class="sb">`elements`</span> <span class="p">(</span><span class="n">a</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="n">A</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">elements</span><span class="o">.</span>
+
+    <span class="sb">`order`</span> <span class="p">(</span><span class="n">a</span> <span class="nb">callable</span><span class="p">)</span>
+        <span class="n">A</span> <span class="n">function</span> <span class="sb">``</span><span class="n">order</span><span class="p">(</span><span class="n">element</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="nb">list</span> <span class="n">of</span> <span class="n">elements</span><span class="p">]</span><span class="sb">``</span> <span class="n">representing</span>
+        <span class="n">the</span> <span class="n">partial</span> <span class="n">order</span> <span class="n">relation</span><span class="o">.</span>  <span class="n">For</span> <span class="n">an</span> <span class="n">element</span> <span class="sb">`x`</span><span class="p">,</span> <span class="sb">``</span><span class="n">order</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="sb">``</span> <span class="n">must</span>
+        <span class="n">produce</span> <span class="n">a</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">elements</span> <span class="n">less</span> <span class="n">than</span> <span class="sb">`x`</span><span class="o">.</span>
+
+    <span class="sb">`is_total`</span> <span class="p">(</span><span class="n">Boolean</span><span class="p">)</span>
+        <span class="n">Ensures</span> <span class="n">that</span> <span class="n">the</span> <span class="n">given</span> <span class="n">partial</span> <span class="n">order</span> <span class="ow">is</span><span class="p">,</span> <span class="ow">in</span> <span class="n">fact</span><span class="p">,</span> <span class="n">a</span> <span class="n">total</span> <span class="n">order</span><span class="o">.</span>
+
+    <span class="n">This</span> <span class="n">function</span> <span class="n">raises</span> <span class="p">:</span><span class="n">exc</span><span class="p">:</span><span class="sb">`RuntimeError`</span> <span class="k">if</span> <span class="sb">`order`</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">a</span> <span class="n">valid</span>
+    <span class="n">partial</span> <span class="n">order</span> <span class="p">(</span><span class="n">contains</span> <span class="n">loops</span><span class="p">)</span> <span class="ow">or</span> <span class="k">if</span> <span class="sb">`is_total`</span> <span class="ow">is</span> <span class="nb">set</span> <span class="ow">and</span> <span class="sb">`order`</span>
+    <span class="ow">is</span> <span class="ow">not</span> <span class="n">a</span> <span class="n">valid</span> <span class="n">total</span> <span class="n">order</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        <h1>For a description of the algorithm, see, for example,</h1>
+<h1>http://en.wikipedia.org/wiki/Topological_sorting</h1>
+<h1>In short, we apply depth-first search to the DAG represented</h1>
+<h1>by the partial order.  As soon as the search finishes exploring</h1>
+<h1>some node, the node is added to the list.</h1>
+<h1>The sorted list.</h1>
+<p>ordered = []</p>
+<h1>The set of nodes which the DFS has already processed.</h1>
+<p>visited = set()</p>
+<h1>The set of nodes currently being processed by the DFS.</h1>
+<p>active = set()</p>
+<h1>The path to the current node.  Note that <code>set(path) == active</code>.</h1>
+<p>path = []</p>
+<h1>The mapping: node -&gt; position of the node in the original list.</h1>
+<p>positions = dict((element, index)
+<pre>for index, element in enumerate(elements))
+</pre></p>
+<h1>Implements the depth-first search.</h1>
+<p>def dfs(node):</p>
+<h1>Check if the node has already been processed.</h1>
+<p>if node in visited:
+return</p>
+<h1>Update the path; check for cycles.</h1>
+<p>path.append(node)
+if node in active:
+raise RuntimeError("order is not valid: loop detected",
+<pre>path[path.index(node):])
+active.add(node)
+</pre></p>
+<h1>Get the list of adjacent nodes.</h1>
+<p>adjacents = order(node)</p>
+<h1>Sort the adjacent elements according to their order in the</h1>
+<h1>original list.  It helps to keep the original order when possible.</h1>
+<p>adjacents = sorted(adjacents, key=(lambda i: positions[i]))</p>
+<h1>Visit the adjacent nodes.</h1>
+<p>for adjacent in adjacents:
+dfs(adjacent)</p>
+<h1>If requested, check that the order is total.</h1>
+<p>if is_total and ordered:
+if ordered[-1] not in adjacents:
+raise RuntimeError("order is not total",
+<pre>[ordered[-1], node])
+</pre></p>
+<h1>Add the node to the sorted list.</h1>
+<p>ordered.append(node)</p>
+<h1>Remove the node from the path; add it to the set of processed nodes.</h1>
+<p>path.pop()
+active.remove(node)
+visited.add(node)</p>
+<h1>Apply the DFS to the whole DAG.</h1>
+<p>for element in elements:
+dfs(element)</p>
+<p>return ordered</p>
+<h1 />
+<h1>Node types with special behavior.</h1>
+<h1 />
+<p>class Record(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Implements</span> <span class="n">a</span> <span class="n">simple</span> <span class="n">record</span> <span class="nb">type</span><span class="o">.</span>
+
+    <span class="n">The</span> <span class="n">constructor</span> <span class="n">of</span> <span class="p">:</span><span class="n">class</span><span class="p">:</span><span class="sb">`Record`</span> <span class="n">expects</span> <span class="n">keyword</span> <span class="n">arguments</span><span class="p">,</span>
+    <span class="n">which</span> <span class="n">becomes</span> <span class="n">the</span> <span class="n">attributes</span> <span class="n">of</span> <span class="n">the</span> <span class="n">instance</span><span class="o">.</span>
+
+    <span class="sb">`attributes`</span>
+        <span class="n">Attributes</span> <span class="n">of</span> <span class="n">the</span> <span class="n">record</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        <p>def <strong>init</strong>(self, **attributes):
+<pre>for name in attributes:
+setattr(self, name, attributes[name])
+</pre>
+def <strong>repr</strong>(self):</p>
+<h1>Display:</h1>
+<h1>Record(name=value, ...)</h1>
+<p>return "%s(%s)" % (self.<strong>class</strong>.<strong>name</strong>,
+<pre>", ".join("%s=%r" % (name, getattr(self, name))
+for name in sorted(vars(self))))
+</pre></p>
+<p>class Printable(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Implements</span> <span class="n">default</span> <span class="n">string</span> <span class="n">representation</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        <p>def <strong>str</strong>(self):
+<pre># Default implementation; override in subclasses.
+return "[%s]" % id(self)
+</pre>
+def <strong>repr</strong>(self):
+return "&lt;%s %s&gt;" % (self.<strong>class</strong>.<strong>name</strong>, self)</p>
+<p>class Clonable(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Implements</span> <span class="n">an</span> <span class="n">immutable</span> <span class="n">clonable</span> <span class="nb">object</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p>def <strong>init</strong>(self):
+<pre># Subclasses must define the <code>__init__</code> method.  Moreover, the</p>
+<h1>arguments of <code>__init__</code> must be assigned to respective object</h1>
+<h1>attributes unchanged (or if changed, must still be in the form</h1>
+<h1>acceptable by the constructor).</h1>
+<p>raise NotImplementedError()
+</pre>
+def clone(self, **replacements):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">Clones</span> <span class="n">the</span> <span class="n">node</span> <span class="n">assigning</span> <span class="n">new</span> <span class="n">values</span> <span class="n">to</span> <span class="n">selected</span> <span class="n">attributes</span><span class="o">.</span>
+
+        <span class="n">Returns</span> <span class="n">a</span> <span class="n">new</span> <span class="nb">object</span> <span class="n">of</span> <span class="n">the</span> <span class="n">same</span> <span class="nb">type</span> <span class="n">keeping</span> <span class="n">original</span> <span class="n">attributes</span>
+        <span class="k">except</span> <span class="n">those</span> <span class="k">for</span> <span class="n">which</span> <span class="n">new</span> <span class="n">values</span> <span class="n">are</span> <span class="n">specified</span><span class="o">.</span>
+
+        <span class="sb">`replacements`</span> <span class="p">(</span><span class="n">a</span> <span class="n">dictionary</span><span class="p">)</span>
+            <span class="n">A</span> <span class="n">mapping</span><span class="p">:</span> <span class="n">attribute</span> <span class="o">-&gt;</span> <span class="n">value</span> <span class="n">containing</span> <span class="n">new</span> <span class="n">attribute</span> <span class="n">values</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        <h1>A shortcut: if there are no replacements, we could reuse</h1>
+<h1>the same object.</h1>
+<p>if not replacements:
+<pre>return self</p>
+<h1>Otherwise, reuse a more general method.</h1>
+<p>return self.clone_to(self.<strong>class</strong>, <strong>replacements)
+</pre>
+def clone_to(self, clone_type, </strong>replacements):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>        <span class="n">Clones</span> <span class="n">the</span> <span class="n">node</span> <span class="n">changing</span> <span class="n">its</span> <span class="nb">type</span> <span class="ow">and</span> <span class="n">assigning</span> <span class="n">new</span> <span class="n">values</span> <span class="n">to</span>
+        <span class="n">selected</span> <span class="n">attributes</span><span class="o">.</span>
+
+        <span class="n">Returns</span> <span class="n">a</span> <span class="n">new</span> <span class="nb">object</span> <span class="n">of</span> <span class="n">the</span> <span class="n">specified</span> <span class="nb">type</span> <span class="n">which</span> <span class="n">keeps</span> <span class="n">the</span>
+        <span class="n">attributes</span> <span class="n">of</span> <span class="n">the</span> <span class="n">original</span> <span class="n">objects</span> <span class="k">except</span> <span class="n">those</span> <span class="k">for</span> <span class="n">which</span> <span class="n">new</span>
+        <span class="n">values</span> <span class="n">are</span> <span class="n">specified</span><span class="o">.</span>
+
+        <span class="sb">`clone_type`</span> <span class="p">(</span><span class="n">a</span> <span class="nb">type</span><span class="p">)</span>
+            <span class="n">The</span> <span class="nb">type</span> <span class="n">of</span> <span class="n">the</span> <span class="n">cloned</span> <span class="n">node</span><span class="o">.</span>
+
+        <span class="sb">`replacements`</span> <span class="p">(</span><span class="n">a</span> <span class="n">dictionary</span><span class="p">)</span>
+            <span class="n">A</span> <span class="n">mapping</span><span class="p">:</span> <span class="n">attribute</span> <span class="o">-&gt;</span> <span class="n">value</span> <span class="n">containing</span> <span class="n">new</span> <span class="n">attribute</span> <span class="n">values</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        <h1>Get the list of constructor arguments.  Note that we assume</h1>
+<h1>for each constructor argument, a node object has an attribute</h1>
+<h1>with the same name.</h1>
+<p>init_code = self.<strong>init</strong>.im_func.func_code</p>
+<h1>Fetch the names of regular arguments, but skip <code>self</code>.</h1>
+<p>names = list(init_code.co_varnames[1:init_code.co_argcount])</p>
+<h1>Check for * and ** arguments.  We cannot properly support</h1>
+<h1>* arguments, so just complain about it.</h1>
+<p>assert not (init_code.co_flags &amp; 0x04)  # CO_VARARGS</p>
+<h1>Check for ** arguments.  If present, they must adhere</h1>
+<h1>the following protocol:</h1>
+<h1>(1) The node must keep the ** dictionary as an attribute</h1>
+<p><pre>#     with the same name and content.</p>
+<h1>(2) The node must have an attribute for each entry in</h1>
+<h1>the ** dictionary.</h1>
+<p>if init_code.co_flags &amp; 0x08:           # CO_VARKEYWORDS
+name = init_code.co_varnames[init_code.co_argcount]
+names += sorted(getattr(self, name))</p>
+<h1>Check that all replacements are, indeed, constructor parameters.</h1>
+<p>assert all(key in names for key in sorted(replacements))</p>
+<h1>Arguments of a constructor call to generate a clone.</h1>
+<p>arguments = {}</p>
+<h1>Indicates if at least one argument has changed.</h1>
+<p>is_modified = False</p>
+<h1>If the target type differs from the node type, we need to</h1>
+<h1>generate a new object even when there are no modified attributes.</h1>
+<p>if self.<strong>class</strong> is not clone_type:
+is_modified = True</p>
+<h1>For each argument, either extract the current value, or</h1>
+<h1>get a replacement.</h1>
+<p>for name in names:
+value = getattr(self, name)
+if name in replacements and replacements[name] is not value:
+value = replacements[name]
+is_modified = True
+arguments[name] = value</p>
+<h1>Even though we may have some replacements, in fact they all coincide</h1>
+<h1>with the object attributes, so we could reuse the same object.</h1>
+<p>if not is_modified:
+return self</p>
+<h1>Call the node constructor and return a new object.</h1>
+<p>clone = clone_type(**arguments)
+return clone
+</pre></p>
+<p>class Comparable(object):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Implements</span> <span class="n">an</span> <span class="nb">object</span> <span class="k">with</span> <span class="n">by</span><span class="o">-</span><span class="n">value</span> <span class="n">comparison</span> <span class="n">semantics</span><span class="o">.</span>
+
+    <span class="n">The</span> <span class="n">constructor</span> <span class="n">arguments</span><span class="p">:</span>
+
+    <span class="sb">`equality_vector`</span> <span class="p">(</span><span class="n">an</span> <span class="n">immutable</span> <span class="nb">tuple</span> <span class="ow">or</span> <span class="sb">``</span><span class="bp">None</span><span class="sb">``</span><span class="p">)</span>
+        <span class="n">Encapsulates</span> <span class="nb">all</span> <span class="n">essential</span> <span class="n">attributes</span> <span class="n">of</span> <span class="n">an</span> <span class="nb">object</span><span class="o">.</span>  <span class="n">Two</span> <span class="n">instances</span>
+        <span class="n">of</span> <span class="p">:</span><span class="n">class</span><span class="p">:</span><span class="sb">`Comparable`</span> <span class="n">are</span> <span class="n">considered</span> <span class="n">equal</span> <span class="k">if</span> <span class="n">they</span> <span class="n">are</span> <span class="n">of</span> <span class="n">the</span>
+        <span class="n">same</span> <span class="nb">type</span> <span class="ow">and</span> <span class="n">their</span> <span class="n">equality</span> <span class="n">vectors</span> <span class="n">are</span> <span class="n">equal</span><span class="o">.</span>  <span class="n">If</span> <span class="sb">``</span><span class="bp">None</span><span class="sb">``</span><span class="p">,</span> <span class="n">the</span>
+        <span class="nb">object</span> <span class="ow">is</span> <span class="n">to</span> <span class="n">be</span> <span class="n">compared</span> <span class="n">by</span> <span class="n">identity</span><span class="o">.</span>
+
+    <span class="n">Other</span> <span class="n">attributes</span><span class="p">:</span>
+
+    <span class="sb">`hash`</span> <span class="p">(</span><span class="n">an</span> <span class="n">integer</span><span class="p">)</span>
+        <span class="n">The</span> <span class="nb">hash</span> <span class="n">of</span> <span class="n">the</span> <span class="n">equality</span> <span class="n">vector</span><span class="p">;</span> <span class="k">if</span> <span class="n">two</span> <span class="n">objects</span> <span class="n">are</span> <span class="n">equal</span><span class="p">,</span> <span class="n">their</span>
+        <span class="n">hashes</span> <span class="n">are</span> <span class="n">also</span> <span class="n">equal</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p>def <strong>init</strong>(self, equality_vector=None):
+<pre># We assume that <code>Comparable</code> is the last constructor in the</p>
+<h1>inheritance tree and therefore do not call the super constructor.</h1>
+<h1>However when using together with <code>Clonable</code>, the latter should be</h1>
+<h1>behind <code>Comparable</code>.</h1>
+<p>assert isinstance(equality_vector, maybe(oneof(tuple, int, long)))</p>
+<h1>When <code>equality_vector</code> is not set, equality by identity</h1>
+<h1>is assumed.  Note that <code>A is B</code> &lt;=&gt; <code>id(A) == id(B)</code>.</h1>
+<p>if equality_vector is None:
+equality_vector = id(self)</p>
+<h1>Flatten the vector.</h1>
+<p>if isinstance(equality_vector, tuple):
+elements = []
+for element in equality_vector:
+if isinstance(element, Comparable):
+elements.append((element.<strong>class</strong>, element.hash,
+element.equality_vector))
+else:
+elements.append(element)
+equality_vector = tuple(elements)
+self.equality_vector = equality_vector
+self.hash = hash(equality_vector)
+</pre>
+def <strong>hash</strong>(self):
+return self.hash</p>
+<p>def <strong>eq</strong>(self, other):</p>
+<h1>Two nodes are equal if they are of the same type and</h1>
+<h1>their equality vectors are equal.  To avoid costly</h1>
+<h1>comparison of equality vectors in the more common</h1>
+<h1>"not equal" case, we compare hashes first.</h1>
+<p>return ((self is other) or
+(isinstance(other, Comparable) and
+self.<strong>class</strong> is other.<strong>class</strong> and
+self.hash == other.hash and
+self.equality_vector == other.equality_vector))</p>
+<p>def <strong>ne</strong>(self, other):</p>
+<h1>Since we override <code>==</code>, we also need to override <code>!=</code>.</h1>
+<p>return (not isinstance(other, Comparable) or
+self.<strong>class</strong> is not other.<strong>class</strong> or
+self.hash != other.hash and
+self.equality_vector != other.equality_vector)</p>
+<h1 />
+<h1>Auto-import utility.</h1>
+<h1 />
+<p>def autoimport(name):</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">Imports</span> <span class="nb">all</span> <span class="n">modules</span> <span class="p">(</span><span class="n">including</span> <span class="n">subpackages</span><span class="p">)</span> <span class="ow">in</span> <span class="n">a</span> <span class="n">package</span><span class="o">.</span>
+
+    <span class="sb">`name`</span> <span class="p">(</span><span class="n">a</span> <span class="n">string</span><span class="p">)</span>
+        <span class="n">The</span> <span class="n">package</span> <span class="n">name</span><span class="o">.</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <h1>Import the package itself.</h1>
+<p>package = <strong>import</strong>(name, fromlist=['<strong>name</strong>'])</p>
+<h1>It must be the package we asked for.</h1>
+<p>assert hasattr(package, '<strong>name</strong>') and package.<strong>name</strong> == name</p>
+<h1>Make sure it is indeed a package (has <code>__name__</code>).</h1>
+<p>assert hasattr(package, '<strong>path</strong>')</p>
+<h1>Get the list of modules in the package directory; prepend the module</h1>
+<h1>names with the package name.  That also includes any subpackages.</h1>
+<p>modules = pkgutil.walk_packages(package.<strong>path</strong>, name+'.')</p>
+<h1>Import the modules in the package.</h1>
+<p>for importer, module_name, is_package in modules:
+<pre><strong>import</strong>(module_name)
+</pre></p>
+<h1 />
+<h1>Timezone implementations.</h1>
+<h1 />
+<p>class UTC(datetime.tzinfo):</p>
+<p>def utcoffset(self, dt):
+return datetime.timedelta(0)</p>
+<p>def dst(self, dt):
+return datetime.timedelta(0)</p>
+<p>def tzname(self, dt):
+return "Z"</p>
+<p>class FixedTZ(datetime.tzinfo):</p>
+<p>def <strong>init</strong>(self, offset):
+self.offset = offset</p>
+<p>def utcoffset(self, dt):
+return datetime.timedelta(minutes=self.offset)</p>
+<p>def dst(self, dt):
+return datetime.timedelta(0)</p>
+<p>def tzname(self, dt):
+hour = abs(self.offset) / 60
+minute = abs(self.offset) % 60
+sign = '+'
+if self.offset &lt; 0:
+<pre>sign = '-'
+if minute:
+return "%s%02d:%02d" % (sign, hour, minute)
+else:
+return "%s%d" % (sign, hour)
+</pre></p>
+<p>class LocalTZ(datetime.tzinfo):</p>
+<p>def utcoffset(self, dt):
+if self.isdst(dt):
+return datetime.timedelta(seconds=-time.altzone)
+else:
+return datetime.timedelta(seconds=-time.timezone)</p>
+<p>def dst(self, dt):
+if self.isdst(dt):
+return datetime.timedelta(seconds=(time.timezone-time.altzone))
+else:
+return datetime.timedelta(0)</p>
+<p>def tzname(self, dt):
+if self.isdst(dt):
+offset = -time.altzone/60
+else:
+offset = -time.timezone/60
+hour = abs(offset) / 60
+minute = abs(offset) % 60
+sign = '+'
+if offset &lt; 0:
+sign = '-'
+if minute:
+return "%s%02d:%02d" % (sign, hour, minute)
+else:
+return "%s%d" % (sign, hour)</p>
+<p>def isdst(self, dt):
+tt = (dt.year, dt.month, dt.day,
+dt.hour, dt.minute, dt.second,
+dt.weekday(), 0, 0)
+stamp = time.mktime(tt)
+tt = time.localtime(stamp)
+return tt.tm_isdst &gt; 0</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

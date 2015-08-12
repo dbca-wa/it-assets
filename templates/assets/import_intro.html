@@ -1,0 +1,135 @@
+{% extends "admin/base_site.html" %}
+{% load admin_list i18n %}
+{% load url from future %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/admin">
+    Home
+  </a>
+   &rsaquo;
+   <a href="/admin/assets">
+     Assets
+  </a>
+  &rsaquo;
+   <a href="/admin/assets/asset">
+     Assets
+  </a>
+  &rsaquo;
+  Import
+</div>
+{% endblock %}
+
+{% block content %}
+
+<p>This interface lets you bulk-import assets into this database. You will need a spreadsheet meeting the following criteria:</p>
+
+<ul>
+    <li>No special fonts or images, as these won't be preseved
+    <li>The first row must consist of a name for each column, selected from the list below. The name must exactly match the name in the list.
+    <li>The spreadsheet needs to be exported in CSV format (comma-delimited), so you have a .csv file.
+</ul>
+
+<h4>Valid column names</h4>
+<p>Mandatory columns must appear somewhere in the spreadsheet. Other columns are optional and may be left out.</p>
+
+<p>Note: invoices cannot be imported at this stage.</p>
+
+<table>
+    <tr><td><b>Column name</b></td><td><b>Description</b></td></tr>
+    <tr>
+        <td><tt>asset_tag</tt></td>
+        <td>(mandatory) The asset tag of the item (in form ITXXXXX).</td>
+    </tr>
+    <tr>
+        <td><tt>finance_asset_tag</tt></td>
+        <td>(optional) The asset tag of the item as issued by Finance.</td>
+    </tr>
+    <tr>
+        <td><tt>manufacturer</tt></td>
+        <td>(mandatory) The manufacturer of the product (eg. Dell).</td>
+    </tr>
+    <tr>
+        <td><tt>model</tt></td>
+        <td>(mandatory) The model number (eg. Latitude E6320).</td>
+    </tr>
+    <tr>
+        <td><tt>model_lifecycle</tt></td>
+        <td>(optional, required if model is to be created) The time in years before this model of asset is considered obsolete. Used only if the model specifed needs to be created; ignored otherwise.</td>
+    </tr>
+    <tr>
+        <td><tt>model_type</tt></td>
+        <td>(optional, required if model is to be created) The category of device to apply to this asset. This must match a pre-defined category - a list can be found <a href="/assets/categories">here</a>.</td>
+    </tr>
+    <tr>
+        <td><tt>status</tt></td>
+        <td>(optional) The current deployment status of this asset. If not provided, this will be set to 'In storage'.</td>
+    </tr>
+    <tr>
+        <td><tt>serial</tt></td>
+        <td>(mandatory) The asset's serial number.</td>
+    </tr>
+    <tr>
+        <td><tt>date_purchased</tt></td>
+        <td>(mandatory) The purchase date for this asset. Must be in the form dd/mm/yyyy.</td>
+    </tr>
+    <tr>
+        <td><tt>purchased_value</tt></td>
+        <td>(optional) The amount paid for the asset, inclusive of any permanent modules or upgrades.</td>
+    </tr>
+    <tr>
+        <td><tt>location_name</tt></td>
+        <td>(mandatory, must match existing) The location of this asset. This will be combined with location_block and location_site to form the full location. <b>These must match a location already defined in the <a href="/admin/assets/location">locations table</a>.</b></td>
+    </tr>
+    <tr>
+        <td><tt>location_block</tt></td>
+        <td>(mandatory, must match existing) The block this asset is located in, if applicable. See <tt>location_name</tt> for more information.</td>
+    </tr>
+    <tr>
+        <td><tt>location_site</tt></td>
+        <td>(mandatory, must match existing) The site this asset is located at. See <tt>location_name</tt> for more information.</td>
+    </tr>
+    <tr>
+        <td><tt>assigned_user</tt></td>
+        <td>(optional) The username of the user this asset is assigned to.</td>
+    </tr> 
+    <tr>
+        <td><tt>notes</tt></td>
+        <td>(optional) Any additional notes regarding this asset.</td>
+    </tr> 
+</table>
+
+<!-- Invoices can't be imported yet
+    <tr>
+        <td><tt>supplier</tt></td>
+        <td>(optional) The supplier of the asset (eg. Dell, Datacom)</td>
+    </tr>
+    <tr>
+        <td><tt>supplier_ref</tt></td>
+        <td>(optional) The supplier's reference or order number, as marked on the invoice for this asset. If this field is specified then supplier must also be specirfied.</td>
+    </tr>
+    <tr>
+        <td><tt>our_ref</tt></td>
+        <td>(optional) The PO or job number relating to the purchase of this asset.</td>
+    </tr>
+    <tr>
+        <td><tt>invoice_value</tt></td>
+        <td>(optional) The total value ex. GST of the invoice relating to the purchase of this asset.</td>
+    </tr>
+    <tr>
+        <td><tt> </tt></td>
+        <td> </td>
+    </tr>
+
+-->
+
+<h4>File upload</h4>
+<p>Select the .csv file in the box below and click upload.</p>
+
+<form action="" enctype="multipart/form-data" method="POST">{% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Upload" />
+</form>
+
+
+{% endblock %}

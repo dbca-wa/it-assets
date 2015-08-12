@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>test_post2.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>test_post2.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>vi:ts=4:et
+$Id$</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">pycurl</span>
+
+<span class="n">pf</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;field1&#39;</span><span class="p">,</span> <span class="s">&#39;this is a test using httppost &amp; stuff&#39;</span><span class="p">),</span>
+      <span class="p">(</span><span class="s">&#39;field2&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">FORM_FILE</span><span class="p">,</span> <span class="s">&#39;test_post.py&#39;</span><span class="p">,</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">FORM_FILE</span><span class="p">,</span> <span class="s">&#39;test_post2.py&#39;</span><span class="p">)),</span>
+      <span class="p">(</span><span class="s">&#39;field3&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">pycurl</span><span class="o">.</span><span class="n">FORM_CONTENTS</span><span class="p">,</span> <span class="s">&#39;this is wei</span><span class="se">\000</span><span class="s">rd, but null-bytes are okay&#39;</span><span class="p">))</span>
+     <span class="p">]</span>
+
+<span class="n">c</span> <span class="o">=</span> <span class="n">pycurl</span><span class="o">.</span><span class="n">Curl</span><span class="p">()</span>
+<span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span> <span class="s">&#39;http://www.contactor.se/~dast/postit.cgi&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">HTTPPOST</span><span class="p">,</span> <span class="n">pf</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">setopt</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">perform</span><span class="p">()</span>
+<span class="n">c</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

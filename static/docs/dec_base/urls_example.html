@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>urls_example.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>urls_example.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">django.conf.urls.defaults</span> <span class="kn">import</span> <span class="n">url</span><span class="p">,</span> <span class="n">patterns</span><span class="p">,</span> <span class="n">include</span>
+<span class="kn">from</span> <span class="nn">django.contrib.staticfiles.urls</span> <span class="kn">import</span> <span class="n">staticfiles_urlpatterns</span>
+
+<span class="kn">from</span> <span class="nn">django.db.models</span> <span class="kn">import</span> <span class="n">get_models</span><span class="p">,</span> <span class="n">get_app</span>
+<span class="kn">from</span> <span class="nn">django.contrib</span> <span class="kn">import</span> <span class="n">admin</span>
+
+<span class="kn">import</span> <span class="nn">uni_form</span>
+
+<span class="n">admin</span><span class="o">.</span><span class="n">autodiscover</span><span class="p">()</span>
+
+<span class="n">app_list</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;restless&quot;</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">app_name</span> <span class="ow">in</span> <span class="n">app_list</span><span class="p">:</span>
+    <span class="n">app_models</span> <span class="o">=</span> <span class="n">get_app</span><span class="p">(</span><span class="n">app_name</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">get_models</span><span class="p">(</span><span class="n">app_models</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span> <span class="c"># try and get enhanced admin</span>
+                <span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">admin_config</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">admin</span><span class="o">.</span><span class="n">sites</span><span class="o">.</span><span class="n">AlreadyRegistered</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+<span class="n">urlpatterns</span> <span class="o">=</span> <span class="n">patterns</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <p>url(r'^sentry/', include('sentry.web.urls')),</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^admin/&#39;</span><span class="p">,</span> <span class="n">include</span><span class="p">(</span><span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">urls</span><span class="p">)),</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^login/$&#39;</span><span class="p">,</span> <span class="s">&#39;django.contrib.auth.views.login&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;login&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;template_name&#39;</span><span class="p">:</span><span class="s">&#39;dec_base/login.html&#39;</span><span class="p">}),</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^logout/$&#39;</span><span class="p">,</span> <span class="s">&#39;django.contrib.auth.views.logout&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;logout&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;template_name&#39;</span><span class="p">:</span><span class="s">&#39;dec_base/logged_out.html&#39;</span><span class="p">}),</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^confluence&#39;</span><span class="p">,</span> <span class="s">&#39;django.views.generic.simple.redirect_to&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;url&#39;</span><span class="p">:</span> <span class="s">&#39;https://confluence.dec.wa.gov.au/display/PBS&#39;</span><span class="p">},</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;help_page&#39;</span><span class="p">),</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^api/restless/v1/&#39;</span><span class="p">,</span> <span class="n">include</span><span class="p">(</span><span class="s">&#39;restless.urls&#39;</span><span class="p">)),</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^favicon\.ico$&#39;</span><span class="p">,</span> <span class="s">&#39;django.views.generic.simple.redirect_to&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;url&#39;</span><span class="p">:</span> <span class="s">&#39;/static/img/favicon.ico&#39;</span><span class="p">}),</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^media/uni_form/(?P&lt;path&gt;.*)$&#39;</span><span class="p">,</span>  <span class="s">&#39;django.views.static.serve&#39;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s">&#39;document_root&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">uni_form</span><span class="o">.</span><span class="n">__file__</span><span class="p">)),</span> <span class="s">&#39;media&#39;</span><span class="p">,</span> <span class="s">&#39;uni_form&#39;</span><span class="p">)</span>
+    <span class="p">}),</span>
+<span class="p">)</span>
+
+<span class="n">urlpatterns</span> <span class="o">+=</span> <span class="n">staticfiles_urlpatterns</span><span class="p">()</span>
+
+<span class="n">urlpatterns</span> <span class="o">+=</span> <span class="n">patterns</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span>
+    <span class="n">url</span><span class="p">(</span><span class="s">r&#39;^$&#39;</span><span class="p">,</span> <span class="s">&#39;example_app.views.index_page&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;site_home&#39;</span><span class="p">),</span> <span class="c"># Make sure that you have a named URL called site_home, or the base templates will raise an exception.</span>
+<span class="p">)</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

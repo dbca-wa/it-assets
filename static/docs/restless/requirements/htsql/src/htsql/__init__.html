@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>__init__.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>__init__.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        <h1>:mod:<code>htsql</code></h1>
+<p>:copyright: 2006-2011, Prometheus Research, LLC
+:authors: Clark C. Evans <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#99;&#99;&#101;&#64;&#99;&#108;&#97;&#114;&#107;&#101;&#118;&#97;&#110;&#115;&#46;&#99;&#111;&#109;">&#99;&#99;&#101;&#64;&#99;&#108;&#97;&#114;&#107;&#101;&#118;&#97;&#110;&#115;&#46;&#99;&#111;&#109;</a>,
+Kirill Simonov <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#120;&#105;&#64;&#114;&#101;&#115;&#111;&#108;&#118;&#101;&#110;&#116;&#46;&#110;&#101;&#116;">&#120;&#105;&#64;&#114;&#101;&#115;&#111;&#108;&#118;&#101;&#110;&#116;&#46;&#110;&#101;&#116;</a>;
+see <code>AUTHORS</code> file in the source distribution
+for the full list of contributors
+:license: See <code>LICENSE</code> file in the source distribution</p>
+<p>This package provides HTSQL, a query language for the accidental programmer.</p>
+<p>HTSQL is implemented as a WSGI application.  To create an application, run::</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>from htsql import HTSQL
+app = HTSQL(db)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+<p>where <code>db</code> is a connection URI, a string of the form::</p>
+<p>engine://username:password@host:port/database</p>
+<p><code>engine</code>
+The type of the database server; <code>pgsql</code> or <code>sqlite</code>.</p>
+<p><code>username:password</code>
+Used for authentication; optional.</p>
+<p><code>host:port</code>
+The server address; optional.</p>
+<p><code>database</code>
+The name of the database; for SQLite, the path to the database file.</p>
+<p>To execute a WSGI request, run</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>app(environ, start_response)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="n">__version__</span> <span class="o">=</span> <span class="s">&#39;2.2.0b2&#39;</span>
+
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="p">(</span><span class="n">adapter</span><span class="p">,</span> <span class="n">addon</span><span class="p">,</span> <span class="n">application</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">connect</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span>
+               <span class="n">entity</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">introspect</span><span class="p">,</span> <span class="n">mark</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">split_sql</span><span class="p">,</span> <span class="n">tr</span><span class="p">,</span> <span class="n">util</span><span class="p">,</span>
+               <span class="n">validator</span><span class="p">,</span> <span class="n">wsgi</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.validator</span> <span class="kn">import</span> <span class="n">DBVal</span>
+<span class="kn">from</span> <span class="nn">.addon</span> <span class="kn">import</span> <span class="n">Addon</span><span class="p">,</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">.adapter</span> <span class="kn">import</span> <span class="n">ComponentRegistry</span>
+
+<span class="kn">from</span> <span class="nn">.application</span> <span class="kn">import</span> <span class="n">Application</span> <span class="k">as</span> <span class="n">HTSQL</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p>Declares the <code>htsql</code> addon.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">HTSQLAddon</span><span class="p">(</span><span class="n">Addon</span><span class="p">):</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p>parameters = [
+<pre>Parameter('db', DBVal(),
+value_name="""engine:database""",
+hint="""the connection URI"""),
+]
+</pre>
+packages = ['.', '.cmd', '.fmt', '.tr', '.tr.fn']
+prerequisites = []
+postrequisites = ['engine']</p>
+<p>def <strong>init</strong>(self, app, attributes):
+self.component_registry = ComponentRegistry()
+self.cached_catalog = None
+self.cached_pool = None
+super(HTSQLAddon, self).<strong>init</strong>(app, attributes)</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;htsql&#39;</span>
+    <span class="n">hint</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;HTSQL translator and HTTP service&quot;&quot;&quot;</span>
+    <span class="n">help</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">    This extension implements the HTSQL translator and HTTP service.</span>
+<span class="s">    It is included to every HTSQL application.</span>
+
+<span class="s">    The parameter `DB` specifies parameters of the database connection;</span>
+<span class="s">    it must have the form:</span>
+
+<span class="s">        ENGINE://USERNAME:PASSWORD@HOST:PORT/DATABASE</span>
+
+<span class="s">    Here,</span>
+
+<span class="s">      - ENGINE is the type of the database server; possible values</span>
+<span class="s">        are `sqlite`, `pgsql`, `mysql`, `oracle` or `mssql`.</span>
+<span class="s">      - USERNAME:PASSWORD are used for authentication to the database</span>
+<span class="s">        server.</span>
+<span class="s">      - HOST:PORT is the address of the database server.</span>
+<span class="s">      - DATABASE is the name of the database, or, for file-based</span>
+<span class="s">        backends, the path to the file containing the database.</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>

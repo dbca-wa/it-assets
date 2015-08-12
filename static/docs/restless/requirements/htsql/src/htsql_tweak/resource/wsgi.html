@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>wsgi.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>wsgi.py</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-0'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-0">#</a>
+        </div>
+        <p>Copyright (c) 2006-2011, Prometheus Research, LLC
+See <code>LICENSE</code> for license information, <code>AUTHORS</code> for the list of authors.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="kn">from</span> <span class="nn">htsql.context</span> <span class="kn">import</span> <span class="n">context</span>
+<span class="kn">from</span> <span class="nn">htsql.adapter</span> <span class="kn">import</span> <span class="n">weigh</span>
+<span class="kn">from</span> <span class="nn">htsql.wsgi</span> <span class="kn">import</span> <span class="n">WSGI</span>
+<span class="kn">from</span> <span class="nn">.locate</span> <span class="kn">import</span> <span class="n">locate</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre><span class="k">class</span> <span class="nc">ResourceWSGI</span><span class="p">(</span><span class="n">WSGI</span><span class="p">):</span>
+
+    <span class="n">weigh</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span></pre></div></pre></div>
+      </td>
+    </tr><tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">environ</span><span class="p">,</span> <span class="n">start_response</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;PATH_INFO&#39;</span><span class="p">)</span>
+        <span class="n">indicator</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">tweak</span><span class="o">.</span><span class="n">resource</span><span class="o">.</span><span class="n">indicator</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="o">+</span><span class="n">indicator</span><span class="o">+</span><span class="s">&#39;/&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">ResourceWSGI</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__call__</span><span class="p">(</span><span class="n">environ</span><span class="p">,</span> <span class="n">start_response</span><span class="p">)</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">environ</span><span class="p">[</span><span class="s">&#39;REQUEST_METHOD&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;HEAD&#39;</span><span class="p">,</span> <span class="s">&#39;GET&#39;</span><span class="p">]:</span>
+            <span class="n">start_response</span><span class="p">(</span><span class="s">&#39;400 Bad Request&#39;</span><span class="p">,</span> <span class="p">[(</span><span class="s">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s">&#39;text/plain&#39;</span><span class="p">)])</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s">&quot;Expected a </span><span class="si">%r</span><span class="s"> request, got </span><span class="si">%r</span><span class="s">.</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">method</span><span class="p">]</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="s">&#39;/.&#39;</span> <span class="ow">in</span> <span class="n">path</span> <span class="ow">or</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span> <span class="ow">in</span> <span class="n">path</span><span class="p">):</span>
+            <span class="n">resource</span> <span class="o">=</span> <span class="n">locate</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">resource</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">start_response</span><span class="p">(</span><span class="s">&quot;404 Not Found&quot;</span><span class="p">,</span> <span class="p">[(</span><span class="s">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="s">&#39;text/plain&#39;</span><span class="p">)])</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s">&quot;Resourse does not exist: </span><span class="si">%r</span><span class="s">.</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">]</span>
+        <span class="n">request_etag</span> <span class="o">=</span> <span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;HTTP_IF_NONE_MATCH&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">etag</span> <span class="o">==</span> <span class="n">request_etag</span><span class="p">:</span>
+            <span class="n">start_response</span><span class="p">(</span><span class="s">&quot;304 Not Modified&quot;</span><span class="p">,</span> <span class="p">[(</span><span class="s">&#39;ETag&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="o">.</span><span class="n">etag</span><span class="p">)])</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s">&quot;200 OK&quot;</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;Content-Type&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="o">.</span><span class="n">mimetype</span><span class="p">),</span>
+                   <span class="p">(</span><span class="s">&#39;Content-Length&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">data</span><span class="p">))),</span>
+                   <span class="p">(</span><span class="s">&#39;ETag&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="o">.</span><span class="n">etag</span><span class="p">),</span>
+                   <span class="p">(</span><span class="s">&#39;Content-Disposition&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">; filename=&quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span>
+                       <span class="o">%</span> <span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">disposition</span><span class="p">,</span>
+                          <span class="n">resource</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\\\</span><span class="s">&#39;</span><span class="p">)</span>
+                                       <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s">&#39;</span><span class="se">\\</span><span class="s">&quot;&#39;</span><span class="p">)))]</span>
+        <span class="n">start_response</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s">&#39;HEAD&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">resource</span><span class="o">.</span><span class="n">data</span><span class="p">]</span>
+
+</pre></div></pre></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
