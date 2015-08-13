@@ -75,7 +75,7 @@ This README would normally document whatever steps are necessary to get your app
 
  5. syncdb using manage.py
  
- 6. Runserver and 
+ 6. Runserver and point web browser to the address of the application.
 
 ### Contribution guidelines ###
 
