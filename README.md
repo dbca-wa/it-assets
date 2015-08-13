@@ -11,8 +11,8 @@ This README would normally document whatever steps are necessary to get your app
 
 ### How do I get set up? ###
 
-* Summary of set up
-* Configuration
+
+ ### Configuration ###
 
    These instructions assume that the app is being deployed to ubuntu 14.04.
  
@@ -42,17 +42,15 @@ This README would normally document whatever steps are necessary to get your app
 
      - https://www.digitalocean.com/community/tutorials/how-to-install-and-use-redis
  
-* Dependencies
-* Database configuration
+ ### Database configuration ### 
 
   1. Create assets_8208 database using
      -CREATE DATABASE assets_8208
   2. Create postgis extension for database
       - Connect to your newly created database and issue the following command:
         - CREATE EXTENSION postgis
- 
-* How to run tests
-* Deployment instructions
+
+  ### Deployment instructions ###
   
  
  1. Restore db from kens-pgsql-002-prod server.
