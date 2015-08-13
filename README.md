@@ -47,8 +47,8 @@ This README would normally document whatever steps are necessary to get your app
   1. Create assets_8208 database using
      -CREATE DATABASE assets_8208
   2. Create postgis extension for database
-      - Connect to your newly created database and issue the following command:
-        - CREATE EXTENSION postgis
+      *  Connect to your newly created database and issue the following command:
+        *  CREATE EXTENSION postgis
 
   ### Deployment instructions ###
   
