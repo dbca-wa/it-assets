@@ -41,7 +41,11 @@ This README would normally document whatever steps are necessary to get your app
  5. Install redis server using instructions in the following link.
 
      - https://www.digitalocean.com/community/tutorials/how-to-install-and-use-redis
- 
+
+ 6. Install virtualenv system wide:
+
+     - sudo apt-get install python-virtualenv
+
  ### Database configuration ### 
 
   1. Create assets_8208 database using
@@ -65,15 +69,27 @@ This README would normally document whatever steps are necessary to get your app
 
     -> sudo -u postgres pg_restore -d assets_8208 <path to your dump file>
 
- 2. Update your settings file appropriately in order to connect to the database.
-
- 3. Delete all djcelery and south tables.
-
- 4. Migrate --fake-intial in manage.py
-
- 5. syncdb using manage.py
+ 2. Delete all djcelery and south tables.
  
- 6. Runserver and point web browser to the address of the application.
+ 3. Clone the project into a suitable location.
+
+ 4. Create a virtual environment inside the root of the project folder.
+     - virtualenv <name of your virtual environment>
+
+ 5. Activate your virtual environment using:
+    - source <name of virtual environment>/bin/activate
+
+ 6. Install all dependencies using:
+
+    -pip install -r requirements.txt
+
+ 7. Update your settings file appropriately in order to connect to the database.
+ 
+ 8. Migrate --fake-intial in manage.py
+
+ 9. syncdb using manage.py
+ 
+ 10. Runserver and point web browser to the address of the application.
 
 ### Contribution guidelines ###
 
