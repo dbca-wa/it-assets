@@ -23,12 +23,12 @@ This README would normally document whatever steps are necessary to get your app
 
  2. Install postgis. 
 
-      -wget http://postgis.net/stuff/postgis-2.1.9dev.tar.gz
-      -tar -xvzf postgis-2.1.9dev.tar.gz 
-      -cd postgis-2.1.9dev
-      -./configure
-      -make
-      -make install
+      * wget http://postgis.net/stuff/postgis-2.1.9dev.tar.gz
+      * tar -xvzf postgis-2.1.9dev.tar.gz 
+      * cd postgis-2.1.9dev
+      * ./configure
+      * make
+      * make install
 
  3. Install the following libraries in order for GEOS to work in with the database.
 
