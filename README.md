@@ -81,15 +81,14 @@ This README would normally document whatever steps are necessary to get your app
 
  6. Install all dependencies using:
 
-    -pip install -r requirements.txt
+    - pip install -r requirements.txt
 
  7. Update your settings file appropriately in order to connect to the database.
- 
- 8. Migrate --fake-intial in manage.py
 
- 9. syncdb using manage.py
- 
- 10. Runserver and point web browser to the address of the application.
+ 8. Export DEBUG environment variable using:
+     - export DEBUG=True 
+
+ 8. Run the test server and point web browser to the address of the application.
 
 ### Contribution guidelines ###
 
