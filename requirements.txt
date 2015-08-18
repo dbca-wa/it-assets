@@ -36,6 +36,7 @@ eventlet==0.17.4
 funcsigs==0.4
 greenlet==0.4.7
 guppy==0.1.10
+honcho==0.6.6
 httplib2==0.9.1
 kombu==3.0.26
 lockfile==0.10.2
