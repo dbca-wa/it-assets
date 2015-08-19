@@ -28,6 +28,15 @@ DATABASES = {
     'default': dj_database_url.config(),
 }
 
+if not DEBUG:
+    # Localhost, UAT and Production hosts
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        'assets.dpaw.wa.gov.au',
+        'assets.dpaw.wa.gov.au.',
+    ]
+
 
 # Standard DEC settings template imported from dec_base
 # pulls settings from dec_base/settings.py and dec_base/authentication.py
