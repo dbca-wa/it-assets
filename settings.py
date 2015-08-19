@@ -28,6 +28,7 @@ DATABASES = {
     'default': dj_database_url.config(),
 }
 
+SECRET_KEY = os.environ['SECRET_KEY'] if os.environ.get('SECRET_KEY', False) else 'foo'
 DEBUG = True if os.environ.get('DEBUG', False) == 'True' else False
 CSRF_COOKIE_SECURE = True if os.environ.get('CSRF_COOKIE_SECURE', False) == 'True' else False
 CSRF_COOKIE_HTTPONLY = True
@@ -58,7 +59,7 @@ Custom settings beneath here
 
 # Make this unique, and don't share it with anybody.
 # Use ./manage.py generate_secret_key after cloning this project.
-SECRET_KEY = '7e8964cebd5a2c8f3cb402337a05c8b5c92cd266c252bd8c1ca003c41a3443f4'
+#SECRET_KEY = '7e8964cebd5a2c8f3cb402337a05c8b5c92cd266c252bd8c1ca003c41a3443f4'
 
 
 MIDDLEWARE_CLASSES += (
