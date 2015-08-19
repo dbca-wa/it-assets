@@ -20,13 +20,15 @@ Models for restless to store app links & tests::
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-import dj_database_url
+import dj_database_url, os
  
 # Database configuration
 DATABASES = {
     # Defined in DATABASE_URL env variable.
     'default': dj_database_url.config(),
 }
+
+DEBUG = True if os.environ.get('DEBUG', False) == 'True' else False
 
 if not DEBUG:
     # Localhost, UAT and Production hosts
@@ -52,7 +54,6 @@ Custom settings beneath here
 # Use ./manage.py generate_secret_key after cloning this project.
 SECRET_KEY = '7e8964cebd5a2c8f3cb402337a05c8b5c92cd266c252bd8c1ca003c41a3443f4'
 
-DEBUG = True if os.environ.get('DEBUG', False) == 'True' else False
 
 MIDDLEWARE_CLASSES += (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -71,7 +72,7 @@ AUTH_LDAP_USER_FLAGS_BY_GROUP = {
     "is_staff": "CN=KENS-891-ICTSC All Users,OU=ICTSC Lists,OU=ICTSC,OU=Sites,DC=corporateict,DC=domain",
 }
 
-ADMIN_MEDIA_PREFIX='/static/'
+#ADMIN_MEDIA_PREFIX='/static/'
 
 # Login to the admin
 LOGIN_URL = "/admin"
