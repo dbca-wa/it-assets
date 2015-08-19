@@ -48,8 +48,8 @@ This README would normally document whatever steps are necessary to get your app
 
  ### Database configuration ### 
 
-  1. Create assets_8208 database using
-     -CREATE DATABASE assets_8208
+  1. Create assets_8041 database using
+     -CREATE DATABASE assets_8041
   2. Create postgis extension for database
       *  Connect to your newly created database and issue the following command:
         * CREATE EXTENSION postgis
@@ -68,7 +68,7 @@ This README would normally document whatever steps are necessary to get your app
 
     This assumes that you are not using a cluster.
 
-    -> sudo -u postgres pg_restore -d assets_8208 <path to your dump file>
+    -> sudo -u postgres pg_restore -d assets_8041 <path to your dump file>
 
  2. Delete all djcelery and south tables.
  
