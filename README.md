@@ -84,12 +84,9 @@ This README would normally document whatever steps are necessary to get your app
 
     - pip install -r requirements.txt
 
- 7. Update your settings file appropriately in order to connect to the database.
+ 7. Get a copy of the .env file for use with honcho.
 
- 8. Export DEBUG environment variable using:
-     - export DEBUG=True 
-
- 8. Run the test server and point web browser to the address of the application.
+ 9. Run the server using honcho and point web browser to the address of the application.
 
 ### Contribution guidelines ###
 
