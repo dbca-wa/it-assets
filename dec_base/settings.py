@@ -66,7 +66,6 @@ STATICFILES_DIRS = (os.path.join(SITE_ROOT, 'static'), )
 # The 3 root directories are automatically served with nginx in front of apache, unsecured, no indexes
 # To avoid fuzzing attacks pass secured assets through a view
 MEDIA_ROOT = os.path.join(SITE_ROOT, 'media')
-#STATIC_ROOT = os.path.join("/var/www/django_static/{0}".format(os.path.basename(SITE_ROOT)))
 STATIC_ROOT = os.path.join(SITE_ROOT,"static_files/{0}".format(os.path.basename(SITE_ROOT)))
 try: os.makedirs(STATIC_ROOT)
 except: pass
@@ -90,7 +89,6 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    #'django.middleware.transaction.TransactionMiddleware',
     'reversion.middleware.RevisionMiddleware',
     'restless.middleware.AuthenticationMiddleware',
     'django.contrib.redirects.middleware.RedirectFallbackMiddleware'
@@ -117,7 +115,6 @@ INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.gis',
-    #'django.contrib.markup',
     'django.contrib.messages',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
@@ -127,8 +124,6 @@ INSTALLED_APPS = (
     'treebeard', # Hierarchical model helpers
     'taggit', # Tagging
     'uni_form', # More accessible forms
-    #'sentry', # Exception logging to database
-    #'sentry.client',
     'tinymce', # Provides a WYSIWYG textfield editor
     'reversion', # Provides version control for models
     'djcelery', # Scheduled & async tasks
@@ -170,7 +165,6 @@ DEBUG_MIDDLEWARE_CLASSES = (
 
 DEBUG_INSTALLED_APPS = (
     # Development includes
-    #'django_extensions',
     'debug_toolbar',
 )
 
@@ -187,14 +181,12 @@ DEBUG_TOOLBAR_CONFIG = {
 DEBUG_TOOLBAR_PANELS = (
     'debug_toolbar.panels.version.VersionDebugPanel',
     'debug_toolbar.panels.timer.TimerDebugPanel',
-    #'debug_toolbar.panels.settings_vars.SettingsVarsDebugPanel',
     'debug_toolbar.panels.settings.SettingsPanel',
     'debug_toolbar.panels.headers.HeaderDebugPanel',
     'debug_toolbar.panels.request_vars.RequestVarsDebugPanel',
     'debug_toolbar.panels.template.TemplateDebugPanel',
     'debug_toolbar.panels.sql.SQLDebugPanel',
     'debug_toolbar.panels.signals.SignalDebugPanel',
-    #'debug_toolbar.panels.logger.LoggingPanel',
     'debug_toolbar.panels.logging.LoggingPanel'
 )
 
