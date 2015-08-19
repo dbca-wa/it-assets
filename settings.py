@@ -28,17 +28,6 @@ DATABASES = {
     'default': dj_database_url.config(),
 }
 
-'''DATABASES = {
-    'default': {
-        'NAME':'assets_8208',
-        'HOST':'localhost',
-        'PORT':'5432',
-        'USER':'postgres',
-        'PASSWORD':'postgres',
-        'ENGINE':'django.contrib.gis.db.backends.postgis',
-    },
-}'''
-
 
 # Standard DEC settings template imported from dec_base
 # pulls settings from dec_base/settings.py and dec_base/authentication.py
