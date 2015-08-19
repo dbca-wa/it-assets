@@ -28,6 +28,7 @@ DATABASES = {
     'default': dj_database_url.config(),
 }
 
+# Settings defined in environment variables.
 SECRET_KEY = os.environ['SECRET_KEY'] if os.environ.get('SECRET_KEY', False) else 'foo'
 DEBUG = True if os.environ.get('DEBUG', False) == 'True' else False
 CSRF_COOKIE_SECURE = True if os.environ.get('CSRF_COOKIE_SECURE', False) == 'True' else False
