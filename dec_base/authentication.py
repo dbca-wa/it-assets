@@ -1,11 +1,16 @@
-import ldap
+import ldap, os
 from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
 
 # Baseline configuration.
-AUTH_LDAP_SERVER_URI = "ldap://corporateict.domain:3268"
+#AUTH_LDAP_SERVER_URI = "ldap://corporateict.domain:3268"
+AUTH_LDAP_SERVER_URI = os.environ['LDAP_SERVER_URI']
 
-AUTH_LDAP_BIND_DN = "atlassian-admin@corporateict.domain"
-AUTH_LDAP_BIND_PASSWORD = "p7_9Yyzzal"
+#AUTH_LDAP_BIND_DN = "atlassian-admin@corporateict.domain"
+AUTH_LDAP_BIND_DN = os.environ['LDAP_ACCESS_DN']
+
+#AUTH_LDAP_BIND_PASSWORD = "p7_9Yyzzal"
+AUTH_LDAP_BIND_PASSWORD = os.environ['LDAP_ACCESS_PASSWORD']
+
 AUTH_LDAP_USER_SEARCH = LDAPSearch("DC=corporateict,DC=domain",
     ldap.SCOPE_SUBTREE, "(sAMAccountName=%(user)s)")
 
