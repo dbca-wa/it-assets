@@ -72,9 +72,9 @@ This README would normally document whatever steps are necessary to get your app
 
  2. Delete all djcelery and south tables.
  
- 3. Clone the project into a suitable location.
+ 3. Clone the repo into a suitable location.
 
- 4. Create a virtual environment inside the root of the project folder.
+ 4. Create a virtual environment inside the root of the repo folder.
      - virtualenv <name of your virtual environment>
 
  5. Activate your virtual environment using:
