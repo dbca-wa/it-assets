@@ -66,7 +66,8 @@ STATICFILES_DIRS = (os.path.join(SITE_ROOT, 'static'), )
 # The 3 root directories are automatically served with nginx in front of apache, unsecured, no indexes
 # To avoid fuzzing attacks pass secured assets through a view
 MEDIA_ROOT = os.path.join(SITE_ROOT, 'media')
-STATIC_ROOT = os.path.join("/var/www/django_static/{0}".format(os.path.basename(SITE_ROOT)))
+#STATIC_ROOT = os.path.join("/var/www/django_static/{0}".format(os.path.basename(SITE_ROOT)))
+STATIC_ROOT = os.path.join(SITE_ROOT,"static_files/{0}".format(os.path.basename(SITE_ROOT)))
 try: os.makedirs(STATIC_ROOT)
 except: pass
 MEDIA_URL = '/media/'
