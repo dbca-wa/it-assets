@@ -20,11 +20,15 @@ Models for restless to store app links & tests::
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
+import dj_database_url
  
 # Database configuration
-
 DATABASES = {
+    # Defined in DATABASE_URL env variable.
+    'default': dj_database_url.config(),
+}
+
+'''DATABASES = {
     'default': {
         'NAME':'assets_8208',
         'HOST':'localhost',
@@ -33,7 +37,7 @@ DATABASES = {
         'PASSWORD':'postgres',
         'ENGINE':'django.contrib.gis.db.backends.postgis',
     },
-}
+}'''
 
 
 # Standard DEC settings template imported from dec_base
