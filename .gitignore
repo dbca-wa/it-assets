@@ -1,3 +1,4 @@
 virtualenv/
 .env
+static_files/
 *.pyc
