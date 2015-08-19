@@ -31,12 +31,6 @@ DATABASES = {
 # Settings defined in environment variables.
 SECRET_KEY = os.environ['SECRET_KEY'] if os.environ.get('SECRET_KEY', False) else 'foo'
 DEBUG = True if os.environ.get('DEBUG', False) == 'True' else False
-CSRF_COOKIE_SECURE = True if os.environ.get('CSRF_COOKIE_SECURE', False) == 'True' else False
-CSRF_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = True if os.environ.get('SESSION_COOKIE_SECURE', False) == 'True' else False
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-
 
 if not DEBUG:
     # Localhost, UAT and Production hosts
