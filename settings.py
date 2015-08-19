@@ -60,6 +60,7 @@ MIDDLEWARE_CLASSES += (
 )
 
 INSTALLED_APPS += (
+    'django_wsgiserver',
     'assets',
 )
 
