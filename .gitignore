@@ -3,3 +3,5 @@ virtualenv/
 static_files/
 *.py~
 *.pyc
+django.log
+*.html~
