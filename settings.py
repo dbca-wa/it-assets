@@ -70,7 +70,5 @@ AUTH_LDAP_USER_FLAGS_BY_GROUP = {
     "is_staff": "CN=KENS-891-ICTSC All Users,OU=ICTSC Lists,OU=ICTSC,OU=Sites,DC=corporateict,DC=domain",
 }
 
-#ADMIN_MEDIA_PREFIX='/static/'
-
 # Login to the admin
 LOGIN_URL = "/admin"

@@ -71,7 +71,7 @@ try: os.makedirs(STATIC_ROOT)
 except: pass
 MEDIA_URL = '/media/'
 STATIC_URL = '/static/'
-#ADMIN_MEDIA_PREFIX = '/static/admin/'
+ADMIN_MEDIA_PREFIX = '/static/admin/'
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.

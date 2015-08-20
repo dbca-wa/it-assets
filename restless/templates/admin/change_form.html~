@@ -72,7 +72,7 @@
         if (size > 3) {
             $(this).wrap('<div class="filtered-select" />')
             container = $(this).parent()
-            container.prepend('<span><img src="{{ STATIC_URL }}/admin/img/admin/selector-search.gif" alt="Filter"></span><input placeholder="Filter options" type="search"><span> '+size+'/</span><span class="number-options">'+size+'</span><span> </span>')
+            container.prepend('<span><img src="{{ STATIC_URL }}admin/img/selector-search.gif" alt="Filter"></span><input placeholder="Filter options" type="search"><span> '+size+'/</span><span class="number-options">'+size+'</span><span> </span>')
             var options = [];
             $(this).find('option').each(function() {
                 options.push({value: $(this).val(), text: $(this).text()});

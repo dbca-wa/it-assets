@@ -2724,3 +2724,48 @@ DEBUG 2015-08-19 07:59:56,353 config 4308 140071120574208 search_s('DC=corporate
 DEBUG 2015-08-19 07:59:56,614 config 4308 140071120574208 search_s('DC=corporateict,DC=domain', 2, '(&(objectClass=group)(member=cn=karani\5c, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain))') returned 3 objects: cn=dpaw-890 all users,ou=groups,ou=_global,ou=sites,dc=corporateict,dc=domain; cn=kens-890-it ops applications facilities support,ou=groups,ou=dpaw,dc=corporateict,dc=domain; cn=kens-890-it ops bss,ou=groups,ou=dpaw,dc=corporateict,dc=domain
 DEBUG 2015-08-19 12:48:47,421 config 9209 140455291188992 search_s('DC=corporateict,DC=domain', 2, '(sAMAccountName=%(user)s)') returned 1 objects: cn=karani\, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain
 DEBUG 2015-08-19 12:48:47,677 config 9209 140455291188992 search_s('DC=corporateict,DC=domain', 2, '(&(objectClass=group)(member=cn=karani\5c, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain))') returned 3 objects: cn=dpaw-890 all users,ou=groups,ou=_global,ou=sites,dc=corporateict,dc=domain; cn=kens-890-it ops applications facilities support,ou=groups,ou=dpaw,dc=corporateict,dc=domain; cn=kens-890-it ops bss,ou=groups,ou=dpaw,dc=corporateict,dc=domain
+DEBUG 2015-08-20 10:48:07,180 config 4249 139707309192960 search_s('DC=corporateict,DC=domain', 2, '(sAMAccountName=%(user)s)') returned 1 objects: cn=karani\, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain
+DEBUG 2015-08-20 10:48:07,388 config 4249 139707309192960 search_s('DC=corporateict,DC=domain', 2, '(&(objectClass=group)(member=cn=karani\5c, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain))') returned 3 objects: cn=dpaw-890 all users,ou=groups,ou=_global,ou=sites,dc=corporateict,dc=domain; cn=kens-890-it ops applications facilities support,ou=groups,ou=dpaw,dc=corporateict,dc=domain; cn=kens-890-it ops bss,ou=groups,ou=dpaw,dc=corporateict,dc=domain
+ERROR 2015-08-20 10:49:22,000 base 4249 139707233072896 Internal Server Error: /admin/assets/asset/649/
+Traceback (most recent call last):
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/core/handlers/base.py", line 223, in get_response
+    response = middleware_method(request, response)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/reversion/middleware.py", line 37, in process_response
+    self._close_revision(request)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/reversion/middleware.py", line 28, in _close_revision
+    revision_context_manager.end()
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/reversion/revisions.py", line 210, in end
+    db = self._db,
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/reversion/revisions.py", line 519, in save_revision
+    version.save()
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/base.py", line 710, in save
+    force_update=force_update, update_fields=update_fields)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/base.py", line 738, in save_base
+    updated = self._save_table(raw, cls, force_insert, force_update, using, update_fields)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/base.py", line 822, in _save_table
+    result = self._do_insert(cls._base_manager, using, fields, update_pk, raw)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/base.py", line 861, in _do_insert
+    using=using, raw=raw)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/manager.py", line 127, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/query.py", line 920, in _insert
+    return query.get_compiler(using=using).execute_sql(return_id)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/models/sql/compiler.py", line 974, in execute_sql
+    cursor.execute(sql, params)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/backends/utils.py", line 79, in execute
+    return super(CursorDebugWrapper, self).execute(sql, params)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/backends/utils.py", line 64, in execute
+    return self.cursor.execute(sql, params)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/utils.py", line 97, in __exit__
+    six.reraise(dj_exc_type, dj_exc_value, traceback)
+  File "/home/briank/Desktop/itassets_new/virtualenv/local/lib/python2.7/site-packages/django/db/backends/utils.py", line 64, in execute
+    return self.cursor.execute(sql, params)
+IntegrityError: null value in column "type" violates not-null constraint
+DETAIL:  Failing row contains (8089, 6038, 649, 40, json, [{"fields": {"status": "Deployed", "assigned_user": "", "date_pu..., IT99362, null, 649).
+
+DEBUG 2015-08-20 10:59:07,968 config 4722 140210230499072 search_s('DC=corporateict,DC=domain', 2, '(sAMAccountName=%(user)s)') returned 1 objects: cn=karani\, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain
+DEBUG 2015-08-20 10:59:08,330 config 4722 140210230499072 search_s('DC=corporateict,DC=domain', 2, '(&(objectClass=group)(member=cn=karani\5c, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain))') returned 3 objects: cn=dpaw-890 all users,ou=groups,ou=_global,ou=sites,dc=corporateict,dc=domain; cn=kens-890-it ops applications facilities support,ou=groups,ou=dpaw,dc=corporateict,dc=domain; cn=kens-890-it ops bss,ou=groups,ou=dpaw,dc=corporateict,dc=domain
+DEBUG 2015-08-20 11:21:46,381 config 5047 140209971119872 search_s('DC=corporateict,DC=domain', 2, '(sAMAccountName=%(user)s)') returned 1 objects: cn=karani\, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain
+DEBUG 2015-08-20 11:21:46,626 config 5047 140209971119872 search_s('DC=corporateict,DC=domain', 2, '(&(objectClass=group)(member=cn=karani\5c, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain))') returned 3 objects: cn=dpaw-890 all users,ou=groups,ou=_global,ou=sites,dc=corporateict,dc=domain; cn=kens-890-it ops applications facilities support,ou=groups,ou=dpaw,dc=corporateict,dc=domain; cn=kens-890-it ops bss,ou=groups,ou=dpaw,dc=corporateict,dc=domain
+DEBUG 2015-08-20 11:56:21,795 config 5535 140603513882368 search_s('DC=corporateict,DC=domain', 2, '(sAMAccountName=%(user)s)') returned 1 objects: cn=karani\, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain
+DEBUG 2015-08-20 11:56:21,997 config 5535 140603513882368 search_s('DC=corporateict,DC=domain', 2, '(&(objectClass=group)(member=cn=karani\5c, brian,ou=users,ou=kensington,ou=sites,dc=corporateict,dc=domain))') returned 3 objects: cn=dpaw-890 all users,ou=groups,ou=_global,ou=sites,dc=corporateict,dc=domain; cn=kens-890-it ops applications facilities support,ou=groups,ou=dpaw,dc=corporateict,dc=domain; cn=kens-890-it ops bss,ou=groups,ou=dpaw,dc=corporateict,dc=domain
