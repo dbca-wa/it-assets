@@ -60,7 +60,7 @@ AUTH_LDAP_CACHE_GROUPS = False
 # Keep ModelBackend around for per-user permissions and maybe a local superuser.
 AUTHENTICATION_BACKENDS = (
     'django_auth_ldap.backend.LDAPBackend',
-    #'django.contrib.auth.backends.ModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
 )
 
 import logging 
