@@ -82,7 +82,7 @@
             if (selected) { $(this).data("selected", selected); }
         }
     })
-    $('div.filtered-select input').live('keypress', function(event) {
+    $('div.filtered-select input').on('keypress', function(event) {
         if (event.keyCode == 13) {
             event.preventDefault();
         }
@@ -104,9 +104,9 @@
         });
         numberoptions.text(select.find('option').size());
     };
-    $('div.filtered-select input').live('keyup', filterinput);
-    $('div.filtered-select input').live('click', filterinput);
-    $('div.filtered-select select').live('change', function(event) {
+    $('div.filtered-select input').on('keyup', filterinput);
+    $('div.filtered-select input').on('click', filterinput);
+    $('div.filtered-select select').on('change', function(event) {
         selected = $(this).find('option:selected').val();
         if (selected) { $(this).data("selected", selected); }
     });
