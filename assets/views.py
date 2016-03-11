@@ -433,8 +433,7 @@ def export(request):
      * serial
 
     """
-    response = HttpResponse(mimetype="text/csv")
-    #response = HttpResponse(mimetype="text/plain")
+    response = HttpResponse(content_type="text/csv")
 
     filename = "assets_%s.csv" % (datetime.now().strftime("%Y%m%d"))
     response['Content-Disposition'] = 'attachment; filename=%s' % (filename)
