@@ -1,7 +1,9 @@
 virtualenv/
+venv/
 .env
 static_files/
 *.py~
 *.pyc
 django.log
 *.html~
+*.log
