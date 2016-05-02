@@ -1,12 +1,122 @@
 from __future__ import division, print_function, unicode_literals, absolute_import
-import logging
-logger = logging.getLogger("log."+__name__)
-
 from datetime import datetime, date, timedelta
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.urlresolvers import reverse
+from django.db import models
+from django.utils.timezone import utc
 import locale
+import reversion
+import threading
 
-from restless.abstract2 import models, Audit, AuditAdmin
-from restless.models import Permission, shorthash
+
+class UTCCreatedField(models.DateTimeField):
+    """
+    A DateTimeField that automatically populates itself at
+    object creation.
+
+    By default, sets editable=False, default=datetime.utcnow.
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('editable', False)
+        super(UTCCreatedField, self).__init__(*args, **kwargs)
+
+    def pre_save(self, model_instance, add):
+        value = datetime.utcnow().replace(tzinfo=utc)
+        setattr(model_instance, self.attname, value)
+        return value
+
+
+class UTCLastModifiedField(UTCCreatedField):
+    """
+    A DateTimeField that updates itself on each save() of the model.
+
+    By default, sets editable=False and default=datetime.utcnow.
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('editable', False)
+        super(UTCCreatedField, self).__init__(*args, **kwargs)
+
+    def pre_save(self, model_instance, add):
+        value = datetime.utcnow().replace(tzinfo=utc)
+        setattr(model_instance, self.attname, value)
+        return value
+
+
+class Audit(models.Model):
+    class Meta:
+        abstract = True
+
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='%(app_label)s_%(class)s_created', editable=False)
+    modifier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='%(app_label)s_%(class)s_modified', editable=False)
+    created = UTCCreatedField()
+    modified = UTCLastModifiedField()
+
+    def __init__(self, *args, **kwargs):
+        super(Audit, self).__init__(*args, **kwargs)
+        # Initialise any existing model with a dictionary (prev_values), to
+        # keep track of any changes on save().
+        if self.pk:
+            fieldnames = self._meta.get_all_field_names()
+            self._fieldnames = set(fieldnames + [f + "_id" for f in fieldnames]).intersection(set(self.__dict__.keys()))
+            self._initvalues = set([k for k in self.__dict__.iteritems() if k[0] in self._fieldnames])
+        else:
+            pass
+
+    def save(self, *args, **kwargs):
+        """Falls back on using an admin user if a thread request object wasn't found
+        """
+        User = get_user_model()
+        _locals = threading.local()
+        if not hasattr(_locals, "request") or _locals.request.user.is_anonymous():
+            if hasattr(_locals, "user"):
+                user = _locals.user
+            else:
+                user = User.objects.get(id=1)
+                _locals.user = user
+        else:
+            user = _locals.request.user
+        # If creating a new model, set the creator.
+        if not self.pk:
+            self.creator = user
+        self.modifier = user
+        super(Audit, self).save(*args, **kwargs)
+        # If the model has existing values, test if any values are being changed.
+        # Old values can be accessed through self.prev_values
+        change_list = []
+        if hasattr(self, '_initvalues'):
+            currentvalues = set([k for k in self.__dict__.iteritems() if k[0] in self._fieldnames])
+            change_list = self._initvalues - currentvalues
+        # Modified and modifier always change; filter these from the list.
+        change_list = [item for item in change_list if item[0] not in ['modified' ,'modifier_id']]
+        if change_list:
+            comment_changed = 'Changed ' + ', '.join([t[0] for t in change_list]) + '.'
+            with reversion.create_revision():
+                reversion.set_comment(comment_changed)
+        elif not change_list and not self.pk:
+            with reversion.create_revision():
+                reversion.set_comment('Initial version.')
+        else:
+            # An existing object was saved, with no changes: don't create a revision.
+            with reversion.create_revision():
+                reversion.set_comment('Nothing changed.')
+
+    def _searchfields(self):
+        return set(field.name for field in self.__class__._meta.fields)
+
+    def __unicode__(self):
+        fields = ""
+        for field in self._searchfields().difference(set(['created', 'modified', 'creator', 'modifier', 'id'])):
+            fields += "{0}: {1}, ".format(field, repr(getattr(self, field)))
+        return "{0} - {1}".format(self.pk, fields)[:320]
+
+    def get_absolute_url(self):
+        return reverse('{0}_detail'.format(self._meta.object_name.lower()), kwargs={'pk':self.pk})
+
 
 def get_nice_age(d):
     """
@@ -54,6 +164,7 @@ def get_nice_age(d):
     else:
         return "1 second"
 
+
 class Supplier(Audit):
     name = models.CharField(max_length=200, help_text="eg. Dell, Cisco")
     account_rep = models.CharField(max_length=200, blank=True)
@@ -64,7 +175,7 @@ class Supplier(Audit):
 
     class Meta:
         ordering = ['name']
-    
+
     def __unicode__(self):
         return self.name
 
@@ -104,6 +215,7 @@ class Supplier(Audit):
             return 0
     get_assets.allow_tags = True
     get_assets.short_description = "Assets"
+
 
 class Model(Audit):
     type_choices = (
@@ -183,7 +295,7 @@ class Model(Audit):
         Returns the number of assets entered against this model.
         """
         total = self.asset_set.count()
-        
+
         if total:
             return "<a href='../asset/?model__model=%s'>%d</a>" % (self.model, total)
         else:
@@ -212,7 +324,7 @@ class Location(Audit):
         Returns the number of assets entered against this location.
         """
         total = self.asset_set.count()
-        
+
         if total:
             return "<a href='../asset/?location__id__exact=%s'>%d</a>" % (self.id, total)
         else:
@@ -248,7 +360,7 @@ class Invoice(Audit):
         Returns the number of assets entered against this invoice.
         """
         total = self.asset_set.count()
-        
+
         if total:
             return "<a href='../asset/?invoice__id__exact=%s'>%d</a>" % (self.id, total)
         else:

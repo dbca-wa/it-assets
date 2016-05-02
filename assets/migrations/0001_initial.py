@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from django.db import models, migrations
 import datetime
-import restless.fields
+from assets.models import UTCCreatedField, UTCLastModifiedField
 from django.conf import settings
 
 
@@ -18,8 +18,8 @@ class Migration(migrations.Migration):
             name='Asset',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', restless.fields.UTCCreatedField(editable=False)),
-                ('modified', restless.fields.UTCLastModifiedField(editable=False)),
+                ('created', UTCCreatedField(editable=False)),
+                ('modified', UTCLastModifiedField(editable=False)),
                 ('asset_tag', models.CharField(unique=True, max_length=10)),
                 ('finance_asset_tag', models.CharField(help_text='The asset number for this sevices, as issued by Finance (leave blank if unsure)', max_length=10, blank=True)),
                 ('status', models.CharField(default='In storage.', max_length=50, choices=[('In storage', 'In storage'), ('Deployed', 'Deployed'), ('Disposed', 'Disposed')])),
@@ -38,8 +38,8 @@ class Migration(migrations.Migration):
             name='Invoice',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', restless.fields.UTCCreatedField(editable=False)),
-                ('modified', restless.fields.UTCLastModifiedField(editable=False)),
+                ('created', UTCCreatedField(editable=False)),
+                ('modified', UTCLastModifiedField(editable=False)),
                 ('supplier_ref', models.CharField(help_text="Enter the supplier's reference or invoice number for this order.", max_length=50, blank=True)),
                 ('job_number', models.CharField(help_text='Enter the DEC job number relating to this order.', max_length=50, blank=True)),
                 ('date', models.DateField(help_text='The date as shown on the invoice', null=True, blank=True)),
@@ -59,8 +59,8 @@ class Migration(migrations.Migration):
             name='Location',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', restless.fields.UTCCreatedField(editable=False)),
-                ('modified', restless.fields.UTCLastModifiedField(editable=False)),
+                ('created', UTCCreatedField(editable=False)),
+                ('modified', UTCLastModifiedField(editable=False)),
                 ('name', models.CharField(help_text='Enter a specific location - a cupboard or room number.', max_length=50)),
                 ('block', models.CharField(help_text="eg. 'Block 10' (if applicable)", max_length=50, blank=True)),
                 ('site', models.CharField(help_text="Enter the standard DEC site, eg. 'Kensington' or 'Northcliffe'. If the device is portable, enter 'Portable'.", max_length=50)),
@@ -75,8 +75,8 @@ class Migration(migrations.Migration):
             name='Model',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', restless.fields.UTCCreatedField(editable=False)),
-                ('modified', restless.fields.UTCLastModifiedField(editable=False)),
+                ('created', UTCCreatedField(editable=False)),
+                ('modified', UTCLastModifiedField(editable=False)),
                 ('model_type', models.CharField(max_length=50, verbose_name='type', choices=[('Air conditioner', 'Air conditioner'), ('Camera - Compact', 'Camera - Compact'), ('Camera - SLR', 'Camera - SLR'), ('Camera - Security (IP)', 'Camera - Security (IP)'), ('Camera - Security (non-IP)', 'Camera - Security (non-IP)'), ('Camera - Other', 'Camera - Other'), ('Chassis', 'Chassis'), ('Computer - Desktop', 'Computer - Desktop'), ('Computer - Docking station', 'Computer - Docking station'), ('Computer - Input device', 'Computer - Input device'), ('Computer - Laptop', 'Computer - Laptop'), ('Computer - Misc Accessory', 'Computer - Misc Accessory'), ('Computer - Monitor', 'Computer - Monitor'), ('Computer - Tablet PC', 'Computer - Tablet PC'), ('Computer - Other', 'Computer - Other'), ('Environmental monitor', 'Environmental monitor'), ('Network - Hub', 'Network - Hub'), ('Network - Media converter', 'Network - Media converter'), ('Network - Modem', 'Network - Modem'), ('Network - Module or card', 'Network - Module or card'), ('Network - Power injector', 'Network - Power injector'), ('Network - Router', 'Network - Router'), ('Network - Switch (Ethernet)', 'Network - Switch (Ethernet)'), ('Network - Switch (FC)', 'Network - Switch (FC)'), ('Network - Wireless AP', 'Network - Wireless AP'), ('Network - Wireless bridge', 'Network - Wireless bridge'), ('Network - Wireless controller', 'Network - Wireless controller'), ('Network - Other', 'Network - Other'), ('Phone - Conference', 'Phone - Conference'), ('Phone - Desk', 'Phone - Desk'), ('Phone - Gateway', 'Phone - Gateway'), ('Phone - Mobile', 'Phone - Mobile'), ('Phone - Wireless or portable', 'Phone - Wireless or portable'), ('Phone - Other', 'Phone - Other'), ('Power Distribution Unit', 'Power Distribution Unit'), ('Printer - Fax machine', 'Printer - Fax machine'), ('Printer - Local', 'Printer - Local'), ('Printer - Local Multifunction', 'Printer - Local Multifunction'), ('Printer - Multifunction copier', 'Printer - Multifunction copier'), ('Printer - Plotter', 'Printer - Plotter'), ('Printer - Workgroup', 'Printer - Workgroup'), ('Printer - Other', 'Printer - Other'), ('Projector', 'Projector'), ('Rack', 'Rack'), ('Server - Blade', 'Server - Blade'), ('Server - Rackmount', 'Server - Rackmount'), ('Server - Tower', 'Server - Tower'), ('Storage - Disk array', 'Storage - Disk array'), ('Storage - NAS', 'Storage - NAS'), ('Storage - SAN', 'Storage - SAN'), ('Storage - Other', 'Storage - Other'), ('Speaker', 'Speaker'), ('Tablet', 'Tablet'), ('Tape autoloader', 'Tape autoloader'), ('Tape drive', 'Tape drive'), ('UPS', 'UPS'), ('Other', 'Other')])),
                 ('model', models.CharField(help_text="Enter the short model number here (eg. '7945G' for a Cisco 7956G phone). Do not enter the class (eg. '7900 series') or the product code (eg. 'WS-7945G=')", max_length=50)),
                 ('lifecycle', models.IntegerField(help_text='Enter in years how long we should keep items of this model before they get decomissioned. Desktops should generally be three years, servers and networking equipment five years.', max_length=10)),
@@ -91,8 +91,8 @@ class Migration(migrations.Migration):
             name='Supplier',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('created', restless.fields.UTCCreatedField(editable=False)),
-                ('modified', restless.fields.UTCLastModifiedField(editable=False)),
+                ('created', UTCCreatedField(editable=False)),
+                ('modified', UTCLastModifiedField(editable=False)),
                 ('name', models.CharField(help_text='eg. Dell, Cisco', max_length=200)),
                 ('account_rep', models.CharField(max_length=200, blank=True)),
                 ('contact_email', models.EmailField(max_length=254, blank=True)),
