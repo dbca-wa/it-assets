@@ -1,100 +1,36 @@
-# README #
+# IT Assets System
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This project consists of a Django application used by the Department of
+Parks and Wildlife to record and manage IT assets.
 
-### What is this repository for? ###
+# Installation
 
-* Quick summary
-  This is the revised version of the assets app that has been modified to use django 1.8 from its current django 1.4.
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+Create a new virtualenv and install required libraries using `pip`:
 
-### How do I get set up? ###
+    pip install -r requirements.txt
 
+# Environment variables
 
- ### Configuration ###
+This project uses confy to set environment variables (in a `.env` file).
+The following variables are required for the project to run:
 
-   These instructions assume that the app is being deployed to ubuntu 14.04.
- 
- 1. Install postgres database 9.3 
+    DATABASE_URL="postgis://USER:PASSWORD@HOST:PORT/DATABASE_NAME"
+    SECRET_KEY="ThisIsASecretKey"
 
-     -Follow the instructions in the following link to create the database. 
-         https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-14-04
+Variables below may also need to be defined (context-dependent):
 
- 2. Install postgis. 
+    DEBUG=True
+    CSRF_COOKIE_SECURE=False
+    SESSION_COOKIE_SECURE=False
+    # debug-toolbar settings:
+    INTERNAL_IP="x.x.x.x"
 
-      * wget http://postgis.net/stuff/postgis-2.1.9dev.tar.gz
-      * tar -xvzf postgis-2.1.9dev.tar.gz 
-      * cd postgis-2.1.9dev
-      * ./configure
-      * make
-      * make install
+# Running
 
- 3. Install the following libraries in order for GEOS to work in with the database.
+Use `runserver` to run a local copy of the application:
 
-     - sudo apt-get install binutils libproj-dev gdal-bin
+    python manage.py runserver 0.0.0.0:8080
 
- 4. Install lib-curl for pycurl to work
+Run console commands manually:
 
-     - sudo apt-get install libcurl4-gnutls-dev librtmp-dev
-
- 5. Install redis server using instructions in the following link.
-
-     - https://www.digitalocean.com/community/tutorials/how-to-install-and-use-redis
-
- 6. Install virtualenv system wide:
-
-     - sudo apt-get install python-virtualenv
-
- ### Database configuration ### 
-
-  1. Create assets_8041 database using
-     -CREATE DATABASE assets_8041
-  2. Create postgis extension for database
-      *  Connect to your newly created database and issue the following command:
-        * CREATE EXTENSION postgis
-        * Run "\dx" to check if the extension has been added.
-
-  ### Deployment instructions ###
-  
- 
- 1. Restore db from kens-pgsql-002-prod server.
-    
-    Make a dump file from the database  
-
-     -sudo -u postgres pg_dump -p 5440 -O -Fc assets_8208 <path to your dump file>
-     
-    Save your dump file in a suitable location where you can access it when restoring the database.
-
-    This assumes that you are not using a cluster.
-
-    -> sudo -u postgres pg_restore -d assets_8041 <path to your dump file>
-
- 2. Delete all djcelery and south tables.
- 
- 3. Clone the repo into a suitable location.
-
- 4. Create a virtual environment inside the root of the repo folder.
-     - virtualenv <name of your virtual environment>
-
- 5. Activate your virtual environment using:
-    - source <name of virtual environment>/bin/activate
-
- 6. Install all dependencies using:
-
-    - pip install -r requirements.txt
-
- 7. Get a copy of the .env file for use with honcho.
-
- 9. Run the server using honcho and point web browser to the address of the application.
-
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+    python manage.py shell_plus
