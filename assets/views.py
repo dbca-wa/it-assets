@@ -10,7 +10,6 @@ import csv
 import re
 import cStringIO
 import codecs
-from django_auth_ldap.backend import LDAPBackend
 from datetime import datetime
 from StringIO import StringIO
 
@@ -39,9 +38,6 @@ def validate_import(fileobj):
 
     critical_fields = ('asset_tag', 'manufacturer', 'model', 'serial', 'date_purchased', 'location_name', 'location_block', 'location_site')
     all_fields = critical_fields + ('finance_asset_tag', 'model_lifecycle', 'model_type', 'status', 'purchased_value', 'assigned_user', 'notes')
-
-    # Initialise an LDAP connection
-    ldapbackend = LDAPBackend()
 
     # List to hold errors found during the validation process
     errors = []
@@ -187,11 +183,7 @@ def validate_import(fileobj):
             # Missing fields will have been caught above
             pass
 
-        # Check assigned_user - make sure everything's a valid LDAP user
         try:
-            # This might be a bad way of doing this - the user table will be
-            # populated with lots of people from LDAP
-            ldapbackend.populate_user(row['assigned_user'])
             User.objects.get(username = row['assigned_user'])
         except KeyError:
             # Missing fields will have been caught above
