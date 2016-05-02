@@ -1,9 +1,25 @@
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.forms import ModelForm, ValidationError
 import re
 from reversion.admin import VersionAdmin
-
 from assets.models import Supplier, Model, Asset, Location, Invoice
+
+
+from djqscsv import render_to_csv_response
+
+
+def export_as_csv_action(description="Export selected objects as CSV",
+                         field_headers=None, fields={}):
+
+    def export_as_csv(modeladmin, request, queryset):
+        """See: https://pypi.python.org/pypi/django-queryset-csv/
+        """
+        return render_to_csv_response(
+            queryset, field_header_map=field_headers, field_serializer_map=fields)
+
+    export_as_csv.short_description = description
+    return export_as_csv
 
 
 class AuditAdmin(VersionAdmin, admin.ModelAdmin):
@@ -42,7 +58,6 @@ class AssetAdminForm(ModelForm):
         """
         # Asset tags should always be uppercase
         data = self.cleaned_data['asset_tag'].upper()
-
         asset_tag_re = re.compile("^IT\d{5}$")
         if not asset_tag_re.match(data):
             raise ValidationError("Please enter a valid asset tag.")
@@ -60,6 +75,24 @@ class AssetAdmin(AuditAdmin):
         'assigned_user', 'serial', 'invoice__supplier_ref', 'invoice__job_number',
         'invoice__cost_centre_number', 'invoice__etj_number']
     form = AssetAdminForm
+    actions = [export_as_csv_action(
+        field_headers={
+            'creator_id': 'creator',
+            'modifier_id': 'modifier',
+            'model_id': 'model',
+            'invoice_id': 'invoice',
+            'location_id': 'location',
+        },
+        fields={
+            'creator_id': (lambda x: User.objects.get(pk=x).get_full_name()),
+            'modifier_id': (lambda x: User.objects.get(pk=x).get_full_name()),
+            'created': (lambda x: x.strftime('%Y/%m/%d %H:%M')),
+            'modified': (lambda x: x.strftime('%Y/%m/%d %H:%M')),
+            'model_id': (lambda x: str(Model.objects.get(pk=x))),
+            'invoice_id': (lambda x: str(Invoice.objects.get(pk=x))),
+            'location_id': (lambda x: str(Location.objects.get(pk=x))),
+        }
+    )]
 
     # Cross-model lookups done in filters must be permitted here as
     # well for security reasons
@@ -90,5 +123,4 @@ class InvoiceAdmin(AuditAdmin):
     # well for security reasons
     def lookup_allowed(self, key, value):
         return True
-
 admin.site.register(Invoice, InvoiceAdmin)
