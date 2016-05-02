@@ -3,3 +3,4 @@ django-reversion==1.10.2
 https://static.dpaw.wa.gov.au/static/py/dpaw-utils/dist/dpaw-utils-0.3a9.tar.gz
 Unipath==1.1
 django-debug-toolbar==1.4
+django-queryset-csv==0.3.3

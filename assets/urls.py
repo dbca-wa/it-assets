@@ -1,5 +1,4 @@
-from django.conf.urls import url, patterns, include
-
+from django.conf.urls import url, patterns
 from views import export, import_asset, do_import, categories
 
 urlpatterns = patterns('',

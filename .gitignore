@@ -1,9 +1,8 @@
 virtualenv/
 venv/
 .env
-static_files/
+staticfiles/
+media/
 *.py~
 *.pyc
-django.log
-*.html~
 *.log
