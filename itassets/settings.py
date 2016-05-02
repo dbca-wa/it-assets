@@ -57,7 +57,10 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    #'dpaw_utils.middleware.SSOLoginMiddleware',
+    'dpaw_utils.middleware.SSOLoginMiddleware',
+)
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
 )
 TEMPLATES = [
     {
