@@ -1,8 +1,8 @@
+from django.contrib.auth import get_user_model
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required
-#from django.db.models.related import RelatedObject
 from django.db.models.fields.related import ForeignObjectRel
 from django import forms
 
@@ -14,19 +14,22 @@ from django_auth_ldap.backend import LDAPBackend
 from datetime import datetime
 from StringIO import StringIO
 
-from restless.models import User
 import models
+
+
+User = get_user_model()
+
 
 class ImportForm(forms.Form):
     assets_to_import = forms.FileField()
+
 
 def validate_import(fileobj):
     """
     Performs validation on the CSV file at fileobj.
 
-    Returns a tuple (num_assets, errors, warnings, notes). 
+    Returns a tuple (num_assets, errors, warnings, notes).
     """
-
     try:
         c = csv.DictReader(fileobj)
         c.fieldnames
@@ -52,7 +55,7 @@ def validate_import(fileobj):
     for field in critical_fields:
         if field not in c.fieldnames:
             errors.append("The mandatory column %s is missing from the spreadsheet." % (field))
-    
+
     for field in c.fieldnames:
         if field not in all_fields:
             warnings.append("Your spreadsheet contains an unknown column '%s'. This column will be ignored during the import process." % (field))
@@ -156,7 +159,7 @@ def validate_import(fileobj):
             # Missing fields will have been caught above
             pass
 
-        # Check date_purchased 
+        # Check date_purchased
         try:
             if not row['date_purchased']:
                 errors.append("Line %d: The mandatory field 'date_purchased' is blank." % (c.line_num))
@@ -203,6 +206,7 @@ def validate_import(fileobj):
 
     return (len(asset_tag_list), errors, warnings, notes)
 
+
 @login_required(redirect_field_name="")
 def do_import(request):
     """
@@ -242,7 +246,7 @@ def do_import(request):
         except IndexError:
             # This should never happen, but abort gracefully if it does
             return render_to_response("assets/import_criticalerrors.html", {'errors':["Line %d: A critical error occurred while attempting to load the location record." % (c.line_num)], 'warnings':[], 'notes':[], 'title':'Bulk Import'})
-        
+
         # Set default values for optional fields if necessary
         try:
             fat = row['finance_asset_tag']
@@ -271,14 +275,14 @@ def do_import(request):
 
         # Finally, create the asset record
         asset = models.Asset(
-                asset_tag = row['asset_tag'].upper(), 
+                asset_tag = row['asset_tag'].upper(),
                 finance_asset_tag = fat,
-                model = mo, 
-                status = row['status'].capitalize(), 
+                model = mo,
+                status = row['status'].capitalize(),
                 serial = serial,
-                date_purchased = datetime.strptime(row['date_purchased'], '%d/%m/%Y'), 
+                date_purchased = datetime.strptime(row['date_purchased'], '%d/%m/%Y'),
                 purchased_value = pv,
-                location = loc, 
+                location = loc,
                 assigned_user = assigned_user,
                 notes = notes,
             )
@@ -287,7 +291,8 @@ def do_import(request):
         assets_created.append(asset)
 
     return render_to_response("assets/import_complete.html", {'record_count':len(assets_created), 'assets_created':assets_created, 'title':'Bulk Import'})
-    
+
+
 def confirm_import(fileobj, request):
     """
     Receives a file object from import_asset, and does validation, shows a
@@ -304,6 +309,7 @@ def confirm_import(fileobj, request):
     # Otherwise, render the confirmation page
     return render_to_response("assets/import_confirm.html", {'warnings':warnings, 'notes':notes, 'record_count':num_assets, 'csv':fileobj.read(), 'title':'Bulk Import'}, context_instance=RequestContext(request))
 
+
 @login_required(redirect_field_name="")
 def import_asset(request):
     """
@@ -318,6 +324,7 @@ def import_asset(request):
     else:
         form = ImportForm()
     return render_to_response("assets/import_intro.html", {'form':form, 'title':'Bulk import'}, context_instance=RequestContext(request))
+
 
 def recursive_lookup(obj, field):
     """
@@ -388,6 +395,7 @@ def build_fields(c=models.Asset, queryset=None):
     else:
         return field_names
 
+
 # From http://docs.python.org/library/csv.html#csv-examples
 class UnicodeWriter:
     """
@@ -417,6 +425,7 @@ class UnicodeWriter:
     def writerows(self, rows):
         for row in rows:
             self.writerow(row)
+
 
 @login_required(redirect_field_name="")
 def export(request):
@@ -484,6 +493,7 @@ def export(request):
 
     return response
 
+
 def categories(request):
     """Prints a list of valid categories for the model_type field.
     """
@@ -492,4 +502,3 @@ def categories(request):
         l.append(a)
 
     return render_to_response("assets/categories.html", {'categories': l})
-
