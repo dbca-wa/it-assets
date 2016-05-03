@@ -1,6 +1,5 @@
 {% extends "admin/base_site.html" %}
 {% load admin_list i18n %}
-{% load url from future %}
 
 {% block breadcrumbs %}
 <div class="breadcrumbs">
@@ -41,7 +40,7 @@
     {% endfor %}
 </ul>
 
-{% endif %} 
+{% endif %}
 
 {% if notes %}
 <p>The following other notifications were generated:</p>
@@ -52,7 +51,7 @@
     {% endfor %}
 </ul>
 
-{% endif %} 
+{% endif %}
 
 <a href="">Try again!</a>
 

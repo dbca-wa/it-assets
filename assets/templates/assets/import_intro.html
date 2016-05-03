@@ -1,6 +1,5 @@
 {% extends "admin/base_site.html" %}
 {% load admin_list i18n %}
-{% load url from future %}
 
 {% block breadcrumbs %}
 <div class="breadcrumbs">
@@ -92,11 +91,11 @@
     <tr>
         <td><tt>assigned_user</tt></td>
         <td>(optional) The username of the user this asset is assigned to.</td>
-    </tr> 
+    </tr>
     <tr>
         <td><tt>notes</tt></td>
         <td>(optional) Any additional notes regarding this asset.</td>
-    </tr> 
+    </tr>
 </table>
 
 <!-- Invoices can't be imported yet
