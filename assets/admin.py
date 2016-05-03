@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib.admin import AdminSite, ModelAdmin, register
 from django.forms import ModelForm, ValidationError
 from djqscsv import render_to_csv_response
 import re
@@ -7,7 +7,12 @@ from reversion.admin import VersionAdmin
 from assets.models import Supplier, Model, Asset, Location, Invoice
 
 
-class AuditAdmin(VersionAdmin, admin.ModelAdmin):
+class AssetsAdminSite(AdminSite):
+    site_header = 'DPaW IT Asset Management'
+admin_site = AssetsAdminSite(name='myadmin')
+
+
+class AuditAdmin(VersionAdmin, ModelAdmin):
     list_display = ['__unicode__', 'creator', 'modifier', 'created', 'modified']
     search_fields = [
         'id', 'creator__username', 'modifier__username', 'creator__email',
@@ -15,25 +20,24 @@ class AuditAdmin(VersionAdmin, admin.ModelAdmin):
     raw_id_fields = ['creator', 'modifier']
 
 
+@register(Supplier, site=admin_site)
 class SupplierAdmin(AuditAdmin):
     list_display = ['name', 'get_account_rep', 'get_website', 'get_assets']
     search_fields = [
         'name', 'account_rep', 'contact_email', 'contact_phone', 'website', 'notes']
     actions_on_top = False
-admin.site.register(Supplier, SupplierAdmin)
 
 
+@register(Model, site=admin_site)
 class AssetModelAdmin(AuditAdmin):
     list_display = ['manufacturer', 'model', 'model_type', 'get_assets', 'notes']
     list_filter = ['manufacturer']
     search_fields = ['manufacturer__name', 'model', 'notes', 'model_type']
     actions_on_top = False
     actions_selection_counter = False
-admin.site.register(Model, AssetModelAdmin)
 
 
 class AssetAdminForm(ModelForm):
-
     class Meta:
         fields = '__all__'
         model = Asset
@@ -68,6 +72,7 @@ def export_assets_csv(modeladmin, request, queryset):
 export_assets_csv.short_description = 'Export selected assets as CSV'
 
 
+@register(Asset, site=admin_site)
 class AssetAdmin(AuditAdmin):
     list_display = [
         'asset_tag', 'get_type', 'get_model', 'serial', 'status', 'get_age',
@@ -81,16 +86,16 @@ class AssetAdmin(AuditAdmin):
         'invoice__cost_centre_number', 'invoice__etj_number']
     form = AssetAdminForm
     actions = [export_assets_csv]
-admin.site.register(Asset, AssetAdmin)
 
 
+@register(Location, site=admin_site)
 class LocationAdmin(AuditAdmin):
     list_display = ('name', 'block', 'site', 'get_assets')
     search_fields = ('name', 'block', 'site')
     actions_on_top = False
-admin.site.register(Location, LocationAdmin)
 
 
+@register(Invoice, site=admin_site)
 class InvoiceAdmin(AuditAdmin):
     list_display = [
         'job_number', 'supplier', 'supplier_ref', 'total_value', 'get_assets',
@@ -101,4 +106,3 @@ class InvoiceAdmin(AuditAdmin):
         'supplier__contact_phone', 'supplier__notes', 'supplier_ref', 'job_number',
         'total_value', 'notes']
     actions_on_top = False
-admin.site.register(Invoice, InvoiceAdmin)

@@ -1,26 +1,6 @@
-{% extends "admin/base_site.html" %}
-{% load admin_list i18n %}
-
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="/admin">
-    Home
-  </a>
-   &rsaquo;
-   <a href="/admin/assets">
-     Assets
-  </a>
-  &rsaquo;
-   <a href="/admin/assets/asset">
-     Assets
-  </a>
-  &rsaquo;
-  Import
-</div>
-{% endblock %}
+{% extends "assets/assets_base.html" %}
 
 {% block content %}
-
 <p>This interface lets you bulk-import assets into this database. You will need a spreadsheet meeting the following criteria:</p>
 
 <ul>
