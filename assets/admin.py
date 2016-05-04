@@ -78,7 +78,7 @@ def export_assets_csv(modeladmin, request, queryset):
         'id', 'asset_tag', 'finance_asset_tag', 'model__manufacturer__name',
         'model__model', 'model__model_type', 'status', 'serial', 'date_purchased',
         'purchased_value', 'location__name', 'location__block', 'location__site',
-        'assigned_user__username', 'notes')
+        'assigned_user', 'notes')
     return render_to_csv_response(queryset, field_header_map=field_header_map)
 export_assets_csv.short_description = 'Export selected assets as CSV'
 
