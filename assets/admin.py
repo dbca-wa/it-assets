@@ -20,12 +20,24 @@ class AuditAdmin(VersionAdmin, ModelAdmin):
     raw_id_fields = ['creator', 'modifier']
 
 
+def export_supplier_assets(modeladmin, request, queryset):
+    queryset = Asset.objects.filter(model__manufacturer__in=queryset)
+    return export_assets_csv(modeladmin, request, queryset)
+export_supplier_assets.short_description = 'Export assets by selected suppliers as CSV'
+
+
 @register(Supplier, site=admin_site)
 class SupplierAdmin(AuditAdmin):
     list_display = ['name', 'get_account_rep', 'get_website', 'get_assets']
     search_fields = [
         'name', 'account_rep', 'contact_email', 'contact_phone', 'website', 'notes']
-    actions_on_top = False
+    actions = [export_supplier_assets]
+
+
+def export_model_assets(modeladmin, request, queryset):
+    queryset = Asset.objects.filter(model__in=queryset)
+    return export_assets_csv(modeladmin, request, queryset)
+export_model_assets.short_description = 'Export assets of selected models as CSV'
 
 
 @register(Model, site=admin_site)
@@ -33,8 +45,7 @@ class AssetModelAdmin(AuditAdmin):
     list_display = ['manufacturer', 'model', 'model_type', 'get_assets', 'notes']
     list_filter = ['manufacturer']
     search_fields = ['manufacturer__name', 'model', 'notes', 'model_type']
-    actions_on_top = False
-    actions_selection_counter = False
+    actions = [export_model_assets]
 
 
 class AssetAdminForm(ModelForm):
@@ -88,11 +99,17 @@ class AssetAdmin(AuditAdmin):
     actions = [export_assets_csv]
 
 
+def export_location_assets(modeladmin, request, queryset):
+    queryset = Asset.objects.filter(location__in=queryset)
+    return export_assets_csv(modeladmin, request, queryset)
+export_location_assets.short_description = 'Export assets at selected locations as CSV'
+
+
 @register(Location, site=admin_site)
 class LocationAdmin(AuditAdmin):
     list_display = ('name', 'block', 'site', 'get_assets')
     search_fields = ('name', 'block', 'site')
-    actions_on_top = False
+    actions = [export_location_assets]
 
 
 @register(Invoice, site=admin_site)
@@ -105,4 +122,3 @@ class InvoiceAdmin(AuditAdmin):
         'supplier__name', 'supplier__account_rep', 'supplier__contact_email',
         'supplier__contact_phone', 'supplier__notes', 'supplier_ref', 'job_number',
         'total_value', 'notes']
-    actions_on_top = False
