@@ -283,6 +283,8 @@ def do_import(request):
             pv = row['purchased value'].strip()
         except KeyError:
             pv = None
+        if pv == '':
+            pv = None
 
         try:
             assigned_user = row['assigned user']
