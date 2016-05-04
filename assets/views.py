@@ -73,25 +73,21 @@ def validate_import(fileobj):
         # Check asset tag syntax
         asset_tag_re = re.compile("^IT\d{5}$")
         try:
-            if not row['asset_tag']:
+            if not row['asset tag']:
                 errors.append(
-                    "Line %d: A value for the asset_tag column is missing. Enter a value to continue." %
-                    (c.line_num))
-            elif not asset_tag_re.match(row['asset_tag'].upper()):
+                    "Line {}: A value for the asset tag column is missing. Enter a value to continue.".format(c.line_num))
+            elif not asset_tag_re.match(row['asset tag'].upper()):
                 errors.append(
-                    "Line %d: The value '%s' in the asset_tag column is invalid. Asset tags should be in the form ITXXXXX." %
-                    (c.line_num, row['asset_tag']))
-            if row['asset_tag'].upper() in asset_tag_list:
+                    "Line {}: The value '{}' in the asset tag column is invalid. Asset tags should be in the form ITXXXXX.".format(c.line_num, row['asset tag']))
+            if row['asset tag'].upper() in asset_tag_list:
                 errors.append(
-                    "Line %d: The asset tag '%s' exists in several locations in the spreadsheet. Asset tags are unique - remove the duplicate values to continue." %
-                    (c.line_num, row['asset_tag']))
+                    "Line {}: The asset tag '{}' exists in several locations in the spreadsheet. Asset tags are unique - remove the duplicate values to continue.".format(c.line_num, row['asset tag']))
 
-            asset_tag_list.append(row['asset_tag'].upper())
+            asset_tag_list.append(row['asset tag'].upper())
 
-            if models.Asset.objects.get(asset_tag__iexact=row['asset_tag']):
+            if models.Asset.objects.get(asset_tag__iexact=row['asset tag']):
                 errors.append(
-                    "Line %d: The asset tag '%s' already exists in the database. Asset tags must be unique." %
-                    (c.line_num, row['asset_tag']))
+                    "Line {}: The asset tag '{}' already exists in the database. Asset tags must be unique.".format(c.line_num, row['asset tag']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -99,14 +95,13 @@ def validate_import(fileobj):
             # This is ok, it means there's no duplicate asset in the database
             pass
 
-        # Check finance_asset_tag
+        # Check finance asset tag
         try:
-            if row['finance_asset_tag']:
+            if row['finance asset tag']:
                 finance_asset_tag_re = re.compile("^\d+$")
-                if not finance_asset_tag_re.match(row['finance_asset_tag']):
+                if not finance_asset_tag_re.match(row['finance asset tag']):
                     warnings.append(
-                        "Line %d: The finance asset tag '%s' contains numbers and other characters - these tags usually only contain numbers. Check the tag is correct before proceeding." %
-                        (c.line_num, row['finance_asset_tag']))
+                        "Line {}: The finance asset tag '{}' contains numbers and other characters - these tags usually only contain numbers. Check the tag is correct before proceeding.".format(c.line_num, row['finance asset tag']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -115,13 +110,11 @@ def validate_import(fileobj):
         try:
             if not row['manufacturer']:
                 errors.append(
-                    "Line %d: The mandatory field 'manufacturer' is blank." %
-                    (c.line_num))
+                    "Line {}: The mandatory field 'manufacturer' is blank.".format(c.line_num))
             if not models.Supplier.objects.filter(
                     name__iexact=row['manufacturer']) and row['manufacturer']:
                 notes.append(
-                    "Manufacturer '%s' on line %d is unknown - a new manufacturer record will be created." %
-                    (row['manufacturer'], c.line_num))
+                    "Line {}: Manufacturer '{}' is unknown - a new manufacturer record will be created.".format(c.line_num, row['manufacturer']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -130,23 +123,19 @@ def validate_import(fileobj):
         try:
             if not row['model']:
                 errors.append(
-                    "Line %d: The mandatory field 'model' is blank." %
-                    (c.line_num))
+                    "Line {}: The mandatory field 'model' is blank.".format(c.line_num))
             if not models.Model.objects.filter(manufacturer__name__iexact=row['manufacturer']).filter(
                     model__iexact=row['model']) and row['manufacturer'] and row['model']:
                 notes.append(
-                    "Model '%s %s' on line %d is unknown - a new model record will be created." %
-                    (row['manufacturer'], row['model'], c.line_num))
+                    "Model '{} {}' on line {} is unknown - a new model record will be created.".format(row['manufacturer'], row['model'], c.line_num))
             if not models.Model.objects.filter(manufacturer__name__iexact=row['manufacturer']).filter(model__iexact=row['model']) and row[
                     'manufacturer'] and row['model'] and ('model_lifecycle' not in row.keys() or not row['model_lifecycle']):
                 errors.append(
-                    "Line %d: A new model is to be created, and model_lifecycle has not been specified. Enter a value to continue." %
-                    (c.line_num))
+                    "Line {}: A new model is to be created, and model_lifecycle has not been specified. Enter a value to continue.".format(c.line_num))
             if not models.Model.objects.filter(manufacturer__name__iexact=row['manufacturer']).filter(model__iexact=row['model']) and row[
                     'manufacturer'] and row['model'] and ('model_type' not in row.keys() or not row['model_type']):
                 errors.append(
-                    "Line %d: A new model is to be created, and model_type has not been specified. Enter a value to continue." %
-                    (c.line_num))
+                    "Line {}: A new model is to be created, and model_type has not been specified. Enter a value to continue.".format(c.line_num))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -166,14 +155,12 @@ def validate_import(fileobj):
                     "Line %d: The value '%s' in the model_lifecycle column is invalid. The model_lifecycle field should consist of a single positive number." %
                     (c.line_num, row['model_lifecycle']))
 
-        # Check model_type
+        # Check model type
         try:
             # An error is generated above (under model) if model_type is blank
-            if row['model_type'] and (row['model_type'], row[
-                                      'model_type']) not in models.Model.type_choices:
+            if row['model type'] and (row['model type'], row['model type']) not in models.Model.type_choices:
                 errors.append(
-                    "Line %d: The value '%s' in the model_type column is not a valid category. Check the <a href='/assets/categories'>list of categories</a> and correct the value. Note this field is case-sensitive." %
-                    (c.line_num, row['model_type']))
+                    "Line {}: The value '{}' in the model_type column is not a valid category. Check the <a href='/assets/categories'>list of categories</a> and correct the value. Note this field is case-sensitive.".format(c.line_num, row['model_type']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -183,8 +170,7 @@ def validate_import(fileobj):
             s = row['status'].capitalize()
             if s != 'In storage' and s != 'Deployed' and s != 'Disposed':
                 errors.append(
-                    "Line %d: The value '%s' in the status column is invalid. The asset status must be one of 'In storage', 'Deployed' or 'Disposed'." %
-                    (c.line_num, row['status']))
+                    "Line {}: The value '{}' in the status column is invalid. The asset status must be one of 'In storage', 'Deployed' or 'Disposed'.".format(c.line_num, row['status']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -193,60 +179,43 @@ def validate_import(fileobj):
         try:
             if not row['serial']:
                 errors.append(
-                    "Line %d: The mandatory field 'serial' is blank. If the device does not have a serial number, enter 'Unknown'." %
-                    (c.line_num))
+                    "Line {}: The mandatory field 'serial' is blank. If the device does not have a serial number, enter 'Unknown'.".format(c.line_num))
         except KeyError:
             # Missing fields will have been caught above
             pass
 
-        # Check date_purchased
+        # Check date purchased
         try:
-            if not row['date_purchased']:
+            if not row['date purchased']:
                 errors.append(
-                    "Line %d: The mandatory field 'date_purchased' is blank." %
-                    (c.line_num))
-            datetime.strptime(row['date_purchased'], '%d/%m/%Y')
+                    "Line {}: The mandatory field 'date_purchased' is blank.".format(c.line_num))
+            datetime.strptime(row['date purchased'], '%d/%m/%Y')
         except KeyError:
             # Missing fields will have been caught above
             pass
         except ValueError:
             errors.append(
-                "Line %d: The value '%s' in the date_purchased column is invalid. Dates must be in the form dd/mm/yyyy." %
-                (c.line_num, row['date_purchased']))
+                "Line {}: The value '{}' in the date_purchased column is invalid. Dates must be in the form dd/mm/yyyy.".format(c.line_num, row['date_purchased']))
 
-        # Check purchased_value
+        # Check purchased value
         try:
             purchased_value_re = re.compile("^([0-9]*|\d*\.\d{1}?\d*)$")
-            if not purchased_value_re.match(row['purchased_value'].strip()):
+            if not purchased_value_re.match(row['purchased value'].strip()):
                 errors.append(
-                    "Line %d: The value '%s' in the purchased_value column is invalid. Values must be a simple positive decimal number (no $ sign or commas)." %
-                    (c.line_num, row['purchased_value'].strip()))
+                    "Line {}: The value '{}' in the purchased value column is invalid. Values must be a simple positive decimal number (no $ sign or commas).".format(c.line_num, row['purchased value'].strip()))
         except KeyError:
             # Missing fields will have been caught above
             pass
 
         # Check location fields
         try:
-            if not models.Location.objects.filter(name__iexact=row['location_name']).filter(
-                    block__iexact=row['location_block']).filter(site__iexact=row['location_site']):
+            if not models.Location.objects.filter(name__iexact=row['location']).filter(
+                    block__iexact=row['block']).filter(site__iexact=row['site']):
                 errors.append(
-                    "Line %d: There is no defined location matching %s, %s, %s. Locations must be pre-defined in the Locations table before importing data." %
-                    (c.line_num, row['location_name'], row['location_block'], row['location_site']))
+                    "Line {}: There is no defined location matching {}, {}, {}. Locations must be pre-defined in the Locations table before importing data.".format(c.line_num, row['location'], row['block'], row['site']))
         except KeyError:
             # Missing fields will have been caught above
             pass
-
-        try:
-            User.objects.get(username=row['assigned_user'])
-        except KeyError:
-            # Missing fields will have been caught above
-            pass
-        except User.DoesNotExist:
-            errors.append(
-                "Line %d: The username '%s' in column assigned_user does not exist. Ensure it refers to a valid AD user." %
-                (c.line_num, row['assigned_user']))
-
-        # No validation required on notes
 
     # Reset fileobj now we're finished with it
     fileobj.seek(0)
@@ -505,12 +474,9 @@ def export(request):
 
     """
     response = HttpResponse(content_type="text/csv")
-
     filename = "assets_%s.csv" % (datetime.now().strftime("%Y%m%d"))
     response['Content-Disposition'] = 'attachment; filename=%s' % (filename)
-
     c = UnicodeWriter(response)
-
     q = models.Asset.objects
 
     # Read in filters

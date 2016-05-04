@@ -6,7 +6,7 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils.timezone import utc
 import locale
-import reversion
+from reversion import revisions
 import threading
 
 
@@ -95,15 +95,15 @@ class Audit(models.Model):
         change_list = [item for item in change_list if item[0] not in ['modified' ,'modifier_id']]
         if change_list:
             comment_changed = 'Changed ' + ', '.join([t[0] for t in change_list]) + '.'
-            with reversion.create_revision():
-                reversion.set_comment(comment_changed)
+            with revisions.create_revision():
+                revisions.set_comment(comment_changed)
         elif not change_list and not self.pk:
-            with reversion.create_revision():
-                reversion.set_comment('Initial version.')
+            with revisions.create_revision():
+                revisions.set_comment('Initial version.')
         else:
             # An existing object was saved, with no changes: don't create a revision.
-            with reversion.create_revision():
-                reversion.set_comment('Nothing changed.')
+            with revisions.create_revision():
+                revisions.set_comment('Nothing changed.')
 
     def _searchfields(self):
         return set(field.name for field in self.__class__._meta.fields)

@@ -3,7 +3,7 @@
 {% block content %}
 <h4>Import complete</h4>
 <p>You have successfully imported {{ record_count }} assets. A list of asset tags are shown below.</p>
-<p><a href="/admin/assets/asset">Back to asset admin</a> | <a href="/assets/import">Import more assets</a></p>
+<p><a href="{% url 'admin:assets_asset_changelist' %}">Back to asset admin</a> | <a href="{% url 'assets_import' %}">Import more assets</a></p>
 <p>
 <table width="25%">
     <tr><td><b>Asset</b></td><td><b>Model</b></td><td><b>Serial</b></td></tr>
