@@ -1,60 +1,27 @@
-{% extends "admin/base_site.html" %}
-{% load admin_list i18n %}
-{% load url from future %}
-
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="/admin">
-    Home
-  </a>
-   &rsaquo;
-   <a href="/admin/assets">
-     Assets
-  </a>
-  &rsaquo;
-   <a href="/admin/assets/asset">
-     Assets
-  </a>
-  &rsaquo;
-  Import
-</div>
-{% endblock %}
+{% extends "assets/assets_base.html" %}
 
 {% block content %}
-
 <h4>Import records - confirmation</h4>
-
 {% if warnings %}
 <p>The following warnings were generated during validation. These will not prevent the import process from proceeding, though they may cause results you do not expect.</p>
-
 <ul>
     {% for warning in warnings %}
     <li>{{ warning }}</li>
     {% endfor %}
 </ul>
-
-{% endif %} 
-
+{% endif %}
 {% if notes %}
 <p>The following notifications were generated.</p>
-
 <ul>
     {% for note in notes %}
     <li>{{ note }}</li>
     {% endfor %}
 </ul>
-
-{% endif %} 
-
+{% endif %}
 <p>You are about to import {{ record_count }} assets. {% if warnings or notes %} Check the warnings or notifications above to ensure none of them will cause invalid data to be imported. {% else %} Your data has been validated, and generated no errors. {% endif %}</p>
-
 <p>When you are happy to proceed, click Begin Import below.</p>
-
 <form action="/assets/import/final" method="POST">{% csrf_token %}
     <input type="hidden" name="csv" value="{{ csv }}"/>
-    <input type="submit" value="Begin Import"/> 
+    <input type="submit" value="Begin Import"/>
 </form>
-
-<p><a href="">Return to instructions</a></p>
-
 {% endblock %}

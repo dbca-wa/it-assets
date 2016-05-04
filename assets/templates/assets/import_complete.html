@@ -1,33 +1,9 @@
-{% extends "admin/base_site.html" %}
-{% load admin_list i18n %}
-{% load url from future %}
-
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-  <a href="/admin">
-    Home
-  </a>
-   &rsaquo;
-   <a href="/admin/assets">
-     Assets
-  </a>
-  &rsaquo;
-   <a href="/admin/assets/asset">
-     Assets
-  </a>
-  &rsaquo;
-  Import
-</div>
-{% endblock %}
+{% extends "assets/assets_base.html" %}
 
 {% block content %}
-
 <h4>Import complete</h4>
-
 <p>You have successfully imported {{ record_count }} assets. A list of asset tags are shown below.</p>
-
 <p><a href="/admin/assets/asset">Back to asset admin</a> | <a href="/assets/import">Import more assets</a></p>
-
 <p>
 <table width="25%">
     <tr><td><b>Asset</b></td><td><b>Model</b></td><td><b>Serial</b></td></tr>
@@ -36,5 +12,4 @@
     {% endfor %}
 </table>
 </p>
-
 {% endblock %}
