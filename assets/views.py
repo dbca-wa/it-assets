@@ -33,11 +33,16 @@ def validate_import(fileobj):
         c = csv.DictReader(fileobj)
         c.fieldnames
     except Exception:
-        errors = ["The file you uploaded could not be interpreted. Check that you uploaded the correct file (in a .csv format) and try again.", ]
+        errors = ["""The file you uploaded could not be interpreted. Check that
+            you uploaded the correct file (in a .csv format) and try again."""]
         return (0, errors, [], [])
 
-    critical_fields = ('asset_tag', 'manufacturer', 'model', 'serial', 'date_purchased', 'location_name', 'location_block', 'location_site')
-    all_fields = critical_fields + ('finance_asset_tag', 'model_lifecycle', 'model_type', 'status', 'purchased_value', 'assigned_user', 'notes')
+    critical_fields = (
+        'asset tag', 'manufacturer', 'model', 'serial', 'date purchased',
+        'location', 'block', 'site')
+    all_fields = critical_fields + (
+        'ID', 'finance asset tag', 'model type', 'status', 'purchased value',
+        'assigned user', 'notes')
 
     # List to hold errors found during the validation process
     errors = []
@@ -50,14 +55,18 @@ def validate_import(fileobj):
     # Inspect the first row to see what columns we've got
     for field in critical_fields:
         if field not in c.fieldnames:
-            errors.append("The mandatory column %s is missing from the spreadsheet." % (field))
+            errors.append(
+                'The mandatory column {} is missing from the spreadsheet.'.format(field))
 
     for field in c.fieldnames:
         if field not in all_fields:
-            warnings.append("Your spreadsheet contains an unknown column '%s'. This column will be ignored during the import process." % (field))
+            warnings.append('''Your spreadsheet contains an unknown column '{}'.
+                This column will be ignored during the import process.'''.format(field))
 
     if not 'status' in c.fieldnames:
-        warnings.append("Your spreadsheet does not contain a column called 'status' - the status field of every new asset will be set to 'In storage'.")
+        warnings.append('''Your spreadsheet does not contain a column called
+            'status' - the status field of every new asset will be set to
+            'In storage'.''')
 
     # Inspect each row and do field-specific validation
     for row in c:
@@ -65,16 +74,24 @@ def validate_import(fileobj):
         asset_tag_re = re.compile("^IT\d{5}$")
         try:
             if not row['asset_tag']:
-                errors.append("Line %d: A value for the asset_tag column is missing. Enter a value to continue." % (c.line_num))
+                errors.append(
+                    "Line %d: A value for the asset_tag column is missing. Enter a value to continue." %
+                    (c.line_num))
             elif not asset_tag_re.match(row['asset_tag'].upper()):
-                errors.append("Line %d: The value '%s' in the asset_tag column is invalid. Asset tags should be in the form ITXXXXX." % (c.line_num, row['asset_tag']))
+                errors.append(
+                    "Line %d: The value '%s' in the asset_tag column is invalid. Asset tags should be in the form ITXXXXX." %
+                    (c.line_num, row['asset_tag']))
             if row['asset_tag'].upper() in asset_tag_list:
-                errors.append("Line %d: The asset tag '%s' exists in several locations in the spreadsheet. Asset tags are unique - remove the duplicate values to continue." % (c.line_num, row['asset_tag']))
+                errors.append(
+                    "Line %d: The asset tag '%s' exists in several locations in the spreadsheet. Asset tags are unique - remove the duplicate values to continue." %
+                    (c.line_num, row['asset_tag']))
 
             asset_tag_list.append(row['asset_tag'].upper())
 
-            if models.Asset.objects.get(asset_tag__iexact = row['asset_tag']):
-                errors.append("Line %d: The asset tag '%s' already exists in the database. Asset tags must be unique." % (c.line_num, row['asset_tag']))
+            if models.Asset.objects.get(asset_tag__iexact=row['asset_tag']):
+                errors.append(
+                    "Line %d: The asset tag '%s' already exists in the database. Asset tags must be unique." %
+                    (c.line_num, row['asset_tag']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -87,7 +104,9 @@ def validate_import(fileobj):
             if row['finance_asset_tag']:
                 finance_asset_tag_re = re.compile("^\d+$")
                 if not finance_asset_tag_re.match(row['finance_asset_tag']):
-                    warnings.append("Line %d: The finance asset tag '%s' contains numbers and other characters - these tags usually only contain numbers. Check the tag is correct before proceeding." % (c.line_num, row['finance_asset_tag']))
+                    warnings.append(
+                        "Line %d: The finance asset tag '%s' contains numbers and other characters - these tags usually only contain numbers. Check the tag is correct before proceeding." %
+                        (c.line_num, row['finance_asset_tag']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -95,9 +114,14 @@ def validate_import(fileobj):
         # Check manufacturer
         try:
             if not row['manufacturer']:
-                errors.append("Line %d: The mandatory field 'manufacturer' is blank." % (c.line_num))
-            if not models.Supplier.objects.filter(name__iexact = row['manufacturer']) and row['manufacturer']:
-                notes.append("Manufacturer '%s' on line %d is unknown - a new manufacturer record will be created." % (row['manufacturer'], c.line_num))
+                errors.append(
+                    "Line %d: The mandatory field 'manufacturer' is blank." %
+                    (c.line_num))
+            if not models.Supplier.objects.filter(
+                    name__iexact=row['manufacturer']) and row['manufacturer']:
+                notes.append(
+                    "Manufacturer '%s' on line %d is unknown - a new manufacturer record will be created." %
+                    (row['manufacturer'], c.line_num))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -105,13 +129,24 @@ def validate_import(fileobj):
         # Check model
         try:
             if not row['model']:
-                errors.append("Line %d: The mandatory field 'model' is blank." % (c.line_num))
-            if not models.Model.objects.filter(manufacturer__name__iexact = row['manufacturer']).filter(model__iexact = row['model']) and row['manufacturer'] and row['model']:
-                notes.append("Model '%s %s' on line %d is unknown - a new model record will be created." % (row['manufacturer'], row['model'], c.line_num))
-            if not models.Model.objects.filter(manufacturer__name__iexact = row['manufacturer']).filter(model__iexact = row['model']) and row['manufacturer'] and row['model'] and ('model_lifecycle' not in row.keys() or not row['model_lifecycle']):
-                errors.append("Line %d: A new model is to be created, and model_lifecycle has not been specified. Enter a value to continue." % (c.line_num))
-            if not models.Model.objects.filter(manufacturer__name__iexact = row['manufacturer']).filter(model__iexact = row['model']) and row['manufacturer'] and row['model'] and ('model_type' not in row.keys() or not row['model_type']):
-                errors.append("Line %d: A new model is to be created, and model_type has not been specified. Enter a value to continue." % (c.line_num))
+                errors.append(
+                    "Line %d: The mandatory field 'model' is blank." %
+                    (c.line_num))
+            if not models.Model.objects.filter(manufacturer__name__iexact=row['manufacturer']).filter(
+                    model__iexact=row['model']) and row['manufacturer'] and row['model']:
+                notes.append(
+                    "Model '%s %s' on line %d is unknown - a new model record will be created." %
+                    (row['manufacturer'], row['model'], c.line_num))
+            if not models.Model.objects.filter(manufacturer__name__iexact=row['manufacturer']).filter(model__iexact=row['model']) and row[
+                    'manufacturer'] and row['model'] and ('model_lifecycle' not in row.keys() or not row['model_lifecycle']):
+                errors.append(
+                    "Line %d: A new model is to be created, and model_lifecycle has not been specified. Enter a value to continue." %
+                    (c.line_num))
+            if not models.Model.objects.filter(manufacturer__name__iexact=row['manufacturer']).filter(model__iexact=row['model']) and row[
+                    'manufacturer'] and row['model'] and ('model_type' not in row.keys() or not row['model_type']):
+                errors.append(
+                    "Line %d: A new model is to be created, and model_type has not been specified. Enter a value to continue." %
+                    (c.line_num))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -127,13 +162,18 @@ def validate_import(fileobj):
         except ValueError:
             # An error is generated above (under model) if model_type is blank
             if row['model_lifecycle']:
-                errors.append("Line %d: The value '%s' in the model_lifecycle column is invalid. The model_lifecycle field should consist of a single positive number." % (c.line_num, row['model_lifecycle']))
+                errors.append(
+                    "Line %d: The value '%s' in the model_lifecycle column is invalid. The model_lifecycle field should consist of a single positive number." %
+                    (c.line_num, row['model_lifecycle']))
 
         # Check model_type
         try:
             # An error is generated above (under model) if model_type is blank
-            if row['model_type'] and (row['model_type'], row['model_type']) not in models.Model.type_choices:
-                errors.append("Line %d: The value '%s' in the model_type column is not a valid category. Check the <a href='/assets/categories'>list of categories</a> and correct the value. Note this field is case-sensitive." % (c.line_num, row['model_type']))
+            if row['model_type'] and (row['model_type'], row[
+                                      'model_type']) not in models.Model.type_choices:
+                errors.append(
+                    "Line %d: The value '%s' in the model_type column is not a valid category. Check the <a href='/assets/categories'>list of categories</a> and correct the value. Note this field is case-sensitive." %
+                    (c.line_num, row['model_type']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -142,7 +182,9 @@ def validate_import(fileobj):
         try:
             s = row['status'].capitalize()
             if s != 'In storage' and s != 'Deployed' and s != 'Disposed':
-                errors.append("Line %d: The value '%s' in the status column is invalid. The asset status must be one of 'In storage', 'Deployed' or 'Disposed'." % (c.line_num, row['status']))
+                errors.append(
+                    "Line %d: The value '%s' in the status column is invalid. The asset status must be one of 'In storage', 'Deployed' or 'Disposed'." %
+                    (c.line_num, row['status']))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -150,7 +192,9 @@ def validate_import(fileobj):
         # Check serial
         try:
             if not row['serial']:
-                errors.append("Line %d: The mandatory field 'serial' is blank. If the device does not have a serial number, enter 'Unknown'." % (c.line_num))
+                errors.append(
+                    "Line %d: The mandatory field 'serial' is blank. If the device does not have a serial number, enter 'Unknown'." %
+                    (c.line_num))
         except KeyError:
             # Missing fields will have been caught above
             pass
@@ -158,38 +202,49 @@ def validate_import(fileobj):
         # Check date_purchased
         try:
             if not row['date_purchased']:
-                errors.append("Line %d: The mandatory field 'date_purchased' is blank." % (c.line_num))
+                errors.append(
+                    "Line %d: The mandatory field 'date_purchased' is blank." %
+                    (c.line_num))
             datetime.strptime(row['date_purchased'], '%d/%m/%Y')
         except KeyError:
             # Missing fields will have been caught above
             pass
         except ValueError:
-            errors.append("Line %d: The value '%s' in the date_purchased column is invalid. Dates must be in the form dd/mm/yyyy." % (c.line_num, row['date_purchased']))
+            errors.append(
+                "Line %d: The value '%s' in the date_purchased column is invalid. Dates must be in the form dd/mm/yyyy." %
+                (c.line_num, row['date_purchased']))
 
         # Check purchased_value
         try:
             purchased_value_re = re.compile("^([0-9]*|\d*\.\d{1}?\d*)$")
             if not purchased_value_re.match(row['purchased_value'].strip()):
-                errors.append("Line %d: The value '%s' in the purchased_value column is invalid. Values must be a simple positive decimal number (no $ sign or commas)." % (c.line_num, row['purchased_value'].strip()))
+                errors.append(
+                    "Line %d: The value '%s' in the purchased_value column is invalid. Values must be a simple positive decimal number (no $ sign or commas)." %
+                    (c.line_num, row['purchased_value'].strip()))
         except KeyError:
             # Missing fields will have been caught above
             pass
 
         # Check location fields
         try:
-            if not models.Location.objects.filter(name__iexact = row['location_name']).filter(block__iexact = row['location_block']).filter(site__iexact = row['location_site']):
-                errors.append("Line %d: There is no defined location matching %s, %s, %s. Locations must be pre-defined in the Locations table before importing data." % (c.line_num, row['location_name'], row['location_block'], row['location_site']))
+            if not models.Location.objects.filter(name__iexact=row['location_name']).filter(
+                    block__iexact=row['location_block']).filter(site__iexact=row['location_site']):
+                errors.append(
+                    "Line %d: There is no defined location matching %s, %s, %s. Locations must be pre-defined in the Locations table before importing data." %
+                    (c.line_num, row['location_name'], row['location_block'], row['location_site']))
         except KeyError:
             # Missing fields will have been caught above
             pass
 
         try:
-            User.objects.get(username = row['assigned_user'])
+            User.objects.get(username=row['assigned_user'])
         except KeyError:
             # Missing fields will have been caught above
             pass
         except User.DoesNotExist:
-            errors.append("Line %d: The username '%s' in column assigned_user does not exist. Ensure it refers to a valid AD user." % (c.line_num, row['assigned_user']))
+            errors.append(
+                "Line %d: The username '%s' in column assigned_user does not exist. Ensure it refers to a valid AD user." %
+                (c.line_num, row['assigned_user']))
 
         # No validation required on notes
 
@@ -214,7 +269,8 @@ def do_import(request):
     (num_assets, errors, warnings, notes) = validate_import(fileobj)
 
     if errors:
-        return render_to_response("assets/import_criticalerrors.html", {'errors':errors, 'warnings':warnings, 'notes':notes, 'title':'Bulk Import'})
+        return render_to_response("assets/import_criticalerrors.html", {
+                                  'errors': errors, 'warnings': warnings, 'notes': notes, 'title': 'Bulk Import'})
 
     assets_created = []
 
@@ -222,36 +278,45 @@ def do_import(request):
     for row in c:
         # Get the manufacturer and model first, and create if required
         try:
-            ma = models.Supplier.objects.filter(name__iexact = row['manufacturer'])[0]
+            ma = models.Supplier.objects.filter(
+                name__iexact=row['manufacturer'])[0]
         except IndexError:
             ma = models.Supplier(name=row['manufacturer'])
             ma.save()
 
         try:
-            mo = models.Model.objects.filter(manufacturer = ma, model__iexact = row['model'])[0]
+            mo = models.Model.objects.filter(
+                manufacturer=ma, model__iexact=row['model'])[0]
         except IndexError:
-            mo = models.Model(manufacturer=ma, model=row['model'], lifecycle=row['model_lifecycle'], model_type=row['model_type'])
+            mo = models.Model(
+                manufacturer=ma,
+                model=row['model'],
+                model_type=row['model type'])
             mo.save()
 
         try:
-            loc = models.Location.objects.filter(name__iexact = row['location_name'], block__iexact = row['location_block'], site__iexact = row['location_site'])[0]
+            loc = models.Location.objects.filter(
+                name__iexact=row['location'],
+                block__iexact=row['block'],
+                site__iexact=row['site'])[0]
         except IndexError:
             # This should never happen, but abort gracefully if it does
-            return render_to_response("assets/import_criticalerrors.html", {'errors':["Line %d: A critical error occurred while attempting to load the location record." % (c.line_num)], 'warnings':[], 'notes':[], 'title':'Bulk Import'})
+            return render_to_response("assets/import_criticalerrors.html", {'errors': [
+                                      "Line %d: A critical error occurred while attempting to load the location record." % (c.line_num)], 'warnings': [], 'notes': [], 'title ': 'Bulk Import'})
 
         # Set default values for optional fields if necessary
         try:
-            fat = row['finance_asset_tag']
+            fat = row['finance asset tag']
         except KeyError:
             fat = ""
 
         try:
-            pv = row['purchased_value'].strip()
+            pv = row['purchased value'].strip()
         except KeyError:
             pv = None
 
         try:
-            assigned_user = row['assigned_user']
+            assigned_user = row['assigned user']
         except KeyError:
             assigned_user = ""
 
@@ -267,22 +332,24 @@ def do_import(request):
 
         # Finally, create the asset record
         asset = models.Asset(
-                asset_tag = row['asset_tag'].upper(),
-                finance_asset_tag = fat,
-                model = mo,
-                status = row['status'].capitalize(),
-                serial = serial,
-                date_purchased = datetime.strptime(row['date_purchased'], '%d/%m/%Y'),
-                purchased_value = pv,
-                location = loc,
-                assigned_user = assigned_user,
-                notes = notes,
-            )
+            asset_tag=row['asset tag'].upper(),
+            finance_asset_tag=fat,
+            model=mo,
+            status=row['status'].capitalize(),
+            serial=serial,
+            date_purchased=datetime.strptime(
+                row['date purchased'], '%d/%m/%Y'),
+            purchased_value=pv,
+            location=loc,
+            assigned_user=assigned_user,
+            notes=notes,
+        )
         asset.save()
 
         assets_created.append(asset)
 
-    return render_to_response("assets/import_complete.html", {'record_count':len(assets_created), 'assets_created':assets_created, 'title':'Bulk Import'})
+    return render_to_response("assets/import_complete.html", {'record_count': len(
+        assets_created), 'assets_created': assets_created, 'title': 'Bulk Import'})
 
 
 def confirm_import(fileobj, request):
@@ -296,10 +363,12 @@ def confirm_import(fileobj, request):
 
     # Stop and complain if we've got errors
     if errors:
-        return render_to_response("assets/import_criticalerrors.html", {'errors':errors, 'warnings':warnings, 'notes':notes, 'title':'Bulk Import'})
+        return render_to_response("assets/import_criticalerrors.html", {
+                                  'errors': errors, 'warnings': warnings, 'notes': notes, 'title': 'Bulk Import'})
 
     # Otherwise, render the confirmation page
-    return render_to_response("assets/import_confirm.html", {'warnings':warnings, 'notes':notes, 'record_count':num_assets, 'csv':fileobj.read(), 'title':'Bulk Import'}, context_instance=RequestContext(request))
+    return render_to_response("assets/import_confirm.html", {'warnings': warnings, 'notes': notes, 'record_count': num_assets,
+                                                             'csv': fileobj.read(), 'title': 'Bulk Import'}, context_instance=RequestContext(request))
 
 
 @login_required(redirect_field_name="")
@@ -315,7 +384,8 @@ def import_asset(request):
             return confirm_import(request.FILES['assets_to_import'], request)
     else:
         form = ImportForm()
-    return render_to_response("assets/import_intro.html", {'form':form, 'title':'Bulk import'}, context_instance=RequestContext(request))
+    return render_to_response("assets/import_intro.html", {
+                              'form': form, 'title': 'Bulk import'}, context_instance=RequestContext(request))
 
 
 def recursive_lookup(obj, field):
@@ -330,6 +400,7 @@ def recursive_lookup(obj, field):
             return recursive_lookup(getattr(obj, f), rest)
         else:
             raise AttributeError
+
 
 def build_fields(c=models.Asset, queryset=None):
     """
@@ -356,17 +427,16 @@ def build_fields(c=models.Asset, queryset=None):
         try:
             # Construct django-style relational field names, so we can just
             # dump them into values_list() below to get values
-            field_names += ["%s__%s" % (field, x) for x in build_fields(f_obj.rel.to)]
+            field_names += ["%s__%s" % (field, x)
+                            for x in build_fields(f_obj.rel.to)]
         except AttributeError:
             # Reverse relations are RelatedObjects with no .rel attribute
-            #if isinstance(f_obj, RelatedObject):
-	    if isinstance(f_obj, ForeignObjectRel):
+            if isinstance(f_obj, ForeignObjectRel):
                 continue
 
             field_names.append(field)
 
     if queryset:
-        #raise Exception(repr(queryset))
         field_data = [field_names]
         # I <3 Python
         field_data += queryset.values_list(*field_names)
@@ -453,25 +523,25 @@ def export(request):
     serial = request.GET.get('serial')
 
     if manufacturer:
-        q = q.filter(model__manufacturer__name__icontains = manufacturer)
+        q = q.filter(model__manufacturer__name__icontains=manufacturer)
 
     if manufacturer_id:
-        q = q.filter(model__manufacturer__id__exact = manufacturer_id)
+        q = q.filter(model__manufacturer__id__exact=manufacturer_id)
 
     if model:
-        q = q.filter(model__model__icontains = model)
+        q = q.filter(model__model__icontains=model)
 
     if site:
-        q = q.filter(location__site__icontains = site)
+        q = q.filter(location__site__icontains=site)
 
     if status:
-        q = q.filter(status__icontains = status)
+        q = q.filter(status__icontains=status)
 
     if asset_tag:
-        q = q.filter(asset_tag__icontains = asset_tag)
+        q = q.filter(asset_tag__icontains=asset_tag)
 
     if serial:
-        q = q.filter(serial__icontains = serial)
+        q = q.filter(serial__icontains=serial)
 
     if not (manufacturer or model or site or status or asset_tag or serial):
         q = q.all()

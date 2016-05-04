@@ -17,11 +17,11 @@
 <table>
     <tr><td><b>Column name</b></td><td><b>Description</b></td></tr>
     <tr>
-        <td><tt>asset_tag</tt></td>
+        <td><tt>asset tag</tt></td>
         <td>(mandatory) The asset tag of the item (in form ITXXXXX).</td>
     </tr>
     <tr>
-        <td><tt>finance_asset_tag</tt></td>
+        <td><tt>finance asset tag</tt></td>
         <td>(optional) The asset tag of the item as issued by Finance.</td>
     </tr>
     <tr>
@@ -33,11 +33,11 @@
         <td>(mandatory) The model number (eg. Latitude E6320).</td>
     </tr>
     <tr>
-        <td><tt>model_lifecycle</tt></td>
+        <td><tt>model lifecycle</tt></td>
         <td>(optional, required if model is to be created) The time in years before this model of asset is considered obsolete. Used only if the model specifed needs to be created; ignored otherwise.</td>
     </tr>
     <tr>
-        <td><tt>model_type</tt></td>
+        <td><tt>model type</tt></td>
         <td>(optional, required if model is to be created) The category of device to apply to this asset. This must match a pre-defined category - a list can be found <a href="/assets/categories">here</a>.</td>
     </tr>
     <tr>
@@ -49,27 +49,27 @@
         <td>(mandatory) The asset's serial number.</td>
     </tr>
     <tr>
-        <td><tt>date_purchased</tt></td>
+        <td><tt>date purchased</tt></td>
         <td>(mandatory) The purchase date for this asset. Must be in the form dd/mm/yyyy.</td>
     </tr>
     <tr>
-        <td><tt>purchased_value</tt></td>
+        <td><tt>purchased value</tt></td>
         <td>(optional) The amount paid for the asset, inclusive of any permanent modules or upgrades.</td>
     </tr>
     <tr>
-        <td><tt>location_name</tt></td>
+        <td><tt>location</tt></td>
         <td>(mandatory, must match existing) The location of this asset. This will be combined with location_block and location_site to form the full location. <b>These must match a location already defined in the <a href="/admin/assets/location">locations table</a>.</b></td>
     </tr>
     <tr>
-        <td><tt>location_block</tt></td>
+        <td><tt>block</tt></td>
         <td>(mandatory, must match existing) The block this asset is located in, if applicable. See <tt>location_name</tt> for more information.</td>
     </tr>
     <tr>
-        <td><tt>location_site</tt></td>
+        <td><tt>site</tt></td>
         <td>(mandatory, must match existing) The site this asset is located at. See <tt>location_name</tt> for more information.</td>
     </tr>
     <tr>
-        <td><tt>assigned_user</tt></td>
+        <td><tt>assigned user</tt></td>
         <td>(optional) The username of the user this asset is assigned to.</td>
     </tr>
     <tr>
