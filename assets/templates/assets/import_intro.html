@@ -38,7 +38,7 @@
     </tr>
     <tr>
         <td><tt>model type</tt></td>
-        <td>(optional, required if model is to be created) The category of device to apply to this asset. This must match a pre-defined category - a list can be found <a href="/assets/categories">here</a>.</td>
+        <td>(optional, required if model is to be created) The category of device to apply to this asset. This must match a pre-defined category - a list can be found <a href="{% url 'admin:model_categories' %}">here</a>.</td>
     </tr>
     <tr>
         <td><tt>status</tt></td>
@@ -109,6 +109,4 @@
     {{ form.as_p }}
     <input type="submit" value="Upload" />
 </form>
-
-
 {% endblock %}

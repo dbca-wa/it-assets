@@ -20,7 +20,8 @@
 {% endif %}
 <p>You are about to import {{ record_count }} assets. {% if warnings or notes %} Check the warnings or notifications above to ensure none of them will cause invalid data to be imported. {% else %} Your data has been validated, and generated no errors. {% endif %}</p>
 <p>When you are happy to proceed, click Begin Import below.</p>
-<form action="/assets/import/final" method="POST">{% csrf_token %}
+<form action="{% url 'admin:asset_do_import' %}" method="POST">
+    {% csrf_token %}
     <input type="hidden" name="csv" value="{{ csv }}"/>
     <input type="submit" value="Begin Import"/>
 </form>
