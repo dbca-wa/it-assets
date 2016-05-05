@@ -1,6 +1,6 @@
 {% extends "reversion/change_list.html" %}
 
 {% block content %}
-    {{block.super}}
-    <div><a href="{% url 'assets_import' %}">Import assets from CSV</a></div>
+    {{ block.super }}
+    <div><a href="{% url 'admin:asset_import' %}">Import assets from CSV</a></div>
 {% endblock %}
