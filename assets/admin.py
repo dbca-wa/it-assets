@@ -443,14 +443,14 @@ class AssetAdmin(AuditAdmin):
             try:
                 if not row['date purchased']:
                     errors.append(
-                        "Line {}: The mandatory field 'date_purchased' is blank.".format(c.line_num))
+                        "Line {}: The mandatory field 'date purchased' is blank.".format(c.line_num))
                 datetime.strptime(row['date purchased'], '%d/%m/%Y')
             except KeyError:
                 # Missing fields will have been caught above
                 pass
             except ValueError:
                 errors.append(
-                    "Line {}: The value '{}' in the date_purchased column is invalid. Dates must be in the form dd/mm/yyyy.".format(c.line_num, row['date_purchased']))
+                    "Line {}: The value '{}' in the 'date purchased' column is invalid. Dates must be in the form dd/mm/yyyy.".format(c.line_num, row['date purchased']))
 
             # Check purchased value
             try:
