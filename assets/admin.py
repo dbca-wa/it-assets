@@ -118,6 +118,7 @@ class AssetAdmin(AuditAdmin):
         'get_location', 'get_assigned_user']
     list_filter = ['model__manufacturer', 'status', 'location__site', 'date_purchased']
     date_hierarchy = 'date_purchased'
+    raw_id_fields = ['location']
     search_fields = [
         'asset_tag', 'model__model', 'status', 'model__manufacturer__name',
         'model__model_type', 'location__name', 'location__block', 'location__site',
