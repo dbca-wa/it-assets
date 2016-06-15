@@ -1,4 +1,4 @@
-Django==1.9.5
+Django==1.9.7
 django-reversion==1.10.2
 https://static.dpaw.wa.gov.au/static/py/dpaw-utils/dist/dpaw-utils-0.3a9.tar.gz
 Unipath==1.1
