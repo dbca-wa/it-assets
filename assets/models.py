@@ -61,7 +61,7 @@ class Audit(models.Model):
         # Initialise any existing model with a dictionary (prev_values), to
         # keep track of any changes on save().
         if self.pk:
-            fieldnames = self._meta.get_all_field_names()
+            fieldnames = [f.name for f in self._meta.get_fields()]
             self._fieldnames = set(fieldnames + [f + "_id" for f in fieldnames]).intersection(set(self.__dict__.keys()))
             self._initvalues = set([k for k in self.__dict__.iteritems() if k[0] in self._fieldnames])
         else:
