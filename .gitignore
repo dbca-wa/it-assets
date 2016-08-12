@@ -6,3 +6,9 @@ media/
 *.py~
 *.pyc
 *.log
+
+# Database/fixture dumps
+*.pgdump
+*.dump
+*.db
+*.sqlite3
