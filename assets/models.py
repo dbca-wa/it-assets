@@ -2,7 +2,6 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 from datetime import datetime, date, timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.db import models
 from django.utils.timezone import utc
 import locale
@@ -61,7 +60,7 @@ class Audit(models.Model):
         # Initialise any existing model with a dictionary (prev_values), to
         # keep track of any changes on save().
         if self.pk:
-            fieldnames = self._meta.get_all_field_names()
+            fieldnames = [f.name for f in self._meta.get_fields()]
             self._fieldnames = set(fieldnames + [f + "_id" for f in fieldnames]).intersection(set(self.__dict__.keys()))
             self._initvalues = set([k for k in self.__dict__.iteritems() if k[0] in self._fieldnames])
         else:
@@ -92,7 +91,7 @@ class Audit(models.Model):
             currentvalues = set([k for k in self.__dict__.iteritems() if k[0] in self._fieldnames])
             change_list = self._initvalues - currentvalues
         # Modified and modifier always change; filter these from the list.
-        change_list = [item for item in change_list if item[0] not in ['modified' ,'modifier_id']]
+        change_list = [item for item in change_list if item[0] not in ['modified', 'modifier_id']]
         if change_list:
             comment_changed = 'Changed ' + ', '.join([t[0] for t in change_list]) + '.'
             with revisions.create_revision():
@@ -114,9 +113,6 @@ class Audit(models.Model):
             fields += "{0}: {1}, ".format(field, repr(getattr(self, field)))
         return "{0} - {1}".format(self.pk, fields)[:320]
 
-    def get_absolute_url(self):
-        return reverse('{0}_detail'.format(self._meta.object_name.lower()), kwargs={'pk':self.pk})
-
 
 def get_nice_age(d):
     """
@@ -125,7 +121,6 @@ def get_nice_age(d):
 
     Requires a timedelta object as an argument.
     """
-    days = d.days
     if d.days >= 730:
         years = d.days/365
         months = (d.days - years*365)/30
@@ -281,7 +276,7 @@ class Model(Audit):
     model_type = models.CharField(max_length=50, choices=type_choices, verbose_name="type")
     manufacturer = models.ForeignKey(Supplier)
     model = models.CharField(max_length=50, help_text="Enter the short model number here (eg. '7945G' for a Cisco 7956G phone). Do not enter the class (eg. '7900 series') or the product code (eg. 'WS-7945G=')")
-    lifecycle = models.IntegerField( help_text="Enter in years how long we should keep items of this model before they get decomissioned. Desktops should generally be three years, servers and networking equipment five years.")
+    lifecycle = models.IntegerField(help_text="Enter in years how long we should keep items of this model before they get decomissioned. Desktops should generally be three years, servers and networking equipment five years.")
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -302,6 +297,7 @@ class Model(Audit):
             return 0
     get_assets.allow_tags = True
     get_assets.short_description = "Assets"
+
 
 class Location(Audit):
     name = models.CharField(max_length=50, help_text="Enter a specific location - a cupboard or room number.")
@@ -395,14 +391,14 @@ class Asset(Audit):
 
     def get_age(self):
         d = date.today() - self.date_purchased
-        max_age = timedelta(days = self.model.lifecycle * 365)
+        max_age = timedelta(days=self.model.lifecycle * 365)
 
         if d > max_age:
             if self.model.lifecycle == 1:
                 y = "year"
             else:
                 y = "years"
-            return "<font color='#FF0000'><b>%s</b></font> (max %d %s)" % (get_nice_age(d), self.model.lifecycle, y)
+            return '<font color="#FF0000"><b>{}</b></font> (max {} {})'.format(get_nice_age(d), self.model.lifecycle, y)
         else:
             return get_nice_age(d)
     get_age.short_description = "Age"
@@ -412,7 +408,7 @@ class Asset(Audit):
         """
         Return the purchased value as a currency.
         """
-        if self.purchased_value == None:
+        if self.purchased_value is None:
             return "Unknown"
         else:
             locale.setlocale(locale.LC_ALL, ('en_AU', 'UTF-8'))
@@ -424,7 +420,7 @@ class Asset(Audit):
         Return a clickable location field.
         """
         if self.location:
-            return "<a href='?location__id__exact=%d'>%s</a>" % (self.location.id, self.location.__unicode__())
+            return '<a href="?location__id__exact={}">{}</a>'.format(self.location.id, self.location.__unicode__())
         else:
             return ""
     get_location.short_description = "Location"
@@ -462,4 +458,3 @@ class Asset(Audit):
             return ""
     get_type.short_description = "Type"
     get_type.allow_tags = True
-
