@@ -22,8 +22,6 @@ Variables below may also need to be defined (context-dependent):
     DEBUG=True
     CSRF_COOKIE_SECURE=False
     SESSION_COOKIE_SECURE=False
-    # debug-toolbar settings:
-    INTERNAL_IP="x.x.x.x"
 
 # Running
 

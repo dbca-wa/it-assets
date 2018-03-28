@@ -1,0 +1,34 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h2>Confirmation</h2>
+{% if warnings %}
+<p>The following warnings were generated during validation. These will not
+prevent the import process from proceeding, though they may cause results you
+do not expect.</p>
+<ul>
+    {% for warning in warnings %}
+    <li>{{ warning }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% if notes %}
+<p>The following notifications were generated.</p>
+<ul>
+    {% for note in notes %}
+    <li>{{ note }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+<p>You are about to import {{ record_count }} hardware assets.
+{% if warnings or notes %} Check the warnings or notifications above to ensure
+none of them will cause invalid data to be imported.
+{% else %} Your data has been validated, and generated no errors.{% endif %}
+</p>
+<p>When you are happy to proceed, click 'Confirm' below.</p>
+<form action="{% url 'admin:asset_import_confirm' %}" method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="csv" value="{{ csv }}"/>
+    <input type="submit" value="Confirm"/>
+</form>
+{% endblock %}
