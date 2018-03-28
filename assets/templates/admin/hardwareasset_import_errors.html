@@ -1,7 +1,7 @@
-{% extends "assets/assets_base.html" %}
+{% extends "admin/base_site.html" %}
 
 {% block content %}
-<h4>There were problems with your import.</h4>
+<h2>There were problems with your import.</h2>
 <p>The following problems must be resolved to continue.</p>
 <ul>
     {% for error in errors %}
@@ -9,7 +9,9 @@
     {% endfor %}
 </ul>
 {% if warnings %}
-<p>The following warnings were also generated during validation. These will not prevent the import process from proceeding, though they may cause results you do not expect.</p>
+<p>The following warnings were also generated during validation. These will
+not prevent the import process from proceeding, though they may cause results
+that you do not expect.</p>
 <ul>
     {% for warning in warnings %}
     <li>{{ warning|safe }}</li>

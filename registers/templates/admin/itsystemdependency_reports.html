@@ -1,0 +1,13 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+{{ block.super }}
+{% endblock %}
+
+{% block content %}
+<ul>
+    <li><a href="{% url 'admin:itsystem_dependency_report_all' %}">All recorded dependencies</a></li>
+    <li><a href="{% url 'admin:itsystem_dependency_report_nodeps' %}">Systems with no dependencies recorded</a></li>
+</ul>
+{% endblock %}
+

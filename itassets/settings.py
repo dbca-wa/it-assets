@@ -1,17 +1,79 @@
-"""
-Base Django settings for itassets project.
-"""
-from confy import env, database
+from confy import database, env
 import os
 import sys
 from unipath import Path
 
-# Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = Path(__file__).ancestor(2)
 PROJECT_DIR = os.path.join(BASE_DIR, 'itassets')
-# Add BASE_DIR to the system path.
-sys.path.insert(0, BASE_DIR)
+# Add PROJECT_DIR to the system path.
+sys.path.insert(0, PROJECT_DIR)
+
+# Settings defined in environment variables.
+DEBUG = env('DEBUG', False)
+SECRET_KEY = env('SECRET_KEY', 'PlaceholderSecretKey')
+CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE', False)
+SESSION_COOKIE_SECURE = env('SESSION_COOKIE_SECURE', False)
+if not DEBUG:
+    ALLOWED_HOSTS = env('ALLOWED_DOMAINS', '').split(',')
+else:
+    ALLOWED_HOSTS = ['*']
+INTERNAL_IPS = ['127.0.0.1', '::1']
+ROOT_URLCONF = 'itassets.urls'
+WSGI_APPLICATION = 'itassets.wsgi.application'
+INSTALLED_APPS = (
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.messages',
+    'django.contrib.sessions',
+    'django.contrib.staticfiles',
+    'django_extensions',
+    'reversion',
+    'mptt',
+    'django_mptt_admin',
+    'leaflet',
+    'organisation',
+    'registers',
+    'tracking',
+    'assets',
+)
+MIDDLEWARE = [
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'dpaw_utils.middleware.SSOLoginMiddleware',
+]
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': (os.path.join(BASE_DIR, 'itassets', 'templates'),),
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'debug': DEBUG,
+            'context_processors': [
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
+                'django.template.context_processors.request',
+                'django.template.context_processors.csrf',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    }
+]
+APPLICATION_VERSION_NO = '0.1'
+ADMINS = ('asi@dbca.wa.gov.au',)
+API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 
 
 # Database configuration
@@ -20,82 +82,43 @@ DATABASES = {
     'default': database.config(),
 }
 
-# Settings defined in environment variables.
-DEBUG = env('DEBUG', False)
-SECRET_KEY = env('SECRET_KEY')
-CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE', False)
-SESSION_COOKIE_SECURE = env('SESSION_COOKIE_SECURE', False)
-if not DEBUG:
-    # Localhost, UAT and Production hosts
-    ALLOWED_HOSTS = [
-        'localhost',
-        '127.0.0.1',
-        'assets.dpaw.wa.gov.au',
-        'assets.dpaw.wa.gov.au.',
-        'assets-uat.dpaw.wa.gov.au',
-        'assets-uat.dpaw.wa.gov.au.',
-    ]
-INTERNAL_IPS = ['127.0.0.1', '::1']
-ROOT_URLCONF = 'itassets.urls'
-WSGI_APPLICATION = 'itassets.wsgi.application'
-INSTALLED_APPS = (
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django_extensions',
-    'reversion',
-    'assets',
-)
-MIDDLEWARE_CLASSES = (
-    'django.middleware.common.CommonMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'dpaw_utils.middleware.SSOLoginMiddleware',
-)
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-)
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [
-            os.path.join(PROJECT_DIR, 'templates'),
-        ],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
 
-# Database configuration
-DATABASES = {
-    # Defined in the DATABASE_URL env variable.
-    'default': database.config(),
-}
-
-# Internationalization
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Australia/Perth'
-USE_I18N = True
-USE_L10N = True
-USE_TZ = True
-
-# Static files (CSS, JavaScript, Images)
+# Setup directories for content.
+STATICFILES_DIRS = (os.path.join(PROJECT_DIR, 'static'), )
+# Ensure that the media directory exists:
+if not os.path.exists(os.path.join(BASE_DIR, 'media')):
+    os.mkdir(os.path.join(BASE_DIR, 'media'))
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_URL = '/media/'
 STATIC_URL = '/static/'
+
+
+# Internationalisation.
+USE_I18N = False
+USE_TZ = True
+TIME_ZONE = 'Australia/Perth'
+LANGUAGE_CODE = 'en-us'
+DATE_INPUT_FORMATS = (
+    '%d/%m/%y',
+    '%d/%m/%Y',
+    '%d-%m-%y',
+    '%d-%m-%Y',
+    '%d %b %Y',
+    '%d %b, %Y',
+    '%d %B %Y',
+    '%d %B, %Y')
+DATETIME_INPUT_FORMATS = (
+    '%d/%m/%y %H:%M',
+    '%d/%m/%Y %H:%M',
+    '%d-%m-%y %H:%M',
+    '%d-%m-%Y %H:%M',)
+
+
+# Email settings.
+EMAIL_HOST = env('EMAIL_HOST', 'email.host')
+EMAIL_PORT = env('EMAIL_PORT', 25)
+
 
 # Logging settings
 # Ensure that the logs directory exists:
@@ -104,17 +127,18 @@ if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
 LOGGING = {
     'version': 1,
     'formatters': {
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
-        },
+        'simple': {
+            'format': '%(levelname)s %(asctime)s %(message)s'
+        }
     },
     'handlers': {
         'file': {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'assets.log'),
-            'formatter': 'verbose',
-            'maxBytes': 1024 * 1024 * 5
+            'filename': os.path.join(BASE_DIR, 'logs', 'itassets.log'),
+            'formatter': 'simple',
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 5,
         },
     },
     'loggers': {
@@ -128,14 +152,3 @@ LOGGING = {
         },
     }
 }
-
-# Supplement some settings when DEBUG is True.
-if DEBUG:
-    # Developer local IP may be required for debug_toolbar to work/
-    if env('INTERNAL_IP', False):
-        INTERNAL_IPS.append(env('INTERNAL_IP'))
-    INSTALLED_APPS += (
-        'debug_toolbar',
-    )
-    DEBUG_TOOLBAR_PATCH_SETTINGS = True
-    MIDDLEWARE_CLASSES = ('debug_toolbar.middleware.DebugToolbarMiddleware',) + MIDDLEWARE_CLASSES

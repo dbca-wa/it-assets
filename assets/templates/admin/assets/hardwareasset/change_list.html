@@ -1,0 +1,11 @@
+{% extends "reversion/change_list.html" %}
+
+{% block object-tools-items %}
+    <li>
+        <a href="{% url 'admin:hardwareasset_export' %}">Export assets</a>
+    </li>
+    <li>
+        <a href="{% url 'admin:asset_import' %}">Import assets</a>
+    </li>
+    {{ block.super }}
+{% endblock %}
