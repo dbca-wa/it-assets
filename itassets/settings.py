@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'registers',
     'tracking',
     'assets',
+    'webconfig',
 )
 MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
