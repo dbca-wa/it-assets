@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>Transfer User Account - Office for Information Management - Department of Biodiversity, Conservation and Attractions</title>
+        <meta name="description" content="" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/modernizr/2.8.3/modernizr.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/jquery/2.2.0/jquery.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/localforage/1.3.1/localforage.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/handlebars.js/4.0.5/handlebars.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/foundation/6.1.2/foundation.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/foundation-datepicker/1.5.0/js/foundation-datepicker.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/js/egg.js"></script>
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/fonts/Lato2OFLWeb/Lato/latofonts.css" />
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/libs/foundation/6.1.2/foundation-flex.css">
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/cdnjs/ajax/libs/foundicons/3.0.0/foundation-icons.css" />
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/libs/foundation-datepicker/1.5.0/css/foundation-datepicker.min.css" />
+    </head>
+    <div id='notification-topbar'></div>
+<body>
+
+<form method="POST" target="_blank">
+    <input name="Subject" hidden="true" value="Delete User Account (OIM-S005)">
+    <input name="helptext" hidden="true" value="Please forward this email to your cost centre manager for approval and submission to OIM Support ( OIMSupport@dbca.wa.gov.au )">
+    <div class="row">
+        <div class="columns">
+              <label><b>* Account holder email</b> <input name="1.1 Account Holder" type="email" placeholder="john.smith@dbca.wa.gov.au" required="true" aria-describedby="account-holder-help"></label>
+            <p class="help-text" id="account-holder-help">Email address of the account holder.</p>
+            <label><b>* Account deletion date </b><input name="1.2 Account deletion date" type="date" required="true"></label>
+            <label>Allocated devices: <textarea name="1.3 Allocated devices" placeholder="PC: DBCA-1AB2C, Tel: (08) 9219 0000, Mobile: 0400 000 000" aria-describedby="allocated-device-help"></textarea></label>
+            <p class="help-text" id="allocated-device-help">Please provide the host name(s) of the department computers, and desk/mobile phone numbers where available</p>
+        </div>
+        <div class="columns">
+            <fieldset class="fieldset">
+                <legend><b>* Exit checklist</b></legend>
+                <p>Please confirm that the following actions have been completed:</p>
+                <input name="2.1 Pre exit checklist" value="Pre-exit checklist completed" required="true" id="preexit-checklist" type="checkbox">
+                <label for="preexit-checklist"><a href="//intranet.dpaw.wa.gov.au/csd/People_Services/Documents/Pre-exit-checklist.doc">Pre-exit checklist is completed</a></label><br>
+				<input required="true" id="backups" type="checkbox">
+            </fieldset>
+            <h4>Approval</h4>
+            <fieldset class="fieldset">
+                <legend>Approval from Cost Centre Manager</legend>
+                <p>I confirm the requirements for the deletion of the IT user account have been met. I authorise the deletion of the IT User Account.</p>
+                <label><b>* Name</b> <input name="2.2 Cost Centre Manager approval" required="true" type="text" placeholder="CC Manager Name"></label>
+                <label><b>* Date</b> <input name="2.3 Date of approval" required="true" type="date" placeholder="31/01/2017"></label>
+            </fieldset>
+        </div>
+    </div>
+    <div class="row">
+        <div class="columns"></div>
+        <div class="columns shrink">
+            <button type="submit" class="button expanded">Email form</button>
+            <p class="help-text">Send a copy of this form content to yourself for review</p>
+        </div>
+    </div>
+</form>
+
+</body>
