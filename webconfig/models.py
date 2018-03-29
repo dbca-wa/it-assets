@@ -1,5 +1,4 @@
 from django.db import models
-from django.core.exceptions import ValidationError
 
 
 class Domain(models.Model):
@@ -15,10 +14,12 @@ class FQDN(models.Model):
 
     class Meta:
         unique_together = ('name', 'domain')
+        verbose_name = 'FQDN'
+        verbose_name_plural = 'FQDNs'
 
     def __str__(self):
         return '{}{}{}'.format(self.name, '.' if self.name else '', self.domain)
- 
+
 
 class Site(models.Model):
     STATUS_CHOICES = (
