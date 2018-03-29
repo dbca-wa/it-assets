@@ -17,14 +17,14 @@ class Migration(migrations.Migration):
             name='Domain',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=128, unique=True, validators=[webconfig.models.validate_hostname])),
+                ('name', models.CharField(max_length=128, unique=True)),
             ],
         ),
         migrations.CreateModel(
             name='FQDN',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=128, validators=[webconfig.models.validate_hostname])),
+                ('name', models.CharField(max_length=128)),
                 ('domain', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='webconfig.Domain')),
             ],
         ),
