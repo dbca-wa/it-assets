@@ -11,13 +11,13 @@ from .utils import logger_setup
 def csv_data(csv_path, skip_header=True):
     """Pass in the path to a CSV file, returns a CSV Reader object.
     """
-    csv_file = open(csv_path, 'r')
-    # Determine the CSV dialect.
-    dialect = unicodecsv.Sniffer().sniff(csv_file.read(1024))
-    csv_file.seek(0)
-    data = unicodecsv.reader(csv_file, dialect)
+    csv_file = open(csv_path, 'rb')
+    data = unicodecsv.reader(csv_file)
     if skip_header:
-        data.next()
+        try:  # Python 3+
+            next(data)
+        except:  # Python 2.7
+            data.next()
     return data
 
 
