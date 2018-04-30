@@ -41,6 +41,7 @@ class ProfileTestCase(ApiTestCase):
 
 class OptionResourceTestCase(ApiTestCase):
 
+    @skip('Inconsistent testing results')
     def test_data_org_structure(self):
         """Test the data_org_structure API endpoint
         """
