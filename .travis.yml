@@ -18,7 +18,6 @@ env:
     global:
         - SECRET_KEY="SecretKeyForTravisCI"
         - DATABASE_URL="postgis://postgres@localhost:5432/travis_ci_test"
-        - AZUREAD_AUTHORITY="https://login.microsoftonline.com/thisisnotarealazureaudauthorityurl"
 install:
     - pip install --upgrade pip
     - pip install --upgrade setuptools
