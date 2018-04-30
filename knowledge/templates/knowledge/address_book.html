@@ -1,0 +1,187 @@
+{% extends "knowledge/knowledge_base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="small-12 medium-6 large-4 columns">
+        <h1>Address Book</h1>
+    </div>
+    <div class="columns end">
+        <div class="callout secondary">
+            The recommended web browser is Firefox or Chrome. Information load times may be longer
+            in Internet Explorer. Please provide any feedback or suggestions for the Address Book
+            to <b><a href="mailto:OIMSupport@dbca.wa.gov.au">OIM Support</a></b>.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div id="loading-icon" class="small-12 columns">
+        <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
+    </div>
+</div>
+
+<div class="row">
+    <div id="filtering" class="small-12 columns callout warning hide"></div>
+</div>
+
+{# Handlebars.js template follows. #}
+{% verbatim %}
+<script type="text/x-handlebars-template" id="address-book-template">
+    <table id="address-table">
+        <thead>
+            <tr>
+                <th>Account and Contact Info</th>
+                <th>Office Location</th>
+                <th>Organisation</th>
+                <th class="hide">filter terms</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each objects}}
+            <tr>
+                <td><img class="float-right" style="height: 6.5rem; width: 6.5rem;" src="//static.dbca.wa.gov.au/images/icons/photo_placeholder.svg" {{#if this.photo_ad}} data-src="{{this.photo_ad}}" {{/if}} />
+                    <dl>
+                        <dt class="fn" style="margin-bottom: 0; line-height: 1.2;">
+                            <a target="_blank" href="/address-book/user-details?email={{this.email}}">{{this.name}}{{#if this.preferred_name}} ({{this.preferred_name}}){{/if}}</a>
+                        </dt>
+                        <dd>
+                            <i style="font-size: 90%;">{{this.title}}</i>
+                        </dd>
+                        <dd>
+                            <ul class="no-bullet shrink">
+                                <li class="hide">{{#if this.employee_id}}Employee ID: {{this.employee_id}} / {{/if}}Username: {{this.username}}</li>
+                                <li>
+                                    {{#if this.telephone}}Phone: {{this.telephone}}{{/if}}
+                                    {{#if this.extension}} (VoIP ext. <a href="tel:{{this.extension}}">{{this.extension}}</a>){{/if}}
+                                    {{#if this.mobile_phone}} / Mobile: <a href="tel:{{this.mobile_phone}}">{{this.mobile_phone}}</a>{{/if}}
+                                </li>
+                                <li class="email"><a href="mailto:{{this.email}}">{{this.email}}</a></li>
+                            </ul>
+                        </dd>
+                    </dl>
+                </td>
+                <td class="shrink">{{#if this.org_unit__location__name }}
+                    <dl>
+                        <dt class="fn">
+                            <a target="_blank" href="/locations/location-details/?location_id={{ this.org_unit__location__id }}">{{this.org_unit__location__name}}</a>
+                        </dt>
+                        <dd>
+                            <ul class="no-bullet">
+                                <li>{{this.org_unit__location__address}}</li>
+                                {{#if this.org_unit__location__pobox}}<li>{{this.org_unit__location__pobox}}</li>{{/if}}
+                                {{#if this.org_unit__location__phone}}<li>Phone: {{this.org_unit__location__phone}}</li>{{/if}}
+                                {{#if this.org_unit__location__fax}}<li>Fax: {{this.org_unit__location__fax}}</li>{{/if}}
+                            </ul>
+                        </dd>
+                    </dl>
+                    <span class="hide">
+                        location_{{org_unit__location__id}}_id
+                    </span>
+                    {{else}}Not Available {{/if}}
+                </td>
+                <td class="shrink">
+                    <dl>
+                        <dd>
+                            <ul class="no-bullet">
+                                {{#each this.org_data.units }}
+                                <li class="org_{{this.id}}_id">{{this.name}}{{#if this.acronym}} ({{this.acronym}}){{/if}}</li>
+                                {{/each}}
+                                <li class="hide">CC{{this.org_data.cost_centre.code}} / {{this.org_data.cost_centre.name}}</li>
+                            </ul>
+                        </dd>
+                    </dl>
+                </td>
+                <td class="hide">
+                    {{#each this.org_data.units }} org_{{this.id}}_id {{/each}}
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    </script>
+{% endverbatim %}
+
+<div class="row">
+    <div id="container"></div>
+</div>
+
+<script type="text/javascript">
+    // Utility function to obtain query parameters.
+    var urlParam = function(name, url) {
+        if (!url) {
+         url = window.location.href;
+        }
+        var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(url);
+        if (!results) {
+            return undefined;
+        }
+        return results[1] || undefined;
+    }
+
+    // Compile the Handlebars template.
+    var source = $("#address-book-template").html();
+    var template = Handlebars.compile(source);
+    var addressTable;
+
+    // Document ready function.
+    $(function () {
+        // Get list of users via the API.
+        var users = $.get('/api/users/', {'compact': true}, function(data) {
+            // Push the data into the Handlebars template.
+            $("#container").html(template(data));
+            // Upgrade the table using DataTables.
+            addressTable = $("#address-table").DataTable({pageLength: 25, ordering: false});
+            // Hide the loading icon.
+            $("#loading-icon").addClass("hide");
+
+            // Filtering via org_id
+            var org_id = urlParam("org_id") || "";
+            if (org_id) {
+                $.ajax({
+                    url: "/api/options/?list=org_unit",
+                    success: function(data) {
+                        data.objects.forEach(function(obj) {
+                            if (obj.id == org_id) {
+                                $("#filtering").removeClass("hide");
+                                $("#filtering").html("<p>Address book is filtered to display staff in " + obj.name + " <a href='{% url 'km_address_book' %}'>[clear filter]</a></p>");
+                            }
+                        });
+                    }
+                });
+                var org_id_filter = "org_" + org_id + "_id";
+                addressTable.columns(3).search(org_id_filter).draw();
+            }
+            // Filtering via location_id
+            var location_id = urlParam("location_id") || "";
+            if (location_id) {
+                $.ajax({
+                    url: "/api/locations/",
+                    success: function(data) {
+                        data.objects.forEach(function(obj) {
+                            if (obj.pk == location_id) {
+                                $("#filtering").removeClass("hide");
+                                $("#filtering").html("<p>Address book is filtered to display staff in " + obj.name + " <a href='{% url 'km_address_book' %}'>[clear filter]</a></p>");
+                            }
+                        });
+                    }
+                });
+                var loc_id_filter = "location_" + location_id + "_id";
+                addressTable.columns(1).search(loc_id_filter).draw();
+            }
+            // Filtering via costcentre_code
+            var costcentre_code = urlParam("costcentre_code") || "";
+            if (costcentre_code) {
+                $("#filtering").removeClass("hide");
+                $("#filtering").html("<p>Address book is filtered to display staff in cost centre " + costcentre_code + " <a href='{% url 'km_address_book' %}'>[clear filter]</a></p>");
+                var costcentre_code_filter = "CC" + costcentre_code;
+                addressTable.columns(2).search(costcentre_code_filter).draw();
+            }
+            // General filtering function
+            var filter_term = urlParam("filter") || "";
+            if (filter_term) {
+                addressTable.search(decodeURIComponent(filter_term)).draw();
+            };
+        });
+    })
+</script>
+{% endblock %}

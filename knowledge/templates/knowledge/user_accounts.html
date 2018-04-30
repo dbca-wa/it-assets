@@ -1,0 +1,95 @@
+{% extends "knowledge/knowledge_base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="small-12 medium-6 columns">
+        <h1>User Accounts</h1>
+    </div>
+    <div class="columns end">
+        <div class="callout secondary">
+            The recommended web browser is Firefox or Chrome. Information load times may be
+            longer in Internet Explorer.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div id="loading-icon" class="small-12 columns">
+        <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
+    </div>
+</div>
+
+{# Handlebars.js template follows. #}
+{% verbatim %}
+<script type="text/x-handlebars-template" id="user-accounts-template">
+    <table id="user_accounts_table">
+        <thead>
+            <tr>
+                <th>Account name</th>
+                <th>Cost centre</th>
+                <th>Contact number</th>
+                <th>Office location</th>
+                <th>Shared/role-based account?</th>
+                <th>Account is active?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each objects}}
+            <tr>
+                <td><a href="/knowledge/user-details/?email={{this.email}}" target="_blank">{{this.name}}</a></td>
+                <td>{{#if this.org_data.cost_centre.code}}CC{{this.org_data.cost_centre.code}}{{/if}}</td>
+                <td>{{#if this.telephone}}Phone: {{this.telephone}}{{/if}}
+                    {{#if this.mobile_phone}}<br>Mobile: {{this.mobile_phone}}{{/if}}
+                </td>
+                <td>{{this.org_unit__location__name}}<br>{{this.org_unit__location__address}}</td>
+                <td>{{#if this.shared_account}}Yes{{else}}No{{/if}}</td>
+                <td>{{#if this.active}}Yes{{else}}No{{/if}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</script>
+{% endverbatim %}
+
+<div class="row">
+    <div id="container"></div>
+</div>
+
+<script type="text/javascript">
+    // Utility function to obtain query parameters.
+    var urlParam = function(name, url) {
+        if (!url) {
+         url = window.location.href;
+        }
+        var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(url);
+        if (!results) {
+            return undefined;
+        }
+        return results[1] || undefined;
+    }
+
+    // Compile the Handlebars template.
+    var source = $("#user-accounts-template").html();
+    var template = Handlebars.compile(source);
+    var userTable;
+
+    // Document ready function.
+    $(function () {
+        // Get list of users via the API.
+        var users = $.get('/api/users/', {'ad_deleted': false, 'o365_licence': true}, function(data) {
+            // Push the data into the Handlebars template.
+            $("#container").html(template(data));
+            // Upgrade the table using DataTables.
+            var filter = urlParam("filter") || "";
+            userTable = $("#user_accounts_table").DataTable({
+                oSearch: {sSearch: decodeURIComponent(filter)},
+                pageLength: 50,
+                ordering: false
+            });
+            // Hide the loading icon.
+            $("#loading-icon").addClass("hide");
+
+        });
+    })
+</script>
+{% endblock %}

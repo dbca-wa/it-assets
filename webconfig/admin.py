@@ -1,5 +1,4 @@
 from webconfig.models import Domain, FQDN, Site, Location
-
 from django.contrib import admin
 
 
@@ -23,6 +22,8 @@ class LocationInline(admin.TabularInline):
 class SiteAdmin(admin.ModelAdmin):
     search_fields = ('fqdn__name', 'fqdn__domain__name')
     list_display = ('__str__', 'enabled', 'status', 'availability')
-    list_filter = ('fqdn__domain', 'enabled', 'status', 'availability', 'allow_http', 'location__auth_level', 'location__allow_cors', 'location__allow_websockets')
+    list_filter = (
+        'fqdn__domain', 'enabled', 'status', 'availability', 'allow_http', 'location__auth_level',
+        'location__allow_cors', 'location__allow_websockets')
     inlines = (LocationInline,)
     filter_horizontal = ('aliases',)

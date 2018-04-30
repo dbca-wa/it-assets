@@ -7,13 +7,14 @@ from tracking.utils import logger_setup
 
 
 HEADERS_JSON = {'Content-Type': 'application/json'}
+FRESHDESK_AUTH = (settings.FRESHDESK_API_KEY, 'X')
 
 
 def get_freshdesk_object(obj_type, id):
     """Query the Freshdesk v2 API for a single object.
     """
     url = settings.FRESHDESK_ENDPOINT + '/{}/{}'.format(obj_type, id)
-    r = requests.get(url, auth=settings.FRESHDESK_AUTH)
+    r = requests.get(url, auth=FRESHDESK_AUTH)
     if not r.status_code == 200:
         r.raise_for_status()
     return r.json()
@@ -27,10 +28,10 @@ def update_freshdesk_object(obj_type, data, id=None):
     """
     if not id:  # Assume creation of new object.
         url = settings.FRESHDESK_ENDPOINT + '/{}'.format(obj_type)
-        r = requests.post(url, auth=settings.FRESHDESK_AUTH, json=data)
+        r = requests.post(url, auth=FRESHDESK_AUTH, json=data)
     else:  # Update an existing object.
         url = settings.FRESHDESK_ENDPOINT + '/{}/{}'.format(obj_type, id)
-        r = requests.put(url, auth=settings.FRESHDESK_AUTH, json=data)
+        r = requests.put(url, auth=FRESHDESK_AUTH, json=data)
     return r  # Return the response, so we can handle non-200 gracefully.
 
 
@@ -51,7 +52,7 @@ def get_freshdesk_objects(obj_type, progress=True, limit=False, params={}):
         if progress:
             print('Querying page {}'.format(params['page']))
 
-        r = requests.get(url, auth=settings.FRESHDESK_AUTH, params=params)
+        r = requests.get(url, auth=FRESHDESK_AUTH, params=params)
         if not r.status_code == 200:
             r.raise_for_status()
 

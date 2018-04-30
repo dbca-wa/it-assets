@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>New User Account - Office for Information Management - Department of Biodiversity, Conservation and Attractions</title>
+        <meta name="description" content="" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/modernizr/2.8.3/modernizr.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/jquery/2.2.0/jquery.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/localforage/1.3.1/localforage.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/handlebars.js/4.0.5/handlebars.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/foundation/6.1.2/foundation.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/foundation-datepicker/1.5.0/js/foundation-datepicker.min.js"></script>
+        <script type="text/javascript" src="//static.dbca.wa.gov.au/static/js/egg.js"></script>
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/fonts/Lato2OFLWeb/Lato/latofonts.css" />
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/libs/foundation/6.1.2/foundation-flex.css">
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/cdnjs/ajax/libs/foundicons/3.0.0/foundation-icons.css" />
+        <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/libs/foundation-datepicker/1.5.0/css/foundation-datepicker.min.css" />
+    </head>
+	<div id='notification-topbar'></div>
+<body class="">
+
+<style type="text/css">textarea { height: 4em; }</style>
+<form method="POST" target="_blank" id="new-user-form">
+    <input name="Subject" hidden="true" value="New User Account Registration (OIM-S001)">
+    <input name="helptext" hidden="true" value="Please forward this email to your cost centre manager for approval and submission to OIM Support ( oimsupport@dbca.wa.gov.au )">
+    <div class="row">
+        <div class="columns">
+            <label><b>* Account holder email</b> <input name="1.01 Account Holder" type="text" placeholder="James Smith" required="true" aria-describedby="account-holder-help"></label>
+            <p class="help-text" id="account-holder-help">Name of the account holder should be legal first name and last name.</p>
+             <label>Preferred name <input name="1.02 Preferred Name" type="text" placeholder="Jim"></label>
+            <label><b>* Start date</b> <input name="1.03 Start Date" type="date" required="true" placeholder="31/01/2017"></label>
+            <label><b>* Position title</b> <input name="1.04 Position Title" type="text" required="true" placeholder="Park Ranger"></label>
+            <label><b>* Position number</b> <input name="1.05 Position Number" type="text" required="true" placeholder="124567"></label>
+            <label><b>* Manager email</b> <input name="1.06 Manager Email" type="email" required="true" placeholder="managers.name@dbca.wa.gov.au"></label>
+            <label><b>* Division</b><select name="1.07 Division" id="id-select-division" required></select></label>
+            <label><b>* Organisation unit</b><select name="1.08 Organisation Unit" id="id-select-orgunit" required></select></label>
+			<label><b>* Cost Centre number</b> <input name="1.09 Cost Centre Number" type="text" required="true" placeholder="221"></label>
+            <p class="help-text">Refer to chart of accounts</p>
+            <label><b>* Location / Site</b><select name="1.10 Location / Site" id="id-select-location" required></select></label>
+            <label>Allocated devices <textarea name="1.11 Allocated devices" placeholder="PC: DBCA-1AB2C, Tel: (08) 9219 0000, Mobile: 0400 000 000" aria-describedby="allocated-device-help"></textarea></label>
+            <p class="help-text" id="allocated-device-help">Please provide the host name(s) of the department computers where available from asset register (see <a href="//intranet.dbca.wa.gov.au/csd/fs/Pages/Assets-Management.aspx">Assets Management</a>) as well as desk/mobile phone numbers.</p>
+            <input name="1.12 User profile photo" value="Please attach a square JPG ( no larger than 1MB ) to this email of a passport style headshot." id="profilephoto" type="checkbox"><label for="profilephoto">User profile photo</label>
+            <p class="help-text">User profile photos can optionally be attached, ensuring the photo is a square JPG no larger than 1MB of a passport style headshot.</p>
+            <label>Cost Centre resource access <textarea name="1.13 Cost Centre Resources" placeholder="folder: \\corporateict\dfs\..., mailbox (full access): cases@baker.st, ..."></textarea></label>
+            <p class="help-text">Please list all cost centre resources this account should have access to using the following format guide. This
+                includes shared folders, shared mailboxes, email distribution lists and calendar access.
+                <ul>
+                    <li>folder: \\corporateict\dfs\shareddata\...</li>
+                    <li>mailbox (send as or full access): email@dbca.wa.gov.au</li>
+                    <li>mailinglist: mylist@dbca.wa.gov.au</li>
+                    <li>calendar (user or manager): calendar name</li>
+                </ul>
+            </p>
+        </div>
+        <div class="columns">
+            <label><b>* Department employee number</b> <input name="2.01 Department Employee Number" type="text" required="true" placeholder="123456" aria-describedby="employee-number-help"></label>
+            <p class="help-text" id="employee-number-help">Employee number or contract number if available. Mark N/A if unavailable.</p>
+            <legend><b>* Full / part time</b></legend>
+            <fieldset>
+                <input type="radio" name="2.02 Full part time" value="Full time" checked="true"><label>Full time</label>
+                <input type="radio" name="2.02 Full part time" value="Part time"><label>Part time</label>
+            </fieldset>
+            <label>
+                <b>* Employment type</b>
+                <select name="2.03 Employment type" id="id-select-employment-type" required>
+                    <option value="" disabled selected>Select employment type</option>
+                    <option>Permanent</option>
+                    <option>Agency Contract</option>
+                    <option>Department Fixed Term</option>
+                    <option>Seasonal</option>
+                    <option>Vendor</option>
+                    <option>Volunteer</option>
+                    <option>Other/Alumni</option>
+                </select>
+            </label>
+            <label>End date <input name="2.04 End Date" type="date" placeholder="31/01/2018" id="input-end-date" disabled></label>
+            <fieldset class="fieldset">
+                <legend><b>* Minimum conditions of access</b></legend>
+                <p>Any person granted access to the department’s IT systems and assets are accountable for adhering to prescribed
+                    practices designed to prohibit improper access to the IT network, systems and information by unauthorised
+                    individuals. Access is provisioned on the condition that the user understands and accepts the relevant
+                    conditions outlined in the following policies, standards, procedures and guidelines. Please confirm the
+                    new user will acknowledge the following upon commencement:</p>
+                <input name="2.05 Access Conditions Met" value="Code of Conduct, Corporate Policy 70, Operational Procedure - Acceptable use of IT, Information Security Awareness" required="true" id="codeofconduct" type="checkbox"><label
+                    for="codeofconduct">DBCA Charter of Values and entity Code of Conduct</label>
+                <br><input required="true" id="policy70" type="checkbox"><label
+                    for="policy70"><a href="//oim.dbca.wa.gov.au/documents/387/Corporate_Policy_Statement_70_-_Information_Security_Management.pdf">Corporate policy statement no. 70 – Information security management</a></label>
+                <br><input required="true" id="acceptableuse" type="checkbox"><label
+                    for="acceptableuse"><a href="//oim.dbca.wa.gov.au/documents/377/Operational_Procedure_-_Acceptable_use_of_IT.pdf">Operational procedure - Acceptable use of IT</a></label>
+                <br><input required="true" id="isap" type="checkbox"><label
+                    for="isap"><a href="//oim.dbca.wa.gov.au/documents/364/Information_Security_Awareness_Program.pdf">Information Security Awareness </a></label>
+                <p class="help-text">NOTE: user will be required to undertake an online information security awareness induction.
+            </fieldset>
+            <h4>Approval</h4>
+            <fieldset class="fieldset">
+                <legend>Approval from Cost Centre Manager</legend>
+                <p> I confirm the minimum requirements for the registration of the new user account have been met and authorise the creation of the new IT User Account.</p>
+                <label><b>* Name</b> <input name="2.06 Cost Centre Manager approval" required="true" type="text" placeholder="CC Manager Name"></label>
+                <label><b>* Date</b> <input name="2.07 Date of approval" required="true" type="date" placeholder="31/01/2017"></label>
+            </fieldset>
+        </div>
+    </div>
+    <div class="row">
+        <div class="columns"></div>
+        <div class="columns shrink">
+            <button type="submit" class="button expanded">Email form</button>
+            <p class="help-text">Send a copy of this form content to yourself for review</p>
+        </div>
+    </div>
+</form>
+
+<script>
+    $(function () {
+        var url = "/api/options/";
+        var filters = {"list": "division"};
+
+        // Initialise the division select list
+        $.ajax({
+            type: "GET",
+            url: url,
+            data: filters,
+            success: function (data) {
+                var el = $("select#id-select-division").get(0);
+                el.disabled = true;
+                el.options.length = 0;
+                el.options.add(new Option('', ''));
+                for (var i in data.objects) {
+                    el.options.add(new Option(data.objects[i].name, data.objects[i].id));
+                }
+                el.disabled = false;
+            }
+        });
+
+        // Initialise the location select list
+        filters = {"list": "location"};
+        $.ajax({
+            type: "GET",
+            url: url,
+            data: filters,
+            success: function (data) {
+                var el = $("select#id-select-location").get(0);
+                el.disabled = true;
+                el.options.length = 0;
+                el.options.add(new Option('', ''));
+                for (var i in data.objects) {
+                    el.options.add(new Option(data.objects[i], data.objects[i]));
+                }
+                el.disabled = false;
+            }
+        });
+
+        // Initialise the org unit select list
+        filters = {"list": "org_unit"};
+        $.ajax({
+            type: "GET",
+            url: url,
+            data: filters,
+            success: function (data) {
+                var el = $("select#id-select-orgunit").get(0);
+                el.disabled = true;
+                el.options.length = 0;
+                el.options.add(new Option('', ''));
+                for (var i in data.objects) {
+                    el.options.add(new Option(data.objects[i].name, data.objects[i].id));
+                }
+                el.disabled = false;
+            }
+        });
+
+        // Change event for the employment type select list
+        $("select#id-select-employment-type").on("change", function() {
+            var el = $("#input-end-date").get(0);
+            if (this.value == "Permanent") {
+                el.value = '';
+                el.disabled = true;
+                el.required = false;
+            } else {
+                el.disabled = false;
+                el.required = true;
+            }
+        });
+
+        // Change event for the division select list.
+        $("select#id-select-division").on("change", function() {
+            // DRY violation? Who cares!
+            filters = {"list": "org_unit", "parent_id": this.value};
+            $.ajax({
+                type: "GET",
+                url: url,
+                data: filters,
+                success: function (data) {
+                    var el = $("select#id-select-orgunit").get(0);
+                    el.disabled = true;
+                    el.options.length = 0;
+                    el.options.add(new Option('', ''));
+                    for (var i in data.objects) {
+                        el.options.add(new Option(data.objects[i].name, data.objects[i].id));
+                    }
+                    el.disabled = false;
+                }
+            });
+        });
+    });
+</script>
+
+</body>

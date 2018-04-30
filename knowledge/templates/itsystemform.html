@@ -1,0 +1,113 @@
+{% extends "f5-base.html" %}
+{% load core_tags wagtailcore_tags humanize %}
+
+{% block title %}{% if http_error_code %}{{ http_error_code }} - {{ request.get_full_path }}{% else %}Search{% if search_results %} Results{% endif %}{% endif %}{% endblock %}
+
+{% block content %}
+<style type="text/css">
+.search-container {
+    height: 15em;
+    cursor: pointer;
+    overflow: hidden;
+}
+.search-compress {
+    transform:scale(0.6);
+    width:162%;
+    transform-origin: 2% 0;
+    filter: blur(1px);
+    -webkit-filter: blur(1px);
+}
+.search-compress:hover {
+    filter: none;
+    -webkit-filter: none;
+}
+</style>
+{% if PermCheck == True %}
+<div class="row"><div class="large-12 columns">
+        <BR>
+        <H1>Edit IT Systems Request</h1>
+        <div id='formnotify'></div>
+		<div id='dpawforms' class='dpawforms' >
+        <form >
+            <input type='hidden' value='{{ csrf_token }}' name='csrftoken' id='csrftoken'>
+            <input type='hidden' value='{{ request.GET.reqid }}' name='reqid' id='reqid'>
+
+            <label>System ID: </label><span><input type='hidden' class='vTextField' id='reqid' ><span id='reqlabval' ></span></span>
+            <label>Name: </label><span><input type='text' class='vTextField' id='reqname' ></span>
+            <label>Description: </label><span><textarea type='text' id='reqdescription' class='vTextField' ></textarea></span>
+            <label>Custodian: </label>
+            <span>
+                <select id='reqcustodian' class='selectize-control movies single loading' >
+                </select>
+            </span>
+
+            <label>Notes: </label><span><textarea type='text' id='reqnotes' class='vTextField'></textarea></span>
+			<label>Documentation: </label><span><input type='text' id='reqdocumentation' class='vTextField' placeholder='Please enter a URL : eg https://www.dbca.wa.gov.au'></span>
+            <label>Technical Documentation: </label><span><input type='text' id='reqtechnical_documentation' class='vTextField' placeholder='Please enter a URL : eg https://www.dbca.wa.gov.au'></span>
+            <label>System Reqs: </label><span><textarea type='text' id='reqsystem_reqs' class='vTextField'></textarea></span>
+			<label>Workaround: </label><span><textarea type='text' id='reqworkaround' class='vTextField'></textarea></span>
+			<label>Recovery Docs: </label><span  ><input type='text' id='reqrecovery_docs' class='vTextField' placeholder='Please enter a URL : eg https://www.dbca.wa.gov.au '></span>
+			<label>System Creation Date: </label><span id='reqsystem_creation_date_picker' ><input type='text' id='reqsystem_creation_date' class='datefield' data-date-format="dd/mm/yyyy" ><span class=dateiconrel> <div id='dateicon' class='dateicon'  >&nbsp;</div></span></span>
+			<label>Critical Period : </label><span><input type='text' id='reqcritical_period' class='vTextField'></span>
+            <label>Alt Processing : </label><span><textarea type='text' id='reqalt_processing' class='vTextField'></textarea></span>
+            <label>Technical Recovery : </label><span><textarea type='text' id='reqtechnical_recov' class='vTextField'></textarea></span>
+            <label>Post Recovery : </label><span><textarea type='text' id='reqpost_recovery' class='vTextField'></textarea></span>
+            <label>User Notification : </label><span><textarea type='text' id='requser_notification' class='vTextField'></textarea></span>
+            <label>Unique Evidence : </label><span>
+				<select id='requnique_evidence' class='demo-default selectized'>
+					<option value='null'>Unknown</option>
+					<option value='true'>Yes</option>
+					<option value='false'>No</option>
+               </select>
+			</span>
+            <label>Point of Truth : </label><span>
+				<select id='reqpoint_of_truth' class='demo-default selectized'>
+                    <option value='null'>Unknown</option>
+                    <option value='true'>Yes</option>
+                    <option value='false'>No</option>
+               </select>
+				</span>
+            <label>Legal needs to Retain : </label><span>
+
+				<select id='reqlegal_need_to_retain' class='demo-default selectized' >
+                    <option value='null'>Unknown</option>
+                    <option value='true'>Yes</option>
+                    <option value='false'>No</option>
+               </select>
+			</textarea></span>
+
+
+
+            <input type='button' value='Save' onclick="useradminforms.saveITSystemReq();" class='defaultbutton'>
+
+        </form>
+		</div>
+
+</div></div>
+<script>
+$(document).ready(function(){
+        useradminforms.loadITSystemReq();
+        });
+</script>
+{% else %}
+     <div class="row"><div class="large-12 columns">
+       <BR>
+       <H1>Permission Denied</h1>
+       <div class='permissiondenied' > Sorry you do not have access </div>
+
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+{% endif %}
+{% endblock %}
+

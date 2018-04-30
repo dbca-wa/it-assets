@@ -20,7 +20,7 @@ def salt_load_computers():
             path = os.path.join(grains_path, i)
             data = json.loads(open(path).read())
             # data should be a dict with one key (hostname).
-            host = data.keys()[0]
+            host = list(data.keys())[0]
             host_info = data[host]
 
             try:

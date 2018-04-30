@@ -39,17 +39,12 @@ class Command(BaseCommand):
         while further_results:
             if options['limit'] and (cached_count + params['per_page']) >= options['limit']:
                 params['per_page'] = options['limit'] - cached_count
-            r = requests.get(url, auth=settings.FRESHDESK_AUTH, params=params)
+            r = requests.get(url, auth=(settings.FRESHDESK_API_KEY, 'X'), params=params)
             logger_headers.info(json.dumps(dict(r.headers)))
             # If we've been rate-limited, response status will be 429.
-            # Sleep for the number of seconds specifief by the Retry-After header.
             if r.status_code == 429:
-                if 'retry-after' in r.headers:
-                    naptime = r.headers['retry-after']
-                else:
-                    naptime = 3600  # Sleep for an hour.
-                sleep(naptime)
-            # If the response
+                print('Rate limit reached; terminating.')
+                further_results = False
             elif r.status_code == 200:
                 if 'link' not in r.headers:  # No further paginated results.
                     further_results = False
@@ -61,7 +56,6 @@ class Command(BaseCommand):
                     further_results = False
                 cached_count += len(tickets)
                 if options['limit'] and cached_count >= options['limit']:
-                    print('Caching limit reached; terminating.')
                     further_results = False
             else:
                 further_results = False
