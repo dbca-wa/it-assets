@@ -1,0 +1,32 @@
+sudo: false
+language: python
+cache: pip
+dist: trusty
+python:
+    - 3.5
+services:
+    - postgresql
+addons:
+    postgresql: 9.5
+    apt:
+        packages:
+            - postgresql-9.5-postgis-2.3
+branches:
+    only:
+        - master
+env:
+    global:
+        - SECRET_KEY="SecretKeyForTravisCI"
+        - DATABASE_URL="postgis://postgres@localhost:5432/travis_ci_test"
+        - AZUREAD_AUTHORITY="https://login.microsoftonline.com/thisisnotarealazureaudauthorityurl"
+install:
+    - pip install --upgrade pip
+    - pip install --upgrade setuptools
+    - pip install six
+    - pip install -r requirements.txt
+before_script:
+    - psql -c 'create extension postgis' -U postgres
+    - psql -c 'create database travis_ci_test;' -U postgres
+    - python manage.py migrate --noinput
+script:
+    - coverage run --source="." manage.py test
