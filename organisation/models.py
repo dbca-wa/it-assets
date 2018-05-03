@@ -164,9 +164,6 @@ class DepartmentUser(MPTTModel):
     class MPTTMeta:
         order_insertion_by = ['name']
 
-    class Meta:
-        ordering = ('name',)
-
     def __init__(self, *args, **kwargs):
         super(DepartmentUser, self).__init__(*args, **kwargs)
         # Store the pre-save values of some fields on object init.

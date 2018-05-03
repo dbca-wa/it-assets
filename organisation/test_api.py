@@ -223,15 +223,13 @@ class DepartmentUserResourceTestCase(ApiTestCase):
     def test_org_structure_populate_groups_members(self):
         """Test populate_groups=true request parameter
         """
+        self.user3.populate_primary_group = False
+        self.user3.save()
         url = '/api/users/?org_structure=true&populate_groups=true'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        # User 3 will be present in the response.
-        self.assertContains(response, self.user3.email)
-        self.user3.populate_primary_group = False
-        self.user3.save()
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
+        # User 2 will be present in the response.
+        self.assertContains(response, self.user2.email)
         # User 3 won't be present in the response.
         self.assertNotContains(response, self.user3.email)
 

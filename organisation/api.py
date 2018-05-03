@@ -1,6 +1,6 @@
 from dateutil.parser import parse
 from django.conf import settings
-from django.conf.urls import url
+from django.urls import path, re_path
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseBadRequest
 from django.utils import timezone
@@ -68,8 +68,7 @@ class DepartmentUserResource(DjangoResource):
         'other_phone', 'notes', 'working_hours', 'position_type',
         'account_type', 'o365_licence', 'shared_account')
     MINIMAL_ARGS = (
-        'pk', 'name', 'preferred_name', 'title', 'email', 'telephone',
-        'mobile_phone', 'photo', 'org_unit__location__name')
+        'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone')
     PROPERTY_ARGS = ('password_age_days',)
 
     formatters = FieldsFormatter(formatters={
@@ -78,6 +77,12 @@ class DepartmentUserResource(DjangoResource):
         'position_type': format_position_type,
         'account_type': format_account_type,
     })
+
+    def __init__(self, *args, **kwargs):
+        super(DepartmentUserResource, self).__init__(*args, **kwargs)
+        self.http_methods.update({
+            'list_fast': {'GET': 'list_fast'}
+        })
 
     def prepare(self, data):
         """Modify the returned object to append the GAL Department value.
@@ -104,8 +109,9 @@ class DepartmentUserResource(DjangoResource):
         accepts a GUID parameter instead of PK.
         """
         return [
-            url(r'^$', self.as_list(), name=self.build_url_name('list', name_prefix)),
-            url(r'^(?P<guid>[0-9A-Za-z-_@\'&\.]+)/$', self.as_detail(), name=self.build_url_name('detail', name_prefix)),
+            path('', self.as_list(), name=self.build_url_name('list', name_prefix)),
+            path('fast/', self.as_view('list_fast'), name=self.build_url_name('list_fast', name_prefix)),
+            re_path(r'^(?P<guid>[0-9A-Za-z-_@\'&\.]+)/$', self.as_detail(), name=self.build_url_name('detail', name_prefix)),
         ]
 
     def build_response(self, data, status=OK):
@@ -123,6 +129,50 @@ class DepartmentUserResource(DjangoResource):
         """
         return True
 
+    # Hack: duplicate list() method, decorated with skip_prepare in order to improve performance.
+    @skip_prepare
+    def list_fast(self):
+        resp = cache.get(self.request.get_full_path())
+        if resp:
+            return resp
+        FILTERS = {}
+        # DepartmentUser object response.
+        # Some of the request parameters below are mutually exclusive.
+        if 'email' in self.request.GET:
+            # Always return an object by email.
+            users = DepartmentUser.objects.filter(email__iexact=self.request.GET['email'])
+        elif 'ad_guid' in self.request.GET:
+            # Always return an object by UUID.
+            users = DepartmentUser.objects.filter(ad_guid=self.request.GET['ad_guid'])
+        elif 'cost_centre' in self.request.GET:
+            # Always return all objects by cost centre (inc inactive & contractors).
+            users = DepartmentUser.objects.filter(cost_centre__code__icontains=self.request.GET['cost_centre'])
+        else:
+            # No other filtering:
+            # Return 'active' DU objects, excluding predefined account types and contractors
+            # and expired accounts.
+            FILTERS = DepartmentUser.ACTIVE_FILTER.copy()
+            users = DepartmentUser.objects.filter(**FILTERS)
+            users = users.exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
+            users = users.exclude(expiry_date__lte=timezone.now())
+        # Parameters to modify the API output.
+        if 'minimal' in self.request.GET:
+            # For the minimal response, we don't need a prefetch_related.
+            self.VALUES_ARGS = self.MINIMAL_ARGS
+        else:
+            if 'compact' in self.request.GET:
+                self.VALUES_ARGS = self.COMPACT_ARGS
+            users = users.prefetch_related('org_unit', 'org_unit__location', 'org_unit__secondary_location', 'parent')
+
+        user_values = list(users.values(*self.VALUES_ARGS))
+        resp = self.formatters.format(self.request, user_values)
+        cache.set(self.request.get_full_path(), resp, timeout=300)
+        return resp
+
+
+    # NOTE: skip_prepare provides a huge performance improvement to this method, but at present we
+    # cannot use it because we need to modify the serialised object.
+    #@skip_prepare
     def list(self):
         """Pass query params to modify the API output.
         Include `org_structure=true` and `sync_o365=true` to output only
@@ -145,7 +195,9 @@ class DepartmentUserResource(DjangoResource):
             exclude_populate_groups = False  # Will ignore populate_primary_group
         # org_structure response.
         if 'org_structure' in self.request.GET:
-            return self.org_structure(sync_o365=sync_o365, exclude_populate_groups=exclude_populate_groups)
+            resp = self.org_structure(sync_o365=sync_o365, exclude_populate_groups=exclude_populate_groups)
+            cache.set(self.request.get_full_path(), resp, timeout=300)
+            return resp
         # DepartmentUser object response.
         # Some of the request parameters below are mutually exclusive.
         if 'all' in self.request.GET:
@@ -182,27 +234,33 @@ class DepartmentUserResource(DjangoResource):
             elif self.request.GET['o365_licence'].lower() == 'false':
                 users = users.filter(o365_licence=False)
 
-        users = users.order_by('name')
         # Parameters to modify the API output.
-        if 'compact' in self.request.GET:
-            self.VALUES_ARGS = self.COMPACT_ARGS
-        elif 'minimal' in self.request.GET:
+        if 'minimal' in self.request.GET:
+            # For the minimal response, we don't need a prefetch_related.
             self.VALUES_ARGS = self.MINIMAL_ARGS
+        else:
+            if 'compact' in self.request.GET:
+                self.VALUES_ARGS = self.COMPACT_ARGS
+            users = users.prefetch_related('org_unit', 'org_unit__location', 'org_unit__secondary_location', 'parent')
 
         user_values = list(users.values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
-        # piecemeal caching
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
     def detail(self, guid):
         """Detail view for a single DepartmentUser object.
         """
+        resp = cache.get(self.request.get_full_path())
+        if resp:
+            return resp
         user = DepartmentUser.objects.filter(ad_guid=guid)
         if not user:
             user = DepartmentUser.objects.filter(email__iexact=guid.lower())
         user_values = list(user.values(*self.VALUES_ARGS))
-        return self.formatters.format(self.request, user_values)[0]
+        resp = self.formatters.format(self.request, user_values)[0]
+        cache.set(self.request.get_full_path(), resp, timeout=300)
+        return resp
 
     @skip_prepare
     def create(self):
