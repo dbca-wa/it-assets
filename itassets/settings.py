@@ -88,15 +88,14 @@ DATABASES = {
 }
 
 
-# Setup directories for content.
-STATICFILES_DIRS = (os.path.join(PROJECT_DIR, 'static'), )
+# Static files configuration
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = '/static/'
 # Ensure that the media directory exists:
 if not os.path.exists(os.path.join(BASE_DIR, 'media')):
     os.mkdir(os.path.join(BASE_DIR, 'media'))
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
-STATIC_URL = '/static/'
 
 
 # Internationalisation.
