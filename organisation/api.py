@@ -164,7 +164,7 @@ class DepartmentUserResource(DjangoResource):
                 self.VALUES_ARGS = self.COMPACT_ARGS
             users = users.prefetch_related('org_unit', 'org_unit__location', 'org_unit__secondary_location', 'parent')
 
-        user_values = list(users.values(*self.VALUES_ARGS))
+        user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
@@ -243,7 +243,7 @@ class DepartmentUserResource(DjangoResource):
                 self.VALUES_ARGS = self.COMPACT_ARGS
             users = users.prefetch_related('org_unit', 'org_unit__location', 'org_unit__secondary_location', 'parent')
 
-        user_values = list(users.values(*self.VALUES_ARGS))
+        user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
