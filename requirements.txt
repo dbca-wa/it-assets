@@ -11,7 +11,7 @@ dj-static==0.0.6
 json2html==1.2.1
 django-mptt==0.9.0
 django-mptt-admin==0.5.1
-openpyxl==2.3.5
+openpyxl==2.5.3
 unicodecsv==0.14.1
 python-dateutil==2.7.2
 django-leaflet==0.23.0
