@@ -79,7 +79,7 @@ class DepartmentUser(MPTTModel):
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True,
         help_text='Pre-Windows 2000 login username.')
-    name = models.CharField(max_length=128, help_text='Format: [Given name] [Surname]')
+    name = models.CharField(max_length=128, db_index=True, help_text='Format: [Given name] [Surname]')
     given_name = models.CharField(
         max_length=128, null=True,
         help_text='Legal first name (matches birth certificate/password/etc.)')
