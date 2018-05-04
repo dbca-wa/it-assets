@@ -166,6 +166,7 @@ class DepartmentUserResource(DjangoResource):
 
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
+        resp = {'objects': resp}
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
