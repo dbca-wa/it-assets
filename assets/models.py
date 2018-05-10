@@ -115,7 +115,8 @@ class HardwareModel(models.Model):
     notes = models.TextField(null=True, blank=True)
 
     class Meta:
-        ordering = ('vendor', 'model_no')
+        ordering = ('model_no',)
+        unique_together = (('vendor', 'model_no'))
 
     def __str__(self):
         return self.model_no
