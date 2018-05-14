@@ -192,7 +192,7 @@ class SoftwareAssetAdmin(VersionAdmin):
             'fields': ('license', 'license_details', 'license_count')
         }),
         ('Asset ownership details', {
-            'fields': ('cost_centre', 'date_purchased', 'invoices')
+            'fields': ('cost_centre', 'date_purchased')
         }),
     )
     list_display = ('name', 'vendor', 'license')
