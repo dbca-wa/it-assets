@@ -57,8 +57,7 @@ class DepartmentUserAdmin(VersionAdmin):
     readonly_fields = [
         'username', 'ad_guid', 'org_data_pretty', 'ad_data_pretty',
         'active', 'in_sync', 'ad_deleted', 'date_ad_updated',
-        'alesco_data_pretty', 'o365_licence', 'shared_account',
-        'azure_guid', 'ad_dn']
+        'alesco_data_pretty', 'o365_licence', 'shared_account', 'azure_guid']
     fieldsets = (
         ('Email/username', {
             'fields': ('email', 'username'),
