@@ -25,8 +25,7 @@ LOGGER = logging.getLogger('ad_sync')
 
 def format_fileField(request, value):
     if value:
-        return request.build_absolute_uri(
-            '{}{}'.format(settings.MEDIA_URL, value))
+        return '{}{}'.format(settings.MEDIA_URL, value)
     else:
         return value
 
@@ -312,9 +311,9 @@ class DepartmentUserResource(DjangoResource):
             user.ad_dn = self.data['DistinguishedName']
         elif 'ad_dn' in self.data:
             user.ad_dn = self.data['ad_dn']
-        if 'AccountExpirationDate' in self.data:
+        if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
             user.expiry_date = tz.localize(parse(self.data['AccountExpirationDate']))
-        elif 'expiry_date' in self.data:
+        elif 'expiry_date' in self.data and self.data['expiry_date']:
             user.expiry_date = tz.localize(parse(self.data['expiry_date']))
         if 'Title' in self.data:
             user.title = self.data['Title']
@@ -328,9 +327,9 @@ class DepartmentUserResource(DjangoResource):
             user.surname = self.data['Surname']
         elif 'given_name' in self.data:
             user.surname = self.data['surname']
-        if 'Modified' in self.data:
+        if 'Modified' in self.data and self.data['Modified']:
             user.date_ad_updated = tz.localize(parse(self.data['Modified']))
-        elif 'date_ad_updated' in self.data:
+        elif 'date_ad_updated' in self.data and self.data['date_ad_updated']:
             user.date_ad_updated = tz.localize(parse(self.data['date_ad_updated']))
 
         user.save()
