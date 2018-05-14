@@ -25,7 +25,7 @@ LOGGER = logging.getLogger('ad_sync')
 
 def format_fileField(request, value):
     if value:
-        return '{}{}'.format(settings.MEDIA_URL, value)
+        return request.build_absolute_uri('{}{}'.format(settings.MEDIA_URL, value))
     else:
         return value
 
