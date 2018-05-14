@@ -54,6 +54,7 @@ class HardwareModel(models.Model):
         ('Camera - Conference', 'Camera - Conference'),
         ('Camera - Security (IP)', 'Camera - Security (IP)'),
         ('Camera - Other', 'Camera - Other'),
+        ('Cellular repeater', 'Cellular repeater'),
         ('Computer - Desktop', 'Computer - Desktop'),
         ('Computer - Laptop', 'Computer - Laptop'),
         ('Computer - Monitor', 'Computer - Monitor'),
