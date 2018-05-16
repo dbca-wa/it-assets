@@ -1,0 +1,146 @@
+{% extends "knowledge/knowledge_base.html" %}
+
+{% block head_js %}
+{{ block.super }}
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/vue/2.4.2/vue.min.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/vue-resource/1.3.4/vue-resource.min.js"></script>
+{% endblock %}
+
+{% block extra_css %}
+<style type="text/css">
+    li.org_unit {font-size: larger}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="small-12 medium-6 large-4 columns">
+        <h1>Organisational Structure</h1>
+    </div>
+    <div class="columns end">
+        <div class="callout secondary">
+            Click on the icon (+/-) beside organisation unit names to display/hide division, branch and section names. Click on any organisation unit name to open the Address Book, filtered to display staff in that unit.
+        </div>
+    </div>
+</div>
+
+<!-- The orgchart root element -->
+<div class="row">
+    <div class="columns end">
+        <div id="orgchart">
+            <department v-for="unit in orgunits" v-bind:unit="unit"></department>
+        </div>
+    </div>
+</div>
+
+<!-- The department template -->
+<template id="department-template">
+    <div class="callout">
+        <h4>
+            <strong><a href="/address-book?org_id={{unit.id}}" target="_blank">{{unit.name}}</a></strong>
+            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-if="!open" class="fi-plus"></i></span>
+        </h4>
+		<div v-if="hasChildren" v-show="open">
+			<ul>
+				<org-unit v-for="unit in unit.children" v-bind:unit="unit"></org-unit>
+			</ul>
+		</div>
+    </div>
+</template>
+
+<!-- The orgunit template -->
+<template id="orgunit-template">
+    <div>
+        <li class="org_unit">
+            <a href="/address-book?org_id={{unit.id}}" target="_blank">{{unit.name}}</a>
+            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-if="!open" class="fi-plus"></i></span>
+        </li>
+    </div>
+    <ul v-if="hasChildren" v-show="open">
+        <org-unit v-for="child in unit.children" v-bind:unit="child"></org-unit>
+    </ul>
+</template>
+
+<script>
+// Define and register the department component
+Vue.component('department', {
+    template: '#department-template',
+    props: ['unit'],
+    computed: {
+        hasChildren: function () {
+	        return this.unit.children && this.unit.children.length
+        }
+    },
+    data: function () {
+        return {open: false}
+    },
+    methods: {
+        toggle: function () {
+            if (this.hasChildren) {
+                this.open = !this.open
+            }
+        },
+    },
+});
+</script>
+
+<script>
+// Define and register the org-unit component
+Vue.component('org-unit', {
+    template: '#orgunit-template',
+    props: ['unit'],
+    computed: {
+        hasChildren: function () {
+			return this.unit.children && this.unit.children.length
+        }
+    },
+    data: function () {
+        return {open: false}
+    },
+    methods: {
+        toggle: function () {
+            if (this.hasChildren) {
+				this.open = !this.open
+            }
+        },
+    },
+});
+</script>
+
+<script>
+// Put departments in arbitrary order defined by Management.
+var dept_order = [
+    "Department of Biodiversity, Conservation and Attractions",
+    "Department of Environment Regulation",
+    "Office of the Appeals Convenor",
+    "Conservation and Parks Commission"
+];
+
+// Boot the org chart Vue
+var orgchart = new Vue({
+    el: "#orgchart",
+    data: {orgunits: []},
+    beforeCreate: function() {
+        //console.log("beforeCreate");
+        this.$http.get('/api/options/?list=org_structure').then(response => {
+            // Success callback
+            var objects = response.body.objects;
+            //console.log(objects);
+            for (var i = 0; i < dept_order.length; i++) {
+                for (var j = 0; j < objects.length; j++) {
+                    if (objects[j].name == dept_order[i]) {
+                        this.$data.orgunits.push(objects[j]);
+                    }
+                }
+            }
+            //return Promise.resolve(response);
+            //console.log(this.$data.orgunits);
+        }, response => {
+            // Error callback
+            console.log("ERROR!");
+            //return Promise.resolve(response);
+        });
+    }
+});
+</script>
+{% endblock %}

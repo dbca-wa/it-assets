@@ -1,4 +1,3 @@
-from __future__ import unicode_literals, absolute_import
 from django.views.generic import TemplateView
 
 
@@ -8,6 +7,10 @@ class AddressBook(TemplateView):
 
 class UserAccounts(TemplateView):
     template_name = 'knowledge/user_accounts.html'
+
+
+class OrganisationStructure(TemplateView):
+    template_name = 'knowledge/organisation_structure.html'
 
 
 class NewUserForm(TemplateView):
