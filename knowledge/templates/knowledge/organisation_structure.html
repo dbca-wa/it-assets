@@ -1,4 +1,5 @@
 {% extends "knowledge/knowledge_base.html" %}
+{% load static %}
 
 {% block head_js %}
 {{ block.super }}
@@ -8,6 +9,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/cdnjs/ajax/libs/foundicons/3.0.0/foundation-icons.css" />
+<link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/fonts/Lato2OFLWeb/Lato/latofonts.css" />
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'css/oim_cms.css' %}" />
 <style type="text/css">
     li.org_unit {font-size: larger}
 </style>
