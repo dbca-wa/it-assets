@@ -2,8 +2,8 @@
 
 {% block head_js %}
 {{ block.super }}
-<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/vue/2.4.2/vue.min.js"></script>
-<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/vue-resource/1.3.4/vue-resource.min.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/vue/2.4.2/vue.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/vue-resource/1.3.4/vue-resource.js"></script>
 {% endblock %}
 
 {% block extra_css %}
@@ -28,23 +28,25 @@
 <div class="row">
     <div class="columns end">
         <div id="orgchart">
-            <department v-for="unit in orgunits" v-bind:unit="unit"></department>
+            <department v-for="unit in orgunits" :key="unit.id" :unit="unit"></department>
         </div>
     </div>
 </div>
 
 <!-- The department template -->
 <template id="department-template">
-    <div class="callout">
-        <h4>
-            <strong><a href="/address-book?org_id={{unit.id}}" target="_blank">{{unit.name}}</a></strong>
-            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-if="!open" class="fi-plus"></i></span>
-        </h4>
-		<div v-if="hasChildren" v-show="open">
-			<ul>
-				<org-unit v-for="unit in unit.children" v-bind:unit="unit"></org-unit>
-			</ul>
-		</div>
+    <div>
+        <div class="callout">
+            <h4>
+                <strong><a href='/address-book?org_id={{unit.id}}' target="_blank">{{unit.name}}</a></strong>
+                <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-if="!open" class="fi-plus"></i></span>
+            </h4>
+            <div v-if="hasChildren" v-show="open">
+                <ul>
+                    <org-unit v-for="unit in unit.children" :key="unit.id" :unit="unit"></org-unit>
+                </ul>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -55,10 +57,10 @@
             <a href="/address-book?org_id={{unit.id}}" target="_blank">{{unit.name}}</a>
             <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-if="!open" class="fi-plus"></i></span>
         </li>
+        <ul v-if="hasChildren" v-show="open">
+            <org-unit v-for="child in unit.children" :key="unit.id" :unit="child"></org-unit>
+        </ul>
     </div>
-    <ul v-if="hasChildren" v-show="open">
-        <org-unit v-for="child in unit.children" v-bind:unit="child"></org-unit>
-    </ul>
 </template>
 
 <script>
@@ -72,7 +74,8 @@ Vue.component('department', {
         }
     },
     data: function () {
-        return {open: false}
+        return {open: true}
+        //return {open: false}
     },
     methods: {
         toggle: function () {
@@ -95,7 +98,8 @@ Vue.component('org-unit', {
         }
     },
     data: function () {
-        return {open: false}
+        return {open: true}
+        //return {open: false}
     },
     methods: {
         toggle: function () {
@@ -121,11 +125,9 @@ var orgchart = new Vue({
     el: "#orgchart",
     data: {orgunits: []},
     beforeCreate: function() {
-        //console.log("beforeCreate");
         this.$http.get('/api/options/?list=org_structure').then(response => {
             // Success callback
             var objects = response.body.objects;
-            //console.log(objects);
             for (var i = 0; i < dept_order.length; i++) {
                 for (var j = 0; j < objects.length; j++) {
                     if (objects[j].name == dept_order[i]) {
@@ -134,7 +136,6 @@ var orgchart = new Vue({
                 }
             }
             //return Promise.resolve(response);
-            //console.log(this.$data.orgunits);
         }, response => {
             // Error callback
             console.log("ERROR!");
