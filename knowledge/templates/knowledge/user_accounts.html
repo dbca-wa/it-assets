@@ -1,24 +1,38 @@
 {% extends "knowledge/knowledge_base.html" %}
+{% load static %}
+
+{% block head_js %}
+{{ block.super }}
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/jquery/3.1.1/jquery.min.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/foundation/6.2.4/foundation.min.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/handlebars.js/4.0.6/handlebars.min.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/datatables/1.10.12/js/jquery.dataTables.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/datatables/1.10.12/js/dataTables.foundation.js"></script>
+<script type="text/javascript" src="//static.dbca.wa.gov.au/static/libs/datatables-fixedheader/2.1.1/dataTables.fixedHeader.min.js"></script>
+{% endblock %}
+
+{% block head_css %}
+<link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/libs/foundation/6.2.4/foundation-flex.css">
+<link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/libs/datatables/1.10.12/css/dataTables.foundation.min.css"/>
+<link rel="stylesheet" type="text/css" media="all" href="//static.dbca.wa.gov.au/static/fonts/Lato2OFLWeb/Lato/latofonts.css" />
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'css/oim_cms.css' %}" />
+<style type="text/css">
+table .shrink * { font-size: 0.7rem }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="small-12 medium-6 columns">
-        <h1>User Accounts</h1>
-    </div>
-    <div class="columns end">
-        <div class="callout secondary">
-            The recommended web browser is Firefox or Chrome. Information load times may be
-            longer in Internet Explorer.
-        </div>
-    </div>
-</div>
-
 <div class="row">
     <div id="loading-icon" class="small-12 columns">
         <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
     </div>
 </div>
+<div class="row">
+    <div id="container"></div>
+</div>
+{% endblock %}
 
+{% block extra_js %}
 {# Handlebars.js template #}
 {% verbatim %}
 <script type="text/x-handlebars-template" id="user-accounts-template">
@@ -51,10 +65,6 @@
 </script>
 {% endverbatim %}
 
-<div class="row">
-    <div id="container"></div>
-</div>
-
 <script type="text/javascript">
     // Utility function to obtain query parameters.
     var urlParam = function(name, url) {
@@ -76,7 +86,7 @@
     // Document ready function.
     $(function () {
         // Get list of users via the API.
-        var users = $.get('/api/users/', {'ad_deleted': false, 'o365_licence': true}, function(data) {
+        var users = $.get('/api/users/fast/', {'compact': true, 'ad_deleted': false, 'o365_licence': true}, function(data) {
             // Push the data into the Handlebars template.
             $("#container").html(template(data));
             // Upgrade the table using DataTables.
