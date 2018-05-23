@@ -166,11 +166,7 @@ class DepartmentUserAdmin(VersionAdmin):
             form = self.AlescoImportForm(request.POST, request.FILES)
             if form.is_valid():
                 upload = request.FILES['spreadsheet']
-                # Write the uploaded file to a temp file.
-                f = open('/tmp/alesco-data.xlsx', 'w')
-                f.write(upload.read())
-                f.close()
-                alesco_data_import(f.name)
+                alesco_data_import(upload)
                 messages.info(request, 'Spreadsheet uploaded successfully!')
                 return redirect('admin:organisation_departmentuser_changelist')
         else:

@@ -36,13 +36,12 @@ def logger_setup(name):
     return logger
 
 
-def alesco_data_import(filepath):
-    """Import task expects to be passed a file path to a closed .xlsx file.
+def alesco_data_import(fileobj):
+    """Import task expects to be passed a file object (an uploaded .xlsx).
     """
     from .models import DepartmentUser
     logger = logger_setup('alesco_data_import')
-    f = open(filepath)
-    wb = load_workbook(filename=f.name, read_only=True)
+    wb = load_workbook(fileobj, read_only=True)
     ws = wb.worksheets[0]
     keys = []
     values = []
@@ -108,7 +107,6 @@ def departmentuser_csv_report():
     # alesco_data structure should be consistent to all (or null).
     du = DepartmentUser.objects.filter(alesco_data__isnull=False)[0]
     alesco_fields = du.alesco_data.keys()
-    alesco_fields.sort()
     org_fields = {
         'department': ('units', 0, 'name'),
         'tier_2': ('units', 1, 'name'),
