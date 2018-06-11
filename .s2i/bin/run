@@ -82,11 +82,14 @@ if is_gunicorn_installed; then
   fi
 
   if [[ "$APP_MODULE" ]]; then
-    export WEB_CONCURRENCY=${WEB_CONCURRENCY:-$(get_default_web_concurrency)}
-	# Start the django-q task runner
+    # Start the django-q task runner
     echo "---> Starting Django Q cluster ..."
-	exec python $manage_file qcluster
-	# Start gunicorn webserver
+    exec python $manage_file qcluster
+  fi
+
+  if [[ "$APP_MODULE" ]]; then
+    export WEB_CONCURRENCY=${WEB_CONCURRENCY:-$(get_default_web_concurrency)}
+    # Start gunicorn webserver
     echo "---> Serving application with gunicorn ($APP_MODULE) ..."
     exec gunicorn "$APP_MODULE" --bind=0.0.0.0:8080 --access-logfile=- --config "$APP_CONFIG"
   fi
