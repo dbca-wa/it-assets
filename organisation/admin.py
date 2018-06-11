@@ -8,13 +8,18 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
+from django_q.tasks import async
 from leaflet.admin import LeafletGeoAdmin
+import logging
 from reversion.admin import VersionAdmin
 from threading import Thread
 import time
 
 from .models import DepartmentUser, Location, SecondaryLocation, OrgUnit, CostCentre
-from .utils import logger_setup, alesco_data_import, departmentuser_csv_report
+from .tasks import alesco_data_import
+from .utils import departmentuser_csv_report
+
+LOGGER = logging.getLogger('sync_tasks')
 
 
 def delayed_save(obj):
@@ -71,7 +76,7 @@ class DepartmentUserAdmin(VersionAdmin):
                 'org_unit', 'parent', 'security_clearance', 'name_update_reference'),
         }),
         ('Account fields', {
-            'fields': ('account_type', 'expiry_date', 'contractor', 'notes' ),
+            'fields': ('account_type', 'expiry_date', 'contractor', 'notes'),
         }),
         ('Other details', {
             'fields': (
@@ -97,40 +102,39 @@ class DepartmentUserAdmin(VersionAdmin):
         """Override save_model in order to log any changes to some fields:
         'given_name', 'surname', 'employee_id', 'cost_centre', 'name', 'org_unit'
         """
-        logger = logger_setup('departmentuser_updates')
         l = 'DepartmentUser: {}, field: {}, original_value: {} new_value: {}, changed_by: {}, reference: {}'
         if obj._DepartmentUser__original_given_name != obj.given_name:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'given_name', obj._DepartmentUser__original_given_name, obj.given_name,
                 request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_surname != obj.surname:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'surname', obj._DepartmentUser__original_surname, obj.surname,
                 request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_employee_id != obj.employee_id:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'employee_id', obj._DepartmentUser__original_employee_id,
                 obj.employee_id, request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_cost_centre != obj.cost_centre:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'cost_centre', obj._DepartmentUser__original_cost_centre,
                 obj.cost_centre, request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_name != obj.name:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'name', obj._DepartmentUser__original_name, obj.name,
                 request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_org_unit != obj.org_unit:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'org_unit', obj._DepartmentUser__original_org_unit, obj.org_unit,
                 request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_expiry_date != obj.expiry_date:
-            logger.info(l.format(
+            LOGGER.info(l.format(
                 obj.email, 'expiry_date', obj._DepartmentUser__original_expiry_date, obj.expiry_date,
                 request.user.username, obj.name_update_reference
             ))
@@ -166,8 +170,8 @@ class DepartmentUserAdmin(VersionAdmin):
             form = self.AlescoImportForm(request.POST, request.FILES)
             if form.is_valid():
                 upload = request.FILES['spreadsheet']
-                alesco_data_import(upload)
-                messages.info(request, 'Spreadsheet uploaded successfully!')
+                async(alesco_data_import, upload)
+                messages.info(request, 'Alesco data spreadsheet uploaded successfully; data is now being processed.')
                 return redirect('admin:organisation_departmentuser_changelist')
         else:
             form = self.AlescoImportForm()

@@ -20,7 +20,7 @@ from .models import DepartmentUser, Location, SecondaryLocation, OrgUnit, CostCe
 
 
 ACCOUNT_TYPE_DICT = dict(DepartmentUser.ACCOUNT_TYPE_CHOICES)
-LOGGER = logging.getLogger('ad_sync')
+LOGGER = logging.getLogger('sync_tasks')
 
 
 def format_fileField(request, value):
