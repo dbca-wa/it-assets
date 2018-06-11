@@ -10,6 +10,7 @@ def alesco_data_import(fileobj):
     """Import task expects to be passed a file object (an uploaded .xlsx).
     """
     from .models import DepartmentUser
+    LOGGER.info('Alesco data for DepartmentUsers is being updated')
     wb = load_workbook(fileobj, read_only=True)
     ws = wb.worksheets[0]
     keys = []
@@ -42,14 +43,13 @@ def alesco_data_import(fileobj):
                 d = d[0]
                 d.alesco_data = record
                 d.save()
-                LOGGER.info('SAVED {}'.format(d))
                 updates += 1
             else:
                 non_matched += 0
     if updates > 0:
-        LOGGER.info('Alesco data for {} DepartmentUsers was updated.'.format(updates))
+        LOGGER.info('Alesco data for {} DepartmentUsers was updated'.format(updates))
     if non_matched > 0:
-        LOGGER.warning('Employee ID was not matched for {} rows.'.format(non_matched))
+        LOGGER.warning('Employee ID was not matched for {} rows'.format(non_matched))
     if multi_matched > 0:
-        LOGGER.error('Employee ID was matched for >1 DepartmentUsers for {} rows.'.format(multi_matched))
+        LOGGER.error('Employee ID was matched for >1 DepartmentUsers for {} rows'.format(multi_matched))
     return True

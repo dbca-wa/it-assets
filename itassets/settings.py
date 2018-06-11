@@ -33,7 +33,7 @@ INSTALLED_APPS = (
     'mptt',
     'django_mptt_admin',
     'leaflet',
-    'django_q',
+    #'django_q',
     'organisation',
     'registers',
     'tracking',
@@ -142,11 +142,6 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
-        'sync_tasks': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
-        },
         'file': {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
@@ -167,7 +162,7 @@ LOGGING = {
             'level': 'INFO'
         },
         'sync_tasks': {
-            'handlers': ['sync_tasks'],
+            'handlers': ['console'],
             'level': 'INFO'
         },
     }
