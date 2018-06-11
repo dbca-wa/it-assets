@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.files.base import ContentFile
 import logging
-from openpyxl import load_workbook
 import os
 from six import BytesIO
 import subprocess
@@ -34,57 +33,6 @@ def logger_setup(name):
         fh.setFormatter(formatter)
         logger.addHandler(fh)
     return logger
-
-
-def alesco_data_import(fileobj):
-    """Import task expects to be passed a file object (an uploaded .xlsx).
-    """
-    from .models import DepartmentUser
-    logger = logger_setup('alesco_data_import')
-    wb = load_workbook(fileobj, read_only=True)
-    ws = wb.worksheets[0]
-    keys = []
-    values = []
-    non_matched = 0
-    multi_matched = 0
-    updates = 0
-    # Iterate over each row in the worksheet.
-    for k, row in enumerate(ws.iter_rows()):
-        values = []
-        for cell in row:
-            # First row: generate keys.
-            if k == 0:
-                keys.append(cell.value)
-            # Otherwise make a list of values.
-            else:
-                # Serialise datetime objects.
-                if isinstance(cell.value, datetime):
-                    values.append(cell.value.isoformat())
-                else:
-                    values.append(cell.value)
-        if k > 0:
-            # Construct a dictionary of row values.
-            record = dict(zip(keys, values))
-            # Try to find a matching DepartmentUser by employee id.
-            d = DepartmentUser.objects.filter(employee_id=record['EMPLOYEE_NO'])
-            if d.count() > 1:
-                multi_matched += 1
-            elif d.count() == 1:
-                d = d[0]
-                d.alesco_data = record
-                d.save()
-                logger.info('Alesco data updated for {}'.format(d.email.lower()))
-                updates += 1
-            else:
-                non_matched += 0
-    if updates > 0:
-        logger.info('Alesco data for {} DepartmentUsers was updated.'.format(updates))
-    if non_matched > 0:
-        logger.warning('Employee ID was not matched for {} rows.'.format(non_matched))
-    if multi_matched > 0:
-        logger.error('Employee ID was matched for >1 DepartmentUsers for {} rows.'.format(multi_matched))
-
-    return True
 
 
 def departmentuser_csv_report():

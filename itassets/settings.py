@@ -33,6 +33,7 @@ INSTALLED_APPS = (
     'mptt',
     'django_mptt_admin',
     'leaflet',
+    #'django_q',
     'organisation',
     'registers',
     'tracking',
@@ -73,7 +74,7 @@ TEMPLATES = [
         },
     }
 ]
-APPLICATION_VERSION_NO = '2.0.2'
+APPLICATION_VERSION_NO = '2.0.3'
 ADMINS = ('asi@dbca.wa.gov.au',)
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
@@ -131,11 +132,16 @@ if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
 LOGGING = {
     'version': 1,
     'formatters': {
-        'simple': {
-            'format': '%(levelname)s %(asctime)s %(message)s'
-        }
+        'console': {'format': '%(levelname)s %(message)s'},
+        'simple': {'format': '%(levelname)s %(asctime)s %(message)s'},
+        'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(message)s'},
     },
     'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'console'
+        },
         'file': {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
@@ -146,13 +152,36 @@ LOGGING = {
         },
     },
     'loggers': {
+        # Log to stdout/stderr by default.
         'django.request': {
-            'handlers': ['file'],
+            'handlers': ['console'],
+            'level': 'WARNING'
+        },
+        'itassets': {
+            'handlers': ['console'],
             'level': 'INFO'
         },
-        'log': {
-            'handlers': ['file'],
+        'sync_tasks': {
+            'handlers': ['console'],
             'level': 'INFO'
         },
     }
+}
+
+
+# django-q configuration
+Q_CLUSTER = {
+    'name': 'itassets',
+    'workers': 4,
+    'recycle': 500,
+    'timeout': 180,
+    'compress': True,
+    'save_limit': 250,
+    'queue_limit': 500,
+    'cpu_affinity': 1,
+    'label': 'Django Q',
+    'redis': {
+        'host': env('REDIS_HOST', 'localhost'),
+        'port': 6379,
+        'db': 0, }
 }
