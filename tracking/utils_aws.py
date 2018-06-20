@@ -1,17 +1,16 @@
 from django.conf import settings
 import json
+import logging
 import os
-
 from .models import EC2Instance, Computer
-from .utils import logger_setup
+
+LOGGER = logging.getLogger('sync_tasks')
 
 
 def aws_load_instances():
     """Update the database with EC2 Instance information.
     """
     from registers.models import ITSystemHardware  # Prevent circular import.
-    logger = logger_setup('aws_load_instances')
-    logger_ex = logger_setup('exceptions_aws_load_instances')
 
     # Serialise the instance data.
     ec2_info = open(os.path.join(settings.AWS_JSON_PATH, 'aws_ec2_describe_instances.json'))
@@ -41,10 +40,10 @@ def aws_load_instances():
             ec2.name = name
             ec2.tags = tags
             ec2.save()
-            logger.info('EC2 instance {} ({}) updated'.format(ec2.ec2id, ec2.name))
+            LOGGER.info('EC2 instance {} ({}) updated'.format(ec2.ec2id, ec2.name))
         except Exception as e:
-            logger_ex.error('Error while loading EC2 instance information')
-            logger_ex.exception(e)
+            LOGGER.error('Error while loading EC2 instance information')
+            LOGGER.exception(e)
 
         # If the instance name matches one single Computer, create a FK link.
         comps = Computer.objects.filter(hostname__istartswith=ec2.name)
@@ -63,10 +62,10 @@ def aws_load_instances():
 
                 ec2.agent_version = v['AgentVersion']
                 ec2.save()
-                logger.info('EC2 instance {} ({}) updated'.format(ec2.ec2id, ec2.name))
+                LOGGER.info('EC2 instance {} ({}) updated'.format(ec2.ec2id, ec2.name))
             except Exception as e:
-                logger_ex.error('Error while loading EC2 instance information')
-                logger_ex.exception(e)
+                LOGGER.error('Error while loading EC2 instance information')
+                LOGGER.exception(e)
 
     # Update patch_group values on ITSystemHardware objects.
     for i in ITSystemHardware.objects.all():

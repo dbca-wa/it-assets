@@ -1,11 +1,12 @@
 from datetime import datetime
 from django.utils import timezone
+import logging
 import os
 import unicodecsv
 from uuid import UUID
-
 from .models import Computer
-from .utils import logger_setup
+
+LOGGER = logging.getLogger('sync_tasks')
 
 
 def csv_data(csv_path, skip_header=True):
@@ -24,8 +25,6 @@ def csv_data(csv_path, skip_header=True):
 def pdq_load_computers():
     """Update the database with Computer information from PDQ Inventory.
     """
-    logger = logger_setup('pdq_load_computers')
-    logger_ex = logger_setup('exceptions_pdq_load_computers')
     update_time = timezone.now()
     csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_computers.csv')
     data = csv_data(csv_path)
@@ -39,9 +38,9 @@ def pdq_load_computers():
             try:
                 urn = UUID(row[2]).urn
             except Exception as e:
-                logger_ex.error('Computer {} has invalid Active Directory GUID in PDQ Inventory {}, skipping.'.format(row[1], row[2]))
-                logger_ex.info(row)
-                logger_ex.exception(e)
+                LOGGER.error('Computer {} has invalid Active Directory GUID in PDQ Inventory {}, skipping.'.format(row[1], row[2]))
+                LOGGER.info(row)
+                LOGGER.exception(e)
                 num_errors += 1
                 continue
 
@@ -66,7 +65,7 @@ def pdq_load_computers():
                     computer = Computer.objects.get(sam_account_name=sam)
                     num_updated += 1
                 except Computer.DoesNotExist:
-                    logger.info('No match for Computer object with SAM ID {} creating new object'.format(sam))
+                    LOGGER.info('No match for Computer object with SAM ID {} creating new object'.format(sam))
                     computer = Computer(sam_account_name=sam)
                     num_created += 1
                     pass
@@ -86,21 +85,20 @@ def pdq_load_computers():
             computer.hostname = row[14]
             computer.date_pdq_updated = update_time
             computer.save()
-            logger.info('Computer {} updated from PDQ Inventory scan data'.format(computer))
+            LOGGER.info('Computer {} updated from PDQ Inventory scan data'.format(computer))
         except Exception as e:
-            logger_ex.error('Error while loading computers from PDQ')
-            logger_ex.info(row)
-            logger_ex.exception(e)
+            LOGGER.error('Error while loading computers from PDQ')
+            LOGGER.info(row)
+            LOGGER.exception(e)
             num_errors += 1
             continue
 
-    logger.info('Created {}, updated {}, errors {}'.format(num_created, num_updated, num_errors))
+    LOGGER.info('Created {}, updated {}, errors {}'.format(num_created, num_updated, num_errors))
 
 
 def pdq_load_logins():
     """Update Computers with 'last login' information from PDQ Inventory.
     """
-    logger = logger_setup('pdq_load_logins')
     csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_logins.csv')
     data = csv_data(csv_path)
     num_updated = 0
@@ -116,11 +114,11 @@ def pdq_load_logins():
                 ts = datetime.strptime(row[1], '%Y-%m-%d %H:%M:%S')
                 computer.last_ad_login_date = ts.date()
             computer.save()
-            logger.info('Computer {} login data updated'.format(computer))
+            LOGGER.info('Computer {} login data updated'.format(computer))
             num_updated += 1
         else:
-            logger.warning('Hostname {} did not match any Computer'.format(row[3]))
-            logger.info(row)
+            LOGGER.warning('Hostname {} did not match any Computer'.format(row[3]))
+            LOGGER.info(row)
             num_skipped += 1
 
-    logger.info('Updated {}, skipped {}'.format(num_updated, num_skipped))
+    LOGGER.info('Updated {}, skipped {}'.format(num_updated, num_skipped))
