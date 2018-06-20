@@ -1,8 +1,6 @@
 import csv
 from django.conf import settings
-import logging
 import os
-import subprocess
 
 
 def sourcefile_setup(sourcefile):

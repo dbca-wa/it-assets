@@ -1,10 +1,11 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
 import json
+import logging
 import requests
-from time import sleep
 from tracking import utils_freshdesk
-from tracking.utils import logger_setup
+
+LOGGER = logging.getLogger('sync_tasks')
 
 
 class Command(BaseCommand):
@@ -23,7 +24,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        logger_headers = logger_setup('freshdesk_api_response_headers')
         # Begin by caching Agents as Contacts.
         utils_freshdesk.freshdesk_cache_agents()
         # Next, start caching tickets one page at a time.
@@ -40,7 +40,7 @@ class Command(BaseCommand):
             if options['limit'] and (cached_count + params['per_page']) >= options['limit']:
                 params['per_page'] = options['limit'] - cached_count
             r = requests.get(url, auth=(settings.FRESHDESK_API_KEY, 'X'), params=params)
-            logger_headers.info(json.dumps(dict(r.headers)))
+            LOGGER.info(json.dumps(dict(r.headers)))
             # If we've been rate-limited, response status will be 429.
             if r.status_code == 429:
                 print('Rate limit reached; terminating.')

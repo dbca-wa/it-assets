@@ -1,15 +1,14 @@
 import json
+import logging
 import os
-
 from .models import Computer
-from .utils import logger_setup
+
+LOGGER = logging.getLogger('sync_tasks')
 
 
 def salt_load_computers():
     """Update the database with Computer information from Salt (minions).
     """
-    logger = logger_setup('salt_load_computers')
-    logger_ex = logger_setup('exceptions_salt_load_computers')
     grains_path = os.environ.get('SALT_GRAINS_PATH')
     num_created = 0
     num_updated = 0
@@ -26,9 +25,9 @@ def salt_load_computers():
             try:
                 computer = Computer.objects.get(hostname=host)
                 num_updated += 1
-                logger.info('Computer {} updated from Salt'.format(computer))
+                LOGGER.info('Computer {} updated from Salt'.format(computer))
             except Computer.DoesNotExist:
-                logger.info('No match for Computer object with hostname {}; creating new object'.format(host))
+                LOGGER.info('No match for Computer object with hostname {}; creating new object'.format(host))
                 computer = Computer(hostname=host)
                 num_created += 1
                 pass
@@ -47,10 +46,10 @@ def salt_load_computers():
             computer.save()
 
         except Exception as e:
-            logger_ex.error('Error while loading computer from Salt')
-            logger_ex.info(data)
-            logger_ex.exception(e)
+            LOGGER.error('Error while loading computer from Salt')
+            LOGGER.info(data)
+            LOGGER.exception(e)
             num_errors += 1
             continue
 
-    logger.info('Created {}, updated {}, errors {}'.format(num_created, num_updated, num_errors))
+    LOGGER.info('Created {}, updated {}, errors {}'.format(num_created, num_updated, num_errors))
