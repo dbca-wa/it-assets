@@ -160,8 +160,8 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
             # The DepartmentUser is an agent; skip (can't update Agent details via the API).
             LOGGER.info('{} is an agent, skipping sync'.format(user.email.lower()))
             continue
-        else:
             # The DepartmentUser does not exist in Freshdesk; create them as a Contact.
+        else:
             data = {'name': user.name, 'email': user.email.lower(),
                     'phone': user.telephone, 'job_title': user.title}
             department = user.org_data.get('units', []) if user.org_data else []
@@ -303,19 +303,20 @@ def freshdesk_cache_tickets(tickets=None):
                     fc.freshdesk_contact = FreshdeskContact.objects.get(contact_id=fc.user_id)
                 else:  # Attempt to cache the Freshdesk contact.
                     try:
-                        f_con = get_freshdesk_object(obj_type='contacts', id=fc.user_id)
-                        f_con['contact_id'] = f_con.pop('id')
-                        f_con['created_at'] = parse(f_con['created_at'])
-                        f_con['updated_at'] = parse(f_con['updated_at'])
-                        f_con.pop('avatar', None)
-                        f_con.pop('company_id', None)
-                        f_con.pop('twitter_id', None)
-                        f_con.pop('deleted', None)
-                        contact = FreshdeskContact.objects.create(**f_con)
-                        LOGGER.info('Created {}'.format(contact))
-                        fc.freshdesk_contact = contact
+                        data = get_freshdesk_object(obj_type='contacts', id=fc.user_id)
+                        contact = {}
+                        contact['contact_id'] = data.pop('id')
+                        contact['created_at'] = parse(data['created_at'])
+                        contact['updated_at'] = parse(data['updated_at'])
+                        # Pop any attributes from the dict which aren't in the FreshdeskContact model.
+                        for d in data.keys():
+                            if d in keys:
+                                contact[d] = data[d]
+                        fdcon = FreshdeskContact.objects.create(**contact)
+                        LOGGER.info('Created {}'.format(fdcon))
+                        fc.freshdesk_contact = fdcon
                         # Attempt to match contact with a DepartmentUser.
-                        contact.match_dept_user()
+                        fdcon.match_dept_user()
                     except HTTPError:  # The GET might fail if the contact is an agent.
                         LOGGER.error('HTTP 404 Freshdesk contact not found: {}'.format(ft.requester_id))
                         pass
