@@ -22,3 +22,4 @@ mixer==6.0.1
 requests==2.18.4
 django-q==0.9.4
 redis==2.10.6
+xlsxwriter==1.0.5

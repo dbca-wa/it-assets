@@ -1,11 +1,10 @@
-from datetime import date, timedelta
+from datetime import date
 from django.conf.urls import url
 from django.contrib.admin import register, TabularInline
 from django.urls import reverse
 from django.forms import Form, FileField
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
-from django.utils.safestring import mark_safe
 from reversion.admin import VersionAdmin
 from six import StringIO
 

@@ -1,8 +1,8 @@
+from datetime import date, datetime, timedelta
 from django.conf.urls import url
 from django.contrib.admin import register, ModelAdmin
 from django.http import HttpResponse
-from six import BytesIO
-import unicodecsv
+import xlsxwriter
 
 from .models import Computer, Mobile, EC2Instance, FreshdeskTicket
 
@@ -69,7 +69,10 @@ class FreshdeskTicketAdmin(ModelAdmin):
         # Callables below.
         'source_display', 'status_display', 'priority_display')
     search_fields = (
-        'subject', 'description_text', 'freshdesk_requester__name', 'freshdesk_requester__email',)
+        'ticket_id', 'subject', 'description_text', 'freshdesk_requester__name',
+        'freshdesk_requester__email')
+    # Override the default reversion/change_list.html template:
+    change_list_template = 'admin/tracking/freshdeskticket/change_list.html'
 
     def source_display(self, obj):
         return obj.get_source_display()
@@ -85,47 +88,42 @@ class FreshdeskTicketAdmin(ModelAdmin):
 
     def get_urls(self):
         urls = super(FreshdeskTicketAdmin, self).get_urls()
-        urls = [
-            url(r'^export-summary/$',
-                self.admin_site.admin_view(self.export_summary),
-                name='freshdeskticket_export_summary'),
-        ] + urls
-        return urls
+        extra_urls = [
+            url(
+                r'^report/$', self.admin_site.admin_view(self.report),
+                name='freshdeskticket_export_stale'),
+        ]
+        return extra_urls + urls
 
-    def export_summary(self, request):
-        """Exports Freshdesk ticket summary data to a CSV.
-        """
-        from datetime import date
-        from dateutil.relativedelta import relativedelta
-        base = date.today()
-        date_list = [base - relativedelta(months=x) for x in range(0, 12)]
+    def report(self, request):
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=freshdesk_tickets_stale_{}.xlsx'.format(date.today().isoformat())
+        month_ago = datetime.now() - timedelta(days=30)
+        week_ago = datetime.now() - timedelta(days=7)
+        tickets = FreshdeskTicket.objects.filter(
+            created_at__gte=month_ago, status__in=[2, 3], deleted=False, updated_at__lte=week_ago)
 
-        # Define fields to output.
-        fields = ['month', 'category', 'subcategory', 'ticket_count']
+        with xlsxwriter.Workbook(response, {'in_memory': True}) as workbook:
+            # Stale worksheet
+            stale = workbook.add_worksheet('Stale')
+            stale.write_row('A1', ('Ticket ID', 'URL', 'Subject', 'Created at', 'Agent', 'Status', 'Note count'))
+            row = 1
+            for i in tickets:
+                stale.write_row(row, 0, [
+                    i.ticket_id,
+                    'https://dpaw.freshdesk.com/helpdesk/tickets/{}'.format(i.ticket_id),
+                    i.subject.strip(),
+                    datetime.strftime(i.created_at, '%d-%b-%Y'),
+                    str(i.freshdesk_responder or ''),
+                    i.get_status_display(),
+                    i.freshdeskconversation_set.count()
+                ])
+                row += 1
+            stale.set_column('A:A', 8)
+            stale.set_column('B:B', 49)
+            stale.set_column('C:C', 100)
+            stale.set_column('D:D', 11)
+            stale.set_column('E:E', 46)
 
-        # Write data for FreshdeskTicket objects to the CSV.
-        stream = BytesIO()
-        wr = unicodecsv.writer(stream, encoding='utf-8')
-        wr.writerow(fields)  # CSV header row.
-
-        # Write month count of each category & subcategory
-        for d in date_list:
-            tickets = FreshdeskTicket.objects.filter(created_at__year=d.year, created_at__month=d.month)
-            # Find the categories and subcategories for this queryset.
-            cat = set()
-            for t in tickets:  # Add tuples: (category, subcategory)
-                cat.add((t.custom_fields['support_category'], t.custom_fields['support_subcategory']))
-            cat = sorted(cat)
-            # For each (category, subcategory), obtain a count of tickets.
-            # TODO: save the category and subcategory onto each model so we
-            # can just get Aggregate queries.
-            for c in cat:
-                count = 0
-                for t in tickets:
-                    if t.custom_fields['support_category'] == c[0] and t.custom_fields['support_subcategory'] == c[1]:
-                        count += 1
-                wr.writerow([d.strftime('%b-%Y'), c[0], c[1], count])
-
-        response = HttpResponse(stream.getvalue(), content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=freshdesktick_summary.csv'
         return response
