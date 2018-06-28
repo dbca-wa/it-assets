@@ -6,7 +6,7 @@ from django.forms import Form, FileField
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from reversion.admin import VersionAdmin
-from six import StringIO
+from io import BytesIO
 
 from .models import Vendor, HardwareModel, HardwareAsset, SoftwareAsset, HardwareInvoice
 from .utils import humanise_age, get_csv
@@ -119,7 +119,7 @@ class HardwareAssetAdmin(VersionAdmin):
                 context = dict(
                     self.admin_site.each_context(request),
                     title='Hardware asset import',
-                    csv=fileobj.read(),
+                    csv=fileobj.read().decode(),  # Read the CSV content as a string.
                     record_count=num_assets,
                     errors=errors,
                     warnings=warnings,
@@ -154,7 +154,7 @@ class HardwareAssetAdmin(VersionAdmin):
             return HttpResponseRedirect(reverse('admin:asset_import'))
 
         # Build a file object from the CSV data in POST and validate the input
-        fileobj = StringIO(request.POST['csv'])
+        fileobj = BytesIO(request.POST['csv'].encode())
         (num_assets, errors, warnings, notes) = validate_csv(fileobj)
 
         context = dict(

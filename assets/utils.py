@@ -12,6 +12,7 @@ from .models import HardwareAsset, Vendor, HardwareModel
 def validate_csv(fileobj):
     """Performs validation on a CSV file of asset data.
     Returns a tuple (number of assets, errors, warnings, notes).
+    ``fileobj`` should be a bytes-encodes file-like object.
     """
     try:
         c = csv.DictReader(fileobj)
