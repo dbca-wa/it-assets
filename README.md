@@ -1,7 +1,7 @@
 # IT Assets System
 
 This project consists of a Django application used by the Department of
-Parks and Wildlife to record and manage IT assets.
+Biodiversity, Conservation and Attractions to record and manage IT assets.
 
 # Installation
 
@@ -16,19 +16,3 @@ The following variables are required for the project to run:
 
     DATABASE_URL="postgis://USER:PASSWORD@HOST:PORT/DATABASE_NAME"
     SECRET_KEY="ThisIsASecretKey"
-
-Variables below may also need to be defined (context-dependent):
-
-    DEBUG=True
-    CSRF_COOKIE_SECURE=False
-    SESSION_COOKIE_SECURE=False
-
-# Running
-
-Use `runserver` to run a local copy of the application:
-
-    python manage.py runserver 0.0.0.0:8080
-
-Run console commands manually:
-
-    python manage.py shell_plus

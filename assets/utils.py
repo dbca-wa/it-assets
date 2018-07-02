@@ -12,6 +12,7 @@ from .models import HardwareAsset, Vendor, HardwareModel
 def validate_csv(fileobj):
     """Performs validation on a CSV file of asset data.
     Returns a tuple (number of assets, errors, warnings, notes).
+    ``fileobj`` should be a bytes-encodes file-like object.
     """
     try:
         c = csv.DictReader(fileobj)
@@ -140,7 +141,7 @@ def validate_csv(fileobj):
             if Location.objects.filter(name__istartswith=row['LOCATION']).count() > 1:
                 errors.append(
                     '''Row {}: {} matches more than one location name. '''
-                    '''Locations must match existing names.'''.format(c.line_num, row['LOCATION']))
+                    '''Locations must <a href="{}">match existing names</a>.'''.format(c.line_num, row['LOCATION'], '/api/options/?list=location'))
             elif Location.objects.filter(name__istartswith=row['LOCATION']).count() < 1:
                 errors.append(
                     '''Row {}: There is no location matching name {}. '''
@@ -155,9 +156,6 @@ def validate_csv(fileobj):
                     '''Row {}: The value '{}' in the 'WARRANTY END' column '''
                     '''is invalid. Dates must be in the format '''
                     '''dd/mm/yyyy.'''.format(c.line_num, row['WARRANY END']))
-        else:
-            errors.append(
-                '''Row {}: The mandatory field 'DATE PURCHASED' is blank.'''.format(c.line_num))
 
     # Reset fileobj now that we're finished with it.
     fileobj.seek(0)

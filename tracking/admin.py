@@ -1,8 +1,10 @@
+from datetime import date, datetime, timedelta
+from django.conf import settings
 from django.conf.urls import url
 from django.contrib.admin import register, ModelAdmin
 from django.http import HttpResponse
-from six import BytesIO
-import unicodecsv
+import pytz
+import xlsxwriter
 
 from .models import Computer, Mobile, EC2Instance, FreshdeskTicket
 
@@ -10,122 +12,275 @@ from .models import Computer, Mobile, EC2Instance, FreshdeskTicket
 @register(Computer)
 class ComputerAdmin(ModelAdmin):
     fieldsets = (
-        ('Details', {
-            'fields': (
-                'hostname', 'sam_account_name', 'domain_bound', 'ad_guid', 'ad_dn', 'os_name',
-                'os_version', 'os_service_pack', 'os_arch', 'ec2_instance')
-        }),
-        ('Management', {
-            'fields': (
-                'probable_owner', 'managed_by', 'location')
-        }),
-        ('Scan data', {
-            'fields': ('date_pdq_updated', 'date_ad_updated')
-        })
+        (
+            "Details",
+            {
+                "fields": (
+                    "hostname",
+                    "sam_account_name",
+                    "domain_bound",
+                    "ad_guid",
+                    "ad_dn",
+                    "os_name",
+                    "os_version",
+                    "os_service_pack",
+                    "os_arch",
+                    "ec2_instance",
+                )
+            },
+        ),
+        ("Management", {"fields": ("probable_owner", "managed_by", "location")}),
+        ("Scan data", {"fields": ("date_pdq_updated", "date_ad_updated")}),
     )
-    list_display = ['hostname', 'managed_by', 'probable_owner', 'os_name', 'ec2_instance']
+    list_display = [
+        "hostname",
+        "managed_by",
+        "probable_owner",
+        "os_name",
+        "ec2_instance",
+    ]
     raw_id_fields = (
-        'org_unit', 'cost_centre', 'probable_owner', 'managed_by', 'location')
-    readonly_fields = ('date_pdq_updated', 'date_ad_updated')
-    search_fields = ['sam_account_name', 'hostname']
+        "org_unit",
+        "cost_centre",
+        "probable_owner",
+        "managed_by",
+        "location",
+    )
+    readonly_fields = ("date_pdq_updated", "date_ad_updated")
+    search_fields = ["sam_account_name", "hostname"]
 
 
 @register(Mobile)
 class MobileAdmin(ModelAdmin):
-    list_display = ('identity', 'model', 'imei', 'serial_number', 'registered_to')
-    search_fields = ('identity', 'model', 'imei', 'serial_number')
+    list_display = ("identity", "model", "imei", "serial_number", "registered_to")
+    search_fields = ("identity", "model", "imei", "serial_number")
 
 
 @register(EC2Instance)
 class EC2InstanceAdmin(ModelAdmin):
-    list_display = ('name', 'ec2id', 'launch_time', 'running', 'next_state', 'agent_version', 'aws_tag_values')
-    search_fields = ('name', 'ec2id', 'launch_time')
-    readonly_fields = ['extra_data_pretty', 'extra_data', 'agent_version']
+    list_display = (
+        "name",
+        "ec2id",
+        "launch_time",
+        "running",
+        "next_state",
+        "agent_version",
+        "aws_tag_values",
+    )
+    search_fields = ("name", "ec2id", "launch_time")
+    readonly_fields = ["extra_data_pretty", "extra_data", "agent_version"]
 
     def aws_tag_values(self, obj):
         return obj.aws_tag_values()
-    aws_tag_values.short_description = 'AWS tag values'
+
+    aws_tag_values.short_description = "AWS tag values"
 
 
 @register(FreshdeskTicket)
 class FreshdeskTicketAdmin(ModelAdmin):
-    date_hierarchy = 'created_at'
+    date_hierarchy = "created_at"
     list_display = (
-        'ticket_id', 'created_at', 'freshdesk_requester', 'subject',
-        'source_display', 'status_display', 'priority_display', 'type')
+        "ticket_id",
+        "created_at",
+        "freshdesk_requester",
+        "subject",
+        "source_display",
+        "status_display",
+        "priority_display",
+        "type",
+    )
     fields = (
-        'ticket_id', 'created_at', 'freshdesk_requester', 'subject',
-        'source_display', 'status_display', 'priority_display', 'type',
-        'due_by', 'description_text')
+        "ticket_id",
+        "created_at",
+        "freshdesk_requester",
+        "subject",
+        "source_display",
+        "status_display",
+        "priority_display",
+        "type",
+        "due_by",
+        "description_text",
+    )
     readonly_fields = (
-        'attachments', 'cc_emails', 'created_at', 'custom_fields',
-        'deleted', 'description', 'description_text', 'due_by',
-        'email', 'fr_due_by', 'fr_escalated', 'fwd_emails',
-        'group_id', 'is_escalated', 'name', 'phone', 'priority',
-        'reply_cc_emails', 'requester_id', 'responder_id', 'source',
-        'spam', 'status', 'subject', 'tags', 'ticket_id', 'to_emails',
-        'type', 'updated_at', 'freshdesk_requester',
-        'freshdesk_responder', 'du_requester', 'du_responder',
+        "attachments",
+        "cc_emails",
+        "created_at",
+        "custom_fields",
+        "deleted",
+        "description",
+        "description_text",
+        "due_by",
+        "email",
+        "fr_due_by",
+        "fr_escalated",
+        "fwd_emails",
+        "group_id",
+        "is_escalated",
+        "name",
+        "phone",
+        "priority",
+        "reply_cc_emails",
+        "requester_id",
+        "responder_id",
+        "source",
+        "spam",
+        "status",
+        "subject",
+        "tags",
+        "ticket_id",
+        "to_emails",
+        "type",
+        "updated_at",
+        "freshdesk_requester",
+        "freshdesk_responder",
+        "du_requester",
+        "du_responder",
         # Callables below.
-        'source_display', 'status_display', 'priority_display')
+        "source_display",
+        "status_display",
+        "priority_display",
+    )
     search_fields = (
-        'subject', 'description_text', 'freshdesk_requester__name', 'freshdesk_requester__email',)
+        "ticket_id",
+        "subject",
+        "description_text",
+        "freshdesk_requester__name",
+        "freshdesk_requester__email",
+    )
+    # Override the default reversion/change_list.html template:
+    change_list_template = "admin/tracking/freshdeskticket/change_list.html"
 
     def source_display(self, obj):
         return obj.get_source_display()
-    source_display.short_description = 'Source'
+
+    source_display.short_description = "Source"
 
     def status_display(self, obj):
         return obj.get_status_display()
-    status_display.short_description = 'Status'
+
+    status_display.short_description = "Status"
 
     def priority_display(self, obj):
         return obj.get_priority_display()
-    priority_display.short_description = 'Priority'
+
+    priority_display.short_description = "Priority"
 
     def get_urls(self):
         urls = super(FreshdeskTicketAdmin, self).get_urls()
-        urls = [
-            url(r'^export-summary/$',
-                self.admin_site.admin_view(self.export_summary),
-                name='freshdeskticket_export_summary'),
-        ] + urls
-        return urls
+        extra_urls = [
+            url(
+                r"^report/$",
+                self.admin_site.admin_view(self.report),
+                name="freshdeskticket_export_stale",
+            )
+        ]
+        return extra_urls + urls
 
-    def export_summary(self, request):
-        """Exports Freshdesk ticket summary data to a CSV.
-        """
-        from datetime import date
-        from dateutil.relativedelta import relativedelta
-        base = date.today()
-        date_list = [base - relativedelta(months=x) for x in range(0, 12)]
+    def report(self, request):
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response[
+            "Content-Disposition"
+        ] = "attachment; filename=freshdesk_tickets_stale_{}.xlsx".format(
+            date.today().isoformat()
+        )
+        now = pytz.timezone(settings.TIME_ZONE).localize(datetime.now())
+        month_ago = now - timedelta(days=30)
+        week_ago = now - timedelta(days=7)
+        tickets = FreshdeskTicket.objects.filter(
+            created_at__gte=month_ago,
+            status__in=[2, 3],
+            deleted=False,
+        )
 
-        # Define fields to output.
-        fields = ['month', 'category', 'subcategory', 'ticket_count']
+        with xlsxwriter.Workbook(
+            response,
+            {
+                "in_memory": True,
+                "default_date_format": "dd-mmm-yyyy",
+                "remove_timezone": True,
+            },
+        ) as workbook:
+            # Stale tickets worksheet
+            stale_tickets = tickets.filter(updated_at__lte=week_ago).order_by("freshdesk_responder", "created_at")
+            stale = workbook.add_worksheet("Stale tickets")
+            stale.write_row(
+                "A1",
+                (
+                    "Ticket ID",
+                    "URL",
+                    "Subject",
+                    "Created at",
+                    "Agent",
+                    "Status",
+                    "Note count",
+                ),
+            )
+            row = 1
+            for i in stale_tickets:
+                stale.write_row(
+                    row,
+                    0,
+                    [
+                        i.ticket_id,
+                        "https://dpaw.freshdesk.com/helpdesk/tickets/{}".format(
+                            i.ticket_id
+                        ),
+                        i.subject.strip(),
+                        i.created_at,
+                        str(i.freshdesk_responder or ""),
+                        i.get_status_display(),
+                        i.freshdeskconversation_set.count(),
+                    ],
+                )
+                row += 1
+            stale.set_column("A:A", 8)
+            stale.set_column("B:B", 49)
+            stale.set_column("C:C", 100)
+            stale.set_column("D:D", 13)
+            stale.set_column("E:E", 46)
 
-        # Write data for FreshdeskTicket objects to the CSV.
-        stream = BytesIO()
-        wr = unicodecsv.writer(stream, encoding='utf-8')
-        wr.writerow(fields)  # CSV header row.
+            # Contentious tickets worksheet
+            cont_tickets = []
+            for i in tickets:
+                if i.freshdeskconversation_set.count() >= 6:
+                    cont_tickets.append(i)
+            contentious = workbook.add_worksheet("Contentious tickets")
+            contentious.write_row(
+                "A1",
+                (
+                    "Ticket ID",
+                    "URL",
+                    "Subject",
+                    "Created at",
+                    "Agent",
+                    "Status",
+                    "Note count",
+                ),
+            )
+            row = 1
+            for i in cont_tickets:
+                contentious.write_row(
+                    row,
+                    0,
+                    [
+                        i.ticket_id,
+                        "https://dpaw.freshdesk.com/helpdesk/tickets/{}".format(
+                            i.ticket_id
+                        ),
+                        i.subject.strip(),
+                        i.created_at,
+                        str(i.freshdesk_responder or ""),
+                        i.get_status_display(),
+                        i.freshdeskconversation_set.count(),
+                    ],
+                )
+                row += 1
+            contentious.set_column("A:A", 8)
+            contentious.set_column("B:B", 49)
+            contentious.set_column("C:C", 100)
+            contentious.set_column("D:D", 13)
+            contentious.set_column("E:E", 46)
 
-        # Write month count of each category & subcategory
-        for d in date_list:
-            tickets = FreshdeskTicket.objects.filter(created_at__year=d.year, created_at__month=d.month)
-            # Find the categories and subcategories for this queryset.
-            cat = set()
-            for t in tickets:  # Add tuples: (category, subcategory)
-                cat.add((t.custom_fields['support_category'], t.custom_fields['support_subcategory']))
-            cat = sorted(cat)
-            # For each (category, subcategory), obtain a count of tickets.
-            # TODO: save the category and subcategory onto each model so we
-            # can just get Aggregate queries.
-            for c in cat:
-                count = 0
-                for t in tickets:
-                    if t.custom_fields['support_category'] == c[0] and t.custom_fields['support_subcategory'] == c[1]:
-                        count += 1
-                wr.writerow([d.strftime('%b-%Y'), c[0], c[1], count])
-
-        response = HttpResponse(stream.getvalue(), content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=freshdesktick_summary.csv'
         return response

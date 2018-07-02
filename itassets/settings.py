@@ -29,6 +29,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.staticfiles',
     'django_extensions',
+    'raven.contrib.django.raven_compat',
     'reversion',
     'mptt',
     'django_mptt_admin',
@@ -150,12 +151,20 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
         },
+		'sentry': {
+            'level': 'WARNING',
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+        },
     },
     'loggers': {
-        # Log to stdout/stderr by default.
-        'django.request': {
+        'django': {
             'handlers': ['console'],
-            'level': 'WARNING'
+			'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['console', 'sentry'],
+            'level': 'ERROR',
+			'propagate': False,
         },
         'itassets': {
             'handlers': ['console'],
@@ -185,3 +194,8 @@ Q_CLUSTER = {
         'port': 6379,
         'db': 0, }
 }
+
+
+# Sentry configuration
+if env('RAVEN_DSN', False):
+    RAVEN_CONFIG = {'dsn': env('RAVEN_DSN')}

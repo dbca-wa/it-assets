@@ -87,10 +87,11 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
             LOGGER.info('Querying Freshdesk for current companies')
             companies = get_freshdesk_objects(obj_type='companies', progress=False, params={'page': 1})
             companies = {c['name']: c for c in companies}
-        if not agents:
-            LOGGER.info('Querying Freshdesk for current agents')
-            agents = get_freshdesk_objects(obj_type='agents', progress=False, params={'page': 1})
-            agents = {a['contact']['email'].lower(): a['contact'] for a in agents if a['contact']['email']}
+        # FIXME: ignore Agents for the time being.
+        #if not agents:
+        #    LOGGER.info('Querying Freshdesk for current agents')
+        #    agents = get_freshdesk_objects(obj_type='agents', progress=False, params={'page': 1})
+        #    agents = {a['contact']['email'].lower(): a['contact'] for a in agents if a['contact']['email']}
     except Exception as e:
         LOGGER.exception(e)
         return False
@@ -154,11 +155,11 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
                     return False
                 LOGGER.info('{} was updated in Freshdesk (status {}), changed: {}'.format(
                     user.email.lower(), r.status_code, ', '.join(changes)))
-        elif user.email.lower() in agents:
-            # The DepartmentUser is an agent; skip (can't update Agent details via the API).
-            LOGGER.info('{} is an agent, skipping sync'.format(user.email.lower()))
-            continue
-            # The DepartmentUser does not exist in Freshdesk; create them as a Contact.
+        #elif user.email.lower() in agents:
+        #    # The DepartmentUser is an agent; skip (can't update Agent details via the API).
+        #    LOGGER.info('{} is an agent, skipping sync'.format(user.email.lower()))
+        #    continue
+        #    # The DepartmentUser does not exist in Freshdesk; create them as a Contact.
         else:
             data = {'name': user.name, 'email': user.email.lower(),
                     'phone': user.telephone, 'job_title': user.title}
@@ -176,7 +177,8 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
 
 
 def freshdesk_cache_agents():
-    """Cache a list of Freshdesk agents as contacts, as the API treats Agents
+    """DEPRECATED: no longer caching Freshdesk agents at present.
+    Cache a list of Freshdesk agents as contacts, as the API treats Agents
     differently to Contacts.
     """
     agents = get_freshdesk_objects(obj_type='agents', progress=False, params={'page': 1})

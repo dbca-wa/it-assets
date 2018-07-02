@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # Begin by caching Agents as Contacts.
-        utils_freshdesk.freshdesk_cache_agents()
+        #utils_freshdesk.freshdesk_cache_agents()
         # Next, start caching tickets one page at a time.
         url = settings.FRESHDESK_ENDPOINT + '/tickets'
         # By default, the 'list tickets' API returns tickets created in the
@@ -40,7 +40,7 @@ class Command(BaseCommand):
             if options['limit'] and (cached_count + params['per_page']) >= options['limit']:
                 params['per_page'] = options['limit'] - cached_count
             r = requests.get(url, auth=(settings.FRESHDESK_API_KEY, 'X'), params=params)
-            LOGGER.info(json.dumps(dict(r.headers)))
+            #LOGGER.info(json.dumps(dict(r.headers)))
             # If we've been rate-limited, response status will be 429.
             if r.status_code == 429:
                 print('Rate limit reached; terminating.')
