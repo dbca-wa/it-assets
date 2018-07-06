@@ -23,7 +23,7 @@ class SiteAdmin(admin.ModelAdmin):
     search_fields = ('fqdn__name', 'fqdn__domain__name')
     list_display = ('__str__', 'enabled', 'status', 'availability')
     list_filter = (
-        'fqdn__domain', 'enabled', 'status', 'availability', 'allow_http', 'location__auth_level',
-        'location__allow_cors', 'location__allow_websockets')
+        'fqdn__domain', 'enabled', 'status', 'availability', 'allow_http', 'locations__auth_level',
+        'locations__allow_cors', 'locations__allow_websockets')
     inlines = (LocationInline,)
     filter_horizontal = ('aliases',)

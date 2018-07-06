@@ -41,6 +41,7 @@ INSTALLED_APPS = (
     'assets',
     'webconfig',
     'knowledge',
+    'rest_framework',
 )
 MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
