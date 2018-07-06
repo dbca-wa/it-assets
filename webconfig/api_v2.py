@@ -18,7 +18,7 @@ class SiteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Site
-        fields = ('fqdn', 'enabled', 'status', 'availability', 'aliases', 'allow_https', 'allow_http', 'locations')
+        fields = ('fqdn', 'enabled', 'status', 'availability', 'aliases', 'allow_https', 'allow_http', 'rules', 'locations')
 
 
 class SiteViewSet(viewsets.ReadOnlyModelViewSet):
