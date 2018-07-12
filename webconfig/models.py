@@ -53,11 +53,12 @@ class Site(models.Model):
 class Location(models.Model):
     AUTH_LEVEL_CHOICES = (
         (1, 'SSO'),
-        (3, 'SSO + Basic Auth'),
-        (5, 'Public + SSO')
+        (2, 'SSO or Basic Auth'),
+        (3, 'Public (SSO Dual)'),
+        (4, 'Subnets (SSO Dual)'),
     )
 
-    site = models.ForeignKey(Site, on_delete=models.CASCADE)
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='locations')
     path = models.CharField(max_length=128)
     auth_level = models.SmallIntegerField(choices=AUTH_LEVEL_CHOICES, default=1)
     allow_cors = models.BooleanField(default=False)

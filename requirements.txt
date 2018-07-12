@@ -24,3 +24,6 @@ requests==2.18.4
 #redis==2.10.6
 xlsxwriter==1.0.5
 raven==6.9.0
+djangorestframework==3.8.2
+djangorestframework-csv==2.1.0
+djangorestframework-gis==0.13
