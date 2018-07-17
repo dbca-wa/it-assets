@@ -2,11 +2,14 @@ from datetime import datetime
 from django.contrib.postgres.fields import JSONField
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from io import BytesIO
 from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
+from PIL import Image
 import os
 import re
 
@@ -221,10 +224,10 @@ class DepartmentUser(MPTTModel):
                     'acronym': i.name,
                     'unit_type': i.get_unit_type_display(),
                 } for i in self.org_units_secondary.all()]
-        try:
-            self.update_photo_ad()
-        except:  # Don't bomb out of saving for update_photo_ad errors.
-            pass
+
+        # Shrink photo for AD.
+        self.update_photo_ad()
+
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
@@ -235,10 +238,6 @@ class DepartmentUser(MPTTModel):
             if self.photo_ad:
                 self.photo_ad.delete()
             return
-
-        from PIL import Image
-        from six import BytesIO
-        from django.core.files.base import ContentFile
 
         if hasattr(self.photo.file, 'content_type'):
             PHOTO_TYPE = self.photo.file.content_type
@@ -263,8 +262,7 @@ class DepartmentUser(MPTTModel):
         # in case we miss 10kb, drop the quality and recompress
         for i in range(12):
             temp_buffer = BytesIO()
-            image.save(temp_buffer, PIL_TYPE,
-                       quality=PIL_QUALITY, optimize=True)
+            image.convert('RGB').save(temp_buffer, PIL_TYPE, quality=PIL_QUALITY, optimize=True)
             length = temp_buffer.tell()
             if length <= PHOTO_AD_FILESIZE:
                 break
