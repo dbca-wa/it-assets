@@ -1,0 +1,11 @@
+.dockerignore
+.env
+.flake8
+.git*
+.s2i
+.travis.yml
+Dockerfile
+LICENSE
+logs
+media
+README.md
