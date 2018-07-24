@@ -20,8 +20,8 @@ django-queryset-csv==1.0.0
 Babel==2.5.3
 mixer==6.0.1
 requests==2.18.4
-#django-q==0.9.4
-#redis==2.10.6
+django-q==0.9.4
+redis==2.10.6
 xlsxwriter==1.0.5
 raven==6.9.0
 djangorestframework==3.8.2

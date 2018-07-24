@@ -34,7 +34,7 @@ INSTALLED_APPS = (
     'mptt',
     'django_mptt_admin',
     'leaflet',
-    #'django_q',
+    'django_q',
     'organisation',
     'registers',
     'tracking',
