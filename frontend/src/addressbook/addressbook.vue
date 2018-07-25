@@ -13,16 +13,11 @@
                 <i>* Note: To filter or search by Cost Centre, enter the Chart of Accounts entity prefix (e.g. DPaW, ZPA, BGPA, RIA, CPC) and the Cost Centre number e.g. DPaW-890, ZPA-41, BGPA-111, etc. </i></p>
                 <p><strong><a href="/locations/">Lookup Office Location</a></strong> - department office location map can be used to filter and search for staff.</p>
                 <p><b>Contact <abbr class="glossary" title="Office for Information Management">OIM </abbr><a href="mailto:oimsupport@dbca.wa.gov.au">Service Operations</a> to update manager  (e.g. director general, deputy director general, executive director, director, cost centre manager) approved  information in the Address Book.</b></p>
-                <p><i><b>Important Notice:</b> Address Book information supports the department's shared IT common operating environment (Shared IT COE) <a href="/support/identity-and-access-services/">identity and access management</a>. Cost Centre managers are responsible for ensuring their staffs Address Book information is correct.</i></p>
+                <p><i><b>Important Notice:</b> Address Book information supports the department's shared IT common operating environment (Shared IT COE) <a href="/support/identity-and-access-services/">identity and access management</a>. Cost Centre managers are responsible for ensuring the Address Book information is correct for their staff.</i></p>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div id="loading-icon" class="columns small-12">
-            <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
-        </div>
-    </div>
     <div class="row">
         <input placeholder="Search" v-model="searchQuery" v-on:keyup="search"/> 
     </div>
@@ -36,6 +31,11 @@
             </tr>
         </thead>
 
+        <tr v-if="users.length == 0">
+            <div id="loading-icon" class="columns small-12">
+                <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
+            </div>
+        </tr>
         <paginate name="filterUsers" ref="paginator" tag="tbody" v-bind:list="filteredUsers" v-bind:per="10">
             <tr v-for="(user, i) in paginated('filterUsers')" v-bind:key="i">
                 <td><img class="float-right" style="height: 6.5rem; width: 6.5rem;" src="//static.dbca.wa.gov.au/images/icons/photo_placeholder.svg" v-bind:data-src="user.photo_url"/>
@@ -49,7 +49,7 @@
                         <dd>
                             <ul class="no-bullet shrink">
                                 <li v-if="user.phone_landline">
-                                    Phone: <a v-bind:href="`tel:${user.phone_landline}`">{{ user.phone_landline }}</a> <span v-if="user.phone_extension">(VoIP ext. <a v-bind:href="`tel:${user.phone_extension}`">{{ user.phone_extension }}</a>)</span> 
+                                    <span>Phone: <a v-bind:href="`tel:${user.phone_landline}`">{{ user.phone_landline }}</a> </span>&nbsp;<span v-if="user.phone_extension">(VoIP ext. <a v-bind:href="`tel:${user.phone_extension}`">{{ user.phone_extension }}</a>)</span> 
                                 </li>
                                 <li v-if="user.phone_mobile">
                                     Mobile: <a v-bind:href="`tel:${user.phone_mobile}`">{{ user.phone_mobile }}</a>
@@ -76,6 +76,9 @@
                 </td>
                 <td class="shrink">
                     <dl>
+                        <dt>
+                            {{ user.cc_name }} {{ user.cc_code }}
+                        </dt>
                         <dd>
                             <ul class="no-bullet">
                                 <li v-for="(unit, i) in user.org_units" v-bind:key="unit.name" v-bind:class="`org_${i}_id`">{{ unit.name }} <span v-if="unit.acronym">({{ unit.acronym }})</span></li>
@@ -102,40 +105,29 @@ table .shrink * { font-size: 0.7rem }
     padding: 2em;
     text-align: center;
 }
-.smallinputs input {
-	width: 100%;
-	border: 1px solid #ccc;
-	cursor: pointer;
-    padding: 4px;
-	background-color: #ffffff;
-        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAYCAYAAACbU/80AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAIpJREFUeNrEkckNgDAMBBfRkEt0ObRBBdsGXUDgmQfK4XhH2m8czQAAy27R3tsw4Qfe2x8uOO6oYLb6GlOor3GF+swURAOmUJ+RwtEJs9WvTGEYxBXqI1MQAZhCfUQKRzDMVj+TwrAIV6jvSUEkYAr1LSkcyTBb/V+KYfX7xAeusq3sLDtGH3kEGACPWIflNZfhRQAAAABJRU5ErkJggg==");
-        background-size: 9px 6px;
-        background-position: right center;
-        background-origin: content-box;
-        background-repeat: no-repeat;
-}
-.smallinputs input:hover {
-    background-color: #f8f8f8;
-}
-div.dataTables_length select {
-    border: none;
-}
-div#report1_filter input { 
-    width: 20rem !important;
-    height: 2rem;
-}
+
 
 </style>
 <script>
 import 'foundation-sites';
 //import $ from 'jquery';
-import Fuse from 'fuse.js';
+import { Search } from 'js-search';
 import debounce from 'debounce';
 
 import '../foundation-min.scss';
 import fetch_users from './fetch_users';
 
-var searchDB = null;
+
+var searchDB = new Search('id');
+var searchKeys = [
+    'name', 'preferred_name', 'email', 'username', 'title', 'employee_id',
+    'phone_landline', 'phone_extension', 'phone_mobile',
+    'location_name', 'cc_code', 'cc_name', 'org_search',
+];
+searchKeys.forEach(function (key) {
+    searchDB.addIndex(key);
+});
+
 
 export default {
     data: function () {
@@ -146,7 +138,7 @@ export default {
         };
     },
     props: {
-        itAssetsUrl: String
+        itAssetsUrl: String,
     },
     computed: {
         filteredUsers: function () {
@@ -157,24 +149,8 @@ export default {
         update: function () {
             var vm = this;
             fetch_users(this.itAssetsUrl, function (data) {
-                console.log(data);
+                searchDB.addDocuments(data);
                 vm.users = data;
-                searchDB = new Fuse(vm.users, {
-                    id: 'id',
-                    includeScore: true,
-                    tokenize: true,
-                    threshold: 0,
-                    location: 0,
-                    distance: 100,
-                    maxPatternLength: 32,
-                    minMatchCharLength: 1,
-                    keys: [
-                        'name', 'preferred_name', 'email', 'username', 'title', 'employee_id',
-                        'phone_landline', 'phone_extension', 'phone_mobile',
-                        'location_name', 'org_units.name', 'org_units.acronym'
-                    ],
-                });
-                vm.search();
             }, function(error) {
                 console.log(error);
             });
@@ -186,13 +162,14 @@ export default {
                     el.visible = true;
                 });
             } else {
-                var query = searchDB.search(vm.searchQuery);
-                console.log(query);
+                var query = searchDB.search(vm.searchQuery).map( function (el) {
+                    return el.id;  
+                });
                 vm.users.forEach( function (el) {
                     el.visible = query.indexOf(el.id) != -1;
                 } );
             }
-        }, 500 ),
+        }, 100 ),
     },
     mounted: function () {
         var vm = this;

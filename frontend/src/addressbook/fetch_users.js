@@ -10,10 +10,10 @@ export default function (base_url, success, failure) {
         if (!(contentType && contentType.includes("application/json"))) {
             throw new TypeError('Remote response did not have the content type application/json');
         }
-        var raw_data = response.json().then(function (raw_data) {
+        response.json().then(function (raw_data) {
             var data = raw_data.objects.map(function (el) {
                 return {
-                    id: String(el.pk),
+                    id: el.pk,
                     name: el.name,
                     preferred_name: el.preferred_name,
                     email: el.email,
@@ -24,8 +24,11 @@ export default function (base_url, success, failure) {
                     phone_extension: el.extension,
                     phone_mobile: el.mobile_phone,
 
+                    cc_code: el.org_data.cost_centre.code,
+                    cc_name: el.org_data.cost_centre.name,
+
                     location_id: el.org_unit__location__id,
-                    location_name: el.location__name,
+                    location_name: el.org_unit__location__name,
                     location_address: el.org_unit__location__address,
                     location_pobox: el.org_unit__location__pobox,
                     location_phone: el.org_unit__location__phone,
@@ -36,8 +39,11 @@ export default function (base_url, success, failure) {
                         return {
                             name: fl.name,
                             acronym: fl.acronym,
-                        }
+                        };
                     }),
+                    org_search: el.org_data.units.map(function (fl) {
+                        return `${fl.name} ${fl.acronym}`;
+                    }).join(' '),
                     visible: true,
                 }
             });
