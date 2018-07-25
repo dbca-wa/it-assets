@@ -1,0 +1,219 @@
+//////////////////////////////////////
+// OIM CMS overlay for Foundation 6 //
+//////////////////////////////////////
+
+///////////////////
+// Display hacks //
+///////////////////
+
+
+// fix abbreviate style
+abbr {
+    color: inherit;
+    font-weight: inherit;
+    font-size: inherit;
+};
+
+
+// bump wagtail-userbar down a notch so it doesn't block the search button on mobile
+#wagtail-userbar {
+    top: 3em;
+};
+
+
+// fix for left or right aligned floating images:
+// force a newline break after big headlines
+h1, h2, h3 {
+    clear: both;
+}
+
+
+///////////////////////////////
+// Colouring/padding changes //
+///////////////////////////////
+
+// colour defs
+$dark-blue: #003862;
+$medium-blue: #004d88;
+$light-blue: #0083e7;
+$pale-blue: #b3ddef;
+$white-smoke: #f5f5f5;
+$jet: #222222;
+$white: #ffffff;
+
+
+// Lato for all the fonts please
+body, h1, h2, h3, h4, h5, h6 {
+    font-family: "LatoWeb", "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+}
+
+
+// add some padding to the header row
+.header_row {
+    padding: 1rem 0;
+}
+
+
+// set button colours
+.button {
+    background-color: $dark-blue;
+}
+
+.button-group .button:not(:last-child) {
+    border-right: 1px solid #0069b9;
+}
+
+
+// set outer menu bar/footer page colour
+.main_menu, .footer {
+    background-color: $medium-blue;
+}
+
+
+// set menu style
+.main_menu .top-bar, .main_menu .top-bar ul, .main_menu .top-bar a, .footer .row {
+    color: $white;
+    background-color: $dark-blue;
+}
+
+.top-bar {
+    padding: 0;
+}
+
+.main_menu .top-bar a:hover {
+    color: $white;
+    background-color: $medium-blue;
+}
+
+[type="search"], textarea {
+    height: 1.9rem;
+    margin-top: 0.25rem;
+}
+
+
+// set submenu colour
+.main_menu .dropdown.menu .submenu {
+    background-color: $dark-blue;
+    border: none;
+}
+
+
+// set footer style
+.footer .inner {
+    padding-top: 0.5rem;
+    margin-bottom: -1rem;
+}
+
+.footer .row a {
+    color: $pale-blue;
+}
+
+.footer .row a:hover {
+    color: $white;
+    background-color: $medium-blue;
+}
+
+
+// set breadcrumb bar style
+.breadcrumbs_row {
+    padding: 0.5625rem 0.875rem 0.5625rem;
+    background-color: $white-smoke;
+    margin-bottom: 0.5625rem;
+}
+
+.breadcrumbs_row .breadcrumbs {
+    margin: 0;
+}
+
+#logout-breadcrumb::before {
+    content: none;
+}
+
+#logout-breadcrumb {
+    text-transform: lowercase;
+    color: unset;
+}
+
+a, .breadcrumbs a {
+    color: $medium-blue;
+}
+
+
+// panels. used for the stuff like the "governance" page
+.panel {
+    border-style: solid;
+    border-width: 1px;
+    border-color: #d8d8d8;
+    padding: 1.25rem;
+    background: #f2f2f2;
+    color: $jet;
+}
+
+.panel-hero {
+    border-radius: 8px;
+    background: linear-gradient(#002060, #001a53);
+    border: 1px solid #162d50;
+
+    p, h3, h4, ul, li {
+       color: $white;
+    };
+
+    a {
+        color: $pale-blue;
+    };
+
+    a:hover {
+        color: $white;
+    };
+
+};
+
+.panel-major {
+    border-radius: 8px;
+    background: linear-gradient(#3e75a6, #36658f);
+    border: 1px solid #162d50;
+
+    p, h3, h4, ul, li {
+       color: $white;
+    };
+
+    a {
+        color: $pale-blue;
+    };
+
+    a:hover {
+        color: $white;
+    };
+
+};
+
+.panel-minor {
+    border-radius: 8px;
+    background: linear-gradient(#a5c2df, #90b4d4);
+    border: 1px solid #162d50;
+
+    p, h3, h4, ul, li {
+       color: $jet;
+    };
+
+};
+
+// two-columns using css3
+.two-columns {
+   -webkit-column-count: 2;
+      -moz-column-count: 2;
+           column-count: 2;
+}
+
+
+tbody th, tbody td {
+    padding: 0.5rem 0.625rem 0.625rem;
+}
+
+table thead th, table thead td, table tfoot th, table tfoot td {
+    padding: 0.5rem 0.625rem 0.625rem;
+    font-weight: bold;
+    text-align: left;
+}
+
+
