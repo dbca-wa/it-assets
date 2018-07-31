@@ -16,7 +16,7 @@ from restless.resources import skip_prepare
 from restless.utils import MoreTypesJSONEncoder
 
 from itassets.utils import FieldsFormatter, CSVDjangoResource
-from .models import DepartmentUser, Location, SecondaryLocation, OrgUnit, CostCentre
+from .models import DepartmentUser, Location, OrgUnit, CostCentre
 
 
 ACCOUNT_TYPE_DICT = dict(DepartmentUser.ACCOUNT_TYPE_CHOICES)
@@ -446,7 +446,6 @@ class DepartmentUserResource(DjangoResource):
             orgunits = OrgUnit.objects.filter(active=True)
             costcentres = CostCentre.objects.filter(active=True)
             locations = Location.objects.filter(active=True)
-            slocations = SecondaryLocation.objects.all()
         defaultowner = 'support@dbca.wa.gov.au'
         for obj in orgunits:
             members = [d[0] for d in qs.filter(org_unit__in=obj.get_descendants(include_self=True)).values_list('email')]
