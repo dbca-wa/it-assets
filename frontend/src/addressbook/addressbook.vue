@@ -115,7 +115,7 @@ import { Search } from 'js-search';
 import debounce from 'debounce';
 
 import '../foundation-min.scss';
-import fetch_users from './fetch_users';
+import { fetchUsers } from './api';
 
 
 var searchDB = new Search('id');
@@ -148,7 +148,7 @@ export default {
     methods: {
         update: function () {
             var vm = this;
-            fetch_users(this.itAssetsUrl, function (data) {
+            fetchUsers(this.itAssetsUrl, function (data) {
                 searchDB.addDocuments(data);
                 vm.users = data;
             }, function(error) {
