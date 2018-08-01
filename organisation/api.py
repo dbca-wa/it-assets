@@ -59,7 +59,7 @@ class DepartmentUserResource(DjangoResource):
         'org_unit__location__name', 'org_unit__location__address',
         'org_unit__location__pobox', 'org_unit__location__phone',
         'org_unit__location__fax', 'ad_guid',
-        'org_unit__secondary_location__name', 'preferred_name',
+        'preferred_name',
         'expiry_date')
     VALUES_ARGS = COMPACT_ARGS + (
         'ad_dn', 'ad_data', 'date_updated', 'date_ad_updated', 'active',
@@ -161,7 +161,7 @@ class DepartmentUserResource(DjangoResource):
         else:
             if 'compact' in self.request.GET:
                 self.VALUES_ARGS = self.COMPACT_ARGS
-            users = users.prefetch_related('org_unit', 'org_unit__location', 'org_unit__secondary_location', 'parent')
+            users = users.prefetch_related('org_unit', 'org_unit__location', 'parent')
 
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
@@ -241,7 +241,7 @@ class DepartmentUserResource(DjangoResource):
         else:
             if 'compact' in self.request.GET:
                 self.VALUES_ARGS = self.COMPACT_ARGS
-            users = users.prefetch_related('org_unit', 'org_unit__location', 'org_unit__secondary_location', 'parent')
+            users = users.prefetch_related('org_unit', 'org_unit__location', 'parent')
 
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
@@ -441,7 +441,6 @@ class DepartmentUserResource(DjangoResource):
             orgunits = OrgUnit.objects.filter(active=True, unit_type__in=[0, 1], sync_o365=True)
             costcentres = []
             locations = Location.objects.filter(active=True)
-            slocations = []
         else:
             orgunits = OrgUnit.objects.filter(active=True)
             costcentres = CostCentre.objects.filter(active=True)
@@ -472,23 +471,12 @@ class DepartmentUserResource(DjangoResource):
                               'owner': getattr(obj.manager, 'email', defaultowner),
                               'members': list(set(members))})
         for obj in locations:
-            members = [d[0] for d in qs.filter(org_unit__location=obj).values_list('email')]
-            # We also need to iterate through DepartmentUsers to add those with
-            # secondary locations as members to each Location.
-            for i in DepartmentUser.objects.filter(secondary_locations__isnull=False):
-                if obj in i.secondary_locations.all():
-                    members.append(i.email)
+            members = [d[0] for d in qs.filter(location=obj).values_list('email')]
             structure.append({'id': 'db-loc_{}'.format(obj.pk),
                               'name': str(obj),
                               'email': slugify(obj.name) + '-location',
                               'owner': getattr(obj.manager, 'email', defaultowner),
                               'members': members})
-        for obj in slocations:
-            structure.append({'id': 'db-locs_{}'.format(obj.pk),
-                              'name': str(obj),
-                              'email': slugify(obj.name) + '-location',
-                              'owner': getattr(obj.manager, 'email', defaultowner),
-                              'members': [d[0] for d in qs.filter(org_unit__secondary_location=obj).values_list('email')]})
         for row in structure:
             if row['members']:
                 row['email'] = '{}@{}'.format(
