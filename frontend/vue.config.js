@@ -14,10 +14,9 @@ module.exports = {
         sourceMap: false
     },
 
-    baseUrl: undefined,
+    baseUrl: '/static/',
     outputDir: 'static',
     assetsDir: undefined,
-    runtimeCompiler: undefined,
     productionSourceMap: undefined,
     parallel: undefined,
     
@@ -31,17 +30,7 @@ module.exports = {
         if (process.env.NODE_ENV === 'production') {
             config.output.filename = 'js/[name].js';
             config.output.chunkFilename = 'js/[name].js';
-            config.optimization.splitChunks.cacheGroups.vendors.name = 'vendor';
         }
-
-        // make bundled jQuery available in the global namespace
-        //config.plugins.push(
-        //    new webpack.ProvidePlugin({
-        //        $: 'jquery',
-        //        jQuery: 'jquery',
-        //        'window.jQuery': 'jquery'
-        //    })
-        //);
 
     },
 

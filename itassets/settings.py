@@ -41,6 +41,7 @@ INSTALLED_APPS = (
     'assets',
     'webconfig',
     'knowledge',
+    'frontend',
     'rest_framework',
 )
 MIDDLEWARE = [

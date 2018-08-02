@@ -99,8 +99,8 @@
 }
 
 .contact-header {
-    background-color: #c1c1c1;
-    border: 1px solid #c1c1c1;
+    background-color: #e1e1e1;
+    border: 1px solid #e1e1e1;
 
     .contact-per-page, .contact-search {
         display: inline-block;
