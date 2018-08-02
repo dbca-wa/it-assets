@@ -26,6 +26,7 @@ html {
 
     @include foundation-flex-grid;
     @include foundation-flex-classes;
+    @include foundation-xy-grid-classes;
     @include foundation-table;
 
     @include foundation-button;
