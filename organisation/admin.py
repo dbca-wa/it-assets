@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
-#from django_q.tasks import async
+from django_q.tasks import async
 from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
@@ -170,9 +170,8 @@ class DepartmentUserAdmin(VersionAdmin):
             form = self.AlescoImportForm(request.POST, request.FILES)
             if form.is_valid():
                 upload = request.FILES['spreadsheet']
-                #async(alesco_data_import, upload)
-                # FIXME: run the function synchronously.
-                alesco_data_import(upload)
+                # Run the task asynchronously.
+                async(alesco_data_import, upload)
                 messages.info(request, 'Alesco data spreadsheet uploaded successfully; data is now being processed.')
                 return redirect('admin:organisation_departmentuser_changelist')
         else:

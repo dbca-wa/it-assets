@@ -235,7 +235,7 @@ class DepartmentUser(MPTTModel):
         super(DepartmentUser, self).save(*args, **kwargs)
 
     def update_photo_ad(self):
-        # Update self.photo_ad to a 240x240 thumbnail >10 kb in size.
+        # If the photo is set to blank, clear any AD thumbnail.
         if not self.photo:
             if self.photo_ad:
                 self.photo_ad.delete()
@@ -246,6 +246,11 @@ class DepartmentUser(MPTTModel):
             except FileNotFoundError:
                 return
 
+        # Account for missing media files.
+        if self.photo and not os.path.exists(self.photo.path):
+            return
+
+        # Update self.photo_ad to a 240x240 thumbnail >10 kb in size.
         if hasattr(self.photo.file, 'content_type'):
             PHOTO_TYPE = self.photo.file.content_type
 
