@@ -130,6 +130,7 @@ class HardwareAsset(Asset):
         ('In storage', 'In storage'),
         ('Deployed', 'Deployed'),
         ('Disposed', 'Disposed'),
+        ('Transferred', 'Transferred'),
     )
     asset_tag = models.CharField(max_length=10, unique=True, help_text='OIM asset tag number.')
     finance_asset_tag = models.CharField(

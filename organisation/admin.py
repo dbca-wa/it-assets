@@ -15,7 +15,7 @@ from reversion.admin import VersionAdmin
 from threading import Thread
 import time
 
-from .models import DepartmentUser, Location, SecondaryLocation, OrgUnit, CostCentre
+from .models import DepartmentUser, Location, OrgUnit, CostCentre
 from .tasks import alesco_data_import
 from .utils import departmentuser_csv_report
 
@@ -73,7 +73,7 @@ class DepartmentUserAdmin(VersionAdmin):
             (forms are required).</p>''',
             'fields': (
                 'given_name', 'surname', 'name', 'employee_id', 'cost_centre',
-                'org_unit', 'parent', 'security_clearance', 'name_update_reference'),
+                'org_unit', 'location', 'parent', 'security_clearance', 'name_update_reference'),
         }),
         ('Account fields', {
             'fields': ('account_type', 'expiry_date', 'contractor', 'notes'),
@@ -199,11 +199,6 @@ class LocationAdmin(LeafletGeoAdmin):
         'DEFAULT_CENTER': (-31.0, 115.0),
         'DEFAULT_ZOOM': 5
     }
-
-
-@register(SecondaryLocation)
-class SecondaryLocationAdmin(ModelAdmin):
-    pass
 
 
 @register(OrgUnit)

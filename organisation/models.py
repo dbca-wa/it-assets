@@ -109,6 +109,9 @@ class DepartmentUser(MPTTModel):
     date_ad_updated = models.DateTimeField(
         null=True, editable=False, verbose_name='Date AD updated',
         help_text='The date when the AD account was last updated.')
+    location = models.ForeignKey(
+        'Location', on_delete=models.PROTECT, null=True, blank=True,
+        help_text='Current place of work.')
     telephone = models.CharField(max_length=128, null=True, blank=True)
     mobile_phone = models.CharField(max_length=128, null=True, blank=True)
     extension = models.CharField(
@@ -144,6 +147,7 @@ class DepartmentUser(MPTTModel):
         default="N/A", null=True, blank=True,
         help_text="Description of normal working hours")
     secondary_locations = models.ManyToManyField("organisation.Location", blank=True,
+        related_name='departmentuser_secondary',
         help_text="Only to be used for staff working in additional loactions from their cost centre")
     populate_primary_group = models.BooleanField(
         default=True,
@@ -163,7 +167,7 @@ class DepartmentUser(MPTTModel):
     shared_account = models.BooleanField(
         default=False, editable=False,
         help_text='Automatically set from account type.')
-
+   
     class MPTTMeta:
         order_insertion_by = ['name']
 
@@ -199,20 +203,18 @@ class DepartmentUser(MPTTModel):
             self.org_data["unit"] = self.org_data["units"][-1]
             if self.org_unit.location:
                 self.org_data["location"] = self.org_unit.location.as_dict()
-            if self.org_unit.secondary_location:
-                self.org_data[
-                    "secondary_location"] = self.org_unit.secondary_location.as_dict()
             for unit in self.org_data["units"]:
                 unit["unit_type"] = self.org_unit.TYPE_CHOICES_DICT[
                     unit["unit_type"]]
-            self.org_data["cost_centre"] = {
-                "name": self.cost_centre.org_position.name if self.cost_centre.org_position else '',
-                "code": self.cost_centre.code,
-                "cost_centre_manager": str(self.cost_centre.manager),
-                "business_manager": str(self.cost_centre.business_manager),
-                "admin": str(self.cost_centre.admin),
-                "tech_contact": str(self.cost_centre.tech_contact),
-            }
+            if self.cost_centre:
+                self.org_data["cost_centre"] = {
+                    "name": self.cost_centre.org_position.name if self.cost_centre.org_position else '',
+                    "code": self.cost_centre.code,
+                    "cost_centre_manager": str(self.cost_centre.manager),
+                    "business_manager": str(self.cost_centre.business_manager),
+                    "admin": str(self.cost_centre.admin),
+                    "tech_contact": str(self.cost_centre.tech_contact),
+                }
             if self.cost_centres_secondary.exists():
                 self.org_data['cost_centres_secondary'] = [{
                     'name': i.name,
@@ -238,6 +240,11 @@ class DepartmentUser(MPTTModel):
             if self.photo_ad:
                 self.photo_ad.delete()
             return
+        else:
+            try:
+                self.photo.file
+            except FileNotFoundError:
+                return
 
         # Account for missing media files.
         if self.photo and not os.path.exists(self.photo.path):
@@ -350,7 +357,8 @@ class Location(models.Model):
     """
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
+        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='location_manager')
     address = models.TextField(unique=True, blank=True)
     pobox = models.TextField(blank=True, verbose_name='PO Box')
     phone = models.CharField(max_length=128, null=True, blank=True)
@@ -378,33 +386,6 @@ class Location(models.Model):
     def as_dict(self):
         return {k: getattr(self, k) for k in (
             'name', 'address', 'pobox', 'phone', 'fax', 'email') if getattr(self, k)}
-
-
-class SecondaryLocation(models.Model):
-    """Represents a sub-location or place without physical infrastructure.
-    """
-    location = models.ForeignKey(Location, on_delete=models.PROTECT)
-    name = models.CharField(max_length=256, unique=True)
-    manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
-    phone = models.CharField(max_length=128, null=True, blank=True)
-    fax = models.CharField(max_length=128, null=True, blank=True)
-    email = models.CharField(max_length=128, null=True, blank=True)
-
-    class Meta:
-        ordering = ('name',)
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        for orgunit in self.orgunit_set.all():
-            orgunit.save()
-        super(SecondaryLocation, self).save(*args, **kwargs)
-
-    def as_dict(self):
-        return {k: getattr(self, k) for k in (
-            'name', 'phone', 'fax', 'email') if getattr(self, k)}
 
 
 class OrgUnit(MPTTModel):
@@ -439,8 +420,6 @@ class OrgUnit(MPTTModel):
     details = JSONField(null=True, blank=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True)
-    secondary_location = models.ForeignKey(
-        SecondaryLocation, on_delete=models.PROTECT, null=True, blank=True)
     sync_o365 = models.BooleanField(
         default=True, help_text='Sync this to O365 (creates a security group).')
     active = models.BooleanField(default=True)
