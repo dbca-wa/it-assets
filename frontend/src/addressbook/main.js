@@ -4,7 +4,7 @@ import VuePaginate from 'vue-paginate';
 Vue.use(VuePaginate);
 Vue.config.productionTip = (process.env.NODE_ENV === 'production');
 
-import addressbook from './addressbook.vue';
+import main from './main.vue';
 
 
 var addressBookApp = function (target, itAssetsUrl) {
@@ -15,7 +15,7 @@ var addressBookApp = function (target, itAssetsUrl) {
     /* eslint-disable no-new */
     return new Vue({
         render: function (h) {
-            return h(addressbook, options);
+            return h(main, options);
         }
     }).$mount(target);
 };

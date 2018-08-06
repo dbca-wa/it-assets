@@ -1,8 +1,5 @@
 <template>
-<div id="addressbook_base" class="f6inject">
-
-    <div class="row">
-    </div>
+<div>
     <div id="filtering" class="callout warning hide"></div>
 
     <div class="grid-container">
@@ -83,9 +80,6 @@
             </div>
         </div>
     </div>
-
-
-
 </div>
 </template>
 <style lang="scss">
@@ -99,8 +93,8 @@
 }
 
 .contact-header {
-    background-color: #e1e1e1;
-    border: 1px solid #e1e1e1;
+    background-color: #e6e6e6;
+    border: 1px solid #e6e6e6;
 
     .contact-per-page, .contact-search {
         display: inline-block;
@@ -142,12 +136,10 @@ table .shrink * { font-size: 0.7rem }
 
 </style>
 <script>
-import 'foundation-sites';
 //import $ from 'jquery';
 import { Search } from 'js-search';
 import debounce from 'debounce';
 
-import '../foundation-min.scss';
 import { fetchUsers } from './api';
 
 
@@ -163,6 +155,7 @@ searchKeys.forEach(function (key) {
 
 
 export default {
+    name: 'addressList',
     data: function () {
         return {
             users: [],
