@@ -1,4 +1,4 @@
-var webpack = require('webpack');
+//var webpack = require('webpack');
 
 module.exports = {
     pages: {
@@ -14,7 +14,7 @@ module.exports = {
         sourceMap: false
     },
 
-    baseUrl: '/static/',
+    baseUrl: ((process.env.NODE_ENV === 'production') ? '/static/' : undefined),
     outputDir: 'static',
     assetsDir: undefined,
     productionSourceMap: undefined,
