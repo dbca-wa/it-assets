@@ -125,7 +125,6 @@
 }
 
 .nowrap { white-space: nowrap; }
-dl, dl dd, ul { margin: 0!important; }
 table .shrink * { font-size: 0.7rem }
 
 .loading-icon {

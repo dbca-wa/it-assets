@@ -3,14 +3,14 @@
 
     <div class="grid-container">
         <div class="grid-x grid-margin-x align-middle align-center">
-            <div class="cell auto tabs-title" v-bind:class="{'is-active': true}"><a v-bind:aria-selected="true" >Address list</a></div>
-            <div class="cell auto tabs-title"><a>Organisation units</a></div>
-            <div class="cell auto tabs-title"><a>Locations</a></div>
+            <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'addressList'" v-on:click="changeTab('addressList')">Address list</a></div>
+            <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'organisation'" v-on:click="changeTab('organisation')">Organisation</a></div>
+            <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'locations'" v-on:click="changeTab('locations')">Locations</a></div>
         </div>
     </div>
 
-    <addressList v-bind:itAssetsUrl="itAssetsUrl" />
-
+    <addressList v-bind:itAssetsUrl="itAssetsUrl" v-if="currentTab == 'addressList'"/>
+    <organisation v-bind:itAssetsUrl="itAssetsUrl" v-if="currentTab == 'organisation'" />
 </div>
 </template>
 <style lang="scss">
@@ -30,19 +30,26 @@ import 'foundation-sites';
 import '../foundation-min.scss';
 
 import addressList from './addressList.vue';
-
+import organisation from './organisation.vue';
 
 export default {
     name: 'main',
     data: function () {
         return {
+            currentTab: 'addressList',
         };
     },
     components: {
-        addressList
+        addressList,
+        organisation,
     },
     props: {
         itAssetsUrl: String,
     },
+    methods: {
+        changeTab: function (name) {
+            this.currentTab = name;
+        }
+    }
 }
 </script>
