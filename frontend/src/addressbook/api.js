@@ -1,4 +1,6 @@
 
+import placeholderImg from './assets/photo_placeholder.svg';
+
 var fetchWrap = function (path, base_url, success, failure) {
     fetch(`${base_url}${path}`, {
         credentials: 'include',   
@@ -48,7 +50,7 @@ var fetchUsers = function (base_url, success, failure) {
                 location_phone: el.org_unit__location__phone,
                 location_fax: el.org_unit__location__fax,
 
-                photo_url: el.photo_ad,
+                photo_url: el.photo_ad ? el.photo_ad : placeholderImg,
                 org_units: org_units,
                 org_primary: org_units.find(function (fl) {
                     return true;

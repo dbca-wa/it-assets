@@ -6,7 +6,7 @@
         </h4>
         <div v-if="hasChildren" v-show="open">
             <ul>
-                <orgUnit v-for="unit in unit.children" :key="unit.id" :unit="unit"></orgUnit>
+                <orgUnit v-for="unit in unit.children" v-bind:key="unit.id" v-bind:unit="unit"></orgUnit>
             </ul>
         </div>
     </div>

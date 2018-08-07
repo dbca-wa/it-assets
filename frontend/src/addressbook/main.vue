@@ -9,8 +9,8 @@
         </div>
     </div>
 
-    <addressList v-bind:itAssetsUrl="itAssetsUrl" v-if="currentTab == 'addressList'"/>
-    <organisation v-bind:itAssetsUrl="itAssetsUrl" v-if="currentTab == 'organisation'" />
+    <addressList v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'addressList'"/>
+    <organisation v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'organisation'" />
 </div>
 </template>
 <style lang="scss">
@@ -34,7 +34,7 @@ import addressList from './addressList.vue';
 import organisation from './organisation.vue';
 
 export default {
-    name: 'main',
+    name: 'mainComponent',
     data: function () {
         return {
             currentTab: 'addressList',

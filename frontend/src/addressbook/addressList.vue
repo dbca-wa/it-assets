@@ -29,13 +29,13 @@
     <paginate name="filterUsers" ref="paginator" tag="div" class="contact-list grid-container" v-bind:list="filteredUsers" v-bind:per="perPage">
 
         <div class="contact grid-x grid-padding-x align-middle align-center cell" v-if="paginated('filterUsers').length == 0">
-            <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
+            <img v-bind:src="loadingImg"/>
         </div>
 
         <div class="contact grid-x grid-padding-x align-middle" v-for="(user, i) in paginated('filterUsers')" v-bind:key="i">
             <div class="cell medium-shrink small-2">
                 <a target="_blank" v-bind:href="`/address-book/user-details?email=${ user.email }`">
-                    <img class="float-left" style="height: 4rem; width: 4rem;" src="//static.dbca.wa.gov.au/images/icons/photo_placeholder.svg" />
+                    <img class="float-left" style="height: 4rem; width: 4rem;" v-bind:src="user.photo_url" />
                 </a>
             </div>
             <div class="cell auto">
@@ -153,6 +153,8 @@ import debounce from 'debounce';
 
 import { fetchUsers } from './api';
 
+import loadingImg from './assets/loading.gif';
+
 
 var searchDB = new Search('id');
 var searchKeys = [
@@ -174,6 +176,7 @@ export default {
             perPage: 25,
             searchQuery: '',
             paginate: ['filterUsers'],
+            loadingImg,
         };
     },
     props: {
