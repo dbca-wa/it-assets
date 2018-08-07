@@ -11,7 +11,11 @@
     </div>
 </template>
 <style lang="scss">
-
+.f6inject {
+    .orgList {
+        margin: 0;
+    }
+}
 </style>
 <script>
 import orgUnit from './orgUnit.vue';
