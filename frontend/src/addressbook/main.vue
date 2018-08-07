@@ -2,7 +2,7 @@
 <div id="addressbook_base" class="f6inject">
 
     <div class="grid-container">
-        <div class="grid-x grid-margin-x align-middle align-center">
+        <div class="grid-x grid-margin-x align-middle align-center small-margin-collapse">
             <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'addressList'" v-on:click="changeTab('addressList')">Address list</a></div>
             <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'organisation'" v-on:click="changeTab('organisation')">Organisation</a></div>
             <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'locations'" v-on:click="changeTab('locations')">Locations</a></div>
@@ -15,14 +15,15 @@
 </template>
 <style lang="scss">
 
-.tabs-title {
-    text-align: center;
-}
+.f6inject {
+    .tabs-title {
+        text-align: center;
+    }
 
-.tabs-title > a {
-    font-size: 1rem !important;
-}
-    
+    .tabs-title > a {
+        font-size: 1rem !important;
+    }
+}    
 
 </style>
 <script>

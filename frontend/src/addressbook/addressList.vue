@@ -54,7 +54,7 @@
             </div>
             <div class="cell auto show-for-large details">
                 <ul class="no-bullet shrink">
-                    <li v-if="user.location_id"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`/locations/location-details/?location_id=${ user.location_id }`">{{ user.location_name }}</a></li>
+                    <li v-if="user.location_id"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`#?location_id=${ user.location_id }`">{{ user.location_name }}</a></li>
                     <li v-if="user.org_primary"><b>Unit:</b>&nbsp;{{ user.org_primary.name }}<span v-if="user.org_primary.acronym">&nbsp;({{ user.org_primary.acronym }})</span></li>
                     <li v-if="user.org_secondary"><b>Dep:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
                 </ul>
@@ -86,62 +86,64 @@
 </template>
 <style lang="scss">
 
-.float-right {
-    float: right !important;
-}
-
-.details {
-    font-size: 0.85rem;
-}
-
-.contact-header {
-    background-color: #e6e6e6;
-    border: 1px solid #e6e6e6;
-
-    .contact-per-page, .contact-search {
-        display: inline-block;
-        margin: 0 0.5em;
-    }
-    
-    .contact-per-page {
-        width: 6em;
+.f6inject {
+    .float-right {
+        float: right !important;
     }
 
-    .contact-search {
-        width: 12em;
+    .details {
+        font-size: 0.85rem;
     }
-}
+
+    .contact-header {
+        background-color: #e6e6e6;
+        border: 1px solid #e6e6e6;
+
+        .contact-per-page, .contact-search {
+            display: inline-block;
+            margin: 0 0.5em;
+        }
+        
+        .contact-per-page {
+            width: 6em;
+        }
+
+        .contact-search {
+            width: 12em;
+        }
+    }
 
 
-.contact-list {
+    .contact-list {
 
-}
+    }
 
-.contact-list .contact {
-    padding: 0.5em 0;
-    border: 1px solid #f1f1f1;
-}
+    .contact-list .contact {
+        padding: 0.5em 0;
+        border: 1px solid #f1f1f1;
+    }
 
-.contact-list .contact:nth-child(2n) {
-    background-color: #f1f1f1;
-}
+    .contact-list .contact:nth-child(2n) {
+        background-color: #f1f1f1;
+    }
 
-.nowrap { white-space: nowrap; }
-table .shrink * { font-size: 0.7rem }
+    .nowrap { white-space: nowrap; }
+    table .shrink * { font-size: 0.7rem }
 
-.loading-icon {
-    padding: 2em;
-    text-align: center;
-}
+    .loading-icon {
+        padding: 2em;
+        text-align: center;
+    }
 
-.cell ul {
-    margin-bottom: 0;
-}
+    .cell ul {
+        margin-bottom: 0;
+    }
 
-.f6inject .side-controls .button-group {
-    margin-bottom: 0;
-    .button {
-        font-size: 1.1rem;
+    .side-controls .button-group {
+        margin-bottom: 0;
+        .button {
+            font-size: 1.1rem;
+        }
     }
 }
 

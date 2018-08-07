@@ -1,11 +1,10 @@
 <template>
     <div class="callout">
         <h4>
-            <strong><a :href="`#?org_id=${unit.id}`">{{ unit.name }}</a></strong>&nbsp;
-            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-else class="fi-plus"></i></span>
+            <strong><a :href="`#?org_id=${unit.id}`">{{ unit.name }}</a></strong>
         </h4>
-        <div v-if="hasChildren" v-show="open">
-            <ul>
+        <div v-if="hasChildren">
+            <ul class="orgList">
                 <orgUnit v-for="unit in unit.children" v-bind:key="unit.id" v-bind:unit="unit"></orgUnit>
             </ul>
         </div>
@@ -36,11 +35,6 @@ export default {
         }
     },
     methods: {
-        toggle: function () {
-            if (this.hasChildren) {
-                this.open = !this.open;
-            }
-        }
     }
 }
 </script>

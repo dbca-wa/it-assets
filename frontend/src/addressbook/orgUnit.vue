@@ -1,16 +1,28 @@
 <template>
-    <div>
-        <li class="org_unit">
-            <a v-bind:href="`#?org_id=${unit.id}`">{{ unit.name }}</a>&nbsp;
-            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-else class="fi-plus"></i></span>
-        </li>
+    <li class="orgUnit button-group">
+        <button class="button small hollow" v-bind:href="`#?org_id=${unit.id}`" v-on:click="toggle">{{ unit.name }}&nbsp;&nbsp;<i v-if="hasChildren" v-bind:class="{'fi-minus': open, 'fi-plus': !open}"></i></button>
+        <button class="button small hollow"><i class="fi-filter"></i></button>
         <ul v-if="hasChildren" v-show="open">
             <orgUnit v-for="child in unit.children" v-bind:key="child.id" v-bind:unit="child" />
         </ul>
-    </div>
+    </li>
 </template>
 <style lang="scss">
 
+.f6inject {
+    .orgUnit {
+        flex-wrap: wrap;
+        margin-bottom: 2px
+    }
+
+    .orgUnit ul {
+        margin-bottom: 0;
+    }
+
+    .orgUnit.button-group .button {
+        flex: 0 1 auto;
+    }
+}
 </style>
 <script>
 
