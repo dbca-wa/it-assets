@@ -11,6 +11,7 @@
 
     <addressList v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'addressList'"/>
     <organisation v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'organisation'" />
+    <locations v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-show="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">
@@ -33,6 +34,7 @@ import 'foundation-icons/foundation-icons.scss';
 
 import addressList from './addressList.vue';
 import organisation from './organisation.vue';
+import locations from './locations.vue';
 
 export default {
     name: 'mainComponent',
@@ -44,9 +46,11 @@ export default {
     components: {
         addressList,
         organisation,
+        locations,
     },
     props: {
         itAssetsUrl: String,
+        kmiUrl: String,
     },
     methods: {
         changeTab: function (name) {

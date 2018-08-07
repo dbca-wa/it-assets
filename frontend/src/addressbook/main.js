@@ -7,9 +7,9 @@ Vue.config.productionTip = (process.env.NODE_ENV === 'production');
 import main from './main.vue';
 
 
-var addressBookApp = function (target, itAssetsUrl) {
+var addressBookApp = function (target, itAssetsUrl, kmiUrl) {
     var options = {
-        props: {itAssetsUrl}
+        props: {itAssetsUrl, kmiUrl}
     };
 
     /* eslint-disable no-new */
