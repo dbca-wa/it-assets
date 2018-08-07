@@ -28,6 +28,7 @@
 <script>
 import 'foundation-sites';
 import '../foundation-min.scss';
+import 'foundation-icons/foundation-icons.scss';
 
 import addressList from './addressList.vue';
 import organisation from './organisation.vue';

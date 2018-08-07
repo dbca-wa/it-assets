@@ -59,9 +59,11 @@
                     <li v-if="user.org_secondary"><b>Dep:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
                 </ul>
             </div>
-            <div class="cell shrink show-for-small-only"> 
-                <a v-bind:href="`tel:${user.phone_landline}`" class="button hollow">📞</a>
-                <a v-bind:href="`mailto:${ user.email }`" class="button hollow">🖂</a>
+            <div class="cell shrink show-for-small-only side-controls"> 
+                <div class="button-group">
+                    <a v-bind:href="`tel:${user.phone_landline}`" class="button hollow"><i class="fi-telephone"></i></a>
+                    <a v-bind:href="`mailto:${ user.email }`" class="button hollow"><i class="fi-mail"></i></a>
+                </div>
             </div>
         </div>
 
@@ -132,6 +134,16 @@ table .shrink * { font-size: 0.7rem }
     text-align: center;
 }
 
+.cell ul {
+    margin-bottom: 0;
+}
+
+.f6inject .side-controls .button-group {
+    margin-bottom: 0;
+    .button {
+        font-size: 1.1rem;
+    }
+}
 
 </style>
 <script>

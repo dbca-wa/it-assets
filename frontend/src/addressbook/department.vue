@@ -1,8 +1,8 @@
 <template>
     <div class="callout">
         <h4>
-            <strong><a :href="`#?org_id=${unit.id}`">{{ unit.name }}</a></strong>
-            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus">-</i><i v-else class="fi-plus">+</i></span>
+            <strong><a :href="`#?org_id=${unit.id}`">{{ unit.name }}</a></strong>&nbsp;
+            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-else class="fi-plus"></i></span>
         </h4>
         <div v-if="hasChildren" v-show="open">
             <ul>

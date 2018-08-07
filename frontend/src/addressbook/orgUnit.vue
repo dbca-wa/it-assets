@@ -1,11 +1,11 @@
 <template>
     <div>
         <li class="org_unit">
-            <a v-bind:href="`#?org_id=${unit.id}`">{{ unit.name }}</a>
-            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus">-</i><i v-else class="fi-plus">+</i></span>
+            <a v-bind:href="`#?org_id=${unit.id}`">{{ unit.name }}</a>&nbsp;
+            <span v-if="hasChildren" v-on:click="toggle"><i v-if="open" class="fi-minus"></i><i v-else class="fi-plus"></i></span>
         </li>
         <ul v-if="hasChildren" v-show="open">
-            <orgUnit v-for="child in unit.children" v-bind:key="unit.id" v-bind:unit="child" />
+            <orgUnit v-for="child in unit.children" v-bind:key="child.id" v-bind:unit="child" />
         </ul>
     </div>
 </template>
