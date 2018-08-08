@@ -1,11 +1,11 @@
 <template>
-    <div class="grid-container">
+    <div class="grid-container" v-show="visible">
         <img v-bind:src="mobileLegend"/>
 
         <div class="mapbox">
-            <l-map v-bind:zoom="zoom" v-bind:center="center">
+            <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
                 <l-tile-layer v-bind:url="basemapUrl"/>
-                <l-tile-layer v-bind:url="mobileUrl" opacity="0.4"/>
+                <l-tile-layer v-bind:url="mobileUrl" v-bind:opacity="0.4"/>
             </l-map>
         </div>
     </div>
@@ -47,6 +47,16 @@ export default {
     props: {
         itAssetsUrl: String,
         kmiUrl: String,
+        visible: Boolean,
+    },
+    watch: {
+        visible: function (val, oldVal) {
+            if (val) {
+                this.$nextTick(function () {
+                    this.$refs.map.mapObject.invalidateSize();
+                });
+            }
+        },
     },
     methods: {
         getTileUrl: function (name) {

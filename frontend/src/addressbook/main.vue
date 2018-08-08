@@ -11,7 +11,7 @@
 
     <addressList v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'addressList'"/>
     <organisation v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'organisation'" />
-    <locations v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-show="currentTab == 'locations'" />
+    <locations v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">
