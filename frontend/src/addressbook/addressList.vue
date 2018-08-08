@@ -56,7 +56,7 @@
                 <ul class="no-bullet shrink">
                     <li v-if="user.location_id"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`#?location_id=${ user.location_id }`">{{ user.location_name }}</a></li>
                     <li v-if="user.org_primary"><b>Unit:</b>&nbsp;{{ user.org_primary.name }}<span v-if="user.org_primary.acronym">&nbsp;({{ user.org_primary.acronym }})</span></li>
-                    <li v-if="user.org_secondary"><b>Dep:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
+                    <li v-if="user.org_secondary"><b>Grp:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
                 </ul>
             </div>
             <div class="cell shrink show-for-small-only side-controls"> 
@@ -195,7 +195,7 @@ export default {
             fetchUsers(this.itAssetsUrl, function (data) {
                 searchDB.addDocuments(data);
                 vm.users = data;
-            }, function(error) {
+            }, function (error) {
                 console.log(error);
             });
         },
