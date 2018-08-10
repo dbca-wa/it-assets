@@ -6,9 +6,9 @@ from django.db import models
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
-from organisation.models import DepartmentUser, Location
-from tracking.models import CommonFields, Computer
-from .utils import smart_truncate
+from organisation.models import CommonFields, DepartmentUser, Location
+from tracking.models import Computer
+from registers.utils import smart_truncate
 
 
 CRITICALITY_CHOICES = (

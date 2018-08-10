@@ -4,8 +4,8 @@ from django.utils.safestring import mark_safe
 from json2html import json2html
 import os
 
-from organisation.models import DepartmentUser, Location
-from tracking.models import CommonFields, Computer
+from organisation.models import CommonFields, DepartmentUser, Location
+from tracking.models import Computer
 
 
 class Vendor(models.Model):
