@@ -24,7 +24,16 @@
     .tabs-title > a {
         font-size: 1rem !important;
     }
+
+    .reveal-overlay.show {
+        display: block;
+    }
+
+    .reveal-overlay.show .reveal {
+        display: block;
+    }
 }    
+
 
 </style>
 <script>

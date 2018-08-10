@@ -34,14 +34,14 @@
 
         <div class="contact grid-x grid-padding-x align-middle" v-for="(user, i) in paginated('filterUsers')" v-bind:key="i">
             <div class="cell medium-shrink small-2">
-                <a target="_blank" v-bind:href="`/address-book/user-details?email=${ user.email }`">
+                <a v-on:click="showModal(true, user)">
                     <img class="float-left" style="height: 4rem; width: 4rem;" v-bind:src="user.photo_url" />
                 </a>
             </div>
             <div class="cell auto">
                 <ul class="no-bullet shrink">
 
-                    <li><a target="_blank" v-bind:href="`/address-book/user-details?email=${ user.email }`"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
+                    <li><a v-on:click="showModal(true, user)"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
                     <li><i style="font-size: 90%;">{{ user.title }}</i></li>
                 </ul>
             </div>
@@ -80,6 +80,14 @@
             <div class="cell shrink">
                 <paginate-links for="filterUsers" v-bind:classes="{'ul': 'pagination', '.active': 'current'}" v-bind:show-step-links="true" v-bind:limit="4" ></paginate-links>
             </div>
+        </div>
+    </div>
+
+    <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
+        <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalUser">
+            <h3>{{ modalUser.name }}</h3>
+            <p><i>{{ modalUser.title }}</i></p>
+            <button class="close-button" type="button" v-on:click="showModal(false)"><span aria-hidden="true">×</span></button>
         </div>
     </div>
 </div>
@@ -145,6 +153,8 @@
             font-size: 1.1rem;
         }
     }
+
+
 }
 
 </style>
@@ -179,6 +189,8 @@ export default {
             searchQuery: '',
             paginate: ['filterUsers'],
             loadingImg,
+            modalUser: {},
+            modalVisible: false,
         };
     },
     props: {
@@ -198,6 +210,12 @@ export default {
             }, function (error) {
                 console.log(error);
             });
+        },
+        showModal: function (state, user) {
+            if (user) {
+                this.modalUser = user;
+            }
+            this.modalVisible = state;
         },
         search: debounce( function () {
             var vm = this;

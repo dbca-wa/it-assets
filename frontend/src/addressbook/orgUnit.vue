@@ -1,7 +1,7 @@
 <template>
     <li class="orgUnit button-group">
         <button class="button small hollow" v-bind:href="`#?org_id=${unit.id}`" v-on:click="toggle">{{ unit.name }}&nbsp;&nbsp;<i v-if="hasChildren" v-bind:class="{'fi-minus': open, 'fi-plus': !open}"></i></button>
-        <button class="button small hollow"><i class="fi-filter"></i></button>
+        <button class="button small hollow"><i class="fi-info"></i></button>
         <ul v-if="hasChildren" v-show="open">
             <orgUnit v-for="child in unit.children" v-bind:key="child.id" v-bind:unit="child" />
         </ul>
