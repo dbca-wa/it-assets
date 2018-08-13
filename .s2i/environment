@@ -1,3 +1,0 @@
-UPGRADE_PIP_TO_LATEST=1
-APP_MODULE=itassets.wsgi
-APP_CONFIG=gunicorn.ini
