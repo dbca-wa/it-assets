@@ -1,11 +1,11 @@
 <template>
     <div class="callout">
         <h4>
-            <strong><a :href="`#?org_id=${unit.id}`">{{ unit.name }}</a></strong>
+            <strong><a v-on:click="$emit('showOrg', unit)">{{ unit.name }}</a></strong>
         </h4>
         <div v-if="hasChildren">
             <ul class="orgList">
-                <orgUnit v-for="unit in unit.children" v-bind:key="unit.id" v-bind:unit="unit"></orgUnit>
+                <orgUnit v-for="unit in unit.children" v-on:showOrg="$emit('showOrg', $event)" v-bind:key="unit.id" v-bind:unit="unit"></orgUnit>
             </ul>
         </div>
     </div>

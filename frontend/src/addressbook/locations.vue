@@ -19,24 +19,24 @@
                 <div><button class="button hollow">Filter address book&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
                 <div class="grid-container">
                     <div class="grid-x grid-padding-x" v-if="modalLocation.address">
-                        <div class="cell small-2 text-right"><b>Address:</b></div>
+                        <div class="cell large-2 medium-auto large-text-right"><b>Address:</b></div>
                         <div class="cell auto"><a target="_blank" v-bind:href="`https://www.google.com/maps/search/?api=1&query=${modalLocation.coords.lat},${modalLocation.coords.lng}`">{{ modalLocation.address }}</a></div>
                     </div>
                     <div class="grid-x grid-padding-x" v-if="modalLocation.phone">
-                        <div class="cell small-2 text-right"><b>Phone:</b></div>
+                        <div class="cell large-2 medium-auto large-text-right"><b>Phone:</b></div>
                         <div class="cell auto">{{ modalLocation.phone }}</div>
                     </div>
                     <div class="grid-x grid-padding-x" v-if="modalLocation.fax">
-                        <div class="cell small-2 text-right"><b>Fax:</b></div>
+                        <div class="cell large-2 medium-auto large-text-right"><b>Fax:</b></div>
                         <div class="cell auto">{{ modalLocation.fax }}</div>
                     </div>
                     <div class="grid-x grid-padding-x" v-if="modalLocation.email">
-                        <div class="cell small-2 text-right"><b>Email:</b></div>
+                        <div class="cell large-2 medium-auto large-text-right"><b>Email:</b></div>
                         <div class="cell auto">{{ modalLocation.email }}</div>
                     </div>
                     <div class="grid-x grid-padding-x" v-if="modalLocation.info_url">
-                        <div class="cell small-2 text-right"><b>Website:</b></div>
-                        <div class="cell auto"><a vbind:href="modalLocation.info_url">{{ modalLocation.info_url }}</a></div>
+                        <div class="cell large-2 medium-auto large-text-right"><b>Website:</b></div>
+                        <div class="cell auto"><a v-bind:href="modalLocation.info_url">Link</a></div>
                     </div>
                     <div class="grid-x grid-padding-x" v-if="modalLocation.bandwidth_url">
                         <iframe class="prtg" v-bind:src="modalLocation.bandwidth_url"/>

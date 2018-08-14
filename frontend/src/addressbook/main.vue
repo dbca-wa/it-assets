@@ -37,7 +37,6 @@
 
 </style>
 <script>
-import 'foundation-sites';
 import '../foundation-min.scss';
 import '../leaflet.scss';
 import 'foundation-icons/foundation-icons.scss';

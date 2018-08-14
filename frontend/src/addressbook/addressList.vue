@@ -159,7 +159,6 @@
 
 </style>
 <script>
-//import $ from 'jquery';
 import { Search } from 'js-search';
 import debounce from 'debounce';
 

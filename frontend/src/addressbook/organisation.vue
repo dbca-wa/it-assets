@@ -1,6 +1,21 @@
 <template>
-    <div class="grid-container">
-        <department v-for="unit in orgUnits" v-bind:key="unit.id" v-bind:unit="unit"/>
+    <div>
+        <div class="grid-container">
+            <department v-for="unit in orgUnits" v-on:showOrg="showOrg" v-bind:key="unit.id" v-bind:unit="unit"/>
+        </div>
+        <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
+            <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalOrgUnit">
+                <h3>{{ modalOrgUnit.name }}</h3>
+                <div><button class="button hollow">Filter address book&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
+                <div class="grid-container">
+                    <div class="grid-x grid-padding-x" v-if="modalOrgUnit.address">
+                        <div class="cell large-2 medium-auto large-text-right"><b>Address:</b></div>
+                        <div class="cell auto">[placeholder]</div>
+                    </div>
+                </div>
+                <button class="close-button" type="button" v-on:click="showModal(false)"><span aria-hidden="true">×</span></button>
+            </div>
+        </div>
     </div>
 </template>
 <style lang="scss">
@@ -18,7 +33,9 @@ export default {
     },
     data: function () {
         return {
-            orgUnits: []
+            orgUnits: [],
+            modalOrgUnit: null,
+            modalVisible: false,
         };
     },
     props: {
@@ -32,6 +49,15 @@ export default {
             }, function (error) {
                 console.log(error);
             });
+        },
+        showOrg: function (ev) {
+            return this.showModal(true, ev);
+        },
+        showModal: function (state, org) {
+            if (org) {
+                this.modalOrgUnit = org;
+            }
+            this.modalVisible = state;
         },
     },
     mounted: function () {
