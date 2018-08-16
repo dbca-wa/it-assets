@@ -3,6 +3,14 @@
     <div id="filtering" class="callout warning hide"></div>
 
     <div class="grid-container">
+        <div class="contact-header grid-x grid-padding-x align-middle" v-if="addressFilters.field_id">
+            <div class="cell shrink">
+                Filtering by: {{ addressFilters.name }}
+            </div>
+            <div class="cell auto">
+                <button class="button hollow" v-on:click="$emit('clearFilters')">Clear filter</button>
+            </div>
+        </div>
         <div class="contact-header grid-x grid-padding-x">
             <div class="cell shrink">
                 <label>
@@ -119,6 +127,11 @@
         .contact-search {
             width: 12em;
         }
+
+        .button, .button:hover {
+            background-color: white;
+            margin-bottom: 0;
+        }
     }
 
 
@@ -194,6 +207,7 @@ export default {
     },
     props: {
         itAssetsUrl: String,
+        addressFilters: Object,
     },
     computed: {
         filteredUsers: function () {
@@ -210,6 +224,37 @@ export default {
                 console.log(error);
             });
         },
+        updateVisible: function () {
+            var vm = this;
+            var query = null;
+            if (vm.searchQuery) {
+                query = searchDB.search(vm.searchQuery).map(function (el) {
+                    return el.id;
+                });
+            } else {
+                query = vm.users.map(function (el) {
+                    return el.id;
+                });
+            }
+
+            // basic filter-by-value
+            var check_func = function (el) {
+                return vm.addressFilters.field_id ? el[vm.addressFilters.field_id] == vm.addressFilters.value : true;
+            };
+            // add specific filter overrides for more complex lookups
+            if ((vm.addressFilters.mode == 'cascade') && (vm.addressFilters.field_id == 'org_id')) {
+                check_func = function (el) {
+                    return el.org_units.findIndex(function (fl) {
+                        return fl.id == vm.addressFilters.value;
+                    }) != -1;
+                };
+            }
+
+            vm.users.forEach(function (el) {
+                el.visible = check_func(el);
+                el.visible &= query.includes(el.id);
+            });
+        },
         showModal: function (state, user) {
             if (user) {
                 this.modalUser = user;
@@ -217,20 +262,13 @@ export default {
             this.modalVisible = state;
         },
         search: debounce( function () {
-            var vm = this;
-            if (!vm.searchQuery) {
-                vm.users.forEach(function (el) {
-                    el.visible = true;
-                });
-            } else {
-                var query = searchDB.search(vm.searchQuery).map( function (el) {
-                    return el.id;  
-                });
-                vm.users.forEach( function (el) {
-                    el.visible = query.indexOf(el.id) != -1;
-                } );
-            }
+            this.updateVisible();
         }, 100 ),
+    },
+    watch: {
+        addressFilters: function (val, oldVal) {
+            this.updateVisible();
+        },
     },
     mounted: function () {
         var vm = this;

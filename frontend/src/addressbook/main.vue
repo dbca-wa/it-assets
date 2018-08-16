@@ -9,9 +9,9 @@
         </div>
     </div>
 
-    <addressList v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'addressList'"/>
-    <organisation v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'organisation'" />
-    <locations v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
+    <addressList ref="addressList" v-bind:itAssetsUrl="itAssetsUrl" v-bind:addressFilters="addressFilters" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
+    <organisation ref="organisation" v-bind:itAssetsUrl="itAssetsUrl" v-on:updateFilter="updateFilter" v-show="currentTab == 'organisation'" />
+    <locations ref="locations" v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">
@@ -50,6 +50,12 @@ export default {
     data: function () {
         return {
             currentTab: 'addressList',
+            addressFilters: {
+                field_id: null,
+                name: null,
+                value: null,
+                mode: null,
+            },
         };
     },
     components: {
@@ -64,7 +70,19 @@ export default {
     methods: {
         changeTab: function (name) {
             this.currentTab = name;
-        }
+        },
+        clearFilters: function (ev) {
+            this.addressFilters = {
+                field_id: null,
+                name: null,
+                value: null,
+                mode: null
+            };
+        },
+        updateFilter: function (ev) {
+            this.currentTab = 'addressList';
+            this.addressFilters = ev;
+        },
     }
 }
 </script>

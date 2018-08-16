@@ -26,11 +26,15 @@ var fetchUsers = function (base_url, success, failure) {
         var data = raw_data.objects.map(function (el) {
             var org_units = el.org_data.units.map(function (fl) {
                 return {
+                    id: fl.id,
                     name: fl.name,
                     acronym: fl.acronym,
                     unit_type: fl.unit_type,
                 };
             }).reverse();
+            var org_primary = org_units.find(function (fl) {
+                return true;
+            });
             return {
                 id: el.pk,
                 name: el.name,
@@ -54,10 +58,10 @@ var fetchUsers = function (base_url, success, failure) {
                 location_fax: el.org_unit__location__fax,
 
                 photo_url: el.photo_ad ? el.photo_ad : placeholderImg,
+                org_id: org_primary.id,
+                org_name: org_primary.name,
                 org_units: org_units,
-                org_primary: org_units.find(function (fl) {
-                    return true;
-                }),
+                org_primary: org_primary,
                 org_secondary: org_units.find(function (fl) {
                     return (fl.unit_type == 'Division (Tier two)') || (fl.unit_type == 'Department (Tier one)');
                 }),

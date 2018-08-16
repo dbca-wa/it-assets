@@ -6,7 +6,7 @@
         <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
             <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalOrgUnit">
                 <h3>{{ modalOrgUnit.name }}</h3>
-                <div><button class="button hollow">Filter address book&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
+                <div class="button-group"><button class="button hollow" v-on:click="setFilter(modalOrgUnit, 'cascade')">Show all users&nbsp;&nbsp;<i class="fi-filter"></i></button><button class="button hollow" v-on:click="setFilter(modalOrgUnit, 'single')">Show users just in this unit&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
                 <div class="grid-container">
                     <div class="grid-x grid-padding-x" v-if="modalOrgUnit.address">
                         <div class="cell large-2 medium-auto large-text-right"><b>Address:</b></div>
@@ -58,6 +58,15 @@ export default {
                 this.modalOrgUnit = org;
             }
             this.modalVisible = state;
+        },
+        setFilter: function (org, mode) {
+            this.showModal(false);
+            this.$emit('updateFilter', {
+                field_id: 'org_id',
+                name: org.name,
+                value: org.id,
+                mode: mode
+            });
         },
     },
     mounted: function () {
