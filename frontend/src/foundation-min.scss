@@ -30,6 +30,8 @@ html {
     @include foundation-table;
 
     @include foundation-button;
+    @include foundation-button-group;
+    @include foundation-tabs;
     @include foundation-callout;
     @include foundation-dropdown;
     @include foundation-pagination;
@@ -37,6 +39,7 @@ html {
     @include foundation-thumbnail;
 
     @include foundation-reveal;
+    @include foundation-close-button;
 
     @include foundation-visibility-classes;
     // bootstrap will inject spaces before and after .row elements, set to the table display type.

@@ -1,8 +1,5 @@
 <template>
-<div id="addressbook_base" class="f6inject">
-
-    <div class="row">
-    </div>
+<div>
     <div id="filtering" class="callout warning hide"></div>
 
     <div class="grid-container">
@@ -32,19 +29,19 @@
     <paginate name="filterUsers" ref="paginator" tag="div" class="contact-list grid-container" v-bind:list="filteredUsers" v-bind:per="perPage">
 
         <div class="contact grid-x grid-padding-x align-middle align-center cell" v-if="paginated('filterUsers').length == 0">
-            <img src="//static.dbca.wa.gov.au/images/loading.gif"/>
+            <img v-bind:src="loadingImg"/>
         </div>
 
         <div class="contact grid-x grid-padding-x align-middle" v-for="(user, i) in paginated('filterUsers')" v-bind:key="i">
             <div class="cell medium-shrink small-2">
-                <a target="_blank" v-bind:href="`/address-book/user-details?email=${ user.email }`">
-                    <img class="float-left" style="height: 4rem; width: 4rem;" src="//static.dbca.wa.gov.au/images/icons/photo_placeholder.svg" />
+                <a v-on:click="showModal(true, user)">
+                    <img class="float-left" style="height: 4rem; width: 4rem;" v-bind:src="user.photo_url" />
                 </a>
             </div>
             <div class="cell auto">
                 <ul class="no-bullet shrink">
 
-                    <li><a target="_blank" v-bind:href="`/address-book/user-details?email=${ user.email }`"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
+                    <li><a v-on:click="showModal(true, user)"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
                     <li><i style="font-size: 90%;">{{ user.title }}</i></li>
                 </ul>
             </div>
@@ -57,14 +54,16 @@
             </div>
             <div class="cell auto show-for-large details">
                 <ul class="no-bullet shrink">
-                    <li v-if="user.location_id"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`/locations/location-details/?location_id=${ user.location_id }`">{{ user.location_name }}</a></li>
+                    <li v-if="user.location_id"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`#?location_id=${ user.location_id }`">{{ user.location_name }}</a></li>
                     <li v-if="user.org_primary"><b>Unit:</b>&nbsp;{{ user.org_primary.name }}<span v-if="user.org_primary.acronym">&nbsp;({{ user.org_primary.acronym }})</span></li>
-                    <li v-if="user.org_secondary"><b>Dep:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
+                    <li v-if="user.org_secondary"><b>Grp:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
                 </ul>
             </div>
-            <div class="cell shrink show-for-small-only"> 
-                <a v-bind:href="`tel:${user.phone_landline}`" class="button hollow">📞</a>
-                <a v-bind:href="`mailto:${ user.email }`" class="button hollow">🖂</a>
+            <div class="cell shrink show-for-small-only side-controls"> 
+                <div class="button-group">
+                    <a v-bind:href="`tel:${user.phone_landline}`" class="button hollow"><i class="fi-telephone"></i></a>
+                    <a v-bind:href="`mailto:${ user.email }`" class="button hollow"><i class="fi-mail"></i></a>
+                </div>
             </div>
         </div>
 
@@ -84,71 +83,88 @@
         </div>
     </div>
 
-
-
+    <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
+        <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalUser">
+            <h3>{{ modalUser.name }}</h3>
+            <p><i>{{ modalUser.title }}</i></p>
+            <button class="close-button" type="button" v-on:click="showModal(false)"><span aria-hidden="true">×</span></button>
+        </div>
+    </div>
 </div>
 </template>
 <style lang="scss">
 
-.float-right {
-    float: right !important;
-}
-
-.details {
-    font-size: 0.85rem;
-}
-
-.contact-header {
-    background-color: #e1e1e1;
-    border: 1px solid #e1e1e1;
-
-    .contact-per-page, .contact-search {
-        display: inline-block;
-        margin: 0 0.5em;
-    }
-    
-    .contact-per-page {
-        width: 6em;
+.f6inject {
+    .float-right {
+        float: right !important;
     }
 
-    .contact-search {
-        width: 12em;
+    .details {
+        font-size: 0.85rem;
     }
+
+    .contact-header {
+        background-color: #e6e6e6;
+        border: 1px solid #e6e6e6;
+
+        .contact-per-page, .contact-search {
+            display: inline-block;
+            margin: 0 0.5em;
+        }
+        
+        .contact-per-page {
+            width: 6em;
+        }
+
+        .contact-search {
+            width: 12em;
+        }
+    }
+
+
+    .contact-list {
+
+    }
+
+    .contact-list .contact {
+        padding: 0.5em 0;
+        border: 1px solid #f1f1f1;
+    }
+
+    .contact-list .contact:nth-child(2n) {
+        background-color: #f1f1f1;
+    }
+
+    .nowrap { white-space: nowrap; }
+    table .shrink * { font-size: 0.7rem }
+
+    .loading-icon {
+        padding: 2em;
+        text-align: center;
+    }
+
+    .cell ul {
+        margin-bottom: 0;
+    }
+
+    .side-controls .button-group {
+        margin-bottom: 0;
+        .button {
+            font-size: 1.1rem;
+        }
+    }
+
+
 }
-
-
-.contact-list {
-
-}
-
-.contact-list .contact {
-    padding: 0.5em 0;
-    border: 1px solid #f1f1f1;
-}
-
-.contact-list .contact:nth-child(2n) {
-    background-color: #f1f1f1;
-}
-
-.nowrap { white-space: nowrap; }
-dl, dl dd, ul { margin: 0!important; }
-table .shrink * { font-size: 0.7rem }
-
-.loading-icon {
-    padding: 2em;
-    text-align: center;
-}
-
 
 </style>
 <script>
-import 'foundation-sites';
-//import $ from 'jquery';
 import { Search } from 'js-search';
 import debounce from 'debounce';
 
-import '../foundation-min.scss';
 import { fetchUsers } from './api';
+
+import loadingImg from './assets/loading.gif';
 
 
 var searchDB = new Search('id');
@@ -163,6 +179,7 @@ searchKeys.forEach(function (key) {
 
 
 export default {
+    name: 'addressList',
     data: function () {
         return {
             users: [],
@@ -170,6 +187,9 @@ export default {
             perPage: 25,
             searchQuery: '',
             paginate: ['filterUsers'],
+            loadingImg,
+            modalUser: {},
+            modalVisible: false,
         };
     },
     props: {
@@ -186,9 +206,15 @@ export default {
             fetchUsers(this.itAssetsUrl, function (data) {
                 searchDB.addDocuments(data);
                 vm.users = data;
-            }, function(error) {
+            }, function (error) {
                 console.log(error);
             });
+        },
+        showModal: function (state, user) {
+            if (user) {
+                this.modalUser = user;
+            }
+            this.modalVisible = state;
         },
         search: debounce( function () {
             var vm = this;

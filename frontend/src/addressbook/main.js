@@ -2,25 +2,20 @@ import Vue from 'vue';
 import VuePaginate from 'vue-paginate';
 
 Vue.use(VuePaginate);
+Vue.config.productionTip = (process.env.NODE_ENV === 'production');
 
-import addressbook from './addressbook.vue';
+import main from './main.vue';
 
 
-var addressBookApp = function (target, itAssetsUrl) {
-    Vue.config.productionTip = (process.env.NODE_ENV === 'production');
-    
-    if (!itAssetsUrl) {
-        itAssetsUrl = process.env.IT_ASSETS_URL || '';
-    }
-
+var addressBookApp = function (target, itAssetsUrl, kmiUrl) {
     var options = {
-        props: {itAssetsUrl}
+        props: {itAssetsUrl, kmiUrl}
     };
 
     /* eslint-disable no-new */
     return new Vue({
         render: function (h) {
-            return h(addressbook, options);
+            return h(main, options);
         }
     }).$mount(target);
 };
