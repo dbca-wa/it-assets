@@ -408,7 +408,7 @@ class OrgUnit(MPTTModel):
         max_length=48, unique=True, null=True, editable=False)
     ad_dn = models.CharField(
         max_length=512, unique=True, null=True, editable=False)
-    name = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
