@@ -27,3 +27,5 @@ raven==6.9.0
 djangorestframework==3.8.2
 djangorestframework-csv==2.1.0
 djangorestframework-gis==0.13
+djangorestframework-recursive==0.1.2
+django-cors-headers==2.4.0

@@ -11,7 +11,7 @@
 
     <addressList ref="addressList" v-bind:itAssetsUrl="itAssetsUrl" v-bind:addressFilters="addressFilters" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
     <organisation ref="organisation" v-bind:itAssetsUrl="itAssetsUrl" v-on:updateFilter="updateFilter" v-show="currentTab == 'organisation'" />
-    <locations ref="locations" v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
+    <locations ref="locations" v-bind:itAssetsUrl="itAssetsUrl" v-on:updateFilter="updateFilter" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">

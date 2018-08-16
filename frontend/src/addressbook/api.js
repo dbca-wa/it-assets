@@ -80,12 +80,10 @@ var fetchUsers = function (base_url, success, failure) {
 
 var fetchLocations = function (base_url, success, failure) {
     var formatter = function (raw_data) {
-        var data = raw_data.objects.filter(function (el) {
-            return el.point && el.active;
+        var data = raw_data.filter(function (el) {
+            return el.point;
         });
         data = data.map(function (el) {
-            var pointRegex = /POINT\s*\(([+-]?(?:[0-9]*[.])?[0-9]+)\s+([+-]?(?:[0-9]*[.])?[0-9]+)\)/g;
-            var match = pointRegex.exec(el.point);
             return {
                 id: el.pk,
                 name: el.name,
@@ -93,7 +91,7 @@ var fetchLocations = function (base_url, success, failure) {
                 address: el.address,
                 phone: el.phone,
                 fax: el.fax,
-                coords: L.latLng(match[2], match[1]),
+                coords: L.latLng(el.point.coordinates[1], el.point.coordinates[0]),
                 info_url: el.url,
                 bandwidth_url: el.bandwidth_url,
             }
@@ -101,15 +99,14 @@ var fetchLocations = function (base_url, success, failure) {
         success(data);
     };
 
-    fetchWrap('/api/locations/', base_url, formatter, failure);
+    fetchWrap('/api/v2/location.json', base_url, formatter, failure);
 };
 
 var fetchOrg = function (base_url, success, failure) {
     var formatter = function (raw_data) {
-        var data = raw_data.objects;
-        success(data);
+        success(raw_data);
     };
-    fetchWrap('/api/options/?list=org_structure', base_url, formatter, failure);
+    fetchWrap('/api/v2/orgtree.json', base_url, formatter, failure);
 };
 
 export {
