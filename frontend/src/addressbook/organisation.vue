@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="grid-container">
-            <department v-for="unit in orgUnits" v-on:showOrg="showOrg" v-bind:key="unit.id" v-bind:unit="unit"/>
+            <department v-for="unit in orgTree" v-on:showOrg="showOrg" v-bind:key="unit.id" v-bind:unit="unit"/>
         </div>
         <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
             <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalOrgUnit">
@@ -22,9 +22,9 @@
 
 </style>
 <script>
-import department from './department.vue';
+import { mapGetters } from 'vuex';
 
-import { fetchOrg } from './api';
+import department from './department.vue';
 
 export default {
     name: 'organisation',
@@ -39,17 +39,14 @@ export default {
         };
     },
     props: {
-        itAssetsUrl: String,
+    },
+    computed: {
+        // bind to getters in store.js
+        ...mapGetters([
+            'orgTree'
+        ]),
     },
     methods: {
-        update: function () {
-            var vm = this;
-            fetchOrg(this.itAssetsUrl, function (data) {
-                vm.orgUnits = data;
-            }, function (error) {
-                console.log(error);
-            });
-        },
         showOrg: function (ev) {
             return this.showModal(true, ev);
         },
@@ -62,7 +59,7 @@ export default {
         setFilter: function (org, mode) {
             this.showModal(false);
             this.$emit('updateFilter', {
-                field_id: 'org_id',
+                field_id: 'org_unit.id',
                 name: org.name,
                 value: org.id,
                 mode: mode
@@ -70,8 +67,6 @@ export default {
         },
     },
     mounted: function () {
-        var vm = this;
-        vm.update();
     },
 }
 </script>

@@ -10,7 +10,7 @@
     </div>
 
     <addressList ref="addressList" v-bind:addressFilters="addressFilters" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
-    <organisation ref="organisation" v-bind:itAssetsUrl="itAssetsUrl" v-on:updateFilter="updateFilter" v-show="currentTab == 'organisation'" />
+    <organisation ref="organisation" v-on:updateFilter="updateFilter" v-show="currentTab == 'organisation'" />
     <locations ref="locations" v-on:updateFilter="updateFilter" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
@@ -41,7 +41,7 @@ import '../foundation-min.scss';
 import '../leaflet.scss';
 import 'foundation-icons/foundation-icons.scss';
 
-import { fetchUsers, fetchLocations } from './api';
+import { fetchUsers, fetchLocations, fetchOrgTree } from './api';
 
 import addressList from './addressList.vue';
 import organisation from './organisation.vue';
@@ -84,6 +84,13 @@ export default {
                 vm.$store.commit('updateUsers', data);
             }, function (error) {
                 console.log(error);
+            });
+
+            // pull the org structure from the API, update the store
+            fetchOrgTree(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateOrgTree', data);
+            }, function (error) {
+                console.log(error);   
             });
 
         },

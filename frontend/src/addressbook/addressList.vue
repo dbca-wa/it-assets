@@ -63,9 +63,9 @@
             </div>
             <div class="cell auto show-for-large details">
                 <ul class="no-bullet shrink">
-                    <li v-if="user.location_id"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`#?location_id=${ user.location_id }`">{{ user.location_name }}</a></li>
-                    <li v-if="user.org_primary"><b>Unit:</b>&nbsp;{{ user.org_primary.name }}<span v-if="user.org_primary.acronym">&nbsp;({{ user.org_primary.acronym }})</span></li>
-                    <li v-if="user.org_secondary"><b>Grp:</b>&nbsp;{{ user.org_secondary.name }}<span v-if="user.org_secondary.acronym">&nbsp;({{ user.org_secondary.acronym }})</span></li>
+                    <li v-if="user.location"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`#?location_id=${ user.location.id }`">{{ user.location.name }}</a></li>
+                    <li v-if="user.org_unit"><b>Unit:</b>&nbsp;{{ user.org_unit.name }}<span v-if="user.org_unit.acronym">&nbsp;({{ user.org_unit.acronym }})</span></li>
+                    <li v-if="user.group_unit"><b>Grp:</b>&nbsp;{{ user.group_unit.name }}<span v-if="user.group_unit.acronym">&nbsp;({{ user.group_unit.acronym }})</span></li>
                 </ul>
             </div>
             <div class="cell shrink show-for-small-only side-controls"> 
@@ -177,8 +177,6 @@ import { mapGetters } from 'vuex';
 import { Search } from 'js-search';
 import debounce from 'debounce';
 
-import { fetchUsers } from './api';
-
 import loadingImg from './assets/loading.gif';
 
 
@@ -186,7 +184,7 @@ var searchDB = new Search('id');
 var searchKeys = [
     'name', 'preferred_name', 'email', 'username', 'title', 'employee_id',
     'phone_landline', 'phone_extension', 'phone_mobile',
-    'location_name', 'cc_code', 'cc_name', 'org_search',
+    'org_search', 'location_search',
 ];
 searchKeys.forEach(function (key) {
     searchDB.addIndex(key);
@@ -212,6 +210,7 @@ export default {
     computed: {
         // used to render the list of users
         filteredUsers: function () {
+            //console.log('filteredUsers');
             return this.usersList.filter(function(el) {return el.visible});
         },
          // bind to getters in store.js
@@ -223,7 +222,8 @@ export default {
         updateVisible: function () {
             var vm = this;
             var query = null;
-           
+            //console.log('updateVisible');
+
             // get a list of IDs that match the current search term (if exists)
             if (vm.searchQuery) {
                 query = searchDB.search(vm.searchQuery).map(function (el) {
@@ -234,7 +234,8 @@ export default {
                     return el.id;
                 });
             }
-    
+            //console.log(query);
+
             // apply address filter as a callback function.
             // address filter should have these properties:
             // - field_id: property name on the user object to match on
@@ -244,15 +245,25 @@ export default {
 
             // here's one for a basic match-by-value
             var check_func = function (el) {
-                return vm.addressFilters.field_id ? el[vm.addressFilters.field_id] == vm.addressFilters.value : true;
+                if (!vm.addressFilters.field_id) {
+                    return true;
+                }
+                var fields = vm.addressFilters.field_id.split('.');
+                var base = el;
+
+                for (var i=0; i<fields.length; i++) {
+                    base = base[fields[i]];
+                }
+
+                return base == vm.addressFilters.value;
             };
 
             // add specific filter overrides for more complex lookups
-            // this one searches inside the org_units list for a match
-            if ((vm.addressFilters.mode == 'cascade') && (vm.addressFilters.field_id == 'org_id')) {
+            // this one searches inside the org_unit_chain list for a match
+            if ((vm.addressFilters.mode == 'cascade') && (vm.addressFilters.field_id == 'org_unit.id')) {
                 check_func = function (el) {
-                    return el.org_units.findIndex(function (fl) {
-                        return fl.id == vm.addressFilters.value;
+                    return el.org_unit_chain.findIndex(function (fl) {
+                        return fl == vm.addressFilters.value;
                     }) != -1;
                 };
             }
@@ -282,6 +293,7 @@ export default {
         usersList: function (val, oldVal) {
             // when the user list changes, update the search index
             searchDB.addDocuments(val);
+            this.updateVisible();
         }
     },
     mounted: function () {

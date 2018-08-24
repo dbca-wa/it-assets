@@ -69,7 +69,6 @@ import L from 'leaflet';
 
 //import 'leaflet/dist/leaflet.css';
 
-//import { fetchLocations } from './api';
 import mobileLegend from './assets/mobile_legend.png';
 import iconUrl from './assets/pin.svg';
 
@@ -130,7 +129,7 @@ export default {
         setFilter: function (location, mode) {
             this.showModal(false);
             this.$emit('updateFilter', {
-                field_id: 'location_id',
+                field_id: 'location.id',
                 name: location.name,
                 value: location.id,
                 mode: mode
