@@ -43,14 +43,14 @@
 
         <div class="contact grid-x grid-padding-x align-middle" v-for="(user, i) in paginated('filterUsers')" v-bind:key="i">
             <div class="cell medium-shrink small-2">
-                <a v-on:click="showModal(true, user)">
+                <a v-on:click="$emit('showModal', 'user', user)">
                     <img class="float-left" style="width: 4rem;" v-bind:src="user.photo_url" />
                 </a>
             </div>
             <div class="cell auto">
                 <ul class="no-bullet shrink">
 
-                    <li><a v-on:click="showModal(true, user)"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
+                    <li><a v-on:click="$emit('showModal', 'user', user)"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
                     <li><i style="font-size: 90%;">{{ user.title }}</i></li>
                 </ul>
             </div>
@@ -92,11 +92,11 @@
         </div>
     </div>
 
-    <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
-        <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalUser">
-            <h3>{{ modalUser.name }}</h3>
-            <p><i>{{ modalUser.title }}</i></p>
-            <button class="close-button" type="button" v-on:click="showModal(false)"><span aria-hidden="true">×</span></button>
+    <div class="reveal-overlay show" v-on:click="$emit('showModal', 'user', null)" v-if="modal">
+        <div class="small reveal" v-on:click.stop tabindex="-1">
+            <h3>{{ modal.name }}</h3>
+            <p><i>{{ modal.title }}</i></p>
+            <button class="close-button" type="button" v-on:click="$emit('showModal', 'user', null)"><span aria-hidden="true">×</span></button>
         </div>
     </div>
 </div>
@@ -200,12 +200,11 @@ export default {
             searchQuery: '',
             paginate: ['filterUsers'],
             loadingImg,
-            modalUser: {},
-            modalVisible: false,
         };
     },
     props: {
         addressFilters: Object,
+        modal: Object,
     },
     computed: {
         // used to render the list of users
@@ -272,13 +271,6 @@ export default {
                 el.visible = check_func(el);
                 el.visible &= query.includes(el.id);
             });
-        },
-        // flip the user modal on and off
-        showModal: function (state, user) {
-            if (user) {
-                this.modalUser = user;
-            }
-            this.modalVisible = state;
         },
         // if the current search term changes, update the visible status of each record
         search: debounce( function () {

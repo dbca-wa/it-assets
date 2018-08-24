@@ -9,9 +9,9 @@
         </div>
     </div>
 
-    <addressList ref="addressList" v-bind:addressFilters="addressFilters" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
-    <organisation ref="organisation" v-on:updateFilter="updateFilter" v-show="currentTab == 'organisation'" />
-    <locations ref="locations" v-on:updateFilter="updateFilter" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
+    <addressList ref="addressList" v-bind:addressFilters="addressFilters" v-bind:modal="modals.user" v-on:showModal="showModal" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
+    <organisation ref="organisation" v-on:updateFilter="updateFilter" v-bind:modal="modals.orgUnit" v-on:showModal="showModal" v-show="currentTab == 'organisation'" />
+    <locations ref="locations" v-on:updateFilter="updateFilter" v-bind:modal="modals.location" v-on:showModal="showModal" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">
@@ -57,6 +57,11 @@ export default {
                 name: null,
                 value: null,
                 mode: null,
+            },
+            modals: {
+                user: null,
+                orgUnit: null,
+                'location': null,
             },
         };
     },
@@ -113,6 +118,9 @@ export default {
         updateFilter: function (ev) {
             this.currentTab = 'addressList';
             this.addressFilters = ev;
+        },
+        showModal: function (src_type, src) {
+            this.modals[src_type] = src;
         },
     },
     mounted: function () {
