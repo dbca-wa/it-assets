@@ -57,6 +57,8 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class OrgUnitSerializer(serializers.ModelSerializer):
+    unit_type = serializers.CharField(source='get_unit_type_display')
+
     class Meta:
         model = OrgUnit
         fields = ('id', 'name', 'acronym', 'unit_type', 'manager', 'parent', 'location')

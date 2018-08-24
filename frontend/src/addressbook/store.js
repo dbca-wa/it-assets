@@ -33,6 +33,14 @@ const store = new Vuex.Store({
         orgTree: function (state) {
             return state.orgTree;
         },
+        orgUnitsList: function (state) {
+            return state.orgUnitsOrder;
+        },
+        orgUnit: function (state) {
+            return function (id) {
+                return state.orgUnits.get(id);
+            };
+        },
     },
     plugins: [createPersistedState({
         key: 'oim_addressbook',
@@ -53,6 +61,12 @@ const store = new Vuex.Store({
         },
         updateOrgTree: function (state, orgTree) {
             state.orgTree = orgTree;
+        },
+        updateOrgUnits: function (state, orgUnitsList) {
+            state.orgUnitsOrder = orgUnitsList;
+            state.orgUnits = new Set(state.orgUnitsOrder.map(function (el) {
+                return [el.id, el];
+            }));
         },
     },
 });

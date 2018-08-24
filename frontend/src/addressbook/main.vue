@@ -41,7 +41,7 @@ import '../foundation-min.scss';
 import '../leaflet.scss';
 import 'foundation-icons/foundation-icons.scss';
 
-import { fetchUsers, fetchLocations, fetchOrgTree } from './api';
+import { fetchUsers, fetchLocations, fetchOrgTree, fetchOrgUnits } from './api';
 
 import addressList from './addressList.vue';
 import organisation from './organisation.vue';
@@ -91,6 +91,11 @@ export default {
                 vm.$store.commit('updateOrgTree', data);
             }, function (error) {
                 console.log(error);   
+            });
+            fetchOrgUnits(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateOrgUnits', data);
+            }, function (error) {
+                console.log(error);
             });
 
         },

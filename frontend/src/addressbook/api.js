@@ -85,8 +85,29 @@ var fetchOrgTree = function (base_url, success, failure) {
     fetchWrap('/api/v2/orgtree.json', base_url, formatter, failure);
 };
 
+var fetchOrgUnits = function (base_url, success, failure) {
+    var formatter = function (raw_data) {
+        var data = raw_data.map(function (el) {
+            return {
+                id: el.id,
+                name: el.name,
+                acronym: el.acronym,
+                unit_type: el.unit_type,
+                manager: el.manager,
+                parent: el.parent,
+                location: el.location,
+            }
+        });
+        success(data);
+    };
+
+    fetchWrap('/api/v2/orgunit.json', base_url, formatter, failure);
+};
+
+
 export {
     fetchUsers,
     fetchLocations,
     fetchOrgTree,
+    fetchOrgUnits,
 }
