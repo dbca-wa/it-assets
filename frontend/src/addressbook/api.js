@@ -85,7 +85,7 @@ var fetchLocations = function (base_url, success, failure) {
         });
         data = data.map(function (el) {
             return {
-                id: el.pk,
+                id: el.id,
                 name: el.name,
                 email: el.email,
                 address: el.address,

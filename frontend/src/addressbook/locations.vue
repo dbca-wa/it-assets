@@ -1,13 +1,13 @@
 <template>
-    <div>
-        <div class="grid-container" v-show="visible">
+    <div v-show="visible">
+        <div class="grid-container">
             <img v-bind:src="mobileLegend"/>
 
             <div class="mapbox">
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
                     <l-tile-layer v-bind:url="basemapUrl"/>
                     <l-tile-layer v-bind:url="mobileUrl" v-bind:opacity="0.4"/>
-                    <l-marker v-for="location in locations" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="showModal(true, location)">
+                    <l-marker v-for="location in locationsList" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="showModal(true, location)">
                         <l-tooltip v-bind:content="location.name"></l-tooltip>
                     </l-marker>
                 </l-map>
@@ -63,12 +63,13 @@
 </style>
 <script>
 
+import { mapGetters } from 'vuex';
 import { LMap, LTileLayer, LMarker, LTooltip } from 'vue2-leaflet';
 import L from 'leaflet';
 
 //import 'leaflet/dist/leaflet.css';
 
-import { fetchLocations } from './api';
+//import { fetchLocations } from './api';
 import mobileLegend from './assets/mobile_legend.png';
 import iconUrl from './assets/pin.svg';
 
@@ -83,7 +84,6 @@ export default {
     },
     data: function () {
         return {
-            locations: [],
             zoom: 5,
             center: L.latLng(-24.966, 123.750),
             icon: new L.Icon({
@@ -100,11 +100,12 @@ export default {
         };
     },
     props: {
-        itAssetsUrl: String,
         kmiUrl: String,
         visible: Boolean,
     },
     watch: {
+        // the map widget will only listen for changes in window size. 
+        // need to load in the widget's visibility as a property and simulate a window resize on change.
         visible: function (val, oldVal) {
             if (val) {
                 this.$nextTick(function () {
@@ -113,15 +114,13 @@ export default {
             }
         },
     },
+    computed: {
+        // bind to getters in store.js
+        ...mapGetters([
+            'locationsList'
+        ]),
+    },
     methods: {
-        update: function() {
-            var vm = this;
-            fetchLocations(this.itAssetsUrl, function (data) {
-                vm.locations = data;
-            }, function (error) {
-                console.log(error);
-            });
-        },
         showModal: function (state, loc) {
             if (loc) {
                 this.modalLocation = loc;
@@ -144,7 +143,6 @@ export default {
     mounted: function () {
         this.basemapUrl = this.getTileUrl('public:mapbox-outdoors');
         this.mobileUrl = this.getTileUrl('dpaw:telstra_gcm_4g_3g');
-        this.update();
     }
 }
 </script>

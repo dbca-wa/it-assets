@@ -19,7 +19,8 @@
     "vue-paginate": "git+https://github.com/marcovdb/vue-paginate.git",
     "vue-router": "^3.0.1",
     "vue2-leaflet": "^1.0.2",
-    "vuex": "^3.0.1"
+    "vuex": "^3.0.1",
+    "vuex-persistedstate": "git+https://github.com/scottp-dpaw/vuex-persistedstate.git"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^3.0.0-rc.10",

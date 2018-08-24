@@ -9,9 +9,9 @@
         </div>
     </div>
 
-    <addressList ref="addressList" v-bind:itAssetsUrl="itAssetsUrl" v-bind:addressFilters="addressFilters" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
+    <addressList ref="addressList" v-bind:addressFilters="addressFilters" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
     <organisation ref="organisation" v-bind:itAssetsUrl="itAssetsUrl" v-on:updateFilter="updateFilter" v-show="currentTab == 'organisation'" />
-    <locations ref="locations" v-bind:itAssetsUrl="itAssetsUrl" v-on:updateFilter="updateFilter" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
+    <locations ref="locations" v-on:updateFilter="updateFilter" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">
@@ -41,6 +41,8 @@ import '../foundation-min.scss';
 import '../leaflet.scss';
 import 'foundation-icons/foundation-icons.scss';
 
+import { fetchUsers, fetchLocations } from './api';
+
 import addressList from './addressList.vue';
 import organisation from './organisation.vue';
 import locations from './locations.vue';
@@ -68,6 +70,23 @@ export default {
         kmiUrl: String,
     },
     methods: {
+        update: function () {
+            var vm = this;
+            // pull the latest locations data from the API, update the store
+            fetchLocations(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateLocations', data);
+            }, function (error) {
+                console.log(error);
+            });
+
+            // pull the latest user data from the API, update the store
+            fetchUsers(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateUsers', data);
+            }, function (error) {
+                console.log(error);
+            });
+
+        },
         changeTab: function (name) {
             this.currentTab = name;
         },
@@ -83,6 +102,9 @@ export default {
             this.currentTab = 'addressList';
             this.addressFilters = ev;
         },
+    },
+    mounted: function () {
+        this.update();
     }
 }
 </script>

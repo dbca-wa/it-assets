@@ -37,7 +37,7 @@
     <paginate name="filterUsers" ref="paginator" tag="div" class="contact-list grid-container" v-bind:list="filteredUsers" v-bind:per="perPage">
 
         <div class="contact grid-x grid-padding-x align-middle align-center cell" v-if="paginated('filterUsers').length == 0">
-            <img v-if="users.length == 0" v-bind:src="loadingImg"/>
+            <img v-if="usersList.length == 0" v-bind:src="loadingImg"/>
             <span v-else>No users match your query. Try removing some filters.</span>
         </div>
 
@@ -173,6 +173,7 @@
 
 </style>
 <script>
+import { mapGetters } from 'vuex';
 import { Search } from 'js-search';
 import debounce from 'debounce';
 
@@ -196,7 +197,6 @@ export default {
     name: 'addressList',
     data: function () {
         return {
-            users: [],
             perPageChoices: [10, 25, 50, 100],
             perPage: 25,
             searchQuery: '',
@@ -207,42 +207,48 @@ export default {
         };
     },
     props: {
-        itAssetsUrl: String,
         addressFilters: Object,
     },
     computed: {
+        // used to render the list of users
         filteredUsers: function () {
-            return this.users.filter(function(el) {return el.visible});
-        }
+            return this.usersList.filter(function(el) {return el.visible});
+        },
+         // bind to getters in store.js
+        ...mapGetters([
+            'usersList'
+        ]),
     },
     methods: {
-        update: function () {
-            var vm = this;
-            fetchUsers(this.itAssetsUrl, function (data) {
-                searchDB.addDocuments(data);
-                vm.users = data;
-            }, function (error) {
-                console.log(error);
-            });
-        },
         updateVisible: function () {
             var vm = this;
             var query = null;
+           
+            // get a list of IDs that match the current search term (if exists)
             if (vm.searchQuery) {
                 query = searchDB.search(vm.searchQuery).map(function (el) {
                     return el.id;
                 });
             } else {
-                query = vm.users.map(function (el) {
+                query = vm.usersList.map(function (el) {
                     return el.id;
                 });
             }
+    
+            // apply address filter as a callback function.
+            // address filter should have these properties:
+            // - field_id: property name on the user object to match on
+            // - name: string to show at the top next to "Filtering by:"
+            // - value: value to match with
+            // - mode: modifier to indicate a special type of match
 
-            // basic filter-by-value
+            // here's one for a basic match-by-value
             var check_func = function (el) {
                 return vm.addressFilters.field_id ? el[vm.addressFilters.field_id] == vm.addressFilters.value : true;
             };
+
             // add specific filter overrides for more complex lookups
+            // this one searches inside the org_units list for a match
             if ((vm.addressFilters.mode == 'cascade') && (vm.addressFilters.field_id == 'org_id')) {
                 check_func = function (el) {
                     return el.org_units.findIndex(function (fl) {
@@ -251,29 +257,36 @@ export default {
                 };
             }
 
-            vm.users.forEach(function (el) {
+            vm.usersList.forEach(function (el) {
                 el.visible = check_func(el);
                 el.visible &= query.includes(el.id);
             });
         },
+        // flip the user modal on and off
         showModal: function (state, user) {
             if (user) {
                 this.modalUser = user;
             }
             this.modalVisible = state;
         },
+        // if the current search term changes, update the visible status of each record
         search: debounce( function () {
             this.updateVisible();
         }, 100 ),
     },
     watch: {
         addressFilters: function (val, oldVal) {
+            // if the current address filter changes, update the visible status of each record
             this.updateVisible();
         },
+        usersList: function (val, oldVal) {
+            // when the user list changes, update the search index
+            searchDB.addDocuments(val);
+        }
     },
     mounted: function () {
-        var vm = this;
-        vm.update();
+        // on first mount, update the search index with the current user list
+        searchDB.addDocuments(this.usersList);
     }
 }
 </script>
