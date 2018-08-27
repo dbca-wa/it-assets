@@ -32,6 +32,10 @@
     .reveal-overlay.show .reveal {
         display: block;
     }
+
+    .detailList .grid-x {
+        margin-bottom: 0.5em;
+    }
 }    
 
 
@@ -121,6 +125,10 @@ export default {
         },
         showModal: function (src_type, src) {
             this.modals[src_type] = src;
+        },
+        showUser: function (user) {
+            this.currentTab = 'addressList';
+            this.modals['user'] = user;
         },
     },
     mounted: function () {

@@ -17,29 +17,29 @@
             <div class="small reveal" v-on:click.stop tabindex="-1">
                 <h3>{{ modal.name }}</h3>
                 <div><button class="button hollow" v-on:click="setFilter(modal, 'single')">Show all users&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
-                <div class="grid-container">
-                    <div class="grid-x grid-padding-x" v-if="modal.address">
-                        <div class="cell large-2 medium-auto large-text-right"><b>Address:</b></div>
+                <div class="grid-container full detailList">
+                    <div class="grid-x grid-margin-x" v-if="modal.address">
+                        <div class="cell large-2 large-text-right"><b>Address:</b></div>
                         <div class="cell auto"><a target="_blank" v-bind:href="`https://www.google.com/maps/search/?api=1&query=${modal.coords.lat},${modal.coords.lng}`">{{ modal.address }}</a></div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modal.phone">
-                        <div class="cell large-2 medium-auto large-text-right"><b>Phone:</b></div>
+                    <div class="grid-x grid-margin-x" v-if="modal.phone">
+                        <div class="cell large-2 large-text-right"><b>Phone:</b></div>
                         <div class="cell auto">{{ modal.phone }}</div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modal.fax">
-                        <div class="cell large-2 medium-auto large-text-right"><b>Fax:</b></div>
+                    <div class="grid-x grid-margin-x" v-if="modal.fax">
+                        <div class="cell large-2 large-text-right"><b>Fax:</b></div>
                         <div class="cell auto">{{ modal.fax }}</div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modal.email">
-                        <div class="cell large-2 medium-auto large-text-right"><b>Email:</b></div>
+                    <div class="grid-x grid-margin-x" v-if="modal.email">
+                        <div class="cell large-2 large-text-right"><b>Email:</b></div>
                         <div class="cell auto">{{ modal.email }}</div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modal.info_url">
-                        <div class="cell large-2 medium-auto large-text-right"><b>Website:</b></div>
+                    <div class="grid-x grid-margin-x" v-if="modal.info_url">
+                        <div class="cell large-2 large-text-right"><b>Website:</b></div>
                         <div class="cell auto"><a v-bind:href="modal.info_url">Link</a></div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modal.bandwidth_url">
-                        <iframe class="prtg" v-bind:src="modal.bandwidth_url"/>
+                    <div class="grid-x grid-margin-x" v-if="modal.bandwidth_url">
+                        <iframe class="prtg cell auto" v-bind:src="modal.bandwidth_url"/>
                     </div>
                 </div>
                 <button class="close-button" type="button" v-on:click="$emit('showModal', 'location', null)"><span aria-hidden="true">×</span></button>

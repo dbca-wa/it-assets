@@ -63,9 +63,9 @@
             </div>
             <div class="cell auto show-for-large details">
                 <ul class="no-bullet shrink">
-                    <li v-if="user.location"><b>Loc:</b>&nbsp;<a target="_blank" v-bind:href="`#?location_id=${ user.location.id }`">{{ user.location.name }}</a></li>
-                    <li v-if="user.org_unit"><b>Unit:</b>&nbsp;{{ user.org_unit.name }}<span v-if="user.org_unit.acronym">&nbsp;({{ user.org_unit.acronym }})</span></li>
-                    <li v-if="user.group_unit"><b>Grp:</b>&nbsp;{{ user.group_unit.name }}<span v-if="user.group_unit.acronym">&nbsp;({{ user.group_unit.acronym }})</span></li>
+                    <li v-if="user.location"><b>Loc:</b>&nbsp;<a>{{ user.location.name }}</a></li>
+                    <li v-if="user.org_unit"><b>Unit:</b>&nbsp;<a>{{ user.org_unit.name }}<span v-if="user.org_unit.acronym">&nbsp;({{ user.org_unit.acronym }})</span></a></li>
+                    <li v-if="user.group_unit"><b>Grp:</b>&nbsp;<a>{{ user.group_unit.name }}<span v-if="user.group_unit.acronym">&nbsp;({{ user.group_unit.acronym }})</span></a></li>
                 </ul>
             </div>
             <div class="cell shrink show-for-small-only side-controls"> 
@@ -96,6 +96,36 @@
         <div class="small reveal" v-on:click.stop tabindex="-1">
             <h3>{{ modal.name }}</h3>
             <p><i>{{ modal.title }}</i></p>
+            <div class="grid-container full detailList">
+                <div class="grid-x grid-margin-x" v-if="modal.email">
+                    <div class="cell large-2 large-text-right"><b>Email:</b></div>
+                    <div class="cell auto"><a v-bind:href="`mailto:${modal.email}`">{{ modal.email }}</a></div>
+                </div>
+                <div class="grid-x grid-margin-x" v-if="modal.phone_landline">
+                    <div class="cell large-2 large-text-right"><b>Phone:</b></div>
+                    <div class="cell auto"><a v-bind:href="`tel:${modal.phone_landline}`">{{ modal.phone_landline }}</a><span v-if="modal.phone_extension">&nbsp;(VoIP ext. <a v-bind:href="`tel:${modal.phone_extension}`">{{ modal.phone_extension }}</a>)</span></div>
+                </div>
+                <div class="grid-x grid-margin-x" v-if="modal.phone_mobile">
+                    <div class="cell large-2 large-text-right"><b>Mobile:</b></div>
+                    <div class="cell auto"><a v-bind:href="`tel:${modal.phone_mobile}`">{{ modal.phone_mobile }}</a></div>
+                </div>
+                <div class="grid-x grid-margin-x" v-if="modalLocation">
+                    <div class="cell large-2 large-text-right"><b>Location:</b></div>
+                    <div class="cell auto">
+                        <a>{{ modalLocation.name }}</a><br/>
+                        {{ modalLocation.address }}<br/>
+                    </div>
+                </div>
+                <div class="grid-x grid-margin-x" v-if="modal.org_unit_chain">
+                    <div class="cell large-2 large-text-right"><b>Org. units:</b></div>
+                    <div class="cell auto">
+                        <ul>
+                            <li v-for="org_id in modal.org_unit_chain" v-bind:class="{ orgSpecial: (org_id == modal.group_unit.id) || (org_id == modal.org_unit.id) }"><a>{{ $store.getters.orgUnit(org_id).name }}<span v-if="$store.getters.orgUnit(org_id).acronym"> ({{ $store.getters.orgUnit(org_id).acronym }})</span></a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <button class="close-button" type="button" v-on:click="$emit('showModal', 'user', null)"><span aria-hidden="true">×</span></button>
         </div>
     </div>
@@ -168,6 +198,9 @@
         }
     }
 
+    .orgSpecial {
+        font-weight: bold;
+    }
 
 }
 
@@ -216,6 +249,9 @@ export default {
         ...mapGetters([
             'usersList'
         ]),
+        modalLocation: function () {
+            return this.$store.getters.location(this.modal.location.id);
+        },
     },
     methods: {
         updateVisible: function () {
