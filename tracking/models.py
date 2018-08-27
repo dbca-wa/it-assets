@@ -1,37 +1,7 @@
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.utils.html import format_html
-from json2html import json2html
 
-from organisation.models import DepartmentUser, OrgUnit, CostCentre, Location
-
-
-class CommonFields(models.Model):
-    """Meta model class
-    """
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_updated = models.DateTimeField(auto_now=True)
-    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
-    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
-    extra_data = JSONField(null=True, blank=True)
-
-    def extra_data_pretty(self):
-        if not self.extra_data:
-            return self.extra_data
-        try:
-            return format_html(json2html.convert(json=self.extra_data))
-        except Exception as e:
-            return repr(e)
-
-    def save(self, *args, **kwargs):
-        if self.cost_centre and not self.org_unit:
-            self.org_unit = self.cost_centre.org_position
-        elif self.cost_centre and self.cost_centre.org_position and self.org_unit not in self.cost_centre.org_position.get_descendants(include_self=True):
-            self.org_unit = self.cost_centre.org_position
-        super(CommonFields, self).save(*args, **kwargs)
-
-    class Meta:
-        abstract = True
+from organisation.models import CommonFields, DepartmentUser, Location
 
 
 class Computer(CommonFields):
