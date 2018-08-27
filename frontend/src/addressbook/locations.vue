@@ -1,48 +1,48 @@
 <template>
-    <div>
-        <div class="grid-container" v-show="visible">
+    <div v-show="visible">
+        <div class="grid-container">
             <img v-bind:src="mobileLegend"/>
 
             <div class="mapbox">
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
                     <l-tile-layer v-bind:url="basemapUrl"/>
                     <l-tile-layer v-bind:url="mobileUrl" v-bind:opacity="0.4"/>
-                    <l-marker v-for="location in locations" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="showModal(true, location)">
+                    <l-marker v-for="location in locationsList" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location)">
                         <l-tooltip v-bind:content="location.name"></l-tooltip>
                     </l-marker>
                 </l-map>
             </div>
         </div>
-        <div class="reveal-overlay" v-on:click="showModal(false)" v-bind:class="{show: modalVisible}">
-            <div class="small reveal" v-on:click.stop tabindex="-1" v-if="modalLocation">
-                <h3>{{ modalLocation.name }}</h3>
-                <div><button class="button hollow">Filter address book&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
+        <div class="reveal-overlay show" v-on:click="$emit('showModal', 'location', null)" v-if="modal">
+            <div class="small reveal" v-on:click.stop tabindex="-1">
+                <h3>{{ modal.name }}</h3>
+                <div><button class="button hollow" v-on:click="setFilter(modal, 'single')">Show all users&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
                 <div class="grid-container">
-                    <div class="grid-x grid-padding-x" v-if="modalLocation.address">
+                    <div class="grid-x grid-padding-x" v-if="modal.address">
                         <div class="cell large-2 medium-auto large-text-right"><b>Address:</b></div>
-                        <div class="cell auto"><a target="_blank" v-bind:href="`https://www.google.com/maps/search/?api=1&query=${modalLocation.coords.lat},${modalLocation.coords.lng}`">{{ modalLocation.address }}</a></div>
+                        <div class="cell auto"><a target="_blank" v-bind:href="`https://www.google.com/maps/search/?api=1&query=${modal.coords.lat},${modal.coords.lng}`">{{ modal.address }}</a></div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modalLocation.phone">
+                    <div class="grid-x grid-padding-x" v-if="modal.phone">
                         <div class="cell large-2 medium-auto large-text-right"><b>Phone:</b></div>
-                        <div class="cell auto">{{ modalLocation.phone }}</div>
+                        <div class="cell auto">{{ modal.phone }}</div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modalLocation.fax">
+                    <div class="grid-x grid-padding-x" v-if="modal.fax">
                         <div class="cell large-2 medium-auto large-text-right"><b>Fax:</b></div>
-                        <div class="cell auto">{{ modalLocation.fax }}</div>
+                        <div class="cell auto">{{ modal.fax }}</div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modalLocation.email">
+                    <div class="grid-x grid-padding-x" v-if="modal.email">
                         <div class="cell large-2 medium-auto large-text-right"><b>Email:</b></div>
-                        <div class="cell auto">{{ modalLocation.email }}</div>
+                        <div class="cell auto">{{ modal.email }}</div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modalLocation.info_url">
+                    <div class="grid-x grid-padding-x" v-if="modal.info_url">
                         <div class="cell large-2 medium-auto large-text-right"><b>Website:</b></div>
-                        <div class="cell auto"><a v-bind:href="modalLocation.info_url">Link</a></div>
+                        <div class="cell auto"><a v-bind:href="modal.info_url">Link</a></div>
                     </div>
-                    <div class="grid-x grid-padding-x" v-if="modalLocation.bandwidth_url">
-                        <iframe class="prtg" v-bind:src="modalLocation.bandwidth_url"/>
+                    <div class="grid-x grid-padding-x" v-if="modal.bandwidth_url">
+                        <iframe class="prtg" v-bind:src="modal.bandwidth_url"/>
                     </div>
                 </div>
-                <button class="close-button" type="button" v-on:click="showModal(false)"><span aria-hidden="true">×</span></button>
+                <button class="close-button" type="button" v-on:click="$emit('showModal', 'location', null)"><span aria-hidden="true">×</span></button>
             </div>
         </div>
     </div>
@@ -63,12 +63,12 @@
 </style>
 <script>
 
-import { LMap, LTileLayer, LMarker, LPopup, LTooltip } from 'vue2-leaflet';
+import { mapGetters } from 'vuex';
+import { LMap, LTileLayer, LMarker, LTooltip } from 'vue2-leaflet';
 import L from 'leaflet';
 
 //import 'leaflet/dist/leaflet.css';
 
-import { fetchLocations } from './api';
 import mobileLegend from './assets/mobile_legend.png';
 import iconUrl from './assets/pin.svg';
 
@@ -83,7 +83,6 @@ export default {
     },
     data: function () {
         return {
-            locations: [],
             zoom: 5,
             center: L.latLng(-24.966, 123.750),
             icon: new L.Icon({
@@ -95,16 +94,16 @@ export default {
             basemapUrl: null,
             mobileUrl: null,
             mobileLegend,
-            modalLocation: null,
-            modalVisible: false,
         };
     },
     props: {
-        itAssetsUrl: String,
         kmiUrl: String,
         visible: Boolean,
+        modal: Object,
     },
     watch: {
+        // the map widget will only listen for changes in window size. 
+        // need to load in the widget's visibility as a property and simulate a window resize on change.
         visible: function (val, oldVal) {
             if (val) {
                 this.$nextTick(function () {
@@ -113,20 +112,21 @@ export default {
             }
         },
     },
+    computed: {
+        // bind to getters in store.js
+        ...mapGetters([
+            'locationsList'
+        ]),
+    },
     methods: {
-        update: function() {
-            var vm = this;
-            fetchLocations(this.itAssetsUrl, function (data) {
-                vm.locations = data;
-            }, function (error) {
-                console.log(error);
+        setFilter: function (location, mode) {
+            this.$emit('showModal', 'location', null);
+            this.$emit('updateFilter', {
+                field_id: 'location.id',
+                name: location.name,
+                value: location.id,
+                mode: mode
             });
-        },
-        showModal: function (state, loc) {
-            if (loc) {
-                this.modalLocation = loc;
-            }
-            this.modalVisible = state;
         },
         getTileUrl: function (name) {
             return `${this.kmiUrl}?Layer=${name}&TileMatrixSet=mercator&Service=WMTS&Request=GetTile&Version=1.0.0&format=image/png&TileMatrix=mercator:{z}&TileRow={y}&TileCol={x}`;
@@ -135,7 +135,6 @@ export default {
     mounted: function () {
         this.basemapUrl = this.getTileUrl('public:mapbox-outdoors');
         this.mobileUrl = this.getTileUrl('dpaw:telstra_gcm_4g_3g');
-        this.update();
     }
 }
 </script>

@@ -9,9 +9,9 @@
         </div>
     </div>
 
-    <addressList v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'addressList'"/>
-    <organisation v-bind:itAssetsUrl="itAssetsUrl" v-show="currentTab == 'organisation'" />
-    <locations v-bind:itAssetsUrl="itAssetsUrl" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
+    <addressList ref="addressList" v-bind:addressFilters="addressFilters" v-bind:modal="modals.user" v-on:showModal="showModal" v-on:clearFilters="clearFilters" v-show="currentTab == 'addressList'"/>
+    <organisation ref="organisation" v-on:updateFilter="updateFilter" v-bind:modal="modals.orgUnit" v-on:showModal="showModal" v-show="currentTab == 'organisation'" />
+    <locations ref="locations" v-on:updateFilter="updateFilter" v-bind:modal="modals.location" v-on:showModal="showModal" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
 </template>
 <style lang="scss">
@@ -41,6 +41,8 @@ import '../foundation-min.scss';
 import '../leaflet.scss';
 import 'foundation-icons/foundation-icons.scss';
 
+import { fetchUsers, fetchLocations, fetchOrgTree, fetchOrgUnits } from './api';
+
 import addressList from './addressList.vue';
 import organisation from './organisation.vue';
 import locations from './locations.vue';
@@ -50,6 +52,17 @@ export default {
     data: function () {
         return {
             currentTab: 'addressList',
+            addressFilters: {
+                field_id: null,
+                name: null,
+                value: null,
+                mode: null,
+            },
+            modals: {
+                user: null,
+                orgUnit: null,
+                'location': null,
+            },
         };
     },
     components: {
@@ -62,9 +75,56 @@ export default {
         kmiUrl: String,
     },
     methods: {
+        update: function () {
+            var vm = this;
+            // pull the latest locations data from the API, update the store
+            fetchLocations(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateLocations', data);
+            }, function (error) {
+                console.log(error);
+            });
+
+            // pull the latest user data from the API, update the store
+            fetchUsers(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateUsers', data);
+            }, function (error) {
+                console.log(error);
+            });
+
+            // pull the org structure from the API, update the store
+            fetchOrgTree(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateOrgTree', data);
+            }, function (error) {
+                console.log(error);   
+            });
+            fetchOrgUnits(this.itAssetsUrl, function (data) {
+                vm.$store.commit('updateOrgUnits', data);
+            }, function (error) {
+                console.log(error);
+            });
+
+        },
         changeTab: function (name) {
             this.currentTab = name;
-        }
+        },
+        clearFilters: function (ev) {
+            this.addressFilters = {
+                field_id: null,
+                name: null,
+                value: null,
+                mode: null
+            };
+        },
+        updateFilter: function (ev) {
+            this.currentTab = 'addressList';
+            this.addressFilters = ev;
+        },
+        showModal: function (src_type, src) {
+            this.modals[src_type] = src;
+        },
+    },
+    mounted: function () {
+        this.update();
     }
 }
 </script>

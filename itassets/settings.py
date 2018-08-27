@@ -29,6 +29,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.staticfiles',
     'django_extensions',
+    'corsheaders',
     'raven.contrib.django.raven_compat',
     'reversion',
     'mptt',
@@ -43,8 +44,10 @@ INSTALLED_APPS = (
     'knowledge',
     'frontend',
     'rest_framework',
+    'rest_framework_gis',
 )
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -179,6 +182,16 @@ LOGGING = {
     }
 }
 
+# cors whitelist for local development
+CORS_ORIGIN_WHITELIST = (
+    'localhost:8000',
+    'localhost:8080',
+    '127.0.0.1:8000',
+    '127.0.0.1:8080',
+)
+
+CORS_ALLOW_CREDENTIALS = True
+
 
 # django-q configuration
 Q_CLUSTER = {
@@ -201,3 +214,11 @@ Q_CLUSTER = {
 # Sentry configuration
 if env('RAVEN_DSN', False):
     RAVEN_CONFIG = {'dsn': env('RAVEN_DSN')}
+
+
+# default REST API permissions
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
