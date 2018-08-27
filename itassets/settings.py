@@ -35,6 +35,7 @@ INSTALLED_APPS = (
     'django_mptt_admin',
     'leaflet',
     'django_q',
+    'rest_framework',
     'organisation',
     'registers',
     'tracking',
@@ -42,7 +43,7 @@ INSTALLED_APPS = (
     'webconfig',
     'knowledge',
     'frontend',
-    'rest_framework',
+    'recoup',
 )
 MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
@@ -135,7 +136,7 @@ if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
 LOGGING = {
     'version': 1,
     'formatters': {
-        'console': {'format': '%(levelname)s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)s %(message)s'},
         'simple': {'format': '%(levelname)s %(asctime)s %(message)s'},
         'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(message)s'},
     },
