@@ -49,13 +49,13 @@ const store = new Vuex.Store({
     mutations: {
         updateUsers: function (state, usersList) {
             state.usersOrder = usersList;
-            state.users = new Set(state.usersOrder.map(function (el) {
+            state.users = new Map(state.usersOrder.map(function (el) {
                 return [el.id, el];
             }));
         },
         updateLocations: function (state, locationsList) {
             state.locationsOrder = locationsList;
-            state.locations = new Set(state.locationsOrder.map(function (el) {
+            state.locations = new Map(state.locationsOrder.map(function (el) {
                 return [el.id, el];
             }));
         },
@@ -64,7 +64,7 @@ const store = new Vuex.Store({
         },
         updateOrgUnits: function (state, orgUnitsList) {
             state.orgUnitsOrder = orgUnitsList;
-            state.orgUnits = new Set(state.orgUnitsOrder.map(function (el) {
+            state.orgUnits = new Map(state.orgUnitsOrder.map(function (el) {
                 return [el.id, el];
             }));
         },
