@@ -45,6 +45,28 @@ const store = new Vuex.Store({
     plugins: [createPersistedState({
         key: 'oim_addressbook',
         paths: [],
+        overwrite: true,
+        // copy of the method from vuex-persistedstate, with shims for the 3 non-JS objects
+        getState: function (key, storage, value) {
+            var result = undefined;
+            try {
+                result = (value = storage.getItem(key)) && typeof value !== 'undefined'
+                    ? JSON.parse(value)
+                    : undefined;
+            } catch (err) {}
+
+            result.users = new Map(result.usersOrder.map(function (el) {
+                return [el.id, el];
+            }));
+            result.orgUnits = new Map(result.orgUnitsOrder.map(function (el) {
+                return [el.id, el];
+            }));
+            result.locations = new Map(result.locationsOrder.map(function (el) {
+                return [el.id, el];
+            }));
+
+            return result;
+        }
     })],
     mutations: {
         updateUsers: function (state, usersList) {

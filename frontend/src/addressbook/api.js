@@ -36,6 +36,9 @@ var fetchUsers = function (base_url, success, failure) {
                 phone_extension: el.extension,
                 phone_mobile: el.mobile_phone,
 
+                parent: el.parent,
+                children: el.children,
+
                 location: el.location,
 
                 photo_url: el.photo_ad ? el.photo_ad : placeholderImg,

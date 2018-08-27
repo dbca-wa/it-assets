@@ -97,6 +97,10 @@
             <h3>{{ modal.name }}</h3>
             <p><i>{{ modal.title }}</i></p>
             <div class="grid-container full detailList">
+                <div class="grid-x grid-margin-x" v-if="modal.employee_id">
+                    <div class="cell large-2 large-text-right"><b>Empl. ID:</b></div>
+                    <div class="cell auto">{{ modal.employee_id }}</div>
+                </div>
                 <div class="grid-x grid-margin-x" v-if="modal.email">
                     <div class="cell large-2 large-text-right"><b>Email:</b></div>
                     <div class="cell auto"><a v-bind:href="`mailto:${modal.email}`">{{ modal.email }}</a></div>
@@ -124,6 +128,22 @@
                         </ul>
                     </div>
                 </div>
+                <!-- FIXME: uncomment once management hierachy is synced -->
+                <!--div class="grid-x grid-margin-x" v-if="modalManager">
+                    <div class="cell large-2 large-text-right"><b>Manager:</b></div>
+                    <div class="cell auto">
+                        <a v-on:click="$emit('showModal', 'user', modalManager.id)">{{ modalManager.name }}</a> - <i>{{ modalManager.title }}</i>
+                    </div>
+                </div>
+                <div class="grid-x grid-margin-x" v-if="modal.children.length">
+                    <div class="cell large-2 large-text-right"><b>Reports:</b></div>
+                    <div class="cell auto">
+                        <ul>
+                            <li v-for="user_id in modal.children" v-bind:key="user_id"><a v-on:click="$emit('showModal', 'user', user_id)">{{ $store.getters.user(user_id).name }}</a> - <i>{{ $store.getters.user(user_id).title }}</i></li>
+                        </ul>
+                    </div>
+                </div-->
+
             </div>
 
             <button class="close-button" type="button" v-on:click="$emit('showModal', 'user', null)"><span aria-hidden="true">×</span></button>
@@ -251,6 +271,9 @@ export default {
         ]),
         modalLocation: function () {
             return this.$store.getters.location(this.modal.location.id);
+        },
+        modalManager: function () {
+            return this.$store.getters.user(this.modal.parent);
         },
     },
     methods: {

@@ -75,7 +75,6 @@ export default {
     },
     methods: {
         showOrg: function (ev) {
-            console.log(ev);
             this.$emit('showModal', 'orgUnit', ev);
         },
         setFilter: function (org, mode) {
