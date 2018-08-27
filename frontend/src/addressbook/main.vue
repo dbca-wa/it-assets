@@ -123,12 +123,38 @@ export default {
             this.currentTab = 'addressList';
             this.addressFilters = ev;
         },
-        showModal: function (src_type, src) {
-            this.modals[src_type] = src;
+        showModal: function (src_type, src_id) {
+            switch (src_type) {
+                case 'user':
+                    this.showUser(src_id);
+                    break;
+                case 'orgUnit':
+                    this.showOrgUnit(src_id);
+                    break;
+                case 'location':
+                    this.showLocation(src_id);
+                    break;
+                default:
+                    break;
+            }
         },
-        showUser: function (user) {
+        showUser: function (user_id) {
             this.currentTab = 'addressList';
-            this.modals['user'] = user;
+            this.modals['user'] = this.$store.getters.user(user_id);
+            this.modals['orgUnit'] = null;
+            this.modals['location'] = null;
+        },
+        showOrgUnit: function (org_unit_id) {
+            this.currentTab = 'organisation';
+            this.modals['user'] = null;
+            this.modals['orgUnit'] = this.$store.getters.orgUnit(org_unit_id);
+            this.modals['location'] = null;
+        },
+        showLocation: function (location_id) {
+            this.currentTab = 'locations';
+            this.modals['user'] = null;
+            this.modals['orgUnit'] = null;
+            this.modals['location'] = this.$store.getters.location(location_id);
         },
     },
     mounted: function () {

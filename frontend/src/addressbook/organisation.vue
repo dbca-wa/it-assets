@@ -6,7 +6,7 @@
         <div class="reveal-overlay show" v-on:click="$emit('showModal', 'orgUnit', null)" v-if="modal">
             <div class="small reveal" v-on:click.stop tabindex="-1">
                 <h3>{{ modal.name }}</h3>
-                <div class="button-group"><button class="button hollow" v-on:click="setFilter(modal, 'cascade')">Show all users&nbsp;&nbsp;<i class="fi-filter"></i></button><button class="button hollow" v-on:click="setFilter(modal, 'single')">Show users just in this unit&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
+                <div class="button-group"><button class="button hollow" v-on:click="setFilter(modal, 'cascade')">List all users (this and all subunits)&nbsp;&nbsp;<i class="fi-filter"></i></button><button class="button hollow" v-on:click="setFilter(modal, 'single')">List users (this unit only)&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
                 <div class="grid-container">
                     <div class="grid-x grid-padding-x" v-if="modal.address">
                         <div class="cell large-2 medium-auto large-text-right"><b>Address:</b></div>

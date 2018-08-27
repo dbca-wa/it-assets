@@ -43,14 +43,14 @@
 
         <div class="contact grid-x grid-padding-x align-middle" v-for="(user, i) in paginated('filterUsers')" v-bind:key="i">
             <div class="cell medium-shrink small-2">
-                <a v-on:click="$emit('showModal', 'user', user)">
+                <a v-on:click="$emit('showModal', 'user', user.id)">
                     <img class="float-left" style="width: 4rem;" v-bind:src="user.photo_url" />
                 </a>
             </div>
             <div class="cell auto">
                 <ul class="no-bullet shrink">
 
-                    <li><a v-on:click="$emit('showModal', 'user', user)"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
+                    <li><a v-on:click="$emit('showModal', 'user', user.id)"><b>{{ user.name }} <span v-if="user.preferred_name">({{ user.preferred_name }})</span></b></a></li>
                     <li><i style="font-size: 90%;">{{ user.title }}</i></li>
                 </ul>
             </div>
@@ -63,9 +63,9 @@
             </div>
             <div class="cell auto show-for-large details">
                 <ul class="no-bullet shrink">
-                    <li v-if="user.location"><b>Loc:</b>&nbsp;<a>{{ user.location.name }}</a></li>
-                    <li v-if="user.org_unit"><b>Unit:</b>&nbsp;<a>{{ user.org_unit.name }}<span v-if="user.org_unit.acronym">&nbsp;({{ user.org_unit.acronym }})</span></a></li>
-                    <li v-if="user.group_unit"><b>Grp:</b>&nbsp;<a>{{ user.group_unit.name }}<span v-if="user.group_unit.acronym">&nbsp;({{ user.group_unit.acronym }})</span></a></li>
+                    <li v-if="user.location"><b>Loc:</b>&nbsp;<a v-on:click="$emit('showModal', 'location', user.location.id)">{{ user.location.name }}</a></li>
+                    <li v-if="user.org_unit"><b>Unit:</b>&nbsp;<a v-on:click="$emit('showModal', 'orgUnit', user.org_unit.id)">{{ user.org_unit.name }}<span v-if="user.org_unit.acronym">&nbsp;({{ user.org_unit.acronym }})</span></a></li>
+                    <li v-if="user.group_unit"><b>Grp:</b>&nbsp;<a v-on:click="$emit('showModal', 'orgUnit', user.group_unit.id)">{{ user.group_unit.name }}<span v-if="user.group_unit.acronym">&nbsp;({{ user.group_unit.acronym }})</span></a></li>
                 </ul>
             </div>
             <div class="cell shrink show-for-small-only side-controls"> 
@@ -112,7 +112,7 @@
                 <div class="grid-x grid-margin-x" v-if="modalLocation">
                     <div class="cell large-2 large-text-right"><b>Location:</b></div>
                     <div class="cell auto">
-                        <a>{{ modalLocation.name }}</a><br/>
+                        <a v-on:click="$emit('showModal', 'location', modalLocation.id)">{{ modalLocation.name }}</a><br/>
                         {{ modalLocation.address }}<br/>
                     </div>
                 </div>
@@ -120,7 +120,7 @@
                     <div class="cell large-2 large-text-right"><b>Org. units:</b></div>
                     <div class="cell auto">
                         <ul>
-                            <li v-for="org_id in modal.org_unit_chain" v-bind:class="{ orgSpecial: (org_id == modal.group_unit.id) || (org_id == modal.org_unit.id) }"><a>{{ $store.getters.orgUnit(org_id).name }}<span v-if="$store.getters.orgUnit(org_id).acronym"> ({{ $store.getters.orgUnit(org_id).acronym }})</span></a></li>
+                            <li v-for="org_id in modal.org_unit_chain" v-bind:class="{ orgSpecial: (org_id == modal.group_unit.id) || (org_id == modal.org_unit.id) }"><a v-on:click="$emit('showModal', 'orgUnit', org_id)">{{ $store.getters.orgUnit(org_id).name }}<span v-if="$store.getters.orgUnit(org_id).acronym"> ({{ $store.getters.orgUnit(org_id).acronym }})</span></a></li>
                         </ul>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 <template>
     <li class="orgUnit button-group">
-        <button class="button small hollow" v-on:click="$emit('showOrg', unit)">{{ unit.name }}</button>
+        <button class="button small hollow" v-on:click="$emit('showOrg', unit.id)">{{ unit.name }}</button>
         <button v-if="hasChildren" class="button small hollow" v-on:click="toggle"><i v-if="hasChildren" v-bind:class="{'fi-minus': open, 'fi-plus': !open}"></i></button>
         <ul v-if="hasChildren" v-show="open">
             <orgUnit v-for="child in unit.children" v-on:showOrg="$emit('showOrg', $event)" v-bind:key="child.id" v-bind:unit="child" />

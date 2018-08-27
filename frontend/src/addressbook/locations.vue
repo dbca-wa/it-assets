@@ -7,7 +7,7 @@
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
                     <l-tile-layer v-bind:url="basemapUrl"/>
                     <l-tile-layer v-bind:url="mobileUrl" v-bind:opacity="0.4"/>
-                    <l-marker v-for="location in locationsList" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location)">
+                    <l-marker v-for="location in locationsList" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location.id)">
                         <l-tooltip v-bind:content="location.name"></l-tooltip>
                     </l-marker>
                 </l-map>
@@ -16,7 +16,7 @@
         <div class="reveal-overlay show" v-on:click="$emit('showModal', 'location', null)" v-if="modal">
             <div class="small reveal" v-on:click.stop tabindex="-1">
                 <h3>{{ modal.name }}</h3>
-                <div><button class="button hollow" v-on:click="setFilter(modal, 'single')">Show all users&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
+                <div><button class="button hollow" v-on:click="setFilter(modal, 'single')">List all users&nbsp;&nbsp;<i class="fi-filter"></i></button></div>
                 <div class="grid-container full detailList">
                     <div class="grid-x grid-margin-x" v-if="modal.address">
                         <div class="cell large-2 large-text-right"><b>Address:</b></div>
