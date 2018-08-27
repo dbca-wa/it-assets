@@ -344,6 +344,10 @@ class DepartmentUser(MPTTModel):
         return self.children.filter(**self.ACTIVE_FILTER).exclude(account_type__in=self.ACCOUNT_TYPE_EXCLUDE)
 
     @property
+    def children_filtered_ids(self):
+        return self.children_filtered.values_list('id', flat=True)
+
+    @property
     def org_unit_chain(self):
         return self.org_unit.get_ancestors(ascending=True, include_self=True).values_list('id', flat=True)
 

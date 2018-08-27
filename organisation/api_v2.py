@@ -22,10 +22,11 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
     location = UserLocationSerializer()
     org_unit = UserOrgUnitSerializer()
     group_unit = UserOrgUnitSerializer()
+    children = serializers.ListField(source='children_filtered_ids')
 
     class Meta:
         model = DepartmentUser
-        fields = ('id', 'name', 'preferred_name', 'email', 'username', 'title', 'employee_id', 'telephone', 'extension', 'mobile_phone', 'location', 'photo_ad', 'org_unit', 'group_unit', 'org_unit_chain', 'manager_chain')
+        fields = ('id', 'name', 'preferred_name', 'email', 'username', 'title', 'employee_id', 'telephone', 'extension', 'mobile_phone', 'location', 'photo_ad', 'org_unit', 'group_unit', 'org_unit_chain', 'parent', 'children')
 
 
 class DepartmentUserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -61,7 +62,7 @@ class OrgUnitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrgUnit
-        fields = ('id', 'name', 'acronym', 'unit_type', 'manager', 'parent', 'location')
+        fields = ('id', 'name', 'acronym', 'unit_type', 'manager', 'parent', 'children', 'location')
 
 
 class OrgUnitViewSet(viewsets.ReadOnlyModelViewSet):

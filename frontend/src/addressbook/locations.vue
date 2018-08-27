@@ -111,6 +111,11 @@ export default {
                 });
             }
         },
+        modal: function (val, oldVal) {
+            if (val && val.coords) {
+                this.$refs.map.mapObject.setView(val.coords, 13);
+            }
+        },
     },
     computed: {
         // bind to getters in store.js

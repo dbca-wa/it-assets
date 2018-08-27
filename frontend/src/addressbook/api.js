@@ -95,6 +95,7 @@ var fetchOrgUnits = function (base_url, success, failure) {
                 unit_type: el.unit_type,
                 manager: el.manager,
                 parent: el.parent,
+                children: el.children,
                 location: el.location,
             }
         });
