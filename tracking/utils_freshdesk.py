@@ -209,26 +209,42 @@ def freshdesk_cache_tickets(tickets=None):
             LOGGER.exception(e)
             return False
 
-    # Tweak the passed-in list of ticket values, prior to caching.
+    # Map the Freshdesk ticket API return to our internal model for caching.
+    # This needs to be fairly explicit to account for the API response evolving :|
+    mapped_tickets = []
     for t in tickets:
-        # Rename key 'id'.
-        t['ticket_id'] = t.pop('id')
-        # Parse ISO8601-formatted date strings into datetime objs.
-        t['created_at'] = parse(t['created_at'])
-        t['due_by'] = parse(t['due_by'])
-        t['fr_due_by'] = parse(t['fr_due_by'])
-        t['updated_at'] = parse(t['updated_at'])
-        # Pop unused fields from the dict.
-        t.pop('company_id', None)
-        t.pop('email_config_id', None)
-        t.pop('product_id', None)
+        t2 = {}
+        t2['cc_emails'] = t['cc_emails']
+        t2['created_at'] = parse(t['created_at'])
+        t2['custom_fields'] = t['custom_fields']
+        t2['description'] = t['description']
+        t2['description_text'] = t['description_text']
+        t2['due_by'] = parse(t['due_by'])
+        t2['fr_due_by'] = parse(t['fr_due_by'])
+        t2['fr_escalated'] = t['fr_escalated']
+        t2['fwd_emails'] = t['fwd_emails']
+        t2['group_id'] = t['group_id']
+        t2['is_escalated'] = t['is_escalated']
+        t2['priority'] = t['priority']
+        t2['reply_cc_emails'] = t['reply_cc_emails']
+        t2['requester_id'] = t['requester_id']
+        t2['responder_id'] = t['responder_id']
+        t2['spam'] = t['spam']
+        t2['status'] = t['status']
+        t2['subject'] = t['subject']
+        t2['tags'] = t['tags']
+        t2['ticket_id'] = t['id']
+        t2['to_emails'] = t['to_emails']
+        t2['type'] = t['type']
+        t2['updated_at'] = parse(t['updated_at'])
+        mapped_tickets.append(t2)
 
     created, updated = 0, 0
     contact_keys = [i.name for i in FreshdeskContact._meta.fields]
     conv_keys = [i.name for i in FreshdeskConversation._meta.fields]
-    # Iterate through tickets; determine if a cached FreshdeskTicket should be
+    # Iterate through mapped_tickets; determine if a cached FreshdeskTicket should be
     # created or updated.
-    for t in tickets:
+    for t in mapped_tickets:
         try:
             ft, create = FreshdeskTicket.objects.update_or_create(ticket_id=t['ticket_id'], defaults=t)
             if create:

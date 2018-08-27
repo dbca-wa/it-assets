@@ -1,7 +1,6 @@
 from datetime import datetime
 from django.contrib.postgres.fields import JSONField
 from django.contrib.gis.db import models
-from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.utils.html import format_html
@@ -11,9 +10,8 @@ from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
 from PIL import Image
 import os
-import re
 
-from .utils import get_photo_path, get_photo_ad_path, convert_ad_timestamp
+from organisation.utils import get_photo_path, get_photo_ad_path, convert_ad_timestamp
 
 
 class DepartmentUser(MPTTModel):
@@ -167,7 +165,7 @@ class DepartmentUser(MPTTModel):
     shared_account = models.BooleanField(
         default=False, editable=False,
         help_text='Automatically set from account type.')
-   
+
     class MPTTMeta:
         order_insertion_by = ['name']
 
@@ -431,7 +429,7 @@ class OrgUnit(MPTTModel):
         max_length=48, unique=True, null=True, editable=False)
     ad_dn = models.CharField(
         max_length=512, unique=True, null=True, editable=False)
-    name = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
@@ -539,3 +537,31 @@ class CostCentre(models.Model):
             if dept:
                 output += ' ({})'.format(dept.first().acronym)
         return output
+
+
+class CommonFields(models.Model):
+    """Meta model class used by other apps
+    """
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
+    extra_data = JSONField(null=True, blank=True)
+
+    def extra_data_pretty(self):
+        if not self.extra_data:
+            return self.extra_data
+        try:
+            return format_html(json2html.convert(json=self.extra_data))
+        except Exception as e:
+            return repr(e)
+
+    def save(self, *args, **kwargs):
+        if self.cost_centre and not self.org_unit:
+            self.org_unit = self.cost_centre.org_position
+        elif self.cost_centre and self.cost_centre.org_position and self.org_unit not in self.cost_centre.org_position.get_descendants(include_self=True):
+            self.org_unit = self.cost_centre.org_position
+        super(CommonFields, self).save(*args, **kwargs)
+
+    class Meta:
+        abstract = True
