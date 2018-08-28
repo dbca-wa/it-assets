@@ -7,7 +7,7 @@
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
                     <l-tile-layer v-bind:url="basemapUrl"/>
                     <l-tile-layer v-bind:url="mobileUrl" v-bind:opacity="0.4"/>
-                    <l-marker v-for="location in locationsList" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location.id)">
+                    <l-marker v-for="location in mapLocations" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location.id)">
                         <l-tooltip v-bind:content="location.name"></l-tooltip>
                     </l-marker>
                 </l-map>
@@ -118,6 +118,11 @@ export default {
         },
     },
     computed: {
+        mapLocations: function () {
+            return this.locationsList.filter(function (el) {
+                return el.coords;
+            });
+        },
         // bind to getters in store.js
         ...mapGetters([
             'locationsList'
