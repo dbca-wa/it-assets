@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.conf import settings
-import json
+#import json
 import logging
 import requests
 from tracking import utils_freshdesk
