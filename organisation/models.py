@@ -339,6 +339,31 @@ class DepartmentUser(MPTTModel):
             return True
         return False
 
+    @property
+    def children_filtered(self):
+        return self.children.filter(**self.ACTIVE_FILTER).exclude(account_type__in=self.ACCOUNT_TYPE_EXCLUDE)
+
+    @property
+    def children_filtered_ids(self):
+        return self.children_filtered.values_list('id', flat=True)
+
+    @property
+    def org_unit_chain(self):
+        return self.org_unit.get_ancestors(ascending=True, include_self=True).values_list('id', flat=True)
+
+    @property
+    def manager_chain(self):
+        return self.get_ancestors(ascending=True).values_list('id', flat=True)
+
+    @property
+    def group_unit(self):
+        """Return the group-level org unit, as seen in the primary address book view.
+        """
+        for org in self.org_unit.get_ancestors(ascending=True, include_self=True):
+            if org.unit_type in (0, 1):
+                return org
+        return self.org_unit
+
     def get_gal_department(self):
         """Return a string to place into the "Department" field for the Global Address List.
         """

@@ -1,7 +1,7 @@
 <template>
     <div class="callout">
         <h4>
-            <strong><a v-on:click="$emit('showOrg', unit)">{{ unit.name }}</a></strong>
+            <strong><a v-on:click="$emit('showOrg', unit.id)">{{ unit.name }}</a></strong>
         </h4>
         <div v-if="hasChildren">
             <ul class="orgList">
