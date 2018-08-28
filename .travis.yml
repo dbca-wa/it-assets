@@ -1,4 +1,4 @@
-sudo: false
+sudo: required
 language: python
 cache: pip
 dist: trusty
@@ -6,6 +6,7 @@ python:
     - 3.5
 services:
     - postgresql
+    - docker
 addons:
     postgresql: 9.5
     apt:
@@ -29,3 +30,9 @@ before_script:
     - python manage.py migrate --noinput
 script:
     - python manage.py test
+deploy:
+    provider: script
+    script: bash .travis_build.sh
+    on:
+        branch: master
+        condition: $TRAVIS_PULL_REQUEST = false
