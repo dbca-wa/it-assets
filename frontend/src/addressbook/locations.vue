@@ -89,7 +89,7 @@ export default {
             zoom: 5,
             center: L.latLng(-24.966, 123.750),
             icon: new L.Icon({
-                iconUrl,
+                iconUrl: `${this.itAssetsUrl}/static${iconUrl}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -20],
@@ -100,6 +100,7 @@ export default {
         };
     },
     props: {
+        itAssetsUrl: String,
         kmiUrl: String,
         visible: Boolean,
         modal: Object,

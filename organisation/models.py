@@ -198,7 +198,7 @@ class DepartmentUser(MPTTModel):
             self.org_data["units"] = list(self.org_unit.get_ancestors(include_self=True).values(
                 "id", "name", "acronym", "unit_type", "costcentre__code",
                 "costcentre__name", "location__name"))
-            self.org_data["unit"] = self.org_data["units"][-1]
+            self.org_data["unit"] = self.org_data["units"][-1] if len(self.org_data["units"]) else None
             if self.org_unit.location:
                 self.org_data["location"] = self.org_unit.location.as_dict()
             for unit in self.org_data["units"]:
@@ -368,7 +368,7 @@ class DepartmentUser(MPTTModel):
         """Return a string to place into the "Department" field for the Global Address List.
         """
         s = ''
-        if self.org_data and 'units' in self.org_data:
+        if self.org_data and 'units' in self.org_data and len(self.org_data['units']) > 0:
             s = self.org_data['units'][0]['acronym']
             if len(self.org_data['units']) > 1:
                 s += ' - {}'.format(self.org_data['units'][1]['name'])
@@ -454,10 +454,7 @@ class OrgUnit(MPTTModel):
         ordering = ('name',)
 
     def cc(self):
-        try:
-            return self.costcentre
-        except:
-            return None
+        return ', '.join([str(x) for x in self.costcentre_set.all()])
 
     def __str__(self):
         name = self.name
@@ -498,8 +495,8 @@ class CostCentre(models.Model):
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
     division = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, null=True, editable=False, related_name='costcentres_in_division')
-    org_position = models.OneToOneField(
-        OrgUnit, on_delete=models.PROTECT, unique=True, blank=True, null=True)
+    org_position = models.ForeignKey(
+        OrgUnit, on_delete=models.PROTECT, blank=True, null=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='manage_ccs',
         null=True, blank=True)
@@ -533,14 +530,7 @@ class CostCentre(models.Model):
         super(CostCentre, self).save(*args, **kwargs)
 
     def __str__(self):
-        output = '{}'.format(self.code)
-        if self.org_position:
-            # If the CC is linked to an OrgUnit, include that unit's Department
-            # acronym in the output.
-            dept = self.org_position.get_ancestors(include_self=True).filter(unit_type=0)
-            if dept:
-                output += ' ({})'.format(dept.first().acronym)
-        return output
+        return self.code
 
 
 class CommonFields(models.Model):
@@ -563,8 +553,8 @@ class CommonFields(models.Model):
     def save(self, *args, **kwargs):
         if self.cost_centre and not self.org_unit:
             self.org_unit = self.cost_centre.org_position
-        elif self.cost_centre and self.cost_centre.org_position and self.org_unit not in self.cost_centre.org_position.get_descendants(include_self=True):
-            self.org_unit = self.cost_centre.org_position
+        #elif self.cost_centre and self.cost_centre.org_position and self.org_unit not in self.cost_centre.org_position.get_descendants(include_self=True):
+        #    self.org_unit = self.cost_centre.org_position
         super(CommonFields, self).save(*args, **kwargs)
 
     class Meta:

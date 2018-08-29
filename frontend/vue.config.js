@@ -33,5 +33,14 @@ module.exports = {
         }
 
     },
+    chainWebpack: function (config) {
+        config.module.rule('images').use('url-loader').options({
+            limit: 4096,
+            name: 'img/[name].[ext]'
+        });
+        config.module.rule('svg').use('file-loader').options({
+            name: 'img/[name].[ext]'
+        });
+    },
 
 };
