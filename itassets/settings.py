@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'leaflet',
     'django_q',
     'rest_framework',
+    'rest_framework_gis',
     'organisation',
     'registers',
     'tracking',
@@ -45,8 +46,6 @@ INSTALLED_APPS = (
     'knowledge',
     'frontend',
     'recoup',
-    'rest_framework',
-    'rest_framework_gis',
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

@@ -66,6 +66,9 @@ class ServicePool(models.Model):
     """
     name = models.CharField(max_length=320, editable=False, unique=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Cost(models.Model):
     """
@@ -82,6 +85,9 @@ class Cost(models.Model):
     class Meta:
         ordering = ("-percentage",)
 
+    def __str__(self):
+        return self.name
+
 
 class Division(models.Model):
     """
@@ -93,6 +99,9 @@ class Division(models.Model):
 
     class Meta:
         ordering = ('position',)
+
+    def __str__(self):
+        return self.org_unit
 
 
 class CostCentreLink(models.Model):
@@ -137,6 +146,9 @@ class ITPlatform(models.Model):
 
     class Meta:
         verbose_name = "IT platform"
+
+    def __str__(self):
+        return self.name
 
 
 class ITPlatformCost(Cost):
