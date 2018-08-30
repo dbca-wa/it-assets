@@ -271,7 +271,7 @@ export default {
             'usersList'
         ]),
         modalLocation: function () {
-            return this.$store.getters.location(this.modal.location.id);
+            return this.modal.location ? this.$store.getters.location(this.modal.location.id) : null;
         },
         modalManager: function () {
             return this.$store.getters.user(this.modal.parent);
@@ -309,8 +309,10 @@ export default {
                 }
                 var fields = vm.addressFilters.field_id.split('.');
                 var base = el;
-
                 for (var i=0; i<fields.length; i++) {
+                    if (base == null) {
+                        return false;
+                    }
                     base = base[fields[i]];
                 }
 
@@ -321,6 +323,9 @@ export default {
             // this one searches inside the org_unit_chain list for a match
             if ((vm.addressFilters.mode == 'cascade') && (vm.addressFilters.field_id == 'org_unit.id')) {
                 check_func = function (el) {
+                    if (el == null) {
+                        return false;
+                    }
                     return el.org_unit_chain.findIndex(function (fl) {
                         return fl == vm.addressFilters.value;
                     }) != -1;
