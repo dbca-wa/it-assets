@@ -41,7 +41,7 @@ var fetchUsers = function (base_url, success, failure) {
 
                 location: el.location,
 
-                photo_url: el.photo_ad ? el.photo_ad : `${base_url}/static${placeholderImg}`,
+                photo_url: el.photo_ad ? el.photo_ad : `${base_url}${placeholderImg}`,
                 org_unit_chain: el.org_unit_chain,
                 org_unit: el.org_unit,
                 group_unit: el.group_unit,

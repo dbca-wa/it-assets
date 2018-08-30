@@ -37,7 +37,7 @@
     <paginate name="filterUsers" ref="paginator" tag="div" class="contact-list grid-container" v-bind:list="filteredUsers" v-bind:per="perPage">
 
         <div class="contact grid-x grid-padding-x align-middle align-center cell" v-if="paginated('filterUsers').length == 0">
-            <img v-if="usersList.length == 0" v-bind:src="`${itAssetsUrl}/static${loadingImg}`"/>
+            <img v-if="usersList.length == 0" v-bind:src="`${itAssetsUrl}${loadingImg}`"/>
             <span v-else>No users match your query. Try removing some filters.</span>
         </div>
 

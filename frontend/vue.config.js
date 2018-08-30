@@ -14,7 +14,7 @@ module.exports = {
         sourceMap: false
     },
 
-    baseUrl: ((process.env.NODE_ENV === 'production') ? '/static/' : undefined),
+    baseUrl: '/static/',
     outputDir: 'static',
     assetsDir: undefined,
     productionSourceMap: undefined,
@@ -34,6 +34,7 @@ module.exports = {
 
     },
     chainWebpack: function (config) {
+        // remove hashes from the end of compiled image names
         config.module.rule('images').use('url-loader').options({
             limit: 4096,
             name: 'img/[name].[ext]'
@@ -41,6 +42,15 @@ module.exports = {
         config.module.rule('svg').use('file-loader').options({
             name: 'img/[name].[ext]'
         });
+    
+        if (process.env.NODE_ENV != 'production') {
+            // in dev mode, copy over the fake index.html page
+            config.plugin('copy').tap(function (args) {
+                args[0][0].ignore = [];
+                return args;
+            });
+        }
+        
     },
 
 };
