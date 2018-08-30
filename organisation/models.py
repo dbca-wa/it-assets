@@ -175,9 +175,9 @@ class DepartmentUser(MPTTModel):
         self.__original_given_name = self.given_name
         self.__original_surname = self.surname
         self.__original_employee_id = self.employee_id
-        self.__original_cost_centre = self.cost_centre
+        self.__original_cost_centre_id = self.cost_centre_id
         self.__original_name = self.name
-        self.__original_org_unit = self.org_unit
+        self.__original_org_unit_id = self.org_unit_id
         self.__original_expiry_date = self.expiry_date
 
     def __str__(self):
@@ -352,10 +352,6 @@ class DepartmentUser(MPTTModel):
         return self.org_unit.get_ancestors(ascending=True, include_self=True).values_list('id', flat=True)
 
     @property
-    def manager_chain(self):
-        return self.get_ancestors(ascending=True).values_list('id', flat=True)
-
-    @property
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
         """
@@ -460,8 +456,8 @@ class OrgUnit(MPTTModel):
         name = self.name
         if self.acronym:
             name = '{} - {}'.format(self.acronym, name)
-        if self.cc():
-            return '{} - CC {}'.format(name, self.cc())
+        #if self.cc():
+        #    return '{} - CC {}'.format(name, self.cc())
         return name
 
     def members(self):
