@@ -1,6 +1,6 @@
 git+git://github.com/dbca-wa/dpaw-utils@minimal#egg=dpaw-utils
 psycopg2-binary==2.7.4
-Django==2.0.6
+Django==2.0.8
 django-confy==1.0.4
 django-extensions==2.0.6
 django-reversion==2.0.13
