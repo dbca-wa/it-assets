@@ -1,7 +1,7 @@
 <template>
     <div v-show="visible">
         <div class="grid-container">
-            <img v-bind:src="mobileLegend"/>
+            <img v-bind:src="`${itAssetsUrl}${mobileLegend}`"/>
 
             <div class="mapbox">
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
