@@ -1,0 +1,10 @@
+[report]
+omit =
+    */migrations/*
+    */test*
+    */management/commands/*
+    */apps.py
+    */__init__.py
+    itassets/wsgi.py
+    itassets/settings.py
+    manage.py
