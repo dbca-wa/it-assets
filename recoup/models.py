@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.urls import reverse
 from django.utils.html import format_html
 from organisation.models import OrgUnit, CostCentre
 from registers.models import ITSystem
@@ -208,7 +209,7 @@ class Division(CostSummary):
         return self.divisionitsystem_set.filter(systemdependency__isnull=False).order_by("cost_centre__cc__name", "it_system__name").distinct()
 
     def bill(self):
-        return format_html('<a href="/bill?division={}" target="_blank">Bill</a>', self.pk)
+        return format_html('<a href="{}?division={}" target="_blank">Bill</a>', reverse('recoup_bill'), self.pk)
 
     def user_count_percentage(self):
         return round(self.user_count / field_sum(Division.objects.all(), 'user_count') * 100, 2)

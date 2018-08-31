@@ -106,7 +106,7 @@ class ServicePoolAdmin(VersionAdmin):
 
 
 @admin.register(models.DivisionITSystem)
-class DivisionITSystem(VersionAdmin):
+class DivisionITSystemAdmin(VersionAdmin):
     list_display = ["it_system", "depends_on_display", "cost_centre", "division", "cost", "cost_estimate"]
     list_filter = ["division", "depends_on"]
     search_fields = ["it_system__name", "it_system__system_id", "cost_centre__name"]
