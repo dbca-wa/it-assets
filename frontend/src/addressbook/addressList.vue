@@ -37,7 +37,7 @@
     <paginate name="filterUsers" ref="paginator" tag="div" class="contact-list grid-container" v-bind:list="filteredUsers" v-bind:per="perPage">
 
         <div class="contact grid-x grid-padding-x align-middle align-center cell" v-if="paginated('filterUsers').length == 0">
-            <img v-if="usersList.length == 0" v-bind:src="loadingImg"/>
+            <img v-if="usersList.length == 0" v-bind:src="`${itAssetsUrl}${loadingImg}`"/>
             <span v-else>No users match your query. Try removing some filters.</span>
         </div>
 
@@ -258,6 +258,7 @@ export default {
     props: {
         addressFilters: Object,
         modal: Object,
+        itAssetsUrl: String,
     },
     computed: {
         // used to render the list of users
@@ -270,7 +271,7 @@ export default {
             'usersList'
         ]),
         modalLocation: function () {
-            return this.$store.getters.location(this.modal.location.id);
+            return this.modal.location ? this.$store.getters.location(this.modal.location.id) : null;
         },
         modalManager: function () {
             return this.$store.getters.user(this.modal.parent);
@@ -308,8 +309,10 @@ export default {
                 }
                 var fields = vm.addressFilters.field_id.split('.');
                 var base = el;
-
                 for (var i=0; i<fields.length; i++) {
+                    if (base == null) {
+                        return false;
+                    }
                     base = base[fields[i]];
                 }
 
@@ -320,6 +323,9 @@ export default {
             // this one searches inside the org_unit_chain list for a match
             if ((vm.addressFilters.mode == 'cascade') && (vm.addressFilters.field_id == 'org_unit.id')) {
                 check_func = function (el) {
+                    if (el == null) {
+                        return false;
+                    }
                     return el.org_unit_chain.findIndex(function (fl) {
                         return fl == vm.addressFilters.value;
                     }) != -1;

@@ -52,18 +52,26 @@ const store = new Vuex.Store({
             try {
                 result = (value = storage.getItem(key)) && typeof value !== 'undefined'
                     ? JSON.parse(value)
-                    : undefined;
+                    : {
+                        usersOrder: [],
+                        orgUnitsOrder: [],
+                        locationsOrder: [],
+                        orgTree: [],
+                    };
             } catch (err) {}
 
-            result.users = new Map(result.usersOrder.map(function (el) {
+            var userMap = result.usersOrder ? result.usersOrder.map(function (el) {
                 return [el.id, el];
-            }));
-            result.orgUnits = new Map(result.orgUnitsOrder.map(function (el) {
+            }) : [];
+            result.users = new Map(userMap);
+            var orgUnitMap = result.orgUnitsOrder ? result.orgUnitsOrder.map(function (el) {
                 return [el.id, el];
-            }));
-            result.locations = new Map(result.locationsOrder.map(function (el) {
+            }) : [];
+            result.orgUnits = new Map(orgUnitMap);
+            var locationMap = result.locationsOrder ? result.locationsOrder.map(function (el) {
                 return [el.id, el];
-            }));
+            }) : [];
+            result.locations = new Map(locationMap);
 
             return result;
         }

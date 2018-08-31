@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from rest_framework import viewsets, serializers, status, generics, views
 from rest_framework.decorators import detail_route, list_route, renderer_classes, authentication_classes, permission_classes
@@ -22,16 +24,37 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
     location = UserLocationSerializer()
     org_unit = UserOrgUnitSerializer()
     group_unit = UserOrgUnitSerializer()
-    children = serializers.ListField(source='children_filtered_ids')
+    #children = serializers.ListField(source='children_filtered')
 
     class Meta:
         model = DepartmentUser
-        fields = ('id', 'name', 'preferred_name', 'email', 'username', 'title', 'employee_id', 'telephone', 'extension', 'mobile_phone', 'location', 'photo_ad', 'org_unit', 'group_unit', 'org_unit_chain', 'parent', 'children')
+        fields = (
+            'id', 'name', 'preferred_name', 'email', 'username', 'title', 'employee_id',
+            'telephone', 'extension', 'mobile_phone',
+            'location',
+            'photo_ad',
+            'org_unit',
+            'group_unit',
+            'org_unit_chain',
+            'parent',
+            'children',
+        )
 
 
 class DepartmentUserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE).order_by('name')
+    queryset = DepartmentUser.objects.filter(
+        **DepartmentUser.ACTIVE_FILTER
+    ).exclude(
+        account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+    ).prefetch_related(
+        'location', 'children',
+        'org_unit', 'org_unit__children',
+    ).order_by('name')
     serializer_class = DepartmentUserSerializer
+
+    @method_decorator(cache_page(60*5))
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
 
 class DepartmentTreeSerializer(serializers.ModelSerializer):

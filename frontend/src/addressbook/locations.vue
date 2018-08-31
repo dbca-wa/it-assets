@@ -1,13 +1,13 @@
 <template>
     <div v-show="visible">
         <div class="grid-container">
-            <img v-bind:src="mobileLegend"/>
+            <img v-bind:src="`${itAssetsUrl}${mobileLegend}`"/>
 
             <div class="mapbox">
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
                     <l-tile-layer v-bind:url="basemapUrl"/>
                     <l-tile-layer v-bind:url="mobileUrl" v-bind:opacity="0.4"/>
-                    <l-marker v-for="location in locationsList" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location.id)">
+                    <l-marker v-for="location in mapLocations" v-bind:key="location.id" v-bind:icon="icon" v-bind:lat-lng="location.coords" v-on:click="$emit('showModal', 'location', location.id)">
                         <l-tooltip v-bind:content="location.name"></l-tooltip>
                     </l-marker>
                 </l-map>
@@ -20,7 +20,10 @@
                 <div class="grid-container full detailList">
                     <div class="grid-x grid-margin-x" v-if="modal.address">
                         <div class="cell large-2 large-text-right"><b>Address:</b></div>
-                        <div class="cell auto"><a target="_blank" v-bind:href="`https://www.google.com/maps/search/?api=1&query=${modal.coords.lat},${modal.coords.lng}`">{{ modal.address }}</a></div>
+                        <div class="cell auto" v-if="modal.coords"><a target="_blank" v-bind:href="`https://www.google.com/maps/search/?api=1&query=${modal.coords.lat},${modal.coords.lng}`">{{ modal.address }}</a></div>
+                        <div class="cell auto" v-else>
+                            {{ modal.address }}
+                        </div>
                     </div>
                     <div class="grid-x grid-margin-x" v-if="modal.phone">
                         <div class="cell large-2 large-text-right"><b>Phone:</b></div>
@@ -86,7 +89,7 @@ export default {
             zoom: 5,
             center: L.latLng(-24.966, 123.750),
             icon: new L.Icon({
-                iconUrl,
+                iconUrl: `${this.itAssetsUrl}${iconUrl}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -20],
@@ -97,6 +100,7 @@ export default {
         };
     },
     props: {
+        itAssetsUrl: String,
         kmiUrl: String,
         visible: Boolean,
         modal: Object,
@@ -118,6 +122,11 @@ export default {
         },
     },
     computed: {
+        mapLocations: function () {
+            return this.locationsList.filter(function (el) {
+                return el.coords;
+            });
+        },
         // bind to getters in store.js
         ...mapGetters([
             'locationsList'

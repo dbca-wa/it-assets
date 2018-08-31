@@ -118,9 +118,9 @@ class DepartmentUserAdmin(VersionAdmin):
                 obj.email, 'employee_id', obj._DepartmentUser__original_employee_id,
                 obj.employee_id, request.user.username, obj.name_update_reference
             ))
-        if obj._DepartmentUser__original_cost_centre != obj.cost_centre:
+        if obj._DepartmentUser__original_cost_centre_id != obj.cost_centre_id:
             LOGGER.info(l.format(
-                obj.email, 'cost_centre', obj._DepartmentUser__original_cost_centre,
+                obj.email, 'cost_centre', CostCentre.objects.filter(id=obj._DepartmentUser__original_cost_centre_id).first(),
                 obj.cost_centre, request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_name != obj.name:
@@ -128,9 +128,9 @@ class DepartmentUserAdmin(VersionAdmin):
                 obj.email, 'name', obj._DepartmentUser__original_name, obj.name,
                 request.user.username, obj.name_update_reference
             ))
-        if obj._DepartmentUser__original_org_unit != obj.org_unit:
+        if obj._DepartmentUser__original_org_unit_id != obj.org_unit_id:
             LOGGER.info(l.format(
-                obj.email, 'org_unit', obj._DepartmentUser__original_org_unit, obj.org_unit,
+                obj.email, 'org_unit', OrgUnit.objects.filter(id=obj._DepartmentUser__original_org_unit_id).first(), obj.org_unit,
                 request.user.username, obj.name_update_reference
             ))
         if obj._DepartmentUser__original_expiry_date != obj.expiry_date:

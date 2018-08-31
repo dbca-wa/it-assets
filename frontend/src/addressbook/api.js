@@ -41,7 +41,7 @@ var fetchUsers = function (base_url, success, failure) {
 
                 location: el.location,
 
-                photo_url: el.photo_ad ? el.photo_ad : placeholderImg,
+                photo_url: el.photo_ad ? el.photo_ad : `${base_url}${placeholderImg}`,
                 org_unit_chain: el.org_unit_chain,
                 org_unit: el.org_unit,
                 group_unit: el.group_unit,
@@ -59,10 +59,7 @@ var fetchUsers = function (base_url, success, failure) {
 
 var fetchLocations = function (base_url, success, failure) {
     var formatter = function (raw_data) {
-        var data = raw_data.filter(function (el) {
-            return el.point;
-        });
-        data = data.map(function (el) {
+        var data = raw_data.map(function (el) {
             return {
                 id: el.id,
                 name: el.name,
@@ -70,7 +67,7 @@ var fetchLocations = function (base_url, success, failure) {
                 address: el.address,
                 phone: el.phone,
                 fax: el.fax,
-                coords: L.latLng(el.point.coordinates[1], el.point.coordinates[0]),
+                coords: el.point ? L.latLng(el.point.coordinates[1], el.point.coordinates[0]) : null,
                 info_url: el.url,
                 bandwidth_url: el.bandwidth_url,
             }
