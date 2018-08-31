@@ -28,6 +28,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'django_extensions',
     'corsheaders',
     'raven.contrib.django.raven_compat',
@@ -36,6 +37,8 @@ INSTALLED_APPS = (
     'django_mptt_admin',
     'leaflet',
     'django_q',
+    'rest_framework',
+    'rest_framework_gis',
     'organisation',
     'registers',
     'tracking',
@@ -43,8 +46,7 @@ INSTALLED_APPS = (
     'webconfig',
     'knowledge',
     'frontend',
-    'rest_framework',
-    'rest_framework_gis',
+    'recoup',
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -138,7 +140,7 @@ if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
 LOGGING = {
     'version': 1,
     'formatters': {
-        'console': {'format': '%(levelname)s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)s %(message)s'},
         'simple': {'format': '%(levelname)s %(asctime)s %(message)s'},
         'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(message)s'},
     },
