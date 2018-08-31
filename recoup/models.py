@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.utils.html import format_html
 from organisation.models import OrgUnit, CostCentre
 from registers.models import ITSystem
 
@@ -18,9 +19,6 @@ class CostSummary(models.Model):
     """
     class Meta:
         abstract = True
-
-    def __str__(self):
-        return self.name
 
     def get_cost_queryset(self):
         """
@@ -174,10 +172,10 @@ class Division(CostSummary):
         ordering = ('position',)
 
     def __str__(self):
-        return self.org_unit
+        return self.org_unit.name
 
     def cc_count(self):
-        return self.costcentre_set.count()
+        return self.costcentrelink_set.count()
 
     def system_count(self):
         return self.systems_by_cc().count()
@@ -207,7 +205,7 @@ class Division(CostSummary):
         return self.enduser_estimate() + self.system_cost_estimate()
 
     def systems_by_cc(self):
-        return self.itsystem_set.filter(systemdependency__isnull=False).order_by("cost_centre", "name").distinct()
+        return self.divisionitsystem_set.filter(systemdependency__isnull=False).order_by("cost_centre__cc__name", "it_system__name").distinct()
 
     def bill(self):
         return format_html('<a href="/bill?division={}" target="_blank">Bill</a>', self.pk)
@@ -230,7 +228,7 @@ class CostCentreLink(models.Model):
         ordering = ('cc__name',)
 
     def systems(self):
-        return self.itsystem_set.filter(systemdependency__isnull=False).distinct()
+        return self.divisionitsystem_set.filter(systemdependency__isnull=False).distinct()
 
     def system_count(self):
         return self.systems().count()
@@ -245,7 +243,7 @@ class CostCentreLink(models.Model):
         return round(self.user_count / field_sum(Division.objects.all(), 'user_count') * 100, 2)
 
     def post_save(self):
-        self.division.user_count = field_sum(self.division.costcentre_set.all(), "user_count")
+        self.division.user_count = field_sum(self.division.costcentrelink_set.all(), "user_count")
         if self.division.user_count > 0:
             self.division.save()
 
@@ -315,7 +313,8 @@ class DivisionITSystem(CostSummary):
     depends_on = models.ManyToManyField(ITPlatform, through="SystemDependency")
 
     class Meta:
-        ordering = ('cost_centre__name', 'it_system__name')
+        ordering = ('cost_centre__cc__name', 'it_system__name')
+        verbose_name = "Division IT System"
 
     def __str__(self):
         return "{} (#{})".format(self.it_system.name, self.it_system.system_id)
