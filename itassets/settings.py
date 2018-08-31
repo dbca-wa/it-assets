@@ -28,6 +28,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'django_extensions',
     'corsheaders',
     'raven.contrib.django.raven_compat',
