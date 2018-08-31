@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load humanize %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h2>Overview</h2>
+    Total cost for {{ year }}: ${{ year.cost_estimate|intcomma }} (actual: ${{ year.cost|intcomma }})<br>
+    <ul>
+        <li>End-User Services: ${{ enduser_cost|intcomma }}</li>
+        <li>IT System Platforms: ${{ platform_cost|intcomma }}</li>
+        <li>Unallocated: ${{ unallocated_cost|intcomma }}</li>
+    </ul>
+    Divisions (including bill previews): <a href="{% url 'admin:recoup_division_changelist' %}">Divisions</a>
+    <h2>Administration</h2>
+    To work on the data for the cost reports, please visit <a href="{% url 'admin:app_list' 'recoup' %}">{% url 'admin:app_list' 'recoup' %}</a> (main section: <a href="{% url 'admin:recoup_bill_changelist' %}">Bills</a>).
+    <h2>Categorisations</h2>
+    <ul>
+        <li><a href="{% url 'admin:recoup_servicepool_changelist' %}">Service Pools</a></li>
+        <li><a href="{% url 'admin:recoup_enduserservice_changelist' %}">End-User Services</a></li>
+        <li><a href="{% url 'admin:recoup_itplatform_changelist' %}">IT System Platforms</a></li>
+    </ul>
+    <h2>Reports</h2>
+    <a href="{% url 'recoup_report' %}">DUCReport.xlsx</a>
+</div>
+{% endblock %}

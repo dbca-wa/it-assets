@@ -12,3 +12,4 @@ logs/
 *.dump
 *.db
 *.sqlite3
+.coverage
