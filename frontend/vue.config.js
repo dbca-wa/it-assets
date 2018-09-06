@@ -36,7 +36,7 @@ module.exports = {
     chainWebpack: function (config) {
         // remove hashes from the end of compiled image names
         config.module.rule('images').use('url-loader').options({
-            limit: 4096,
+            limit: 0,
             name: 'img/[name].[ext]'
         });
         config.module.rule('svg').use('file-loader').options({
