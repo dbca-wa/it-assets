@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "debounce": "^1.1.0",
+    "es6-promise": "^4.2.4",
+    "fetch-ie8": "^1.5.0",
     "foundation-icons": "^1.0.1",
     "foundation-sites": "^6.5.0-rc.2",
     "js-search": "^1.4.2",
     "leaflet": "^1.3.3",
+    "mdn-polyfills": "^5.11.0",
     "query-string": "^6.1.0",
     "vue": "^2.5.17",
     "vue-paginate": "git+https://github.com/marcovdb/vue-paginate.git",
