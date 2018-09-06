@@ -70,7 +70,7 @@
             </div>
             <div class="cell shrink show-for-small-only side-controls"> 
                 <div class="button-group">
-                    <a v-bind:href="`tel:${user.phone_landline}`" class="button hollow"><i class="fi-telephone"></i></a>
+                    <a v-if="user.phone_landline" v-bind:href="`tel:${user.phone_landline}`" class="button hollow"><i class="fi-telephone"></i></a>
                     <a v-bind:href="`mailto:${ user.email }`" class="button hollow"><i class="fi-mail"></i></a>
                 </div>
             </div>
