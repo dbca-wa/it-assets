@@ -97,10 +97,6 @@
             <h3>{{ modal.name }}</h3>
             <p><i>{{ modal.title }}</i></p>
             <div class="grid-container full detailList">
-                <div class="grid-x grid-margin-x" v-if="modal.employee_id">
-                    <div class="cell large-2 large-text-right"><b>Empl. ID:</b></div>
-                    <div class="cell auto">{{ modal.employee_id }}</div>
-                </div>
                 <div class="grid-x grid-margin-x" v-if="modal.email">
                     <div class="cell large-2 large-text-right"><b>Email:</b></div>
                     <div class="cell auto"><a v-bind:href="`mailto:${modal.email}`">{{ modal.email }}</a></div>
@@ -344,7 +340,8 @@ export default {
     },
     watch: {
         addressFilters: function (val, oldVal) {
-            // if the current address filter changes, update the visible status of each record
+            // if the current address filter changes, clear the search and update the visible status of each record
+            this.searchQuery = '';
             this.updateVisible();
         },
         usersList: function (val, oldVal) {
