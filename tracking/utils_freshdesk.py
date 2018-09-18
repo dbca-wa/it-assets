@@ -269,7 +269,7 @@ def freshdesk_cache_tickets(tickets=None):
                         for d in data.keys():
                             if d in contact_keys:
                                 contact[d] = data[d]
-                        fdcon = FreshdeskContact.objects.create(**contact)
+                        fdcon, create = FreshdeskContact.objects.update_or_create(**contact)
                         LOGGER.info('Created {}'.format(fdcon))
                         ft.freshdesk_requester = fdcon
                     except HTTPError:  # The GET might fail if the contact is an agent.
@@ -289,7 +289,7 @@ def freshdesk_cache_tickets(tickets=None):
                         for d in data.keys():
                             if d in contact_keys:
                                 contact[d] = data[d]
-                        fdcon = FreshdeskContact.objects.create(**contact)
+                        fdcon, create = FreshdeskContact.objects.update_or_create(**contact)
                         LOGGER.info('Created {}'.format(fdcon))
                         ft.freshdesk_responder = fdcon
                     except HTTPError:  # The GET might fail if the contact is an agent.
@@ -332,7 +332,7 @@ def freshdesk_cache_tickets(tickets=None):
                         for d in data.keys():
                             if d in contact_keys:
                                 contact[d] = data[d]
-                        fdcon = FreshdeskContact.objects.create(**contact)
+                        fdcon, create = FreshdeskContact.objects.update_or_create(**contact)
                         LOGGER.info('Created {}'.format(fdcon))
                         fc.freshdesk_contact = fdcon
                         # Attempt to match contact with a DepartmentUser.
