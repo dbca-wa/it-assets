@@ -212,6 +212,8 @@ class FreshdeskTicketAdmin(ModelAdmin):
                     "URL",
                     "Subject",
                     "Created at",
+                    "Last updated",
+                    "Days since last update",
                     "Agent",
                     "Status",
                     "Note count",
@@ -219,6 +221,7 @@ class FreshdeskTicketAdmin(ModelAdmin):
             )
             row = 1
             for i in stale_tickets:
+                since = pytz.timezone(settings.TIME_ZONE).localize(datetime.now()) - i.updated_at
                 stale.write_row(
                     row,
                     0,
@@ -229,6 +232,8 @@ class FreshdeskTicketAdmin(ModelAdmin):
                         ),
                         i.subject.strip(),
                         i.created_at,
+                        i.updated_at,
+                        since.days,
                         str(i.freshdesk_responder or ""),
                         i.get_status_display(),
                         i.freshdeskconversation_set.count(),
@@ -238,8 +243,8 @@ class FreshdeskTicketAdmin(ModelAdmin):
             stale.set_column("A:A", 8)
             stale.set_column("B:B", 49)
             stale.set_column("C:C", 100)
-            stale.set_column("D:D", 13)
-            stale.set_column("E:E", 46)
+            stale.set_column("D:F", 13)
+            stale.set_column("G:G", 46)
 
             # Contentious tickets worksheet
             cont_tickets = []
@@ -254,6 +259,8 @@ class FreshdeskTicketAdmin(ModelAdmin):
                     "URL",
                     "Subject",
                     "Created at",
+                    "Last updated",
+                    "Days since last update",
                     "Agent",
                     "Status",
                     "Note count",
@@ -261,6 +268,7 @@ class FreshdeskTicketAdmin(ModelAdmin):
             )
             row = 1
             for i in cont_tickets:
+                since = pytz.timezone(settings.TIME_ZONE).localize(datetime.now()) - i.updated_at
                 contentious.write_row(
                     row,
                     0,
@@ -271,6 +279,8 @@ class FreshdeskTicketAdmin(ModelAdmin):
                         ),
                         i.subject.strip(),
                         i.created_at,
+                        i.updated_at,
+                        since.days,
                         str(i.freshdesk_responder or ""),
                         i.get_status_display(),
                         i.freshdeskconversation_set.count(),
@@ -280,7 +290,7 @@ class FreshdeskTicketAdmin(ModelAdmin):
             contentious.set_column("A:A", 8)
             contentious.set_column("B:B", 49)
             contentious.set_column("C:C", 100)
-            contentious.set_column("D:D", 13)
-            contentious.set_column("E:E", 46)
+            contentious.set_column("D:F", 13)
+            contentious.set_column("G:G", 46)
 
         return response
