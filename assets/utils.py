@@ -132,7 +132,7 @@ def validate_csv(fileobj):
 
         # Check cost centre.
         if 'COST CENTRE' in row and row['COST CENTRE']:
-            if CostCentre.objects.filter(code=row['COST CENTRE']) < 1:
+            if CostCentre.objects.filter(code=row['COST CENTRE']).count() < 1:
                 errors.append(
                     '''Row {}: There is no cost centre code that matches {}. '''
                     '''Cost centre must exactly match existing codes.'''.format(c.line_num, row['COST CENTRE']))
