@@ -165,6 +165,12 @@ class HardwareAsset(Asset):
             return mark_safe('')
         return mark_safe(json2html.convert(json=self.extra_data))
 
+    def clean(self):
+        if self.serial:
+            self.serial = self.serial.strip()
+        if self.asset_tag:
+            self.asset_tag = self.asset_tag.strip()
+
 
 class HardwareInvoice(models.Model):
     """A limited model to store uploaded hardware asset invoice copies.

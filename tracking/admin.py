@@ -6,8 +6,12 @@ from django.http import HttpResponse
 import pytz
 import xlsxwriter
 
-from .models import Computer, Mobile, EC2Instance, FreshdeskTicket
+from .models import Computer, Mobile, EC2Instance, FreshdeskTicket, LicensingRule
 
+@register(LicensingRule)
+class LicensingRule(ModelAdmin):
+    list_display = ('product_name', 'publisher_name', 'regex', 'license')
+    ordering = ('publisher_name', 'product_name') 
 
 @register(Computer)
 class ComputerAdmin(ModelAdmin):
@@ -26,11 +30,15 @@ class ComputerAdmin(ModelAdmin):
                     "os_service_pack",
                     "os_arch",
                     "ec2_instance",
+                    "manufacturer",
+                    "model",
+                    "chassis",
+                    "serial_number",
                 )
             },
         ),
-        ("Management", {"fields": ("probable_owner", "managed_by", "location")}),
-        ("Scan data", {"fields": ("date_pdq_updated", "date_ad_updated")}),
+        ("Management", {"fields": ("probable_owner", "last_login", "last_ad_login_username", "managed_by", "location", "cost_centre")}),
+        ("Scan data", {"fields": ("date_pdq_updated", "date_pdq_last_seen", "date_ad_created", "date_ad_updated")}),
     )
     list_display = [
         "hostname",
@@ -46,7 +54,7 @@ class ComputerAdmin(ModelAdmin):
         "managed_by",
         "location",
     )
-    readonly_fields = ("date_pdq_updated", "date_ad_updated")
+    readonly_fields = ("date_pdq_updated", "date_ad_updated", "date_ad_created", "date_pdq_last_seen", "last_ad_login_username")
     search_fields = ["sam_account_name", "hostname"]
 
 
@@ -54,6 +62,8 @@ class ComputerAdmin(ModelAdmin):
 class MobileAdmin(ModelAdmin):
     list_display = ("identity", "model", "imei", "serial_number", "registered_to")
     search_fields = ("identity", "model", "imei", "serial_number")
+
+
 
 
 @register(EC2Instance)

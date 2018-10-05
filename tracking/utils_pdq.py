@@ -1,13 +1,19 @@
 from datetime import datetime
 from django.utils import timezone
+from django.db.models import Count
 import logging
 import os
+import re
 import unicodecsv
+import pytz
 from uuid import UUID
 from .models import Computer
+from assets.models import HardwareAsset
+from organisation.models import DepartmentUser
 
 LOGGER = logging.getLogger('sync_tasks')
 
+perth = pytz.timezone('Australia/Perth')
 
 def csv_data(csv_path, skip_header=True):
     """Pass in the path to a CSV file, returns a CSV Reader object.
@@ -22,17 +28,45 @@ def csv_data(csv_path, skip_header=True):
     return data
 
 
+def pdq_scrub_duplicate_computers():
+    # scrub duplicate serial numbers for Dell and MS
+    serial_re = re.compile('^([0-9]{12}|[A-Z0-9]{7})$')
+    for computer in Computer.objects.filter(serial_number__isnull=False):
+        if serial_re.search(computer.serial_number):
+            hw = HardwareAsset.objects.filter(serial=computer.serial_number).first()
+            if hw:
+                hw.tracked_computer = computer
+                hw.save()
+                computer.cost_centre = hw.cost_centre
+                computer.save()
+
+
+    serial_chk = Computer.objects.values_list('serial_number').filter(serial_number__isnull=False).exclude(serial_number="").annotate(Count('serial_number')).filter(serial_number__count__gt=1)
+    for serial, _ in serial_chk:
+        if serial_re.search(serial):
+            serial_qs = Computer.objects.filter(serial_number=serial).order_by('-date_updated')
+            new_comp = serial_qs[0]
+            for dead_comp in serial_qs[1:]:
+                LOGGER.info('Computer {} has a duplicate serial number of computer {}, deleting'.format(dead_comp, new_comp))
+                dead_comp.delete()
+
+
 def pdq_load_computers():
     """Update the database with Computer information from PDQ Inventory.
     """
     update_time = timezone.now()
-    csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_computers.csv')
+
+    csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_computers_max.csv')
     data = csv_data(csv_path)
     num_created = 0
     num_updated = 0
     num_errors = 0
 
-    for row in data:
+    csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_computers_logins.csv')
+    logins = [x for x in csv_data(csv_path)]
+
+
+    for i, row in enumerate(data):
         try:
             computer = None
             try:
@@ -48,6 +82,16 @@ def pdq_load_computers():
             if urn and row[2]:
                 try:
                     computer = Computer.objects.get(ad_guid=urn)
+                    # check for clashing AD DN
+                    if row[3]:
+                        try:
+                            dn = Computer.objects.get(ad_dn=row[3])
+                            if dn.pk != computer.pk:
+                                dn.ad_dn = None
+                                dn.save()
+                        except Computer.DoesNotExist:
+                            pass
+
                     num_updated += 1
                 except Computer.DoesNotExist:
                     pass
@@ -84,7 +128,32 @@ def pdq_load_computers():
             computer.memory = row[13]
             computer.hostname = row[14]
             computer.date_pdq_updated = update_time
+            
+            if row[16]:
+                computer.date_ad_created = perth.localize(datetime.strptime(row[16], '%Y-%m-%d %H:%M:%S'))
+            if logins[i][1]:
+                computer.last_ad_login_date = perth.localize(datetime.strptime(logins[i][1], '%Y-%m-%d %H:%M:%S'))
+            if logins[i][2]:
+                computer.last_ad_login_username = logins[i][2]
+            if logins[i][3]:
+                user = DepartmentUser.objects.filter(ad_dn=logins[i][3]).first()
+                if user:
+                    computer.last_login = user
+            if row[19]:
+                computer.date_pdq_last_seen = perth.localize(datetime.strptime(row[19], '%Y-%m-%d %H:%M:%S'))
+
             computer.save()
+            hw = None
+            if not hw and len( computer.serial_number ) > 3:
+                hw = HardwareAsset.objects.filter(serial=computer.serial_number).first()
+            if not hw and row[15].startswith('IT'): # BiosAssetTag
+                hw = HardwareAsset.objects.filter(asset_tag=row[15]).first()
+            if hw:
+                hw.tracked_computer = computer
+                hw.save()
+                computer.cost_centre = hw.cost_centre
+                computer.save()
+
             LOGGER.info('Computer {} updated from PDQ Inventory scan data'.format(computer))
         except Exception as e:
             LOGGER.error('Error while loading computers from PDQ')
@@ -94,31 +163,3 @@ def pdq_load_computers():
             continue
 
     LOGGER.info('Created {}, updated {}, errors {}'.format(num_created, num_updated, num_errors))
-
-
-def pdq_load_logins():
-    """Update Computers with 'last login' information from PDQ Inventory.
-    """
-    csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_logins.csv')
-    data = csv_data(csv_path)
-    num_updated = 0
-    num_skipped = 0
-
-    for row in data:
-        # Match on sAMAccountName only.
-        if Computer.objects.filter(sam_account_name__istartswith=row[3]).exists():
-            computer = Computer.objects.filter(sam_account_name__istartswith=row[3])[0]
-            if row[2]:
-                computer.last_ad_login_username = row[2]
-            if row[1]:
-                ts = datetime.strptime(row[1], '%Y-%m-%d %H:%M:%S')
-                computer.last_ad_login_date = ts.date()
-            computer.save()
-            LOGGER.info('Computer {} login data updated'.format(computer))
-            num_updated += 1
-        else:
-            LOGGER.warning('Hostname {} did not match any Computer'.format(row[3]))
-            LOGGER.info(row)
-            num_skipped += 1
-
-    LOGGER.info('Updated {}, skipped {}'.format(num_updated, num_skipped))

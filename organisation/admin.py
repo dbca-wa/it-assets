@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
-from django_q.tasks import async as async_task
+from django_q.tasks import async_task as async_task
 from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
