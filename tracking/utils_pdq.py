@@ -51,6 +51,57 @@ def pdq_scrub_duplicate_computers():
                 dead_comp.delete()
 
 
+def pdq_match_computer(ad_guid, ad_dn, sam):
+    computer = None
+    status = 'updated'
+    try:
+        urn = UUID(ad_guid).urn
+    except Exception as e:
+        LOGGER.error('Computer {} has invalid Active Directory GUID in PDQ Inventory {}, skipping.'.format(ad_dn, ad_guid))
+        LOGGER.info(row)
+        LOGGER.exception(e)
+        status = 'error'
+        return computer, status
+
+    # First, try and match AD GUID.
+    if urn and ad_guid:
+        try:
+            computer = Computer.objects.get(ad_guid=urn)
+            # check for clashing AD DN
+            if ad_dn:
+                try:
+                    dn = Computer.objects.get(ad_dn=ad_dn)
+                    if dn.pk != computer.pk:
+                        dn.ad_dn = None
+                        dn.save()
+                except Computer.DoesNotExist:
+                    pass
+
+        except Computer.DoesNotExist:
+            pass
+    # Second, try and match AD DN.
+    if computer is None and ad_dn:
+        try:
+            computer = Computer.objects.get(ad_dn=ad_dn)
+        except Computer.DoesNotExist:
+            pass
+    # Last, try to match via sAMAccountName. If no match, skip the record.
+    if computer is None:
+        sam = '{}$'.format(sam.upper())
+        try:
+            computer = Computer.objects.get(sam_account_name=sam)
+        except Computer.DoesNotExist:
+            LOGGER.info('No match for Computer object with SAM ID {} creating new object'.format(sam))
+            computer = Computer(sam_account_name=sam)
+            status = 'created'
+            pass
+    computer.ad_guid = urn
+    computer.ad_dn = ad_dn
+    computer.sam_account_name = sam
+    return computer, status
+
+
+
 def pdq_load_computers():
     """Update the database with Computer information from PDQ Inventory.
     """
@@ -68,55 +119,16 @@ def pdq_load_computers():
 
     for i, row in enumerate(data):
         try:
-            computer = None
-            try:
-                urn = UUID(row[2]).urn
-            except Exception as e:
-                LOGGER.error('Computer {} has invalid Active Directory GUID in PDQ Inventory {}, skipping.'.format(row[1], row[2]))
-                LOGGER.info(row)
-                LOGGER.exception(e)
+            computer, status = pdq_match_computer(ad_guid=row[2], ad_dn=row[3], sam=row[1])
+            if status == 'created':
+                num_created += 1
+            elif status == 'updated':
+                num_updated += 1
+            elif status == 'error':
                 num_errors += 1
                 continue
 
-            # First, try and match AD GUID.
-            if urn and row[2]:
-                try:
-                    computer = Computer.objects.get(ad_guid=urn)
-                    # check for clashing AD DN
-                    if row[3]:
-                        try:
-                            dn = Computer.objects.get(ad_dn=row[3])
-                            if dn.pk != computer.pk:
-                                dn.ad_dn = None
-                                dn.save()
-                        except Computer.DoesNotExist:
-                            pass
-
-                    num_updated += 1
-                except Computer.DoesNotExist:
-                    pass
-            # Second, try and match AD DN.
-            if computer is None and row[3]:
-                try:
-                    computer = Computer.objects.get(ad_dn=row[3])
-                    num_updated += 1
-                except Computer.DoesNotExist:
-                    pass
-            # Last, try to match via sAMAccountName. If no match, skip the record.
-            if computer is None:
-                sam = '{}$'.format(row[1].upper())
-                try:
-                    computer = Computer.objects.get(sam_account_name=sam)
-                    num_updated += 1
-                except Computer.DoesNotExist:
-                    LOGGER.info('No match for Computer object with SAM ID {} creating new object'.format(sam))
-                    computer = Computer(sam_account_name=sam)
-                    num_created += 1
-                    pass
-
             computer.domain_bound = True
-            computer.ad_guid = urn
-            computer.ad_dn = row[3]
             computer.manufacturer = row[5]
             computer.model = row[6]
             computer.chassis = row[7]
