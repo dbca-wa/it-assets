@@ -631,39 +631,3 @@ class ITSystemEvent(models.Model):
         else:
             self.current = True
         super(ITSystemEvent, self).save(*args, **kwargs)
-
-
-"""
-class ITChange(models.Model):
-    '''Represents a managed change to an IT System, for the purposes of record-keeping,
-    reporting and notifications.
-    Requirements:
-        * Normal change
-        * Standard change
-        * Change calendar
-        * Automation (email) - approver request, CAB review, change follow-up by email
-    '''
-    '''
-    description
-    it_system
-    requester
-    request_date
-    approver
-    approval_date
-    implementer
-    type (Normal/Std/Emergency)
-    urgency (Cr/H/M/L)
-    risk (H/M/L)
-    start (date & time)
-    duration (dd:hh:mm)
-    deployment (text description)
-    deployment_attach (file)
-    rollback (text description)
-    rollback_attach (file)
-    cab_notes (text)
-    cab_approval_date
-    status (Requested/Approved/Completed/Cancelled/Rejected)
-    issues (Y/N)
-    incident (Y/N)
-    '''
-"""
