@@ -29,7 +29,7 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentUser
         fields = (
-            'id', 'name', 'preferred_name', 'email', 'username', 'title', 'employee_id',
+            'id', 'name', 'preferred_name', 'email', 'username', 'title',
             'telephone', 'extension', 'mobile_phone',
             'location',
             'photo_ad',

@@ -1,7 +1,6 @@
 <template>
     <div v-show="visible">
         <div class="grid-container">
-            <img v-bind:src="`${itAssetsUrl}${mobileLegend}`"/>
 
             <div class="mapbox">
                 <l-map ref="map" v-bind:zoom="zoom" v-bind:center="center">
@@ -12,6 +11,7 @@
                     </l-marker>
                 </l-map>
             </div>
+            <img v-bind:src="`${itAssetsUrl}${mobileLegend}`"/>
         </div>
         <div class="reveal-overlay show" v-on:click="$emit('showModal', 'location', null)" v-if="modal">
             <div class="small reveal" v-on:click.stop tabindex="-1">

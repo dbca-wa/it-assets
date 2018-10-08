@@ -1,3 +1,5 @@
+import '../ieHacks.js';
+
 import Vue from 'vue';
 import Vuex from 'vuex';
 import VuePaginate from 'vue-paginate';

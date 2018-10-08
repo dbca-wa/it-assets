@@ -31,7 +31,6 @@ var fetchUsers = function (base_url, success, failure) {
                 email: el.email,
                 username: el.username,
                 title: el.title,
-                employee_id: el.employee_id,
                 phone_landline: el.telephone,
                 phone_extension: el.extension,
                 phone_mobile: el.mobile_phone,
