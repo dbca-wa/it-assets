@@ -9,6 +9,7 @@ from django.utils.safestring import mark_safe
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
 from registers.utils import smart_truncate
+from itassets.settings import PROJECT_DIR
 
 
 CRITICALITY_CHOICES = (
@@ -631,6 +632,84 @@ class ITSystemEvent(models.Model):
         else:
             self.current = True
         super(ITSystemEvent, self).save(*args, **kwargs)
+
+class StandardChange(models.Model):
+    """A standard change that will likely be used frequently.
+    """
+    name = models.CharField(max_length=256, null=False, blank=False)
+    description = models.TextField(blank=True, null=True)
+    it_system = models.ForeignKey(ITSystem, on_delete=models.PROTECT, blank=True, null=True)
+    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT, blank=True, null=True)
+    expiry = models.DateField(null=True, blank=True)
+
+class ChangeRequest(models.Model):
+    """A model for change requests. Will be linked to API to allow application of a change request.
+    Will be linked to an approval object. Both will be served in a frontend.
+    """
+    CHANGE_CHOICES = (
+        (0, "Normal"),
+        (1, "Standard"),
+        (2, "Emergency")
+    )
+    URGENCY_CHOICES = (
+        (0, "Low"),
+        (1, "Medium"),
+        (2, "High")
+    )
+    STATUS_CHOICES = (
+        (0, "Open"),
+        (1, "Approved"),
+        (2, "Complete"),
+        (3, "Rejected")
+    )
+
+    requestor = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT, related_name='request_creator', help_text='Request owner')
+    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT, related_name='system_owner', help_text='System owner')
+    implementor = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT, related_name='request_providor', help_text='Request carried out by', blank=True, null=True)
+    title = models.CharField(null=False, blank=False, max_length=255)
+    description = models.TextField(null=False, blank=False)
+    change_type = models.SmallIntegerField(choices=CHANGE_CHOICES, default=0)
+    urgency = models.SmallIntegerField(choices=URGENCY_CHOICES, default=0)
+    submission_date = models.DateTimeField(null=False, blank=False, help_text='Date change was submitted.')
+    completed_date = models.DateTimeField(null=True, blank=True, help_text='Date change was completed.')
+    change_start = models.DateTimeField(null=True, blank=True, help_text='Date change is planned to begin.')
+    change_end = models.DateTimeField(null=True, blank=True, help_text='Date change is planned to end.')
+    it_system = models.ForeignKey(ITSystem, on_delete=models.PROTECT, blank=True, null=True)
+    alternate_system = models.CharField(max_length=255, null=True, blank=True)
+    outage = models.BooleanField(default=False)
+    implementation = models.TextField(null=True, blank=True)
+    implementation_docs = models.FileField(null=True, blank=True, upload_to='uploaded_files/', verbose_name="Implementation Documents")
+    # Will have to link to a document here, instructions are either text
+    # or a document that is uploaded.
+    broadcast = models.TextField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+    status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
+    unexpected_issues = models.BooleanField(default=False)
+    caused_issues = models.BooleanField(default=False)
+
+    def __str__(self):
+        return '{} ({})'.format(self.id, self.submission_date)
+
+    @property
+    def editable(self):
+        return self.status != 2 and self.status != 3
+
+class ChangeApproval(models.Model):
+    """A model for approving change requests. A change request could be edited then sent back
+    requiring a one to many relationship change to approval.
+    """
+    TYPE_OF_APPROVAL_CHOICES = (
+        (0, "Email"),
+        (1, "Navigation"),
+        (2, "Other")
+    )
+    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
+    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
+    date_approved = models.DateTimeField(null=True, blank=True, help_text='Date change was approved/rejected.')
+    notes = models.CharField(max_length=2048, blank=True, null=True)
+    type_of_approval = models.SmallIntegerField(choices=TYPE_OF_APPROVAL_CHOICES, default=0)
+
+
 
 
 """

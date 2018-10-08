@@ -13,7 +13,8 @@ import unicodecsv as csv
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
     Backup, BusinessService, BusinessFunction, BusinessProcess,
-    ProcessITSystemRelationship, ITSystemEvent)
+    ProcessITSystemRelationship, ITSystemEvent, ChangeRequest, ChangeApproval,
+    StandardChange)
 from .utils import smart_truncate
 
 
@@ -355,3 +356,15 @@ class ITSystemEventAdmin(ModelAdmin):
     def locations_affected(self, obj):
         return ', '.join([i.name for i in obj.locations.all()])
     locations_affected.short_description = 'locations'
+
+@register(ChangeRequest)
+class ChangeRequestAdmin(ModelAdmin):
+    list_display = ('submission_date', 'status', 'requestor', 'urgency', 'change_type')
+
+@register(ChangeApproval)
+class ChangeApprovalAdmin(ModelAdmin):
+    list_display = ('change_request', 'date_approved', 'approver')
+
+@register(StandardChange)
+class StandardChangeAdmin(ModelAdmin):
+    list_display = ('name', 'it_system')

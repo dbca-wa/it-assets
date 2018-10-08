@@ -13,6 +13,7 @@
     <organisation ref="organisation" v-on:updateFilter="updateFilter" v-bind:modal="modals.orgUnit" v-on:showModal="showModal" v-show="currentTab == 'organisation'" />
     <locations ref="locations" v-on:updateFilter="updateFilter" v-bind:itAssetsUrl="itAssetsUrl" v-bind:modal="modals.location" v-on:showModal="showModal" v-bind:kmiUrl="kmiUrl" v-bind:visible="currentTab == 'locations'" />
 </div>
+
 </template>
 <style lang="scss">
 

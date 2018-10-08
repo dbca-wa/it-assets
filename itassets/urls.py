@@ -6,6 +6,7 @@ from itassets.api_v2 import api_v2_router
 from itassets.views import HealthCheckView
 from knowledge import urls as knowledge_urls
 from recoup import urls as recoup_urls
+from registers.views import ChangeRequestView, ChangeRequestDetailView, ChangeRequestListView
 
 admin.site.site_header = 'IT Assets database administration'
 
@@ -17,4 +18,7 @@ urlpatterns = [
     path('recoup/', include(recoup_urls)),
     path('healthcheck/', HealthCheckView.as_view(), name='health_check'),
     path('', RedirectView.as_view(url='/admin')),
+    path('change/request', ChangeRequestView.as_view(), name='change_request'),
+    path('change/request/<int:camefrom>/<int:id>', ChangeRequestDetailView.as_view(), name='change_request_detail'),
+    path('changes/', ChangeRequestListView.as_view(), name='change_request_list')
 ]
