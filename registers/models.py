@@ -1,6 +1,7 @@
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django import forms
+from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
@@ -8,7 +9,6 @@ from django.utils.safestring import mark_safe
 
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
-from registers.utils import smart_truncate
 
 
 CRITICALITY_CHOICES = (
@@ -594,40 +594,73 @@ class ProcessITSystemRelationship(models.Model):
             self.itsystem.name, self.process.name, self.get_importance_display())
 
 
-class ITSystemEvent(models.Model):
-    """Represents information about an event that affects one or more IT Systems
-    or networked locations.
+class Incident(models.Model):
+    """Represents an ITIL incident that affects one or more IT Systems, services or locations.
     """
-    EVENT_TYPE_CHOICES = (
-        (1, 'Incident'),
-        (2, 'Maintenance'),
-        (3, 'Information'),
+    PRIORITY_CHOICES = (
+        ('P0', 'Low - P0'),
+        ('P1', 'Moderate - P1'),
+        ('P2', 'High - P2'),
+        ('P3', 'Critical - P3'),
     )
-    event_type = models.PositiveSmallIntegerField(choices=EVENT_TYPE_CHOICES)
-    description = models.TextField()
-    planned = models.BooleanField(default=False, help_text='Was this event planned?')
-    start = models.DateTimeField(help_text='Event start (date & time)')
-    duration = models.DurationField(null=True, blank=True, help_text='Optional: duration of the event (hh:mm:ss).')
-    end = models.DateTimeField(null=True, blank=True, help_text='Optional: event end (date & time)')
-    current = models.BooleanField(default=True, editable=False)
-    it_systems = models.ManyToManyField(ITSystem, blank=True, help_text='IT System(s) affect by this event')
-    locations = models.ManyToManyField(Location, blank=True, help_text='Location(s) affect by this event')
-    # TODO: incident type (optional: P1, P2, P3, P4)
-    # TODO: FD ticket (optional)
+    DETECTION_CHOICES = (
+        (0, 'Monitoring process'),
+        (1, 'OIM staff report'),
+        (2, 'User/custodian report'),
+    )
+    CATEGORY_CHOICES = (
+        (0, 'Outage'),
+        (1, 'Service degredation'),
+        (2, 'Security'),
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    description = models.TextField(help_text='Short description of the incident')
+    priority = models.CharField(max_length=16, choices=PRIORITY_CHOICES, db_index=True)
+    start = models.DateTimeField(help_text='Initial detection time')
+    resolution = models.DateTimeField(null=True, blank=True, help_text='Resolution time')
+    it_systems = models.ManyToManyField(
+        ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected')
+    locations = models.ManyToManyField(Location, blank=True, help_text='Location(s) affected')
+    platforms = models.ManyToManyField(Platform, blank=True, help_text='Platforms/services affected')
+    manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='manager',
+        help_text='Incident manager')
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='owner',
+        help_text='Incident owner')
+    url = models.URLField(
+        max_length=2048, null=True, blank=True, verbose_name='URL',
+        help_text='Incident report URL (e.g. Freshdesk ticket)', )
+    detection = models.PositiveIntegerField(
+        blank=True, null=True, choices=DETECTION_CHOICES,
+        help_text='The method by which the incident was initially detected')
+    category = models.PositiveIntegerField(blank=True, null=True, choices=CATEGORY_CHOICES)
+    workaround = models.TextField(
+        null=True, blank=True, help_text='Workaround/business continuity actions performed')
+    root_cause = models.TextField(null=True, blank=True, help_text='Root cause analysis/summary')
+    remediation = models.TextField(
+        null=True, blank=True, help_text='Remediation/improvement actions performed/planned')
 
     class Meta:
-        verbose_name = 'IT System event'
+        ordering = ('-created',)
 
     def __str__(self):
-        return '{}: {}'.format(self.get_event_type_display(), smart_truncate(self.description))
+        return '{} ({})'.format(self.pk, self.get_priority_display())
+
+
+class IncidentLog(models.Model):
+    """Represents a log entry related to a single Incident.
+    """
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+    created = models.DateTimeField(auto_now_add=True)
+    log = models.TextField()
+
+    class Meta:
+        ordering = ('created',)
 
     def save(self, *args, **kwargs):
-        # On save, set the `current` boolean field value correctly for the this instant.
-        # An event needs either an end datestamp and/or a duration to set `current`.
-        if self.end and self.end < timezone.now():
-            self.current = False
-        elif self.duration and (self.start + self.duration) < timezone.now():
-            self.current = False
-        else:
-            self.current = True
-        super(ITSystemEvent, self).save(*args, **kwargs)
+        """After saving a log entry, save the parent incident to set the updated field value.
+        """
+        super(IncidentLog, self).save(*args, **kwargs)
+        self.incident.save()

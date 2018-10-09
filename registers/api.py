@@ -1,14 +1,9 @@
 from babel.dates import format_timedelta
 from django.conf import settings
-from django.conf.urls import url
 import itertools
-import pytz
-from restless.dj import DjangoResource
-from restless.preparers import FieldsPreparer
-from restless.resources import skip_prepare
 
 from itassets.utils import CSVDjangoResource
-from .models import ITSystem, ITSystemHardware, ITSystemEvent
+from .models import ITSystem, ITSystemHardware
 
 
 class ITSystemResource(CSVDjangoResource):
@@ -209,64 +204,3 @@ class ITSystemHardwareResource(CSVDjangoResource):
 
     def list(self):
         return ITSystemHardware.objects.all()
-
-
-class ITSystemEventResource(DjangoResource):
-    def __init__(self, *args, **kwargs):
-        super(ITSystemEventResource, self).__init__(*args, **kwargs)
-        self.http_methods.update({
-            'current': {'GET': 'current'}
-        })
-
-    preparer = FieldsPreparer(fields={
-        'id': 'id',
-        'description': 'description',
-        'planned': 'planned',
-        'current': 'current',
-    })
-
-    def prepare(self, data):
-        prepped = super(ITSystemEventResource, self).prepare(data)
-        prepped['event_type'] = data.get_event_type_display()
-        # Output times as the local timezone.
-        tz = pytz.timezone(settings.TIME_ZONE)
-        prepped['start'] = data.start.astimezone(tz)
-        if data.end:
-            prepped['end'] = data.end.astimezone(tz)
-        else:
-            prepped['end'] = None
-        if data.duration:
-            prepped['duration_sec'] = data.duration.seconds
-        else:
-            prepped['duration_sec'] = None
-        if data.it_systems:
-            prepped['it_systems'] = [i.name for i in data.it_systems.all()]
-        else:
-            prepped['it_systems'] = None
-        if data.locations:
-            prepped['locations'] = [i.name for i in data.locations.all()]
-        else:
-            prepped['locations'] = None
-        return prepped
-
-    @skip_prepare
-    def current(self):
-        # Slightly-expensive query: iterate over each 'current' event and call save().
-        # This should automatically expire any events that need to be non-current.
-        for i in ITSystemEvent.objects.filter(current=True):
-            i.save()
-        # Return prepared data.
-        return {'objects': [self.prepare(data) for data in ITSystemEvent.objects.filter(current=True)]}
-
-    def list(self):
-        return ITSystemEvent.objects.all()
-
-    def detail(self, pk):
-        return ITSystemEvent.objects.get(pk=pk)
-
-    @classmethod
-    def urls(self, name_prefix=None):
-        urlpatterns = super(ITSystemEventResource, self).urls(name_prefix=name_prefix)
-        return [
-            url(r'^current/$', self.as_view('current'), name=self.build_url_name('current', name_prefix)),
-        ] + urlpatterns

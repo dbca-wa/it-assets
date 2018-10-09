@@ -1,19 +1,19 @@
 from copy import copy
 from django import forms
 from django.conf.urls import url
-from django.contrib.admin import register, ModelAdmin
+from django.contrib.admin import register, ModelAdmin, StackedInline
+from django.contrib.auth.models import Group, User
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from reversion.admin import VersionAdmin
 from io import BytesIO
+from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
-    Backup, BusinessService, BusinessFunction, BusinessProcess,
-    ProcessITSystemRelationship, ITSystemEvent)
+    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
+    BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog)
 from .utils import smart_truncate
 
 
@@ -334,24 +334,29 @@ class ProcessITSystemRelationshipAdmin(VersionAdmin):
     search_fields = ('process__name', 'itsystem__name')
 
 
-@register(ITSystemEvent)
-class ITSystemEventAdmin(ModelAdmin):
-    filter_horizontal = ('it_systems', 'locations')
-    list_display = (
-        'id', 'event_type', 'description_trunc', 'start', 'duration', 'end',
-        'current', 'it_systems_affected', 'locations_affected')
-    list_filter = ('event_type', 'planned', 'current')
-    search_fields = ('description', 'it_systems__name', 'locations__name')
+class IncidentLogInline(StackedInline):
+    model = IncidentLog
+    extra = 0
+
+
+@register(Incident)
+class IncidentAdmin(ModelAdmin):
     date_hierarchy = 'start'
+    filter_horizontal = ('it_systems', 'locations', 'platforms')
+    list_display = (
+        'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager', 'owner')
+    inlines = [IncidentLogInline]
+    list_filter = ('priority', 'detection', 'category')
+    search_fields = (
+        'description', 'it_systems__name', 'locations__name', 'platform__name', 'manager__email',
+        'owner__email')
 
     def description_trunc(self, obj):
         return smart_truncate(obj.description)
     description_trunc.short_description = 'description'
 
-    def it_systems_affected(self, obj):
-        return ', '.join([i.name for i in obj.it_systems.all()])
-    it_systems_affected.short_description = 'IT Systems'
-
-    def locations_affected(self, obj):
-        return ', '.join([i.name for i in obj.locations.all()])
-    locations_affected.short_description = 'locations'
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        oim = Group.objects.get_or_create(name='OIM Staff')[0]
+        if db_field.name in ['manager', 'owner']:
+            kwargs['queryset'] = User.objects.filter(groups__in=[oim], is_active=True, is_staff=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)

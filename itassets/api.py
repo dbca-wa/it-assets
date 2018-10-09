@@ -7,7 +7,7 @@ from restless.resources import skip_prepare
 from assets.api import HardwareAssetResource, HardwareAssetCSV
 from organisation.api import DepartmentUserResource, LocationResource, profile
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
-from registers.api import ITSystemResource, ITSystemHardwareResource, ITSystemEventResource
+from registers.api import ITSystemResource, ITSystemHardwareResource
 from registers.models import ITSystem
 from tracking.api import EC2InstanceResource, FreshdeskTicketResource
 
@@ -96,5 +96,4 @@ api_urlpatterns = [
     url(r'^users/', include(DepartmentUserResource.urls())),
     url(r'^profile/', profile, name='api_profile'),
     url(r'^options/', include(OptionResource.urls())),
-    url(r'^events/', include(ITSystemEventResource.urls())),
 ]
