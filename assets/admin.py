@@ -43,7 +43,7 @@ class HardwareAssetAdmin(VersionAdmin):
         ('Hardware asset details', {
             'fields': (
                 'asset_tag', 'finance_asset_tag', 'serial', 'vendor', 'hardware_model',
-                'status', 'notes', 'service_request_url')
+                'status', 'notes', 'service_request_url', 'tracked_computer')
         }),
         ('Location & ownership details', {
             'fields': (
@@ -56,8 +56,8 @@ class HardwareAssetAdmin(VersionAdmin):
     )
     list_display = (
         'asset_tag', 'vendor', 'model_type', 'hardware_model', 'serial', 'status',
-        'age', 'location', 'assigned_user')
-    list_filter = ('status', 'vendor')
+        'age', 'location', 'assigned_user', 'cost_centre')
+    list_filter = ('status', 'hardware_model__model_type', 'vendor')
     raw_id_fields = ('assigned_user',)
     search_fields = (
         'asset_tag', 'vendor__name', 'serial', 'hardware_model__model_type',
@@ -69,12 +69,14 @@ class HardwareAssetAdmin(VersionAdmin):
 
     def model_type(self, obj):
         return obj.hardware_model.model_type
+    model_type.admin_order_field = 'hardware_model__model_type'
 
     def age(self, obj):
         if not obj.date_purchased:
             return ''
         d = date.today() - obj.date_purchased
         return humanise_age(d)
+    age.admin_order_field = 'date_purchased'
 
     def extra_data_ro(self, obj):
         return obj.get_extra_data_html()

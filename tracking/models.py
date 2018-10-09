@@ -4,6 +4,24 @@ from django.db import models
 from organisation.models import CommonFields, DepartmentUser, Location
 
 
+class LicensingRule(models.Model):
+    LICENSE_CHOICES = (
+        (1, 'Freeware'),
+        (2, 'Open Source'),
+        (3, 'Commercial - To be decommissioned'),
+        (4, 'Commercial - License required'),
+        (5, 'Commercial - Managed by OIM'),
+    )
+
+    product_name = models.CharField(max_length=256)
+    publisher_name = models.CharField(max_length=256)
+    regex = models.CharField(max_length=2048)
+    license = models.SmallIntegerField(choices=LICENSE_CHOICES)
+
+    def __repr__(self):
+        return '{}: {}'.format(self.publisher_name, self.product_name)
+
+
 class Computer(CommonFields):
     """Represents a non-mobile computing device. Maps to an object managed by Active Directory.
     All information should be auto-generated from scans and scripted tasks.
@@ -30,6 +48,11 @@ class Computer(CommonFields):
     memory = models.BigIntegerField(default=0, null=True, blank=True)
     last_ad_login_username = models.CharField(max_length=256, null=True, blank=True)
     last_ad_login_date = models.DateField(null=True, blank=True)
+    last_login = models.ForeignKey(
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
+        related_name='computers_last_login',
+        help_text='User last seen logged on'
+    )
     probable_owner = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
         related_name='computers_probably_owned',
@@ -40,6 +63,8 @@ class Computer(CommonFields):
         help_text='"Official" device owner/manager (set in AD).')
     date_pdq_updated = models.DateTimeField(null=True, blank=True)
     date_ad_updated = models.DateTimeField(null=True, blank=True)
+    date_ad_created = models.DateTimeField(null=True, blank=True)
+    date_pdq_last_seen = models.DateTimeField(null=True, blank=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True,
         help_text='Physical location')
