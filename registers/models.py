@@ -4,6 +4,7 @@ from django import forms
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
@@ -646,7 +647,30 @@ class Incident(models.Model):
         ordering = ('-created',)
 
     def __str__(self):
+        if self.category is not None:
+            return '{} ({}, {})'.format(self.pk, self.get_priority_display(), self.get_category_display())
         return '{} ({})'.format(self.pk, self.get_priority_display())
+
+    def get_absolute_url(self):
+        return reverse('incident_detail', kwargs={'pk': self.pk})
+
+    @property
+    def status(self):
+        if self.resolution:
+            return 'resolved'
+        return 'ongoing'
+
+    @property
+    def systems_affected(self):
+        if self.it_systems.exists():
+            return ', '.join([i.name for i in self.it_systems.all()])
+        return 'Not specified'
+
+    @property
+    def locations_affected(self):
+        if self.locations.exists():
+            return ', '.join([i.name for i in self.locations.all()])
+        return 'All locations'
 
 
 class IncidentLog(models.Model):
