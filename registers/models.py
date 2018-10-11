@@ -599,11 +599,18 @@ class Incident(models.Model):
     """Represents an ITIL incident that affects one or more IT Systems, services or locations.
     """
     PRIORITY_CHOICES = (
-        ('P0', 'Low - P0'),
-        ('P1', 'Moderate - P1'),
-        ('P2', 'High - P2'),
-        ('P3', 'Critical - P3'),
+        ('L0', 'Low - L0'),
+        ('L1', 'Moderate - L1'),
+        ('L2', 'High - L2'),
+        ('L3', 'Critical - L3'),
     )
+    RTO = {
+        # Recovery Time Objectives (seconds).
+        'L0': 60 * 60 * 100,
+        'L1': 60 * 60 * 20,
+        'L2': 60 * 60 * 4,
+        'L3': 60 * 60 * 2,
+    }
     DETECTION_CHOICES = (
         (0, 'Monitoring process'),
         (1, 'OIM staff report'),
@@ -622,8 +629,8 @@ class Incident(models.Model):
     resolution = models.DateTimeField(null=True, blank=True, help_text='Resolution time')
     it_systems = models.ManyToManyField(
         ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected')
-    locations = models.ManyToManyField(Location, blank=True, help_text='Location(s) affected')
-    platforms = models.ManyToManyField(Platform, blank=True, help_text='Platforms/services affected')
+    locations = models.ManyToManyField(
+        Location, blank=True, help_text='Location(s) affected (leave unselected to imply "all locations")')
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='manager',
         help_text='Incident manager')
@@ -634,9 +641,9 @@ class Incident(models.Model):
         max_length=2048, null=True, blank=True, verbose_name='URL',
         help_text='Incident report URL (e.g. Freshdesk ticket)', )
     detection = models.PositiveIntegerField(
-        blank=True, null=True, choices=DETECTION_CHOICES,
+        blank=True, null=True, choices=DETECTION_CHOICES, db_index=True,
         help_text='The method by which the incident was initially detected')
-    category = models.PositiveIntegerField(blank=True, null=True, choices=CATEGORY_CHOICES)
+    category = models.PositiveIntegerField(blank=True, null=True, db_index=True, choices=CATEGORY_CHOICES)
     workaround = models.TextField(
         null=True, blank=True, help_text='Workaround/business continuity actions performed')
     root_cause = models.TextField(null=True, blank=True, help_text='Root cause analysis/summary')
@@ -671,6 +678,22 @@ class Incident(models.Model):
         if self.locations.exists():
             return ', '.join([i.name for i in self.locations.all()])
         return 'All locations'
+
+    @property
+    def duration(self):
+        # Returns the duration of the incident as timedelta, or None if ongoing.
+        if self.resolution:
+            return self.resolution - self.start
+        return None
+
+    def rto_met(self):
+        # Returns True/False if the RTO time was met, or None if ongoing.
+        if self.resolution:
+            if self.duration.seconds <= self.RTO[self.priority]:
+                return True
+            else:
+                return False
+        return None
 
 
 class IncidentLog(models.Model):

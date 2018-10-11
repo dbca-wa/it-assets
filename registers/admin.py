@@ -1,15 +1,19 @@
 from copy import copy
+from datetime import date
 from django import forms
+from django.conf import settings
 from django.conf.urls import url
 from django.contrib.admin import register, ModelAdmin, StackedInline
 from django.contrib.auth.models import Group, User
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
-from django.urls import reverse
+from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 from io import BytesIO
+from pytz import timezone
 from reversion.admin import VersionAdmin
 import unicodecsv as csv
+import xlsxwriter
 
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
@@ -49,10 +53,8 @@ class ITSystemHardwareAdmin(VersionAdmin):
         return urls
 
     def export(self, request):
-        """Exports ITSystemHardware data to a CSV. NOTE: report output excludes objects
-        that are marked as decommissioned.
-        """
-        # Define fields to output.
+        # Exports ITSystemHardware data to a CSV. NOTE: report output excludes objects
+        # that are marked as decommissioned.
         fields = [
             'hostname', 'host', 'os_name', 'role', 'production', 'instance_id', 'patch_group', 'itsystem_system_id',
             'itsystem_name', 'itsystem_cost_centre', 'itsystem_availability', 'itsystem_custodian',
@@ -100,14 +102,12 @@ class PlatformAdmin(VersionAdmin):
 
 
 class ITSystemForm(forms.ModelForm):
-
     class Meta:
         model = ITSystem
         exclude = []
 
     def clean_biller_code(self):
-        """Validation on the biller_code field: must be unique (ignore null values).
-        """
+        # Validation on the biller_code field - must be unique (ignore null values).
         data = self.cleaned_data['biller_code']
         if data and ITSystem.objects.filter(biller_code=data).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError('An IT System with this biller code already exists.')
@@ -192,9 +192,7 @@ class ITSystemAdmin(VersionAdmin):
         return urls
 
     def export(self, request):
-        """Exports ITSystem data to a CSV.
-        """
-        # Define model fields to output.
+        # Exports ITSystem data to a CSV.
         fields = [
             'system_id', 'name', 'acronym', 'status_display', 'description',
             'criticality_display', 'availability_display', 'system_type_display',
@@ -256,11 +254,11 @@ class ITSystemDependencyAdmin(VersionAdmin):
             request, 'admin/itsystemdependency_reports.html', context)
 
     def itsystem_dependency_report_all(self, request):
-        """Returns a CSV containing all recorded dependencies.
-        """
+        # Returns a CSV containing all recorded dependencies.
         fields = [
             'IT System', 'System status', 'Dependency', 'Dependency status',
             'Criticality', 'Description']
+
         # Write data for ITSystemHardware objects to the CSV.
         stream = BytesIO()
         wr = csv.writer(stream, encoding='utf-8')
@@ -276,9 +274,9 @@ class ITSystemDependencyAdmin(VersionAdmin):
         return response
 
     def itsystem_dependency_report_nodeps(self, request):
-        """Returns a CSV containing all systems without dependencies recorded.
-        """
+        # Returns a CSV containing all systems without dependencies recorded.
         fields = ['IT System', 'System status']
+
         # Write data for ITSystemHardware objects to the CSV.
         stream = BytesIO()
         wr = csv.writer(stream, encoding='utf-8')
@@ -342,14 +340,15 @@ class IncidentLogInline(StackedInline):
 @register(Incident)
 class IncidentAdmin(ModelAdmin):
     date_hierarchy = 'start'
-    filter_horizontal = ('it_systems', 'locations', 'platforms')
+    filter_horizontal = ('it_systems', 'locations')
     list_display = (
         'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager', 'owner')
     inlines = [IncidentLogInline]
     list_filter = ('priority', 'detection', 'category')
     search_fields = (
-        'description', 'it_systems__name', 'locations__name', 'platform__name', 'manager__email',
-        'owner__email')
+        'description', 'it_systems__name', 'locations__name', 'manager__email', 'owner__email',
+        'url', 'workaround', 'root_cause', 'remediation')
+    change_list_template = 'admin/registers/incident/change_list.html'
 
     def description_trunc(self, obj):
         return smart_truncate(obj.description)
@@ -360,3 +359,59 @@ class IncidentAdmin(ModelAdmin):
         if db_field.name in ['manager', 'owner']:
             kwargs['queryset'] = User.objects.filter(groups__in=[oim], is_active=True, is_staff=True)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_urls(self):
+        urls = super(IncidentAdmin, self).get_urls()
+        # Note that we don't wrap the view below in AdminSite.admin_view() on purpose,
+        # as we want it to be generally accessible.
+        urls = [path('export/', self.export, name='incident_export')] + urls
+        return urls
+
+    def export(self, request):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=incident_register_{}.xlsx'.format(date.today().isoformat())
+
+        with xlsxwriter.Workbook(
+            response,
+            {
+                'in_memory': True,
+                'default_date_format': 'dd-mmm-yyyy HH:MM',
+                'remove_timezone': True,
+            },
+        ) as workbook:
+            # Incident Register worksheet
+            incidents = Incident.objects.all()
+            register = workbook.add_worksheet('Incident register')
+            register.write_row('A1', (
+                'Incident no.', 'Status', 'Description', 'Priority', 'Category', 'Start time',
+                'Resolution time', 'Duration', 'RTO met', 'System(s) affected', 'Location(s) affected',
+                'Incident manager', 'Incident owner', 'Detection method', 'Workaround action(s)',
+                'Root cause', 'Remediation aciton(s)', 'Department(s) affected'
+            ))
+            row = 1
+            tz = timezone(settings.TIME_ZONE)
+            for i in incidents:
+                register.write_row(row, 0, [
+                    i.pk, i.status.capitalize(), i.description, i.get_priority_display(),
+                    i.get_category_display(), i.start.astimezone(tz),
+                    i.resolution.astimezone(tz) if i.resolution else '',
+                    str(i.duration) if i.duration else '', i.rto_met(),
+                    i.systems_affected, i.locations_affected,
+                    i.manager.get_full_name() if i.manager else '',
+                    i.owner.get_full_name() if i.owner else '',
+                    i.get_detection_display(), i.workaround, i.root_cause, i.remediation
+                ])
+                row += 1
+            register.set_column('A:A', 11)
+            register.set_column('C:C', 72)
+            register.set_column('D:D', 13)
+            register.set_column('E:E', 18)
+            register.set_column('F:G', 16)
+            register.set_column('H:H', 13)
+            register.set_column('I:I', 8)
+            register.set_column('J:K', 28)
+            register.set_column('L:M', 16)
+            register.set_column('N:N', 20)
+            register.set_column('O:R', 24)
+
+        return response
