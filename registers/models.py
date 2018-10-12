@@ -695,6 +695,13 @@ class Incident(models.Model):
                 return False
         return None
 
+    @property
+    def divisions_affected(self):
+        if self.it_systems.exists():
+            divs = set([i.division_name for i in self.it_systems.all() if i.division_name])
+            return ', '.join(divs)
+        return None
+
 
 class IncidentLog(models.Model):
     """Represents a log entry related to a single Incident.

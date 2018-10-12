@@ -386,7 +386,7 @@ class IncidentAdmin(ModelAdmin):
                 'Incident no.', 'Status', 'Description', 'Priority', 'Category', 'Start time',
                 'Resolution time', 'Duration', 'RTO met', 'System(s) affected', 'Location(s) affected',
                 'Incident manager', 'Incident owner', 'Detection method', 'Workaround action(s)',
-                'Root cause', 'Remediation aciton(s)', 'Department(s) affected'
+                'Root cause', 'Remediation action(s)', 'Division(s) affected'
             ))
             row = 1
             tz = timezone(settings.TIME_ZONE)
@@ -399,7 +399,8 @@ class IncidentAdmin(ModelAdmin):
                     i.systems_affected, i.locations_affected,
                     i.manager.get_full_name() if i.manager else '',
                     i.owner.get_full_name() if i.owner else '',
-                    i.get_detection_display(), i.workaround, i.root_cause, i.remediation
+                    i.get_detection_display(), i.workaround, i.root_cause, i.remediation,
+                    i.divisions_affected if i.divisions_affected else ''
                 ])
                 row += 1
             register.set_column('A:A', 11)
