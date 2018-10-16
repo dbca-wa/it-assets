@@ -1,24 +1,26 @@
 from copy import copy
-from datetime import date
 from django import forms
-from django.conf import settings
 from django.conf.urls import url
-from django.contrib.admin import register, ModelAdmin, StackedInline
+from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
 from django.contrib.auth.models import Group, User
+from django.forms import ModelChoiceField, ModelForm
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 from io import BytesIO
-from pytz import timezone
 from reversion.admin import VersionAdmin
 import unicodecsv as csv
-import xlsxwriter
 
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
     BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog)
 from .utils import smart_truncate
+from .views import IncidentExport
+
+
+COORDS = Group.objects.get_or_create(name='IT Coordinators')[0]
+OIM_STAFF = Group.objects.get_or_create(name='OIM Staff')[0]
 
 
 @register(UserGroup)
@@ -337,82 +339,81 @@ class IncidentLogInline(StackedInline):
     extra = 0
 
 
+class UserModelChoiceField(ModelChoiceField):
+    """A lightly-customised choice field for users (displays user full name).
+    """
+    def label_from_instance(self, obj):
+        # Return a string of the format: "firstname lastname (username)"
+        return "{} ({})".format(obj.get_full_name(), obj.username)
+
+
+class IncidentAdminForm(ModelForm):
+    """A lightly-customised ModelForm for Incidents, to use the UserModelChoiceField widget.
+    """
+    owner = UserModelChoiceField(
+        User.objects.filter(groups__in=[OIM_STAFF], is_active=True, is_staff=True).order_by('first_name'),
+        required=False, help_text='Incident owner')
+    manager = UserModelChoiceField(
+        User.objects.filter(groups__in=[COORDS], is_active=True, is_staff=True).order_by('first_name'),
+        required=False, help_text='Incident manager')
+
+    class Meta:
+        model = Incident
+        exclude = []
+
+
+class IncidentStatusListFilter(SimpleListFilter):
+    """A custom list filter to restrict displayed incidents to ongoing/resolved status.
+    """
+    title = 'status'
+    parameter_name = 'status'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('Ongoing', 'Ongoing'),
+            ('Resolved', 'Resolved')
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'Ongoing':
+            return queryset.filter(resolution__isnull=True)
+        if self.value() == 'Resolved':
+            return queryset.filter(resolution__isnull=False)
+
+
 @register(Incident)
 class IncidentAdmin(ModelAdmin):
+    form = IncidentAdminForm
     date_hierarchy = 'start'
     filter_horizontal = ('it_systems', 'locations')
     list_display = (
-        'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager', 'owner')
+        'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager_name',
+        'owner_name')
     inlines = [IncidentLogInline]
-    list_filter = ('priority', 'detection', 'category')
+    list_filter = (IncidentStatusListFilter, 'priority', 'detection', 'category')
+    list_select_related = ('manager', 'owner')
     search_fields = (
         'description', 'it_systems__name', 'locations__name', 'manager__email', 'owner__email',
         'url', 'workaround', 'root_cause', 'remediation')
     change_list_template = 'admin/registers/incident/change_list.html'
 
+    def manager_name(self, obj):
+        if obj.manager:
+            return obj.manager.get_full_name()
+        return ''
+    manager_name.short_description = 'manager'
+
+    def owner_name(self, obj):
+        if obj.owner:
+            return obj.owner.get_full_name()
+        return ''
+    owner_name.short_description = 'owner'
+
     def description_trunc(self, obj):
         return smart_truncate(obj.description)
     description_trunc.short_description = 'description'
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        oim = Group.objects.get_or_create(name='OIM Staff')[0]
-        if db_field.name in ['manager', 'owner']:
-            kwargs['queryset'] = User.objects.filter(groups__in=[oim], is_active=True, is_staff=True)
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
     def get_urls(self):
         urls = super(IncidentAdmin, self).get_urls()
-        # Note that we don't wrap the view below in AdminSite.admin_view() on purpose,
-        # as we want it to be generally accessible.
-        urls = [path('export/', self.export, name='incident_export')] + urls
+        urls = [path('export/', IncidentExport.as_view(), name='incident_export')] + urls
         return urls
-
-    def export(self, request):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=incident_register_{}.xlsx'.format(date.today().isoformat())
-
-        with xlsxwriter.Workbook(
-            response,
-            {
-                'in_memory': True,
-                'default_date_format': 'dd-mmm-yyyy HH:MM',
-                'remove_timezone': True,
-            },
-        ) as workbook:
-            # Incident Register worksheet
-            incidents = Incident.objects.all()
-            register = workbook.add_worksheet('Incident register')
-            register.write_row('A1', (
-                'Incident no.', 'Status', 'Description', 'Priority', 'Category', 'Start time',
-                'Resolution time', 'Duration', 'RTO met', 'System(s) affected', 'Location(s) affected',
-                'Incident manager', 'Incident owner', 'Detection method', 'Workaround action(s)',
-                'Root cause', 'Remediation action(s)', 'Division(s) affected'
-            ))
-            row = 1
-            tz = timezone(settings.TIME_ZONE)
-            for i in incidents:
-                register.write_row(row, 0, [
-                    i.pk, i.status.capitalize(), i.description, i.get_priority_display(),
-                    i.get_category_display(), i.start.astimezone(tz),
-                    i.resolution.astimezone(tz) if i.resolution else '',
-                    str(i.duration) if i.duration else '', i.rto_met(),
-                    i.systems_affected, i.locations_affected,
-                    i.manager.get_full_name() if i.manager else '',
-                    i.owner.get_full_name() if i.owner else '',
-                    i.get_detection_display(), i.workaround, i.root_cause, i.remediation,
-                    i.divisions_affected if i.divisions_affected else ''
-                ])
-                row += 1
-            register.set_column('A:A', 11)
-            register.set_column('C:C', 72)
-            register.set_column('D:D', 13)
-            register.set_column('E:E', 18)
-            register.set_column('F:G', 16)
-            register.set_column('H:H', 13)
-            register.set_column('I:I', 8)
-            register.set_column('J:K', 28)
-            register.set_column('L:M', 16)
-            register.set_column('N:N', 20)
-            register.set_column('O:R', 24)
-
-        return response
