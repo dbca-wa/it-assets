@@ -19,10 +19,6 @@ from .utils import smart_truncate
 from .views import IncidentExport
 
 
-COORDS = Group.objects.get_or_create(name='IT Coordinators')[0]
-OIM_STAFF = Group.objects.get_or_create(name='OIM Staff')[0]
-
-
 @register(UserGroup)
 class UserGroupAdmin(VersionAdmin):
     list_display = ('name', 'user_count')
@@ -351,11 +347,14 @@ class IncidentAdminForm(ModelForm):
     """A lightly-customised ModelForm for Incidents, to use the UserModelChoiceField widget.
     """
     owner = UserModelChoiceField(
-        User.objects.filter(groups__in=[OIM_STAFF], is_active=True, is_staff=True).order_by('first_name'),
+        User.objects.filter(
+            groups__in=[Group.objects.get(name='OIM Staff')], is_active=True, is_staff=True).order_by('first_name'),
         required=False, help_text='Incident owner')
     manager = UserModelChoiceField(
-        User.objects.filter(groups__in=[COORDS], is_active=True, is_staff=True).order_by('first_name'),
+        User.objects.filter(
+            groups__in=[Group.objects.get(name='IT Coordinators')], is_active=True, is_staff=True).order_by('first_name'),
         required=False, help_text='Incident manager')
+
 
     class Meta:
         model = Incident
