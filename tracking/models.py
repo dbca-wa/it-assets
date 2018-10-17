@@ -65,6 +65,7 @@ class Computer(CommonFields):
     date_ad_updated = models.DateTimeField(null=True, blank=True)
     date_ad_created = models.DateTimeField(null=True, blank=True)
     date_pdq_last_seen = models.DateTimeField(null=True, blank=True)
+    pdq_id = models.PositiveIntegerField(null=True, unique=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True,
         help_text='Physical location')

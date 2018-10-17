@@ -2,7 +2,7 @@
 <div id="addressbook_base" class="f6inject">
 
     <div class="grid-container">
-        <div class="grid-x grid-margin-x align-middle align-center small-margin-collapse">
+        <div class="grid-x grid-margin-x align-middle align-center small-margin-collapse tab-fix">
             <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'addressList'" v-on:click="changeTab('addressList')">Address list</a></div>
             <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'organisation'" v-on:click="changeTab('organisation')">Organisation</a></div>
             <div class="cell auto tabs-title"><a v-bind:aria-selected="currentTab == 'locations'" v-on:click="changeTab('locations')">Locations</a></div>
@@ -16,6 +16,10 @@
 </template>
 <style lang="scss">
 
+.tab-fix {
+    border-left: 1px solid #e6e6e6;
+}
+
 .f6inject {
     .tabs-title {
         text-align: center;
@@ -23,6 +27,8 @@
 
     .tabs-title > a {
         font-size: 1rem !important;
+        border-right: 1px solid #e6e6e6;
+        border-top: 1px solid #e6e6e6;
     }
 
     .reveal-overlay.show {
