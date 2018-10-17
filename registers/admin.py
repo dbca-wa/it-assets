@@ -346,15 +346,16 @@ class UserModelChoiceField(ModelChoiceField):
 class IncidentAdminForm(ModelForm):
     """A lightly-customised ModelForm for Incidents, to use the UserModelChoiceField widget.
     """
-    owner = UserModelChoiceField(
-        User.objects.filter(
-            groups__in=[Group.objects.get(name='OIM Staff')], is_active=True, is_staff=True).order_by('first_name'),
-        required=False, help_text='Incident owner')
-    manager = UserModelChoiceField(
-        User.objects.filter(
-            groups__in=[Group.objects.get(name='IT Coordinators')], is_active=True, is_staff=True).order_by('first_name'),
-        required=False, help_text='Incident manager')
+    owner = UserModelChoiceField(queryset=None, required=False, help_text='Incident owner')
+    manager = UserModelChoiceField(queryset=None, required=False, help_text='Incident manager')
 
+    def __init__(self, *args, **kwargs):
+        super(IncidentAdminForm, self).__init__(*args, **kwargs)
+        # Set the user choice querysets on __init__ in order that the project still works with an empty database.
+        self.fields['owner'].queryset = User.objects.filter(
+            groups__in=[Group.objects.get(name='OIM Staff')], is_active=True, is_staff=True).order_by('first_name')
+        self.fields['manager'].queryset = User.objects.filter(
+            groups__in=[Group.objects.get(name='IT Coordinators')], is_active=True, is_staff=True).order_by('first_name')
 
     class Meta:
         model = Incident
