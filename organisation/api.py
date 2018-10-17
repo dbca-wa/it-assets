@@ -146,6 +146,9 @@ class DepartmentUserResource(DjangoResource):
         elif 'cost_centre' in self.request.GET:
             # Always return all objects by cost centre (inc inactive & contractors).
             users = DepartmentUser.objects.filter(cost_centre__code__icontains=self.request.GET['cost_centre'])
+        elif 'pk' in self.request.GET:
+            # Return the sole user requested.
+            users = DepartmentUser.objects.filter(pk=self.request.GET['pk'])
         else:
             # No other filtering:
             # Return 'active' DU objects, excluding predefined account types and contractors

@@ -10,6 +10,7 @@ from django.utils.safestring import mark_safe
 
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
+from .utils import smart_truncate
 
 
 CRITICALITY_CHOICES = (
@@ -718,3 +719,118 @@ class IncidentLog(models.Model):
         """
         super(IncidentLog, self).save(*args, **kwargs)
         self.incident.save()
+
+
+class StandardChange(models.Model):
+    """A standard change that will be used multiple times.
+    """
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    name = models.CharField(max_length=256)
+    description = models.TextField(blank=True, null=True)
+    it_systems = models.ManyToManyField(
+        ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected by the standard change')
+    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
+    expiry = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return '{}: {}'.format(self.pk, smart_truncate(self.name))
+
+
+class ChangeRequest(models.Model):
+    """A model for change requests. Will be linked to API to allow application of a change request.
+    Will be linked to an approval object. Both will be served in a frontend.
+    """
+    CHANGE_TYPE_CHOICES = (
+        (0, "Normal"),
+        (1, "Standard"),
+        (2, "Emergency"),
+    )
+    STATUS_CHOICES = (
+        (0, "Draft"),
+        (1, "Scheduled"),
+        (2, "Ready"),
+        (3, "Complete"),
+        (4, "Rolled back"),
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    title = models.CharField(max_length=255)
+    change_type = models.SmallIntegerField(choices=CHANGE_TYPE_CHOICES, default=0, db_index=True)
+    status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0, db_index=True)
+    standard_change = models.ForeignKey(
+        StandardChange, on_delete=models.PROTECT, null=True, blank=True, help_text='Standard change reference')
+    requester = models.ForeignKey(
+        DepartmentUser, on_delete=models.PROTECT, related_name='requester', help_text='Change requester')
+    approver = models.ForeignKey(
+        DepartmentUser, on_delete=models.PROTECT, related_name='approver', help_text='Change request approver')
+    implementer = models.ForeignKey(
+        DepartmentUser, on_delete=models.PROTECT, related_name='implementer',
+        help_text='Change request implementer', blank=True, null=True)
+    description = models.TextField(
+        null=False, blank=False, help_text='Brief description of what the change is and why it is being undertaken')
+    incident_url = models.URLField(
+        max_length=2048, null=True, blank=True, verbose_name='Incident URL',
+        help_text='If the change is to address an incident, URL to the incident details')
+    test_date = models.DateField(null=True, blank=True, help_text='Date that the change was tested')
+    planned_start = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to begin')
+    planned_end = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to end')
+    completed = models.DateTimeField(null=True, blank=True, help_text='Time that the change was completed')
+    it_systems = models.ManyToManyField(
+        ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected by the change')
+    implementation = models.TextField(null=True, blank=True, help_text='Implementation/deployment instructions')
+    implementation_docs = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Implementation/deployment instructions (attachment)')
+    outage = models.DurationField(
+        null=True, blank=True, help_text='Duration of outage required to complete the change (hh:mm:ss).')
+    communication = models.TextField(
+        null=True, blank=True, help_text='Description of all communications to be undertaken')
+    broadcast = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d',
+        help_text='The broadcast text to be emailed to users regarding this change')
+    unexpected_issues = models.BooleanField(default=False)
+    notes = models.TextField(null=True, blank=True, help_text='Details of any unexpected issues, observations, etc.')
+
+    def __str__(self):
+        return '{}: {}'.format(self.pk, smart_truncate(self.title))
+
+    @property
+    def systems_affected(self):
+        if self.it_systems.exists():
+            return ', '.join([i.name for i in self.it_systems.all()])
+        return 'Not specified'
+
+
+class ChangeLog(models.Model):
+    """Represents a log entry related to a single Change Request.
+    """
+    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
+    created = models.DateTimeField(auto_now_add=True)
+    log = models.TextField()
+
+    class Meta:
+        ordering = ('created',)
+
+    def save(self, *args, **kwargs):
+        """After saving a log entry, save the parent change to set the updated field value.
+        """
+        super(ChangeLog, self).save(*args, **kwargs)
+        self.change_request.save()
+
+
+class ChangeApproval(models.Model):
+    """A model to record approval  of change requests. A change request could be edited and then
+    resubmitted, requiring a one to many relationship change to approval.
+    """
+    APPROVAL_SOURCE_CHOICES = (
+        (0, "Email"),
+        (1, "Online"),
+        (2, "Verbal"),
+        (3, "Other"),
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
+    approval_source = models.SmallIntegerField(choices=APPROVAL_SOURCE_CHOICES, default=0)
+    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
+    date_approved = models.DateTimeField()
+    notes = models.CharField(max_length=2048, blank=True, null=True)

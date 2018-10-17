@@ -19,6 +19,14 @@ class UserOrgUnitSerializer(serializers.ModelSerializer):
         model = OrgUnit
         fields = ('id', 'name', 'acronym')
 
+class DepartmentUserMinSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepartmentUser
+        fields = (
+            'id',
+            'name'
+        )
+
 
 class DepartmentUserSerializer(serializers.ModelSerializer):
     location = UserLocationSerializer()

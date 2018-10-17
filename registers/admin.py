@@ -14,7 +14,8 @@ import unicodecsv as csv
 
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
-    BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog)
+    BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog,
+    StandardChange, ChangeRequest, ChangeLog, ChangeApproval)
 from .utils import smart_truncate
 from .views import IncidentExport
 
@@ -386,14 +387,14 @@ class IncidentAdmin(ModelAdmin):
     form = IncidentAdminForm
     date_hierarchy = 'start'
     filter_horizontal = ('it_systems', 'locations')
+    inlines = [IncidentLogInline]
     list_display = (
         'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager_name',
         'owner_name')
-    inlines = [IncidentLogInline]
     list_filter = (IncidentStatusListFilter, 'priority', 'detection', 'category')
     list_select_related = ('manager', 'owner')
     search_fields = (
-        'description', 'it_systems__name', 'locations__name', 'manager__email', 'owner__email',
+        'id', 'description', 'it_systems__name', 'locations__name', 'manager__email', 'owner__email',
         'url', 'workaround', 'root_cause', 'remediation')
     change_list_template = 'admin/registers/incident/change_list.html'
 
@@ -417,3 +418,43 @@ class IncidentAdmin(ModelAdmin):
         urls = super(IncidentAdmin, self).get_urls()
         urls = [path('export/', IncidentExport.as_view(), name='incident_export')] + urls
         return urls
+
+    def it_systems_affected(self, obj):
+        return ', '.join([i.name for i in obj.it_systems.all()])
+    it_systems_affected.short_description = 'IT Systems'
+
+    def locations_affected(self, obj):
+        return ', '.join([i.name for i in obj.locations.all()])
+    locations_affected.short_description = 'locations'
+
+
+@register(StandardChange)
+class StandardChangeAdmin(ModelAdmin):
+    date_hierarchy = 'created'
+    filter_horizontal = ('it_systems',)
+    list_display = ('id', 'name', 'approver', 'expiry')
+    raw_id_fields = ('approver',)
+    search_fields = ('id', 'name', 'approver__email')
+
+
+class ChangeLogInline(StackedInline):
+    model = ChangeLog
+    extra = 0
+
+
+@register(ChangeRequest)
+class ChangeRequestAdmin(ModelAdmin):
+    date_hierarchy = 'planned_start'
+    filter_horizontal = ('it_systems',)
+    inlines = [ChangeLogInline]
+    list_display = (
+        'id', 'created', 'title', 'requester', 'approver', 'change_type', 'status', 'planned_start')
+    list_filter = ('change_type', 'status',)
+    raw_id_fields = ('requester', 'approver', 'implementer')
+    search_fields = ('id', 'title', 'requester__email', 'approver__email', 'implementer__email')
+
+
+@register(ChangeApproval)
+class ChangeApprovalAdmin(ModelAdmin):
+    list_display = ('id', 'change_request', 'approval_source', 'approver', 'date_approved')
+    date_hierarchy = 'created'

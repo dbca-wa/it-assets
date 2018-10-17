@@ -1,7 +1,7 @@
 from datetime import date
 from django.conf import settings
 from django.http import HttpResponse
-from django.views.generic import View, ListView, DetailView
+from django.views.generic import View, ListView, DetailView, TemplateView
 from pytz import timezone
 import xlsxwriter
 
@@ -74,3 +74,15 @@ class IncidentExport(View):
             register.set_column('O:R', 24)
 
         return response
+
+
+class ChangeRequestList(TemplateView):
+    template_name = 'changerequestlist.html'
+
+
+class ChangeRequestDetail(TemplateView):
+    template_name = 'changerequestdetail.html'
+
+
+class ChangeRequestCreate(TemplateView):
+    template_name = 'changerequest.html'
