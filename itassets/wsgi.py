@@ -4,10 +4,11 @@ It exposes the WSGI callable as a module-level variable named ``application``.
 """
 import confy
 import os
-from unipath import Path
+from pathlib import Path
 
 # These lines are required for interoperability between local and container environments.
-dot_env = os.path.join(Path(__file__).ancestor(2), '.env')
+d = Path(__file__).resolve().parents[1]
+dot_env = os.path.join(str(d), '.env')
 if os.path.exists(dot_env):
     confy.read_environment_file(dot_env)  # Must precede dj_static imports.
 

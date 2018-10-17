@@ -1,14 +1,18 @@
 from babel.dates import format_timedelta
+from collections import OrderedDict
+from datetime import datetime
+from django.core.files import File
 from django.conf import settings
-from django.conf.urls import url
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 import itertools
-import pytz
-from restless.dj import DjangoResource
-from restless.preparers import FieldsPreparer
-from restless.resources import skip_prepare
+from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import detail_route
 
 from itassets.utils import CSVDjangoResource
-from .models import ITSystem, ITSystemHardware, ITSystemEvent
+from .models import ITSystem, ITSystemHardware, ChangeRequest, StandardChange, ChangeApproval
+from .serializers import ChangeRequestSerializer, StandardChangeSerializer, ChangeApprovalSerializer
 
 
 class ITSystemResource(CSVDjangoResource):
@@ -211,62 +215,179 @@ class ITSystemHardwareResource(CSVDjangoResource):
         return ITSystemHardware.objects.all()
 
 
-class ITSystemEventResource(DjangoResource):
-    def __init__(self, *args, **kwargs):
-        super(ITSystemEventResource, self).__init__(*args, **kwargs)
-        self.http_methods.update({
-            'current': {'GET': 'current'}
-        })
+class ChangeRequestViewSet(viewsets.ModelViewSet):
+    """Used to allow users to create change requests. These can be viewed
+    updated or created.
+    """
+    permission_classes = []
+    queryset = ChangeRequest.objects.all()
+    serializer_class = ChangeRequestSerializer
 
-    preparer = FieldsPreparer(fields={
-        'id': 'id',
-        'description': 'description',
-        'planned': 'planned',
-        'current': 'current',
-    })
+    def list(self, request):
+        qa = ChangeRequest.objects.all().order_by('-submission_date')
+        search = request.GET.get('search[value]') if request.GET.get('search[value]') else None
+        start = request.GET.get('start') if request.GET.get('start') else 0
+        length = request.GET.get('length') if request.GET.get('length') else len(qa)
+        datefrom = datetime.strptime(request.GET.get('filterfrom'), '%d/%m/%Y').date() if request.GET.get('filterfrom') else None
+        dateto = datetime.strptime(request.GET.get('filterto'), '%d/%m/%Y').date() if request.GET.get('filterto') else None
+        urgency = request.GET.get('urgency') if request.GET.get('urgency') else None
+        status = request.GET.get('status') if request.GET.get('status') else None
+        mychanges = request.GET.get('mychanges') if request.GET.get('mychanges') else None
+        recordsTotal = len(qa)
+        if(mychanges):
+            if(request.user.is_authenticated):
+                user = request.user.email
+                qa = qa.filter(Q(requestor__email=user) | Q(approver__email=user) | Q(implementor__email=user))
+        if(search):
+            qa = qa.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(notes__icontains=search) | Q(broadcast__icontains=search) | Q(implementation__icontains=search) | Q(it_system__name__icontains=search) | Q(implementor__name__icontains=search) | Q(approver__name__icontains=search) | Q(requestor__name__icontains=search))
+        if(datefrom):
+            qa = qa.filter(change_start__gte=datefrom)
+        if(dateto):
+            qa = qa.filter(change_start__lte=dateto)
+        if(urgency):
+            if(int(urgency) != 99):
+                qa = qa.filter(urgency=urgency)
+        if(status):
+            if(int(status) != 99):
+                qa = qa.filter(status=status)
 
-    def prepare(self, data):
-        prepped = super(ITSystemEventResource, self).prepare(data)
-        prepped['event_type'] = data.get_event_type_display()
-        # Output times as the local timezone.
-        tz = pytz.timezone(settings.TIME_ZONE)
-        prepped['start'] = data.start.astimezone(tz)
-        if data.end:
-            prepped['end'] = data.end.astimezone(tz)
+        recordsFiltered = int(len(qa))
+        qa = qa[int(start):int(length) + int(start)]
+        serializer = self.serializer_class(qa, many=True)
+        return Response(OrderedDict([
+            ('recordsTotal', recordsTotal),
+            ('recordsFiltered', recordsFiltered),
+            ('results', serializer.data)
+        ]))
+
+    def retrieve(self, request, pk=None):
+        qs = ChangeRequest.objects.select_related('it_system').all()
+        change = get_object_or_404(qs, pk=pk)
+        serializer = ChangeRequestSerializer(change)
+        return Response(serializer.data)
+
+    def create(self, request):
+        data = {
+            'requestor': request.data.get('requestor'),
+            'approver': request.data.get('approver'),
+            'implementor': request.data.get('implementor'),
+            'title': request.data.get('title'),
+            'description': request.data.get('description'),
+            'change_type': request.data.get('changeType'),
+            'urgency': request.data.get('urgency'),
+            'submission_date': datetime.now(),
+            'alternate_system': request.data.get('altSystem'),
+            'outage': request.data.get('outage'),
+            'implementation': request.data.get('implementation'),
+            'broadcast': request.data.get('broadcast'),
+            'notes': request.data.get('notes'),
+            'status': 0,
+            'unexpected_issues': False,
+            'caused_issues': False
+        }
+        dateStart = request.data.get('changeStart')
+        if(dateStart):
+            data['change_start'] = datetime.strptime(request.data.get('changeStart'), "%d/%m/%Y %H:%M")
+        dateEnd = request.data.get('changeEnd')
+        if(dateEnd):
+            data['change_end'] = datetime.strptime(request.data.get('changeEnd'), "%d/%m/%Y %H:%M")
+        systemCode = request.data.get('itSystem')
+        if systemCode == 'System not listed':
+            data['it_system'] = systemCode
         else:
-            prepped['end'] = None
-        if data.duration:
-            prepped['duration_sec'] = data.duration.seconds
+            system = ITSystem.objects.get(system_id=systemCode)
+            data['it_system'] = system.pk
+
+        serializer = ChangeRequestSerializer(data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        res = ChangeRequestSerializer(instance)
+        return Response(res.data)
+
+    def update(self, request, pk=None):
+        files = request.FILES.getlist('file')
+        if files:
+            try:
+                change = ChangeRequest.objects.get(pk=pk)
+            except:
+                raise "Change Request not found."
+            for file in files:
+                f = file.open()
+                change.implementation_docs.save(file.name, File(f))
+                serializer = ChangeRequestSerializer(change)
+                data = serializer.data
         else:
-            prepped['duration_sec'] = None
-        if data.it_systems:
-            prepped['it_systems'] = [i.name for i in data.it_systems.all()]
-        else:
-            prepped['it_systems'] = None
-        if data.locations:
-            prepped['locations'] = [i.name for i in data.locations.all()]
-        else:
-            prepped['locations'] = None
-        return prepped
+            try:
+                change = ChangeRequest.objects.get(pk=pk)
+            except:
+                raise "Change Request not found."
+            if 'status' in request.data and request.data.get('status'):
+                change.status = request.data.get('status')
+                if change.status == 1:
+                    data = {
+                        'change_request': change.pk,
+                        'approver': change.approver.id,
+                        'date_approved': datetime.now(),
+                        'notes': request.data.get('approvalnotes'),
+                    }
+                    if int(request.data.get('camefrom')) < 3:
+                        data['type_of_approval'] = request.data.get('camefrom')
+                    else:
+                        data['type_of_approval'] = 2
+                    serial = ChangeApprovalSerializer(data=data, partial=True)
+                    serial.is_valid(raise_exception=True)
+                    serial.save()
+                elif change.status == 2:
+                    change.completed_date = datetime.now()
+            else:
+                change.requestor_id = request.data.get('requestor')
+                change.approver_id = request.data.get('approver')
+                change.implementor_id = request.data.get('implementor')
+                change.title = request.data.get('title')
+                change.description = request.data.get('description')
+                change.change_type = request.data.get('changetype')
+                change.urgency = request.data.get('urgency')
+                change.alternate_system = request.data.get('altsystem')
+                change.outage = request.data.get('outage')
+                change.implementation = request.data.get('implementation')
+                change.broadcast = request.data.get('broadcast')
+                change.notes = request.data.get('notes')
+                change.unexpected_issues = request.data.get('unexpectedissues')
+                change.caused_issues = request.data.get('causedissues')
 
-    @skip_prepare
-    def current(self):
-        # Slightly-expensive query: iterate over each 'current' event and call save().
-        # This should automatically expire any events that need to be non-current.
-        for i in ITSystemEvent.objects.filter(current=True):
-            i.save()
-        # Return prepared data.
-        return {'objects': [self.prepare(data) for data in ITSystemEvent.objects.filter(current=True)]}
+                dateStart = request.data.get('changestart')
+                if(dateStart):
+                    change.change_start = datetime.strptime(request.data.get('changestart'), "%d/%m/%Y %H:%M")
+                dateEnd = request.data.get('changeend')
+                if(dateEnd):
+                    change.change_end = datetime.strptime(request.data.get('changeend'), "%d/%m/%Y %H:%M")
+                systemCode = request.data.get('itsystem')
+                if systemCode == 'System not listed':
+                    change.it_system = None
+                else:
+                    system = ITSystem.objects.get(system_id=systemCode)
+                    change.it_system_id = system.pk
+            change.save()
+            serializer = ChangeRequestSerializer(change)
+            data = serializer.data
+        return Response(data)
 
-    def list(self):
-        return ITSystemEvent.objects.all()
+    @detail_route()
+    def approval_list(self, request, pk=None):
+        change = self.get_object()
+        approvals = ChangeApproval.objects.filter(change_request=change).order_by('-date_approved')
+        serializer = ChangeApprovalSerializer(approvals, many=True)
+        return Response(serializer.data)
 
-    def detail(self, pk):
-        return ITSystemEvent.objects.get(pk=pk)
 
-    @classmethod
-    def urls(self, name_prefix=None):
-        urlpatterns = super(ITSystemEventResource, self).urls(name_prefix=name_prefix)
-        return [
-            url(r'^current/$', self.as_view('current'), name=self.build_url_name('current', name_prefix)),
-        ] + urlpatterns
+class StandardChangeViewSet(viewsets.ViewSet):
+    """Used to get standard changes
+    """
+    permission_classes = []
+    queryset = StandardChange.objects.all()
+    serializer_class = StandardChangeSerializer
+
+    def list(self, request):
+        qs = self.queryset
+        serializer = self.serializer_class(qs, many=True)
+        return Response(serializer.data)

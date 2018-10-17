@@ -370,6 +370,11 @@ class DepartmentUser(MPTTModel):
                 s += ' - {}'.format(self.org_data['units'][1]['name'])
         return s
 
+    def get_full_name(self):
+        # Return given_name and surname, with a space in between.
+        full_name = '{} {}'.format(self.given_name, self.surname)
+        return full_name.strip()
+
 
 class Location(models.Model):
     """A model to represent a physical location used by Department org units.

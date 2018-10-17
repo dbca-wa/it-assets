@@ -1,0 +1,21 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html"; charset="utf-8"/>
+    </head>
+{% block vue-component %}
+    <div id="request">
+       <router-view></router-view>
+   </div>
+{% endblock %}
+
+<script type="text/javascript">
+
+</script>
+<script type="text/javascript" src="{% static 'changes/js/manifest.js' %}"></script>
+<script type="text/javascript" src="{% static 'changes/js/vendor.js' %}"></script>
+<script type="text/javascript" src="{% static 'changes/js/app.js' %}"></script>
+
+</html>

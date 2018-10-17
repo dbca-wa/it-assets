@@ -1,11 +1,11 @@
 from confy import database, env
 import os
 import sys
-from unipath import Path
+from pathlib import Path
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = Path(__file__).ancestor(2)
-PROJECT_DIR = os.path.join(BASE_DIR, 'itassets')
+BASE_DIR = str(Path(__file__).resolve().parents[1])
+PROJECT_DIR = str(Path(__file__).resolve().parents[0])
 # Add PROJECT_DIR to the system path.
 sys.path.insert(0, PROJECT_DIR)
 

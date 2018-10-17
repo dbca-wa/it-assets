@@ -1,20 +1,23 @@
 from copy import copy
 from django import forms
 from django.conf.urls import url
-from django.contrib.admin import register, ModelAdmin
+from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
+from django.contrib.auth.models import Group, User
+from django.forms import ModelChoiceField, ModelForm
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
-from django.urls import reverse
+from django.urls import path, reverse
 from django.utils.safestring import mark_safe
-from reversion.admin import VersionAdmin
 from io import BytesIO
+from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
-    Backup, BusinessService, BusinessFunction, BusinessProcess,
-    ProcessITSystemRelationship, ITSystemEvent)
+    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
+    BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog,
+    StandardChange, ChangeRequest, ChangeLog, ChangeApproval)
 from .utils import smart_truncate
+from .views import IncidentExport
 
 
 @register(UserGroup)
@@ -49,10 +52,8 @@ class ITSystemHardwareAdmin(VersionAdmin):
         return urls
 
     def export(self, request):
-        """Exports ITSystemHardware data to a CSV. NOTE: report output excludes objects
-        that are marked as decommissioned.
-        """
-        # Define fields to output.
+        # Exports ITSystemHardware data to a CSV. NOTE: report output excludes objects
+        # that are marked as decommissioned.
         fields = [
             'hostname', 'host', 'os_name', 'role', 'production', 'instance_id', 'patch_group', 'itsystem_system_id',
             'itsystem_name', 'itsystem_cost_centre', 'itsystem_availability', 'itsystem_custodian',
@@ -100,14 +101,12 @@ class PlatformAdmin(VersionAdmin):
 
 
 class ITSystemForm(forms.ModelForm):
-
     class Meta:
         model = ITSystem
         exclude = []
 
     def clean_biller_code(self):
-        """Validation on the biller_code field: must be unique (ignore null values).
-        """
+        # Validation on the biller_code field - must be unique (ignore null values).
         data = self.cleaned_data['biller_code']
         if data and ITSystem.objects.filter(biller_code=data).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError('An IT System with this biller code already exists.')
@@ -192,9 +191,7 @@ class ITSystemAdmin(VersionAdmin):
         return urls
 
     def export(self, request):
-        """Exports ITSystem data to a CSV.
-        """
-        # Define model fields to output.
+        # Exports ITSystem data to a CSV.
         fields = [
             'system_id', 'name', 'acronym', 'status_display', 'description',
             'criticality_display', 'availability_display', 'system_type_display',
@@ -256,11 +253,11 @@ class ITSystemDependencyAdmin(VersionAdmin):
             request, 'admin/itsystemdependency_reports.html', context)
 
     def itsystem_dependency_report_all(self, request):
-        """Returns a CSV containing all recorded dependencies.
-        """
+        # Returns a CSV containing all recorded dependencies.
         fields = [
             'IT System', 'System status', 'Dependency', 'Dependency status',
             'Criticality', 'Description']
+
         # Write data for ITSystemHardware objects to the CSV.
         stream = BytesIO()
         wr = csv.writer(stream, encoding='utf-8')
@@ -276,9 +273,9 @@ class ITSystemDependencyAdmin(VersionAdmin):
         return response
 
     def itsystem_dependency_report_nodeps(self, request):
-        """Returns a CSV containing all systems without dependencies recorded.
-        """
+        # Returns a CSV containing all systems without dependencies recorded.
         fields = ['IT System', 'System status']
+
         # Write data for ITSystemHardware objects to the CSV.
         stream = BytesIO()
         wr = csv.writer(stream, encoding='utf-8')
@@ -334,19 +331,93 @@ class ProcessITSystemRelationshipAdmin(VersionAdmin):
     search_fields = ('process__name', 'itsystem__name')
 
 
-@register(ITSystemEvent)
-class ITSystemEventAdmin(ModelAdmin):
-    filter_horizontal = ('it_systems', 'locations')
-    list_display = (
-        'id', 'event_type', 'description_trunc', 'start', 'duration', 'end',
-        'current', 'it_systems_affected', 'locations_affected')
-    list_filter = ('event_type', 'planned', 'current')
-    search_fields = ('description', 'it_systems__name', 'locations__name')
+class IncidentLogInline(StackedInline):
+    model = IncidentLog
+    extra = 0
+
+
+class UserModelChoiceField(ModelChoiceField):
+    """A lightly-customised choice field for users (displays user full name).
+    """
+    def label_from_instance(self, obj):
+        # Return a string of the format: "firstname lastname (username)"
+        return "{} ({})".format(obj.get_full_name(), obj.username)
+
+
+class IncidentAdminForm(ModelForm):
+    """A lightly-customised ModelForm for Incidents, to use the UserModelChoiceField widget.
+    """
+    owner = UserModelChoiceField(queryset=None, required=False, help_text='Incident owner')
+    manager = UserModelChoiceField(queryset=None, required=False, help_text='Incident manager')
+
+    def __init__(self, *args, **kwargs):
+        super(IncidentAdminForm, self).__init__(*args, **kwargs)
+        # Set the user choice querysets on __init__ in order that the project still works with an empty database.
+        self.fields['owner'].queryset = User.objects.filter(
+            groups__in=[Group.objects.get(name='OIM Staff')], is_active=True, is_staff=True).order_by('first_name')
+        self.fields['manager'].queryset = User.objects.filter(
+            groups__in=[Group.objects.get(name='IT Coordinators')], is_active=True, is_staff=True).order_by('first_name')
+
+    class Meta:
+        model = Incident
+        exclude = []
+
+
+class IncidentStatusListFilter(SimpleListFilter):
+    """A custom list filter to restrict displayed incidents to ongoing/resolved status.
+    """
+    title = 'status'
+    parameter_name = 'status'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('Ongoing', 'Ongoing'),
+            ('Resolved', 'Resolved')
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'Ongoing':
+            return queryset.filter(resolution__isnull=True)
+        if self.value() == 'Resolved':
+            return queryset.filter(resolution__isnull=False)
+
+
+@register(Incident)
+class IncidentAdmin(ModelAdmin):
+    form = IncidentAdminForm
     date_hierarchy = 'start'
+    filter_horizontal = ('it_systems', 'locations')
+    inlines = [IncidentLogInline]
+    list_display = (
+        'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager_name',
+        'owner_name')
+    list_filter = (IncidentStatusListFilter, 'priority', 'detection', 'category')
+    list_select_related = ('manager', 'owner')
+    search_fields = (
+        'id', 'description', 'it_systems__name', 'locations__name', 'manager__email', 'owner__email',
+        'url', 'workaround', 'root_cause', 'remediation')
+    change_list_template = 'admin/registers/incident/change_list.html'
+
+    def manager_name(self, obj):
+        if obj.manager:
+            return obj.manager.get_full_name()
+        return ''
+    manager_name.short_description = 'manager'
+
+    def owner_name(self, obj):
+        if obj.owner:
+            return obj.owner.get_full_name()
+        return ''
+    owner_name.short_description = 'owner'
 
     def description_trunc(self, obj):
         return smart_truncate(obj.description)
     description_trunc.short_description = 'description'
+
+    def get_urls(self):
+        urls = super(IncidentAdmin, self).get_urls()
+        urls = [path('export/', IncidentExport.as_view(), name='incident_export')] + urls
+        return urls
 
     def it_systems_affected(self, obj):
         return ', '.join([i.name for i in obj.it_systems.all()])
@@ -355,3 +426,35 @@ class ITSystemEventAdmin(ModelAdmin):
     def locations_affected(self, obj):
         return ', '.join([i.name for i in obj.locations.all()])
     locations_affected.short_description = 'locations'
+
+
+@register(StandardChange)
+class StandardChangeAdmin(ModelAdmin):
+    date_hierarchy = 'created'
+    filter_horizontal = ('it_systems',)
+    list_display = ('id', 'name', 'approver', 'expiry')
+    raw_id_fields = ('approver',)
+    search_fields = ('id', 'name', 'approver__email')
+
+
+class ChangeLogInline(StackedInline):
+    model = ChangeLog
+    extra = 0
+
+
+@register(ChangeRequest)
+class ChangeRequestAdmin(ModelAdmin):
+    date_hierarchy = 'planned_start'
+    filter_horizontal = ('it_systems',)
+    inlines = [ChangeLogInline]
+    list_display = (
+        'id', 'created', 'title', 'requester', 'approver', 'change_type', 'status', 'planned_start')
+    list_filter = ('change_type', 'status',)
+    raw_id_fields = ('requester', 'approver', 'implementer')
+    search_fields = ('id', 'title', 'requester__email', 'approver__email', 'implementer__email')
+
+
+@register(ChangeApproval)
+class ChangeApprovalAdmin(ModelAdmin):
+    list_display = ('id', 'change_request', 'approval_source', 'approver', 'date_approved')
+    date_hierarchy = 'created'
