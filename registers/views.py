@@ -5,7 +5,7 @@ from django.views.generic import View, ListView, DetailView, TemplateView
 from pytz import timezone
 import xlsxwriter
 
-from .models import Incident
+from .models import Incident, ChangeRequest
 
 
 class IncidentList(ListView):
@@ -80,8 +80,8 @@ class ChangeRequestList(TemplateView):
     template_name = 'changerequestlist.html'
 
 
-class ChangeRequestDetail(TemplateView):
-    template_name = 'changerequestdetail.html'
+class ChangeRequestDetail(DetailView):
+    model = ChangeRequest
 
 
 class ChangeRequestCreate(TemplateView):
