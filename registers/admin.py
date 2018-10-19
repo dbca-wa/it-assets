@@ -143,39 +143,39 @@ class ITSystemAdmin(VersionAdmin):
         'status_html',
         ('authentication', 'access'),
         'description',
-        'notes',
+        #'notes',
         ('criticality', 'availability'),
-        'schema_url',
+        #'schema_url',
         'hardwares',
         'user_groups',
         'system_reqs',
         ('system_type', 'oim_internal_only'),
         'request_access',
-        ('vulnerability_docs', 'recovery_docs'),
-        'workaround',
-        ('mtd', 'rto', 'rpo'),
-        ('contingency_plan', 'contingency_plan_status'),
-        'contingency_plan_last_tested',
-        'system_health',
-        'system_creation_date',
-        'backup_info',
-        'risks',
-        'sla',
-        'critical_period',
-        'alt_processing',
-        'technical_recov',
-        'post_recovery',
-        'variation_iscp',
-        'user_notification',
-        'other_projects',
-        'function',
-        'use',
-        'capability',
-        'unique_evidence',
-        'point_of_truth',
-        'legal_need_to_retain',
+        #('vulnerability_docs', 'recovery_docs'),
+        #'workaround',
+        #('mtd', 'rto', 'rpo'),
+        #('contingency_plan', 'contingency_plan_status'),
+        #'contingency_plan_last_tested',
+        #'system_health',
+        #'system_creation_date',
+        #'backup_info',
+        #'risks',
+        #'sla',
+        #'critical_period',
+        #'alt_processing',
+        #'technical_recov',
+        #'post_recovery',
+        #'variation_iscp',
+        #'user_notification',
+        #'other_projects',
+        #'function',
+        #'use',
+        #'capability',
+        #'unique_evidence',
+        #'point_of_truth',
+        #'legal_need_to_retain',
         'biller_code',
-        'extra_data',
+        #'extra_data',
     ]
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/registers/itsystem/change_list.html'
@@ -289,7 +289,7 @@ class ITSystemDependencyAdmin(VersionAdmin):
         return response
 
 
-@register(Backup)
+#@register(Backup)
 class BackupAdmin(VersionAdmin):
     raw_id_fields = ('computer',)
     list_display = (
@@ -300,13 +300,13 @@ class BackupAdmin(VersionAdmin):
     date_hierarchy = 'last_tested'
 
 
-@register(BusinessService)
+#@register(BusinessService)
 class BusinessServiceAdmin(VersionAdmin):
     list_display = ('number', 'name')
     search_fields = ('name', 'description')
 
 
-@register(BusinessFunction)
+#@register(BusinessFunction)
 class BusinessFunctionAdmin(VersionAdmin):
     list_display = ('name', 'function_services')
     list_filter = ('services',)
@@ -317,14 +317,14 @@ class BusinessFunctionAdmin(VersionAdmin):
     function_services.short_description = 'services'
 
 
-@register(BusinessProcess)
+#@register(BusinessProcess)
 class BusinessProcessAdmin(VersionAdmin):
     list_display = ('name', 'criticality')
     list_filter = ('criticality', 'functions')
     search_fields = ('name', 'description', 'functions__name')
 
 
-@register(ProcessITSystemRelationship)
+#@register(ProcessITSystemRelationship)
 class ProcessITSystemRelationshipAdmin(VersionAdmin):
     list_display = ('process', 'itsystem', 'importance')
     list_filter = ('importance', 'process', 'itsystem')
@@ -454,7 +454,7 @@ class ChangeRequestAdmin(ModelAdmin):
     search_fields = ('id', 'title', 'requester__email', 'approver__email', 'implementer__email')
 
 
-@register(ChangeApproval)
+#@register(ChangeApproval)
 class ChangeApprovalAdmin(ModelAdmin):
     list_display = ('id', 'change_request', 'approval_source', 'approver', 'date_approved')
     date_hierarchy = 'created'
