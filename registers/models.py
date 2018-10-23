@@ -747,32 +747,37 @@ class ChangeRequest(models.Model):
         (2, "Emergency"),
     )
     STATUS_CHOICES = (
-        (0, "Draft"),
-        (1, "Scheduled"),
-        (2, "Ready"),
-        (3, "Complete"),
-        (4, "Rolled back"),
+        (0, "Draft"),  # Not yet approved or submitted to CAB.
+        (1, "Submitted"),  # Submitted for approval, not yet ready for CAB assessment.
+        (2, "Scheduled"),  # Approved and ready to be assesed at CAB.
+        (3, "Ready"),  # Approved at CAB, ready to be undertaken.
+        (4, "Complete"),  # Undertaken and completed.
+        (5, "Rolled back"),  # Undertaken and rolled back.
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    title = models.CharField(max_length=255)
-    change_type = models.SmallIntegerField(choices=CHANGE_TYPE_CHOICES, default=0, db_index=True)
+    title = models.CharField(max_length=255, help_text='A short summary title for this change')
+    change_type = models.SmallIntegerField(
+        choices=CHANGE_TYPE_CHOICES, default=0, db_index=True, help_text='The change type')
     status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0, db_index=True)
     standard_change = models.ForeignKey(
-        StandardChange, on_delete=models.PROTECT, null=True, blank=True, help_text='Standard change reference')
+        StandardChange, on_delete=models.PROTECT, null=True, blank=True,
+        help_text='Standard change reference (if applicable)')
     requester = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='requester', help_text='Change requester')
+        DepartmentUser, on_delete=models.PROTECT, related_name='requester', null=True, blank=True,
+        help_text='The who is person requesting this change')
     approver = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='approver', help_text='Change request approver')
+        DepartmentUser, on_delete=models.PROTECT, related_name='approver', null=True, blank=True,
+        help_text='The person who will approve this change')
     implementer = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='implementer',
-        help_text='Change request implementer', blank=True, null=True)
+        DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
+        help_text='The person who will implement this change')
     description = models.TextField(
-        null=False, blank=False, help_text='Brief description of what the change is and why it is being undertaken')
+        null=False, blank=False, help_text='A brief description of what the change is for and why it is being undertaken')
     incident_url = models.URLField(
         max_length=2048, null=True, blank=True, verbose_name='Incident URL',
         help_text='If the change is to address an incident, URL to the incident details')
-    test_date = models.DateField(null=True, blank=True, help_text='Date that the change was tested')
+    test_date = models.DateField(null=True, blank=True, help_text='Date on which the change was tested')
     planned_start = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to begin')
     planned_end = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to end')
     completed = models.DateTimeField(null=True, blank=True, help_text='Time that the change was completed')
@@ -795,10 +800,17 @@ class ChangeRequest(models.Model):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
 
     @property
+    def is_standard_change(self):
+        return self.change_type == 1
+
+    @property
     def systems_affected(self):
         if self.it_systems.exists():
             return ', '.join([i.name for i in self.it_systems.all()])
         return 'Not specified'
+
+    def get_absolute_url(self):
+        return reverse('change_request_detail', kwargs={'pk': self.pk})
 
 
 class ChangeLog(models.Model):

@@ -33,6 +33,7 @@ INSTALLED_APPS = (
     'corsheaders',
     'raven.contrib.django.raven_compat',
     'reversion',
+    'crispy_forms',
     'mptt',
     'django_mptt_admin',
     'leaflet',
@@ -224,3 +225,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+# crispy_forms settings
+CRISPY_TEMPLATE_PACK = 'bootstrap3'

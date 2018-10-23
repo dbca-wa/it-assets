@@ -1,11 +1,13 @@
 from datetime import date
 from django.conf import settings
-from django.http import HttpResponse
-from django.views.generic import View, ListView, DetailView, TemplateView
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse
+from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
 from pytz import timezone
 import xlsxwriter
 
 from .models import Incident, ChangeRequest
+from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm
 
 
 class IncidentList(ListView):
@@ -76,13 +78,82 @@ class IncidentExport(View):
         return response
 
 
-class ChangeRequestList(TemplateView):
-    template_name = 'changerequestlist.html'
+class ChangeRequestList(ListView):
+    model = ChangeRequest
 
 
 class ChangeRequestDetail(DetailView):
     model = ChangeRequest
 
 
-class ChangeRequestCreate(TemplateView):
-    template_name = 'changerequest.html'
+class ChangeRequestCreate(CreateView):
+    model = ChangeRequest
+    form_class = ChangeRequestCreateForm
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
+        context['title'] = 'Create a draft change request'
+        return context
+
+
+class ChangeRequestUpdate(UpdateView):
+    """View for all changes to an RFC: update, submit, approve, etc.
+    """
+    model = ChangeRequest
+    form_class = ChangeRequestUpdateForm
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestUpdate, self).get_context_data(**kwargs)
+        context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
+        return context
+
+    def form_valid(self, form):
+        self.object = form.save()
+        errors = False
+
+        # If the user clicked "submit" (for approval), undertake additional form validation.
+        if self.request.POST.get('submit'):
+            # If a standard change, this must be selected.
+            if self.object.is_standard_change and not self.object.standard_change:
+                form.add_error('standard_change', 'Standard change must be selected.')
+                errors = True
+                # NOTE: standard change will bypass several of the business rules below.
+            # Requester is required.
+            if not self.object.requester:
+                form.add_error('requester', 'Requester cannot be blank.')
+                errors = True
+            # Approver is required.
+            if not self.object.approver:
+                form.add_error('approver', 'Approver cannot be blank.')
+                errors = True
+            # Implementer is required.
+            if not self.object.implementer:
+                form.add_error('implementer', 'Implementer cannot be blank.')
+                errors = True
+            # Test date is required if not a standard change.
+            if not self.object.is_standard_change and not self.object.test_date:
+                form.add_error('test_date', 'Test date must be specified.')
+                errors = True
+            # Planned start is required.
+            if not self.object.planned_start:
+                form.add_error('planned_start', 'Planned start time must be specified.')
+                errors = True
+            # Planned end is required.
+            if not self.object.planned_end:
+                form.add_error('planned_end', 'Planned end time must be specified.')
+                errors = True
+            # Either implementation text or upload is required if not a standard change.
+            if not self.object.is_standard_change and (not self.object.implementation and not self.object.implementation_docs):
+                form.add_error('implementation', 'Implementation instructions must be specified (instructions, document upload or both).')
+                form.add_error('implementation_docs', 'See above.')
+                errors = True
+            # Communication is required if not a standard change.
+            if not self.object.is_standard_change and not self.object.communication:
+                form.add_error('communication', 'Details relating to any communications must be specified (or input "NA").')
+                errors = True
+
+        if errors:
+            return super(ChangeRequestUpdate, self).form_invalid(form)
+
+        # TODO: implement workflow for submission for approval.
+        return super(ChangeRequestUpdate, self).form_valid(form)

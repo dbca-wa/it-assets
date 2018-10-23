@@ -40,6 +40,10 @@ class DepartmentUser(MPTTModel):
     # The following is a list of account type of normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
     ACCOUNT_TYPE_EXCLUDE = [4, 5, 9, 10, 11, 12, 14, 16]
+    # The following is a list of account types set for individual staff/vendors,
+    # i.e. no shared or role-based account types.
+    # NOTE: it may not necessarily be the inverse of the previous list.
+    ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
     POSITION_TYPE_CHOICES = (
         (0, 'Full time'),
         (1, 'Part time'),
