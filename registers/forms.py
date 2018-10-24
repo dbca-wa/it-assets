@@ -11,7 +11,6 @@ class BaseFormHelper(FormHelper):
     form_method = 'POST'
     label_class = 'col-xs-12 col-sm-4 col-md-3'
     field_class = 'col-xs-12 col-sm-8 col-md-7'
-    #help_text_inline = True
 
 
 class UserChoiceField(forms.ModelChoiceField):
@@ -37,9 +36,6 @@ class ChangeRequestCreateForm(forms.ModelForm):
         self.fields['requester'] = UserChoiceField(required=False, help_text='The person requesting this change')
         self.fields['approver'] = UserChoiceField(required=False, help_text='The person who will approve this change')
         self.fields['implementer'] = UserChoiceField(required=False, help_text='The person who will implement this change')
-        self.fields['test_date'] = forms.DateField(
-            required=False, widget=forms.TextInput(attrs={'class':'date-input'}),
-            help_text='Date that the change was tested')
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -122,3 +118,19 @@ class ChangeRequestUpdateForm(ChangeRequestCreateForm):
             ),
             FormActions(self.save_button, self.submit_button),
         )
+
+
+class ChangeRequestApproveForm(forms.ModelForm):
+    approve_button = Submit('approve', 'Approve change request', css_class='btn-lg btn-success')
+    reject_button = Submit('reject', 'Reject change request', css_class='btn-lg btn-warning')
+
+    def __init__(self, *args, **kwargs):
+        super(ChangeRequestApproveForm, self).__init__(*args, **kwargs)
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            FormActions(self.approve_button, self.reject_button),
+        )
+
+    class Meta:
+        model = ChangeRequest
+        fields = '__all__'

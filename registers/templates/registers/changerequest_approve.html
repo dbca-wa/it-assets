@@ -1,28 +1,18 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 
 {% block extra_head %}
-<title>Change request #{{ object }}</title>
+<title>{{ title }}</title>
 {% endblock %}
 
 {% block body %}
 <div class="row">
     <div class="col-xs-12">
-        <h1>Change request #{{ object }} ({{ object.get_status_display }})</h1>
-    </div>
-</div>
-
-{% if object.is_draft %}
-<div class="row">
-    <div class="col-xs-12">
-        <hr>
-        <a class="btn btn-primary" href="{% url 'change_request_update' object.pk %}" role="button">Update / submit</a></a>
-        <hr>
-    </div>
-</div>
-{% endif %}
-
-<div class="row">
-    <div class="col-xs-12">
+        <h1>{{ title }}</h1>
+        <p>Please review the details of the change request below, and then click "Approve" or "Reject"
+        to indicate whether the change is endorsed for subsequent review and approval at CAB.</p>
+        <p>Approved changes will be logged and forwarded to CAB for review, while rejected changes
+        will be returned to the requester as drafts.</p>
         <table class="table table-striped table-bordered table-condensed">
             <tr>
                 <th>Change title</th>
@@ -75,6 +65,12 @@
                 <td>{% if object.outage %}{{ object.outage }}{% endif %}</td>
             </tr>
         </table>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        {% crispy form %}
     </div>
 </div>
 {% endblock %}

@@ -3,6 +3,7 @@ from dateutil.relativedelta import relativedelta
 from django import forms
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -749,7 +750,7 @@ class ChangeRequest(models.Model):
     STATUS_CHOICES = (
         (0, "Draft"),  # Not yet approved or submitted to CAB.
         (1, "Submitted"),  # Submitted for approval, not yet ready for CAB assessment.
-        (2, "Scheduled"),  # Approved and ready to be assesed at CAB.
+        (2, "Scheduled"),  # Approved and ready to be assessed at CAB.
         (3, "Ready"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
         (5, "Rolled back"),  # Undertaken and rolled back.
@@ -773,7 +774,7 @@ class ChangeRequest(models.Model):
         DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
         help_text='The person who will implement this change')
     description = models.TextField(
-        null=False, blank=False, help_text='A brief description of what the change is for and why it is being undertaken')
+        null=True, blank=True, help_text='A brief description of what the change is for and why it is being undertaken')
     incident_url = models.URLField(
         max_length=2048, null=True, blank=True, verbose_name='Incident URL',
         help_text='If the change is to address an incident, URL to the incident details')
@@ -804,6 +805,14 @@ class ChangeRequest(models.Model):
         return self.change_type == 1
 
     @property
+    def is_draft(self):
+        return self.status == 0
+
+    @property
+    def is_submitted(self):
+        return self.status == 1
+
+    @property
     def systems_affected(self):
         if self.it_systems.exists():
             return ', '.join([i.name for i in self.it_systems.all()])
@@ -812,6 +821,28 @@ class ChangeRequest(models.Model):
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
+    def email_approver(self):
+        # Send an email to the approver (if defined) with a link to the change request approve view.
+        # TODO: logging actions.
+        if not self.approver:
+            return None
+        subject = 'Approval for change request {}'.format(self)
+        approve_url = settings.SITE_URL + reverse('change_request_approve', kwargs={'pk': self.pk})
+        text_content = """This is an automated message to let you know that you have
+            been assigned as the approver for a change request submitted to OIM by {}.\n
+            Please visit the following URL, review the change request details and register
+            approval or rejection of the change:\n
+            {}\n
+            """.format(self.requester.get_full_name(), approve_url)
+        html_content = """<p>This is an automated message to let you know that you have
+            been assigned as the approver for a change request submitted to OIM by {0}.</p>
+            <p>Please visit the following URL, review the change request details and register
+            approval or rejection of the change:</p>
+            <ul><li><a href="{1}">{1}</a></li></ul>
+            """.format(self.requester.get_full_name(), approve_url)
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.approver.email])
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
 
 class ChangeLog(models.Model):
     """Represents a log entry related to a single Change Request.

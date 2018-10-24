@@ -1,13 +1,14 @@
 from datetime import date
 from django.conf import settings
+from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
-from django.urls import reverse
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
+from organisation.models import DepartmentUser
 from pytz import timezone
 import xlsxwriter
 
 from .models import Incident, ChangeRequest
-from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm
+from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestApproveForm
 
 
 class IncidentList(ListView):
@@ -95,6 +96,13 @@ class ChangeRequestCreate(CreateView):
         context['title'] = 'Create a draft change request'
         return context
 
+    def get_initial(self):
+        initial = super(ChangeRequestCreate, self).get_initial()
+        # Try setting the requester to equal the request user.
+        if DepartmentUser.objects.filter(email=self.request.user.email).exists():
+            initial['requester'] = DepartmentUser.objects.get(email=self.request.user.email)
+        return initial
+
 
 class ChangeRequestUpdate(UpdateView):
     """View for all changes to an RFC: update, submit, approve, etc.
@@ -107,53 +115,92 @@ class ChangeRequestUpdate(UpdateView):
         context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
         return context
 
+    def get(self, request, *args, **kwargs):
+        # Validate that the RFC may still be updated.
+        rfc = self.get_object()
+        if not rfc.is_draft:
+            # Redirect to the object detail view.
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        return super(ChangeRequestUpdate, self).get(request, *args, **kwargs)
+
     def form_valid(self, form):
-        self.object = form.save()
+        rfc = form.save()
         errors = False
 
         # If the user clicked "submit" (for approval), undertake additional form validation.
         if self.request.POST.get('submit'):
             # If a standard change, this must be selected.
-            if self.object.is_standard_change and not self.object.standard_change:
+            if rfc.is_standard_change and not rfc.standard_change:
                 form.add_error('standard_change', 'Standard change must be selected.')
                 errors = True
                 # NOTE: standard change will bypass several of the business rules below.
             # Requester is required.
-            if not self.object.requester:
+            if not rfc.requester:
                 form.add_error('requester', 'Requester cannot be blank.')
                 errors = True
             # Approver is required.
-            if not self.object.approver:
+            if not rfc.approver:
                 form.add_error('approver', 'Approver cannot be blank.')
                 errors = True
             # Implementer is required.
-            if not self.object.implementer:
+            if not rfc.implementer:
                 form.add_error('implementer', 'Implementer cannot be blank.')
                 errors = True
             # Test date is required if not a standard change.
-            if not self.object.is_standard_change and not self.object.test_date:
+            if not rfc.is_standard_change and not rfc.test_date:
                 form.add_error('test_date', 'Test date must be specified.')
                 errors = True
             # Planned start is required.
-            if not self.object.planned_start:
+            if not rfc.planned_start:
                 form.add_error('planned_start', 'Planned start time must be specified.')
                 errors = True
             # Planned end is required.
-            if not self.object.planned_end:
+            if not rfc.planned_end:
                 form.add_error('planned_end', 'Planned end time must be specified.')
                 errors = True
             # Either implementation text or upload is required if not a standard change.
-            if not self.object.is_standard_change and (not self.object.implementation and not self.object.implementation_docs):
+            if not rfc.is_standard_change and (not rfc.implementation and not rfc.implementation_docs):
                 form.add_error('implementation', 'Implementation instructions must be specified (instructions, document upload or both).')
                 form.add_error('implementation_docs', 'See above.')
                 errors = True
             # Communication is required if not a standard change.
-            if not self.object.is_standard_change and not self.object.communication:
+            if not rfc.is_standard_change and not rfc.communication:
                 form.add_error('communication', 'Details relating to any communications must be specified (or input "NA").')
                 errors = True
+            if not errors:
+                rfc.status = 1
+                rfc.save()
+                messages.success(self.request, 'Change request {} has been submitted for approval.'.format(rfc.pk))
+                # TODO: send an email to the approver with link to the approve view.
 
         if errors:
             return super(ChangeRequestUpdate, self).form_invalid(form)
-
-        # TODO: implement workflow for submission for approval.
         return super(ChangeRequestUpdate, self).form_valid(form)
+
+
+class ChangeRequestApprove(UpdateView):
+    model = ChangeRequest
+    form_class = ChangeRequestApproveForm
+    template_name = 'registers/changerequest_approve.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestApprove, self).get_context_data(**kwargs)
+        context['title'] = 'Approve change request {}'.format(self.get_object().pk)
+        return context
+
+    def get(self, request, *args, **kwargs):
+        # Validate that the RFC may be approved.
+        rfc = self.get_object()
+        if not rfc.is_submitted:
+            # Redirect to the object detail view.
+            messages.warning(self.request, 'Change request {} is not ready for approval.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        if self.request.user.email != rfc.approver.email:
+            messages.warning(self.request, 'You are not the approver for change request {}.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
+
+        return super(ChangeRequestApprove, self).get(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        # TODO: implement post-approval workflow (logging, status change, emails, etc.)
+        return super(ChangeRequestApprove, self).form_valid(form)
