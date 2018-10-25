@@ -79,7 +79,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
 
 
 class ChangeRequestUpdateForm(ChangeRequestCreateForm):
-    submit_button = Submit('submit', 'Submit for approval', css_class='btn-lg btn-success')
+    submit_button = Submit('submit', 'Submit for endorsement', css_class='btn-lg btn-success')
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestUpdateForm, self).__init__(*args, **kwargs)
@@ -99,7 +99,7 @@ class ChangeRequestUpdateForm(ChangeRequestCreateForm):
                 'title', 'change_type', 'standard_change', 'description',
             ),
             Fieldset(
-                'Approval',
+                'Endorsement / implementation',
                 'requester', 'approver', 'implementer',
             ),
             Fieldset(
@@ -118,6 +118,14 @@ class ChangeRequestUpdateForm(ChangeRequestCreateForm):
             ),
             FormActions(self.save_button, self.submit_button),
         )
+
+    def clean(self):
+        if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
+            if self.cleaned_data['planned_start'] > self.cleaned_data['planned_end']:
+                msg = 'Planned start cannot be later than planned end.'
+                self._errors['planned_start'] = self.error_class([msg])
+                self._errors['planned_end'] = self.error_class([msg])
+        return self.cleaned_data
 
 
 class ChangeRequestEndorseForm(forms.ModelForm):
