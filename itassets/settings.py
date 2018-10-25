@@ -135,7 +135,6 @@ DATETIME_INPUT_FORMATS = (
 EMAIL_HOST = env('EMAIL_HOST', 'email.host')
 EMAIL_PORT = env('EMAIL_PORT', 25)
 NOREPLY_EMAIL = env('NOREPLY_EMAIL', 'noreply@dbca.wa.gov.au')
-SITE_URL = env('SITE_URL', 'https://itassets.dbca.wa.gov.au')
 
 
 # Logging settings

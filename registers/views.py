@@ -7,8 +7,8 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import xlsxwriter
 
-from .models import Incident, ChangeRequest
-from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestApproveForm
+from .models import Incident, ChangeRequest, ChangeLog
+from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm
 
 
 class IncidentList(ListView):
@@ -81,6 +81,14 @@ class IncidentExport(View):
 
 class ChangeRequestList(ListView):
     model = ChangeRequest
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = super(ChangeRequestList, self).get_queryset()
+        if 'q' in self.request.GET and self.request.GET['q']:
+            query = self.request.GET['q'].strip()
+            queryset = queryset.filter(title__icontains=query)
+        return queryset
 
 
 class ChangeRequestDetail(DetailView):
@@ -105,7 +113,7 @@ class ChangeRequestCreate(CreateView):
 
 
 class ChangeRequestUpdate(UpdateView):
-    """View for all changes to an RFC: update, submit, approve, etc.
+    """View for all end-user changes to an RFC: update, submit, endorse, etc.
     """
     model = ChangeRequest
     form_class = ChangeRequestUpdateForm
@@ -122,6 +130,9 @@ class ChangeRequestUpdate(UpdateView):
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestUpdate, self).get(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return self.get_object().get_absolute_url()
 
     def form_valid(self, form):
         rfc = form.save()
@@ -167,40 +178,110 @@ class ChangeRequestUpdate(UpdateView):
             if not rfc.is_standard_change and not rfc.communication:
                 form.add_error('communication', 'Details relating to any communications must be specified (or input "NA").')
                 errors = True
+            # No validation errors: change the RFC status, send an email to the approver and make a log.
             if not errors:
                 rfc.status = 1
                 rfc.save()
-                messages.success(self.request, 'Change request {} has been submitted for approval.'.format(rfc.pk))
-                # TODO: send an email to the approver with link to the approve view.
+                msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
+                messages.success(self.request, msg)
+                log = ChangeLog(change_request=rfc, log=msg)
+                log.save()
+                rfc.email_approver(self.request)
+                log = ChangeLog(
+                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.approver.get_full_name()))
+                log.save()
 
         if errors:
             return super(ChangeRequestUpdate, self).form_invalid(form)
         return super(ChangeRequestUpdate, self).form_valid(form)
 
 
-class ChangeRequestApprove(UpdateView):
+class ChangeRequestEndorse(UpdateView):
     model = ChangeRequest
-    form_class = ChangeRequestApproveForm
-    template_name = 'registers/changerequest_approve.html'
+    form_class = ChangeRequestEndorseForm
+    template_name = 'registers/changerequest_endorse.html'
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestApprove, self).get_context_data(**kwargs)
-        context['title'] = 'Approve change request {}'.format(self.get_object().pk)
+        context = super(ChangeRequestEndorse, self).get_context_data(**kwargs)
+        context['title'] = 'Endorse change request {}'.format(self.get_object().pk)
         return context
 
     def get(self, request, *args, **kwargs):
-        # Validate that the RFC may be approved.
+        # Validate that the RFC may be endorsed.
         rfc = self.get_object()
         if not rfc.is_submitted:
             # Redirect to the object detail view.
-            messages.warning(self.request, 'Change request {} is not ready for approval.'.format(rfc.pk))
+            messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         if self.request.user.email != rfc.approver.email:
             messages.warning(self.request, 'You are not the approver for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-
-        return super(ChangeRequestApprove, self).get(request, *args, **kwargs)
+        return super(ChangeRequestEndorse, self).get(request, *args, **kwargs)
 
     def form_valid(self, form):
-        # TODO: implement post-approval workflow (logging, status change, emails, etc.)
-        return super(ChangeRequestApprove, self).form_valid(form)
+        rfc = form.save()
+
+        if self.request.POST.get('endorse'):
+            # If the user clicked "Endorse", log this and change status to Scheduled.
+            rfc.status = 2
+            rfc.save()
+            msg = 'Change request {} has been endorsed by {}; it is now scheduled to be assessed at CAB.'.format(rfc.pk, self.request.user.get_full_name())
+            messages.success(self.request, msg)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+        elif self.request.POST.get('reject'):
+            # If the user clicked "Reject", log this and change status back to Draft.
+            rfc.status = 0
+            rfc.save()
+            msg = 'Change request {} has been rejected by {}; status has been reset to Draft.'.format(rfc.pk, self.request.user.get_full_name())
+            messages.warning(self.request, msg)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+        return super(ChangeRequestEndorse, self).form_valid(form)
+
+
+class ChangeRequestExport(View):
+    """A custom view to export all Incident values to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=change_requests_{}.xlsx'.format(date.today().isoformat())
+
+        with xlsxwriter.Workbook(
+            response,
+            {
+                'in_memory': True,
+                'default_date_format': 'dd-mmm-yyyy HH:MM',
+                'remove_timezone': True,
+            },
+        ) as workbook:
+            rfcs = ChangeRequest.objects.all()
+            changes = workbook.add_worksheet('Change requests')
+            changes.write_row('A1', (
+                'Change ref.', 'Title', 'Change type', 'Requester', 'Approver', 'Implementer', 'Status',
+                'Test date', 'Planned start', 'Planned end', 'Completed', 'Outage duration',
+                'System(s) affected', 'Incident URL',
+            ))
+            row = 1
+            tz = timezone(settings.TIME_ZONE)
+            for i in rfcs:
+                changes.write_row(row, 0, [
+                    i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
+                    i.approver.get_full_name(), i.implementer.get_full_name(),
+                    i.get_status_display(), i.test_date,
+                    i.planned_start.astimezone(tz) if i.planned_start else '',
+                    i.planned_end.astimezone(tz) if i.planned_end else '',
+                    i.completed.astimezone(tz) if i.completed else '',
+                    str(i.outage) if i.outage else '', i.systems_affected, i.incident_url,
+                ])
+                row += 1
+            changes.set_column('A:A', 11)
+            changes.set_column('B:B', 44)
+            changes.set_column('C:C', 12)
+            changes.set_column('D:F', 18)
+            changes.set_column('G:G', 26)
+            changes.set_column('H:K', 18)
+            changes.set_column('L:L', 15)
+            changes.set_column('M:N', 30)
+
+        return response

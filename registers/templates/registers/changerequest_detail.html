@@ -7,7 +7,7 @@
 {% block body %}
 <div class="row">
     <div class="col-xs-12">
-        <h1>Change request #{{ object }} ({{ object.get_status_display }})</h1>
+        <h1>Change request #{{ object }}</h1>
     </div>
 </div>
 
@@ -15,66 +15,39 @@
 <div class="row">
     <div class="col-xs-12">
         <hr>
-        <a class="btn btn-primary" href="{% url 'change_request_update' object.pk %}" role="button">Update / submit</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_update' object.pk %}" role="button">Update / submit for approval</a></a>
+        <hr>
+    </div>
+</div>
+{% endif %}
+{% if object.is_submitted and object.approver.email == request.user.email %}
+<div class="row">
+    <div class="col-xs-12">
+        <hr>
+        <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a></a>
         <hr>
     </div>
 </div>
 {% endif %}
 
+
 <div class="row">
     <div class="col-xs-12">
-        <table class="table table-striped table-bordered table-condensed">
-            <tr>
-                <th>Change title</th>
-                <td>{{ object.title }}</td>
-            </tr>
-            <tr>
-                <th>Change type</th>
-                <td>{{ object.get_change_type_display }}</td>
-            </tr>
-            <tr>
-                <th>Status</th>
-                <td>{{ object.get_status_display }}</td>
-            </tr>
-            {% if object.standard_change %}
-            <tr>
-                <th>Standard change ref.</th>
-                <td>{{ object.standard_change.pk }}</td>
-            </tr>
-            {% endif %}
-            <tr>
-                <th>Requester</th>
-                <td>{{ object.requester.get_full_name }}</td>
-            </tr>
-            <tr>
-                <th>Approver</th>
-                <td>{{ object.approver.get_full_name }}</td>
-            </tr>
-            <tr>
-                <th>Implementer</th>
-                <td>{{ object.implementer.get_full_name }}</td>
-            </tr>
-            <tr>
-                <th>Description</th>
-                <td>{{ object.description }}</td>
-            </tr>
-            <tr>
-                <th>Test date</th>
-                <td>{% if object.test_date %}{{ object.test_date }}{% endif %}</td>
-            </tr>
-            <tr>
-                <th>Planned start date & time</th>
-                <td>{% if object.planned_start %}{{ object.planned_start }}{% endif %}</td>
-            </tr>
-            <tr>
-                <th>Planned end date & time</th>
-                <td>{% if object.planned_end %}{{ object.planned_end }}{% endif %}</td>
-            </tr>
-            <tr>
-                <th>Outage duration (hh:mm:ss)</th>
-                <td>{% if object.outage %}{{ object.outage }}{% endif %}</td>
-            </tr>
-        </table>
+
+        {% include 'registers/changerequest_table.html' %}
+
+        {% if object.changelog_set.exists %}
+            <h2>Actions log</h2>
+            <table class="table table-striped table-bordered table-condensed">
+                {% for log in object.changelog_set.all %}
+                <tr>
+                    <td>{{ log.created }}</td>
+                    <td>{{ log.log }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% endif %}
+
     </div>
 </div>
 {% endblock %}

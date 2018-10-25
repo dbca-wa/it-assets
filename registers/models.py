@@ -8,6 +8,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
+from os import path
 
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
@@ -749,8 +750,8 @@ class ChangeRequest(models.Model):
     )
     STATUS_CHOICES = (
         (0, "Draft"),  # Not yet approved or submitted to CAB.
-        (1, "Submitted"),  # Submitted for approval, not yet ready for CAB assessment.
-        (2, "Scheduled"),  # Approved and ready to be assessed at CAB.
+        (1, "Submitted for endorsement"),  # Submitted for endorsement by approver, not yet ready for CAB assessment.
+        (2, "Scheduled for CAB"),  # Approved and ready to be assessed at CAB.
         (3, "Ready"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
         (5, "Rolled back"),  # Undertaken and rolled back.
@@ -818,31 +819,42 @@ class ChangeRequest(models.Model):
             return ', '.join([i.name for i in self.it_systems.all()])
         return 'Not specified'
 
+    @property
+    def implementation_docs_filename(self):
+        return path.basename(self.implementation_docs.name)
+
+    @property
+    def broadcast_filename(self):
+        return path.basename(self.broadcast.name)
+
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
-    def email_approver(self):
+    def email_approver(self, request=None):
         # Send an email to the approver (if defined) with a link to the change request approve view.
-        # TODO: logging actions.
         if not self.approver:
             return None
         subject = 'Approval for change request {}'.format(self)
-        approve_url = settings.SITE_URL + reverse('change_request_approve', kwargs={'pk': self.pk})
+        if request:
+            endorse_url = request.build_absolute_uri(reverse('change_request_endorse', kwargs={'pk': self.pk}))
+        else:
+            endorse_url = reverse('change_request_endorse', kwargs={'pk': self.pk})
         text_content = """This is an automated message to let you know that you have
             been assigned as the approver for a change request submitted to OIM by {}.\n
             Please visit the following URL, review the change request details and register
             approval or rejection of the change:\n
             {}\n
-            """.format(self.requester.get_full_name(), approve_url)
+            """.format(self.requester.get_full_name(), endorse_url)
         html_content = """<p>This is an automated message to let you know that you have
             been assigned as the approver for a change request submitted to OIM by {0}.</p>
             <p>Please visit the following URL, review the change request details and register
             approval or rejection of the change:</p>
             <ul><li><a href="{1}">{1}</a></li></ul>
-            """.format(self.requester.get_full_name(), approve_url)
+            """.format(self.requester.get_full_name(), endorse_url)
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.approver.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
+
 
 class ChangeLog(models.Model):
     """Represents a log entry related to a single Change Request.

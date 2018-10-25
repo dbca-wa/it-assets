@@ -1,18 +1,4 @@
-{% extends "base.html" %}
-{% load crispy_forms_tags %}
-
-{% block extra_head %}
-<title>{{ title }}</title>
-{% endblock %}
-
-{% block body %}
-<div class="row">
-    <div class="col-xs-12">
-        <h1>{{ title }}</h1>
-        <p>Please review the details of the change request below, and then click "Approve" or "Reject"
-        to indicate whether the change is endorsed for subsequent review and approval at CAB.</p>
-        <p>Approved changes will be logged and forwarded to CAB for review, while rejected changes
-        will be returned to the requester as drafts.</p>
+{% load static %}
         <table class="table table-striped table-bordered table-condensed">
             <tr>
                 <th>Change title</th>
@@ -44,10 +30,12 @@
                 <th>Implementer</th>
                 <td>{{ object.implementer.get_full_name }}</td>
             </tr>
+            {% if object.description %}
             <tr>
                 <th>Description</th>
                 <td>{{ object.description }}</td>
             </tr>
+            {% endif %}
             <tr>
                 <th>Test date</th>
                 <td>{% if object.test_date %}{{ object.test_date }}{% endif %}</td>
@@ -62,15 +50,30 @@
             </tr>
             <tr>
                 <th>Outage duration (hh:mm:ss)</th>
-                <td>{% if object.outage %}{{ object.outage }}{% endif %}</td>
+                <td>{% if object.outage is not None %}{{ object.outage }}{% else %}Not specified{% endif %}</td>
+            </tr>
+            <tr>
+                <th>Implementation instructions</th>
+                <td>
+                {% if object.implementation %}
+                <pre>{{ object.implementation }}</pre>
+                {% endif %}
+                <br>
+                {% if object.implementation_docs %}
+                Uploaded instructions: <a href="{% get_media_prefix %}{{ object.implementation_docs.name }}">{{ object.implementation_docs_filename }}</a>
+                {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Communication instructions</th>
+                <td>
+                {% if object.communication %}
+                <pre>{{ object.communication }}</pre>
+                {% endif %}
+                <br>
+                {% if object.broadcast %}
+                Uploaded broadcast: <a href="{% get_media_prefix %}{{ object.broadcast.name }}">{{ object.broadcast_filename }}</a>
+                {% endif %}
+                </td>
             </tr>
         </table>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-xs-12">
-        {% crispy form %}
-    </div>
-</div>
-{% endblock %}

@@ -89,7 +89,7 @@ class ChangeRequestUpdateForm(ChangeRequestCreateForm):
                 Div(
                     HTML('''
                     <p>Note that all fields below need not be completed until the point of submission and approval.</p>
-                    <p>Upon submitting a change request for approval, a read-only email link will be sent to the approver for action.</p>
+                    <p>Upon submitting a change request for approval, a read-only email link will be sent to the approver for review.</p>
                     <br>'''),
                     css_id='div_id_instructions'
                 ),
@@ -120,17 +120,17 @@ class ChangeRequestUpdateForm(ChangeRequestCreateForm):
         )
 
 
-class ChangeRequestApproveForm(forms.ModelForm):
-    approve_button = Submit('approve', 'Approve change request', css_class='btn-lg btn-success')
+class ChangeRequestEndorseForm(forms.ModelForm):
+    endorse_button = Submit('endorse', 'Endorse change request', css_class='btn-lg btn-success')
     reject_button = Submit('reject', 'Reject change request', css_class='btn-lg btn-warning')
 
     def __init__(self, *args, **kwargs):
-        super(ChangeRequestApproveForm, self).__init__(*args, **kwargs)
+        super(ChangeRequestEndorseForm, self).__init__(*args, **kwargs)
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
-            FormActions(self.approve_button, self.reject_button),
+            FormActions(self.endorse_button, self.reject_button),
         )
 
     class Meta:
         model = ChangeRequest
-        fields = '__all__'
+        fields = ['notes']  # Give the modelform one optional field (not rendered) so it can validate.

@@ -17,7 +17,7 @@ from .models import (
     BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog,
     StandardChange, ChangeRequest, ChangeLog, ChangeApproval)
 from .utils import smart_truncate
-from .views import IncidentExport
+from .views import IncidentExport, ChangeRequestExport
 
 
 @register(UserGroup)
@@ -442,16 +442,69 @@ class ChangeLogInline(StackedInline):
     extra = 0
 
 
+class CompletionListFilter(SimpleListFilter):
+    """A custom list filter to restrict displayed RFCs by completion status.
+    """
+    title = 'completion'
+    parameter_name = 'completion'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('Complete', 'Complete'),
+            ('Incomplete', 'Incomplete')
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'Complete':
+            return queryset.filter(completed__isnull=False)
+        if self.value() == 'Incomplete':
+            return queryset.filter(completed__isnull=True)
+
+
+def cab_approve(modeladmin, request, queryset):
+    """A custom admin action to bulk-approve RFCs at CAB.
+    """
+    for rfc in queryset:
+        rfc.status = 3
+        rfc.save()
+        msg = 'Change request {} has been approved at CAB; it may now be carried out as planned.'.format(rfc.pk)
+        log = ChangeLog(change_request=rfc, log=msg)
+        log.save()
+        # TODO: email the requester?
+
+cab_approve.short_description = 'Mark selected change requests as approved at CAB'
+
+
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
+    actions = [cab_approve]
+    change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
-        'id', 'created', 'title', 'requester', 'approver', 'change_type', 'status', 'planned_start')
-    list_filter = ('change_type', 'status',)
+        'id', 'created', 'title', 'change_type', 'requester_name', 'implementer_name', 'status',
+        'planned_start', 'planned_end', 'completed')
+    list_filter = ('change_type', 'status', CompletionListFilter)
     raw_id_fields = ('requester', 'approver', 'implementer')
     search_fields = ('id', 'title', 'requester__email', 'approver__email', 'implementer__email')
+
+    def requester_name(self, obj):
+        if obj.requester:
+            return obj.requester.get_full_name()
+        return ''
+    requester_name.short_description = 'requester'
+
+    def implementer_name(self, obj):
+        if obj.implementer:
+            return obj.implementer.get_full_name()
+        return ''
+    implementer_name.short_description = 'implementer'
+
+    def get_urls(self):
+        urls = super(ChangeRequestAdmin, self).get_urls()
+        urls = [path('export/', ChangeRequestExport.as_view(), name='changerequest_export')] + urls
+        return urls
 
 
 #@register(ChangeApproval)
