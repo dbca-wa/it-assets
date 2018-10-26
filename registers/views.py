@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
@@ -285,3 +285,32 @@ class ChangeRequestExport(View):
             changes.set_column('M:N', 30)
 
         return response
+
+
+class ChangeRequestCalendar(ListView):
+    model = ChangeRequest
+    template_name = 'registers/changerequest_calendar.html'
+
+    def get_date_param(self, **kwargs):
+        if "date" in self.kwargs:
+            # Parse the date YYYY-MM-DD
+            return datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date()
+        else:
+            return date.today()
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
+        context['date'] = self.get_date_param()
+        '''
+        if "date" in self.kwargs:
+            # Parse the date YYYY-MM-DD
+            context['date'] = datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date()
+        else:
+            context['date'] = date.today()
+        '''
+        return context
+
+    def get_queryset(self):
+        queryset = super(ChangeRequestCalendar, self).get_queryset()
+        d = self.get_date_param()
+        return queryset.filter(planned_start__date=d).order_by('planned_start')

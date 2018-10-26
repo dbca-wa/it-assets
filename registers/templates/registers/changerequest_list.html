@@ -45,7 +45,7 @@
             {% for object in object_list %}
             <tr>
                 <td>{{ object.pk }}</td>
-                <td><a href="{% url 'change_request_detail' object.pk %}">{{ object.title }}</a></td>
+                <td><a href="{{ object.get_absolute_url }}">{{ object.title }}</a></td>
                 <td>{{ object.get_change_type_display }}</td>
                 <td>{{ object.get_status_display }}</td>
                 <td>{{ object.requester.get_full_name }}</td>

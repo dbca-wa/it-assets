@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from registers import views
 
 urlpatterns = [
@@ -9,5 +9,6 @@ urlpatterns = [
     path('changerequests/<int:pk>/update/', views.ChangeRequestUpdate.as_view(), name='change_request_update'),
     path('changerequests/<int:pk>/endorse/', views.ChangeRequestEndorse.as_view(), name='change_request_endorse'),
     path('changerequests/create/', views.ChangeRequestCreate.as_view(), name='change_request_create'),
-    #path('changerequests/calendar/', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
+    path('changerequests/calendar/', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
+    re_path('^changerequests/calendar/(?P<date>\d{4}-\d{2}-\d{2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
 ]
