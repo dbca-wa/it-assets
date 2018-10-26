@@ -15,7 +15,7 @@ import unicodecsv as csv
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
     BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog,
-    StandardChange, ChangeRequest, ChangeLog, ChangeApproval)
+    StandardChange, ChangeRequest, ChangeLog)
 from .utils import smart_truncate
 from .views import IncidentExport, ChangeRequestExport
 
@@ -505,9 +505,3 @@ class ChangeRequestAdmin(ModelAdmin):
         urls = super(ChangeRequestAdmin, self).get_urls()
         urls = [path('export/', ChangeRequestExport.as_view(), name='changerequest_export')] + urls
         return urls
-
-
-#@register(ChangeApproval)
-class ChangeApprovalAdmin(ModelAdmin):
-    list_display = ('id', 'change_request', 'approval_source', 'approver', 'date_approved')
-    date_hierarchy = 'created'

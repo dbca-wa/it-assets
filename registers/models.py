@@ -741,7 +741,6 @@ class StandardChange(models.Model):
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.
-    Will be linked to an approval object. Both will be served in a frontend.
     """
     CHANGE_TYPE_CHOICES = (
         (0, "Normal"),
@@ -871,21 +870,3 @@ class ChangeLog(models.Model):
         """
         super(ChangeLog, self).save(*args, **kwargs)
         self.change_request.save()
-
-
-class ChangeApproval(models.Model):
-    """A model to record approval  of change requests. A change request could be edited and then
-    resubmitted, requiring a one to many relationship change to approval.
-    """
-    APPROVAL_SOURCE_CHOICES = (
-        (0, "Email"),
-        (1, "Online"),
-        (2, "Verbal"),
-        (3, "Other"),
-    )
-    created = models.DateTimeField(auto_now_add=True)
-    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
-    approval_source = models.SmallIntegerField(choices=APPROVAL_SOURCE_CHOICES, default=0)
-    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
-    date_approved = models.DateTimeField()
-    notes = models.CharField(max_length=2048, blank=True, null=True)

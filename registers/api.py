@@ -8,11 +8,10 @@ from django.shortcuts import get_object_or_404
 import itertools
 from rest_framework import viewsets
 from rest_framework.response import Response
-from rest_framework.decorators import detail_route
 
 from itassets.utils import CSVDjangoResource
-from .models import ITSystem, ITSystemHardware, ChangeRequest, StandardChange, ChangeApproval
-from .serializers import ChangeRequestSerializer, StandardChangeSerializer, ChangeApprovalSerializer
+from .models import ITSystem, ITSystemHardware, ChangeRequest, StandardChange
+from .serializers import ChangeRequestSerializer, StandardChangeSerializer
 
 
 class ITSystemResource(CSVDjangoResource):
@@ -334,9 +333,6 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                         data['type_of_approval'] = request.data.get('camefrom')
                     else:
                         data['type_of_approval'] = 2
-                    serial = ChangeApprovalSerializer(data=data, partial=True)
-                    serial.is_valid(raise_exception=True)
-                    serial.save()
                 elif change.status == 2:
                     change.completed_date = datetime.now()
             else:
@@ -371,13 +367,6 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
             serializer = ChangeRequestSerializer(change)
             data = serializer.data
         return Response(data)
-
-    @detail_route()
-    def approval_list(self, request, pk=None):
-        change = self.get_object()
-        approvals = ChangeApproval.objects.filter(change_request=change).order_by('-date_approved')
-        serializer = ChangeApprovalSerializer(approvals, many=True)
-        return Response(serializer.data)
 
 
 class StandardChangeViewSet(viewsets.ViewSet):
