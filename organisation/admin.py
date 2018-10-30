@@ -100,7 +100,7 @@ class DepartmentUserAdmin(VersionAdmin):
 
     def save_model(self, request, obj, form, change):
         """Override save_model in order to log any changes to some fields:
-        'given_name', 'surname', 'employee_id', 'cost_centre', 'name', 'org_unit'
+        'given_name', 'surname', 'employee_id', 'cost_centre', 'name', 'org_unit', 'photo'
         """
         l = 'DepartmentUser: {}, field: {}, original_value: {} new_value: {}, changed_by: {}, reference: {}'
         if obj._DepartmentUser__original_given_name != obj.given_name:
@@ -138,7 +138,16 @@ class DepartmentUserAdmin(VersionAdmin):
                 obj.email, 'expiry_date', obj._DepartmentUser__original_expiry_date, obj.expiry_date,
                 request.user.username, obj.name_update_reference
             ))
+        # Shrink photo for AD, if it changed.
+        if obj._DepartmentUser__original_photo != obj.photo:
+            LOGGER.info(l.format(
+                obj.email, 'photo', obj._DepartmentUser__original_photo, obj.photo,
+                request.user.username, obj.name_update_reference
+            ))
+            obj.update_photo_ad()
+
         obj.save()
+
         # NOTE: following a change to a DepartmentUser object, we need to call
         # save a second time so that the org_data field is correct. The lines
         # below will do so in a separate thread.
