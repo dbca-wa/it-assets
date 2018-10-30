@@ -652,6 +652,8 @@ class Incident(models.Model):
     root_cause = models.TextField(null=True, blank=True, help_text='Root cause analysis/summary')
     remediation = models.TextField(
         null=True, blank=True, help_text='Remediation/improvement actions performed/planned')
+    pir = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Post-incident review (attachment)')
 
     class Meta:
         ordering = ('-created',)
@@ -794,11 +796,14 @@ class ChangeRequest(models.Model):
     broadcast = models.FileField(
         null=True, blank=True, upload_to='uploads/%Y/%m/%d',
         help_text='The broadcast text to be emailed to users regarding this change')
-    unexpected_issues = models.BooleanField(default=False)
+    unexpected_issues = models.BooleanField(default=False, help_text='Unexpected/unplanned issues were encountered during the change')
     notes = models.TextField(null=True, blank=True, help_text='Details of any unexpected issues, observations, etc.')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
+
+    class Meta:
+        ordering = ('-planned_start',)
 
     @property
     def is_standard_change(self):
@@ -811,6 +816,10 @@ class ChangeRequest(models.Model):
     @property
     def is_submitted(self):
         return self.status == 1
+
+    @property
+    def is_ready(self):
+        return self.status == 3
 
     @property
     def systems_affected(self):
