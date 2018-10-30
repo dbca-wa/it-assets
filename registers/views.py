@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponse, HttpResponseRedirect
@@ -288,11 +288,12 @@ class ChangeRequestExport(View):
 
 
 class ChangeRequestCalendar(ListView):
+    # TODO: refactor the calendar to show a weeks-worth of changes.
     model = ChangeRequest
     template_name = 'registers/changerequest_calendar.html'
 
     def get_date_param(self, **kwargs):
-        if "date" in self.kwargs:
+        if 'date' in self.kwargs:
             # Parse the date YYYY-MM-DD
             return datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date()
         else:
@@ -301,13 +302,8 @@ class ChangeRequestCalendar(ListView):
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
         context['date'] = self.get_date_param()
-        '''
-        if "date" in self.kwargs:
-            # Parse the date YYYY-MM-DD
-            context['date'] = datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date()
-        else:
-            context['date'] = date.today()
-        '''
+        context['date_yesterday'] = self.get_date_param() - timedelta(1)
+        context['date_tomorrow'] = self.get_date_param() + timedelta(1)
         return context
 
     def get_queryset(self):
