@@ -756,6 +756,7 @@ class ChangeRequest(models.Model):
         (3, "Ready"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
         (5, "Rolled back"),  # Undertaken and rolled back.
+        (6, "Cancelled"),
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)

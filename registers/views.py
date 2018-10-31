@@ -8,7 +8,7 @@ from pytz import timezone
 import xlsxwriter
 
 from .models import Incident, ChangeRequest, ChangeLog
-from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm
+from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
 
 
 class IncidentList(ListView):
@@ -94,6 +94,13 @@ class ChangeRequestList(ListView):
 class ChangeRequestDetail(DetailView):
     model = ChangeRequest
 
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
+        rfc = self.get_object()
+        tz = timezone(settings.TIME_ZONE)
+        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(tz)
+        return context
+
 
 class ChangeRequestCreate(CreateView):
     model = ChangeRequest
@@ -118,11 +125,6 @@ class ChangeRequestUpdate(UpdateView):
     model = ChangeRequest
     form_class = ChangeRequestUpdateForm
 
-    def get_context_data(self, **kwargs):
-        context = super(ChangeRequestUpdate, self).get_context_data(**kwargs)
-        context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
-        return context
-
     def get(self, request, *args, **kwargs):
         # Validate that the RFC may still be updated.
         rfc = self.get_object()
@@ -130,6 +132,11 @@ class ChangeRequestUpdate(UpdateView):
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestUpdate, self).get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestUpdate, self).get_context_data(**kwargs)
+        context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
+        return context
 
     def get_success_url(self):
         return self.get_object().get_absolute_url()
@@ -310,3 +317,55 @@ class ChangeRequestCalendar(ListView):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
         d = self.get_date_param()
         return queryset.filter(planned_start__date=d).order_by('planned_start')
+
+
+class ChangeRequestComplete(UpdateView):
+    """View for all 'completion' changes to an RFC: success/failure/notes etc.
+    """
+    model = ChangeRequest
+    form_class = ChangeRequestCompleteForm
+    template_name = 'registers/changerequest_complete.html'
+
+    def get(self, request, *args, **kwargs):
+        rfc = self.get_object()
+        # Validate that the RFC may be completed.
+        if not rfc.is_ready:
+            # Redirect to the detail view.
+            messages.warning(self.request, 'Change request {} is not ready for completion.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        # Business rule: only the implementer or requester may complete the change.
+        if self.request.user.email not in [rfc.requester.email, rfc.implementer.email]:
+            messages.warning(self.request, 'You are not authorisated to complete change request {}.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        return super(ChangeRequestComplete, self).get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestComplete, self).get_context_data(**kwargs)
+        context['title'] = 'Complete/finalise change request {}'.format(self.get_object().pk)
+        return context
+
+    def get_success_url(self):
+        return self.get_object().get_absolute_url()
+
+    def form_valid(self, form):
+        rfc = form.save()
+        d = form.cleaned_data
+        log = ChangeLog(change_request=rfc)
+
+        # Change the RFC status and make a log.
+        if d['outcome'] == 'complete':
+            rfc.status = 4
+            log.log = 'Change {} was marked "Completed successfully" by {}.'.format(rfc.pk, self.request.user.get_full_name())
+            messages.success(self.request, 'Change request {} was been marked as completed.'.format(rfc.pk))
+        elif d['outcome'] == 'rollback':
+            rfc.status = 5
+            log.log = 'Change {} was marked "Undertaken and rolled back" by {}.'.format(rfc.pk, self.request.user.get_full_name())
+            messages.info(self.request, 'Change request {} was been marked as rolled back.'.format(rfc.pk))
+        elif d['outcome'] == 'cancelled':
+            rfc.status = 6
+            log.log = 'Change {} was marked "Cancelled" by {}.'.format(rfc.pk, self.request.user.get_full_name())
+            messages.info(self.request, 'Change request {} was been marked as cancelled.'.format(rfc.pk))
+        rfc.save()
+        log.save()
+
+        return super(ChangeRequestComplete, self).form_valid(form)

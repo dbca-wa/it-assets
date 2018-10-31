@@ -76,4 +76,10 @@
                 {% endif %}
                 </td>
             </tr>
+            {% if object.notes %}
+            <tr>
+                <th>Notes</th>
+                <td>{{ object.notes }}</td>
+            </tr>
+            {% endif %}
         </table>

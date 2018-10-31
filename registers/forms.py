@@ -142,3 +142,30 @@ class ChangeRequestEndorseForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = ['notes']  # Give the modelform one optional field (not rendered) so it can validate.
+
+
+class ChangeRequestCompleteForm(forms.ModelForm):
+    outcome = forms.ChoiceField(
+        choices=[
+            ('complete', 'Completed successfully'),
+            ('rollback', 'Undertaken and rolled back'),
+            ('cancelled', 'Cancelled (not undertaken)'),
+        ],
+        help_text='What was the final outcome of this change request?'
+    )
+    save_button = Submit('save', 'Complete change request', css_class='btn-lg')
+
+    def __init__(self, *args, **kwargs):
+        super(ChangeRequestCompleteForm, self).__init__(*args, **kwargs)
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'Change request outcome',
+                'outcome', 'unexpected_issues', 'notes',
+            ),
+            FormActions(self.save_button),
+        )
+
+    class Meta:
+        model = ChangeRequest
+        fields = ['unexpected_issues', 'notes']
