@@ -7,16 +7,22 @@
 {% block body %}
 <div class="row">
     <div class="col-xs-12">
+        <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button"><span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a></a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
         <h1>Change request calendar: {{ date|date:"D, j F Y" }}</h1>
     </div>
 </div>
 
 <div class="row">
     <div class="col-xs-6">
-        <a href="{% url 'change_request_calendar' date=date_yesterday %}" class="btn btn-primary"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Back one day</a></p>
+        <a href="{% url 'change_request_calendar' date=date_yesterday %}" class="btn btn-info"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Back one day</a></p>
     </div>
     <div class="col-xs-6">
-        <a href="{% url 'change_request_calendar' date=date_tomorrow %}" class="btn btn-primary pull-right"><span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span> Forward one day</a></p>
+        <a href="{% url 'change_request_calendar' date=date_tomorrow %}" class="btn btn-info pull-right"><span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span> Forward one day</a></p>
     </div>
 </div>
 
