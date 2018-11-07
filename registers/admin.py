@@ -1,8 +1,11 @@
 from copy import copy
 from django import forms
+from django.conf import settings
 from django.conf.urls import url
+from django.contrib import messages
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
 from django.contrib.auth.models import Group, User
+from django.core.mail import EmailMultiAlternatives
 from django.forms import ModelChoiceField, ModelForm
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
@@ -13,9 +16,9 @@ from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
-    BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog,
-    StandardChange, ChangeRequest, ChangeLog)
+    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
+    #Backup, BusinessService, BusinessFunction, BusinessProcess, ProcessITSystemRelationship,
+    Incident, IncidentLog, StandardChange, ChangeRequest, ChangeLog)
 from .utils import smart_truncate
 from .views import IncidentExport, ChangeRequestExport
 
@@ -461,29 +464,61 @@ class CompletionListFilter(SimpleListFilter):
             return queryset.filter(completed__isnull=True)
 
 
+def email_approver(modeladmin, request, queryset):
+    """A custom admin action to (re)send an email to the approver, requesting that they endorse an RFC.
+    """
+    for rfc in queryset:
+        if rfc.is_submitted:
+            rfc.email_approver(request)
+
+email_approver.short_description = 'Send email to the approver requesting endorsement of a change'
+
+
 def cab_approve(modeladmin, request, queryset):
     """A custom admin action to bulk-approve RFCs at CAB.
     """
     for rfc in queryset:
-        rfc.status = 3
-        rfc.save()
-        msg = 'Change request {} has been approved at CAB; it may now be carried out as planned.'.format(rfc.pk)
-        log = ChangeLog(change_request=rfc, log=msg)
-        log.save()
-        # TODO: email the requester?
+        if rfc.is_scheduled:
+            # Set the RFC status and record a log.
+            rfc.status = 3
+            rfc.save()
+            msg = 'Change request {} has been approved at CAB; it may now be carried out as planned.'.format(rfc.pk)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+            # Send an email to the requester.
+            subject = 'Change request {} has been approved at CAB'.format(rfc.pk)
+            detail_url = request.build_absolute_uri(rfc.get_absolute_url())
+            text_content = """This is an automated message to let you know that change request
+                {} ("{}") has been approved at CAB and may now be carried out as planned.\n
+                Following completion, rollback or cancellation, please visit the following URL
+                and record the outcome of the change:\n
+                {}\n
+                """.format(rfc.pk, rfc.title, detail_url)
+            html_content = """<p>This is an automated message to let you know that change request
+                {0} ("{1}") has been approved at CAB and may now be carried out as planned.</p>
+                <p>Following completion, rollback or cancellation, please visit the following URL
+                and record the outcome of the change:</p>
+                <ul><li><a href="{2}">{2}</a></li></ul>
+                """.format(rfc.pk, rfc.title, detail_url)
+            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
+            # Success notification.
+            msg = 'RFC {} status set to "Ready"; requester has been emailed.'.format(rfc.pk)
+            messages.success(request, msg)
 
 cab_approve.short_description = 'Mark selected change requests as approved at CAB'
 
 
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
-    actions = [cab_approve]
+    actions = [cab_approve, email_approver]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
-        'id', 'created', 'title', 'change_type', 'requester_name', 'implementer_name', 'status',
+        'id', 'title', 'change_type', 'requester_name', 'approver_name', 'implementer_name', 'status',
         'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
     raw_id_fields = ('requester', 'approver', 'implementer')
@@ -494,6 +529,12 @@ class ChangeRequestAdmin(ModelAdmin):
             return obj.requester.get_full_name()
         return ''
     requester_name.short_description = 'requester'
+
+    def approver_name(self, obj):
+        if obj.approver:
+            return obj.approver.get_full_name()
+        return ''
+    approver_name.short_description = 'approver'
 
     def implementer_name(self, obj):
         if obj.implementer:

@@ -819,6 +819,10 @@ class ChangeRequest(models.Model):
         return self.status == 1
 
     @property
+    def is_scheduled(self):
+        return self.status == 2
+
+    @property
     def is_ready(self):
         return self.status == 3
 
@@ -840,7 +844,7 @@ class ChangeRequest(models.Model):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
     def email_approver(self, request=None):
-        # Send an email to the approver (if defined) with a link to the change request approve view.
+        # Send an email to the approver (if defined) with a link to the change request endorse view.
         if not self.approver:
             return None
         subject = 'Approval for change request {}'.format(self)
