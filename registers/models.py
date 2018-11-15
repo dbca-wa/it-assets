@@ -3,10 +3,12 @@ from dateutil.relativedelta import relativedelta
 from django import forms
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
+from os import path
 
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
@@ -650,6 +652,8 @@ class Incident(models.Model):
     root_cause = models.TextField(null=True, blank=True, help_text='Root cause analysis/summary')
     remediation = models.TextField(
         null=True, blank=True, help_text='Remediation/improvement actions performed/planned')
+    pir = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Post-incident review (attachment)')
 
     class Meta:
         ordering = ('-created',)
@@ -739,7 +743,6 @@ class StandardChange(models.Model):
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.
-    Will be linked to an approval object. Both will be served in a frontend.
     """
     CHANGE_TYPE_CHOICES = (
         (0, "Normal"),
@@ -747,32 +750,38 @@ class ChangeRequest(models.Model):
         (2, "Emergency"),
     )
     STATUS_CHOICES = (
-        (0, "Draft"),
-        (1, "Scheduled"),
-        (2, "Ready"),
-        (3, "Complete"),
-        (4, "Rolled back"),
+        (0, "Draft"),  # Not yet approved or submitted to CAB.
+        (1, "Submitted for endorsement"),  # Submitted for endorsement by approver, not yet ready for CAB assessment.
+        (2, "Scheduled for CAB"),  # Approved and ready to be assessed at CAB.
+        (3, "Ready"),  # Approved at CAB, ready to be undertaken.
+        (4, "Complete"),  # Undertaken and completed.
+        (5, "Rolled back"),  # Undertaken and rolled back.
+        (6, "Cancelled"),
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    title = models.CharField(max_length=255)
-    change_type = models.SmallIntegerField(choices=CHANGE_TYPE_CHOICES, default=0, db_index=True)
+    title = models.CharField(max_length=255, help_text='A short summary title for this change')
+    change_type = models.SmallIntegerField(
+        choices=CHANGE_TYPE_CHOICES, default=0, db_index=True, help_text='The change type')
     status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0, db_index=True)
     standard_change = models.ForeignKey(
-        StandardChange, on_delete=models.PROTECT, null=True, blank=True, help_text='Standard change reference')
+        StandardChange, on_delete=models.PROTECT, null=True, blank=True,
+        help_text='Standard change reference (if applicable)')
     requester = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='requester', help_text='Change requester')
+        DepartmentUser, on_delete=models.PROTECT, related_name='requester', null=True, blank=True,
+        help_text='The who is person requesting this change')
     approver = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='approver', help_text='Change request approver')
+        DepartmentUser, on_delete=models.PROTECT, related_name='approver', null=True, blank=True,
+        help_text='The person who will approve this change')
     implementer = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='implementer',
-        help_text='Change request implementer', blank=True, null=True)
+        DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
+        help_text='The person who will implement this change')
     description = models.TextField(
-        null=False, blank=False, help_text='Brief description of what the change is and why it is being undertaken')
+        null=True, blank=True, help_text='A brief description of what the change is for and why it is being undertaken')
     incident_url = models.URLField(
         max_length=2048, null=True, blank=True, verbose_name='Incident URL',
         help_text='If the change is to address an incident, URL to the incident details')
-    test_date = models.DateField(null=True, blank=True, help_text='Date that the change was tested')
+    test_date = models.DateField(null=True, blank=True, help_text='Date on which the change was tested')
     planned_start = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to begin')
     planned_end = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to end')
     completed = models.DateTimeField(null=True, blank=True, help_text='Time that the change was completed')
@@ -788,17 +797,76 @@ class ChangeRequest(models.Model):
     broadcast = models.FileField(
         null=True, blank=True, upload_to='uploads/%Y/%m/%d',
         help_text='The broadcast text to be emailed to users regarding this change')
-    unexpected_issues = models.BooleanField(default=False)
+    unexpected_issues = models.BooleanField(default=False, help_text='Unexpected/unplanned issues were encountered during the change')
     notes = models.TextField(null=True, blank=True, help_text='Details of any unexpected issues, observations, etc.')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
+
+    class Meta:
+        ordering = ('-planned_start',)
+
+    @property
+    def is_standard_change(self):
+        return self.change_type == 1
+
+    @property
+    def is_draft(self):
+        return self.status == 0
+
+    @property
+    def is_submitted(self):
+        return self.status == 1
+
+    @property
+    def is_scheduled(self):
+        return self.status == 2
+
+    @property
+    def is_ready(self):
+        return self.status == 3
 
     @property
     def systems_affected(self):
         if self.it_systems.exists():
             return ', '.join([i.name for i in self.it_systems.all()])
         return 'Not specified'
+
+    @property
+    def implementation_docs_filename(self):
+        return path.basename(self.implementation_docs.name)
+
+    @property
+    def broadcast_filename(self):
+        return path.basename(self.broadcast.name)
+
+    def get_absolute_url(self):
+        return reverse('change_request_detail', kwargs={'pk': self.pk})
+
+    def email_approver(self, request=None):
+        # Send an email to the approver (if defined) with a link to the change request endorse view.
+        if not self.approver:
+            return None
+        subject = 'Approval for change request {}'.format(self)
+        if request:
+            endorse_url = request.build_absolute_uri(reverse('change_request_endorse', kwargs={'pk': self.pk}))
+        else:
+            endorse_url = reverse('change_request_endorse', kwargs={'pk': self.pk})
+        text_content = """This is an automated message to let you know that you have
+            been assigned as the approver for a change request submitted to OIM by {}.\n
+            Please visit the following URL, review the change request details and register
+            approval or rejection of the change:\n
+            {}\n
+            """.format(self.requester.get_full_name(), endorse_url)
+        html_content = """<p>This is an automated message to let you know that you have
+            been assigned as the approver for a change request submitted to OIM by {0}.</p>
+            <p>Please visit the following URL, review the change request details and register
+            approval or rejection of the change:</p>
+            <ul><li><a href="{1}">{1}</a></li></ul>
+            """.format(self.requester.get_full_name(), endorse_url)
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.approver.email])
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
 
 
 class ChangeLog(models.Model):
@@ -816,21 +884,3 @@ class ChangeLog(models.Model):
         """
         super(ChangeLog, self).save(*args, **kwargs)
         self.change_request.save()
-
-
-class ChangeApproval(models.Model):
-    """A model to record approval  of change requests. A change request could be edited and then
-    resubmitted, requiring a one to many relationship change to approval.
-    """
-    APPROVAL_SOURCE_CHOICES = (
-        (0, "Email"),
-        (1, "Online"),
-        (2, "Verbal"),
-        (3, "Other"),
-    )
-    created = models.DateTimeField(auto_now_add=True)
-    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
-    approval_source = models.SmallIntegerField(choices=APPROVAL_SOURCE_CHOICES, default=0)
-    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
-    date_approved = models.DateTimeField()
-    notes = models.CharField(max_length=2048, blank=True, null=True)

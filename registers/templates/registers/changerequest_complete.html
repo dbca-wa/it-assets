@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extra_head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block body %}
+
+<div class="row">
+    <div class="col-xs-12">
+        <h1>{{ title }}</h1>
+        <p>Please record the outcome of the change request implementation below, plus any additional relevant details.</p>
+        {% if form.errors %}
+            <div class="alert alert-danger" role="alert">Please correct the error(s) below.</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        {% include 'registers/changerequest_table.html' %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        {% crispy form %}
+    </div>
+</div>
+{% endblock %}

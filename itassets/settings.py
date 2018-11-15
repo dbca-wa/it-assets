@@ -33,6 +33,7 @@ INSTALLED_APPS = (
     'corsheaders',
     'raven.contrib.django.raven_compat',
     'reversion',
+    'crispy_forms',
     'mptt',
     'django_mptt_admin',
     'leaflet',
@@ -120,17 +121,20 @@ DATE_INPUT_FORMATS = (
     '%d %b %Y',
     '%d %b, %Y',
     '%d %B %Y',
-    '%d %B, %Y')
+    '%d %B, %Y',
+)
 DATETIME_INPUT_FORMATS = (
     '%d/%m/%y %H:%M',
     '%d/%m/%Y %H:%M',
     '%d-%m-%y %H:%M',
-    '%d-%m-%Y %H:%M',)
+    '%d-%m-%Y %H:%M',
+)
 
 
 # Email settings.
 EMAIL_HOST = env('EMAIL_HOST', 'email.host')
 EMAIL_PORT = env('EMAIL_PORT', 25)
+NOREPLY_EMAIL = env('NOREPLY_EMAIL', 'noreply@dbca.wa.gov.au')
 
 
 # Logging settings
@@ -224,3 +228,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+# crispy_forms settings
+CRISPY_TEMPLATE_PACK = 'bootstrap3'

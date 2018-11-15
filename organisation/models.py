@@ -40,6 +40,10 @@ class DepartmentUser(MPTTModel):
     # The following is a list of account type of normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
     ACCOUNT_TYPE_EXCLUDE = [4, 5, 9, 10, 11, 12, 14, 16]
+    # The following is a list of account types set for individual staff/vendors,
+    # i.e. no shared or role-based account types.
+    # NOTE: it may not necessarily be the inverse of the previous list.
+    ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
     POSITION_TYPE_CHOICES = (
         (0, 'Full time'),
         (1, 'Part time'),
@@ -179,6 +183,7 @@ class DepartmentUser(MPTTModel):
         self.__original_name = self.name
         self.__original_org_unit_id = self.org_unit_id
         self.__original_expiry_date = self.expiry_date
+        self.__original_photo = self.photo
 
     def __str__(self):
         return self.email
@@ -225,9 +230,6 @@ class DepartmentUser(MPTTModel):
                     'unit_type': i.get_unit_type_display(),
                 } for i in self.org_units_secondary.all()]
 
-        # Shrink photo for AD.
-        self.update_photo_ad()
-
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
@@ -239,19 +241,15 @@ class DepartmentUser(MPTTModel):
                 self.photo_ad.delete()
             return
         else:
+            # Account for missing media files.
             try:
                 self.photo.file
             except FileNotFoundError:
                 return
 
-        # Account for missing media files.
-        if self.photo and not os.path.exists(self.photo.path):
-            return
-
         # Update self.photo_ad to a 240x240 thumbnail >10 kb in size.
         if hasattr(self.photo.file, 'content_type'):
             PHOTO_TYPE = self.photo.file.content_type
-
             if PHOTO_TYPE == 'image/jpeg':
                 PIL_TYPE = 'jpeg'
             elif PHOTO_TYPE == 'image/png':
@@ -260,16 +258,16 @@ class DepartmentUser(MPTTModel):
                 return
         else:
             PIL_TYPE = 'jpeg'
-        # good defaults to get ~10kb JPEG images
+
+        # Good defaults to get ~10kb JPEG images
         PHOTO_AD_SIZE = (240, 240)
         PIL_QUALITY = 75
-        # remote file size limit
+        # Remote file size limit
         PHOTO_AD_FILESIZE = 10000
-
         image = Image.open(BytesIO(self.photo.read()))
         image.thumbnail(PHOTO_AD_SIZE, Image.LANCZOS)
 
-        # in case we miss 10kb, drop the quality and recompress
+        # In case we miss 10kb, drop the quality and recompress
         for i in range(12):
             temp_buffer = BytesIO()
             image.convert('RGB').save(temp_buffer, PIL_TYPE, quality=PIL_QUALITY, optimize=True)

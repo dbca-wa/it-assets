@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<title>Change requests</title>
+{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-xs-12">
+        <h1>Change requests</h1>
+        <p>
+            <a href="{% url 'change_request_create' %}" class="btn btn-primary">Create a draft change request</a>
+            <a href="{% url 'change_request_calendar' %}" class="btn btn-info">Change request calendar</a>
+        </p>
+    </div>
+</div>
+
+<!-- Search bar -->
+<form action="" method="get">
+    <div class="row">
+        <div class="hidden-xs col-sm-1">
+            <label for="search_field">Title:</label>
+        </div>
+        <div class="col-xs-12 col-sm-11">
+            <input id="search_field" type="text" class="form-control" name="q" placeholder="Title search...">
+        </div>
+    </div>
+</form>
+<br>
+
+<div class="row">
+  <div class="col-xs-12">
+
+    <table class="table table-striped table-bordered table-condensed table-hover">
+        <thead>
+            <tr>
+                <th>Change ref.</th>
+                <th>Title</th>
+                <th>Change type</th>
+                <th>Status</th>
+                <th>Requester</th>
+                <th>Approver</th>
+                <th>Implementer</th>
+                <th>Planned start & end</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for object in object_list %}
+            <tr>
+                <td>{{ object.pk }}</td>
+                <td><a href="{{ object.get_absolute_url }}">{{ object.title }}</a></td>
+                <td>{{ object.get_change_type_display }}</td>
+                <td>{{ object.get_status_display }}</td>
+                <td>{{ object.requester.get_full_name }}</td>
+                <td>{{ object.approver.get_full_name }}</td>
+                <td>{{ object.implementer.get_full_name }}</td>
+                <td>{{ object.planned_start }}<br>{{ object.planned_end }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-xs-12">
+    <section class="paginator text-center">
+      <nav>
+        <ul class="pagination">
+          <li>
+            {% if page_obj.has_previous %}
+              <a href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">Previous</a>
+            {% endif %}
+          </li>
+          {% for page_num in paginator.page_range %}
+            {% ifequal paginator.number page_num %}
+            <li class="active">
+              <a href="?page={{ page_num }}">{{ page_num }}</a>
+            </li>
+            {% else %}
+            <li>
+              <a href="?page={{ page_num }}">{{ page_num }}</a>
+            </li>
+            {% endifequal %}
+          {% endfor %}
+          <li>
+            {% if page_obj.has_next %}
+              <a href="?page={{ page_obj.next_page_number }}" aria-label="Next">Next</a>
+            {% endif %}
+          </li>
+        </ul>
+      </nav>
+    </section>
+  </div>
+</div>
+
+{% endblock %}

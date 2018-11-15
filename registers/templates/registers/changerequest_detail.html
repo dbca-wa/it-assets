@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<title>Change request #{{ object }}</title>
+{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-xs-12">
+        <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button"><span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a></a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        <h1>Change request #{{ object }}</h1>
+    </div>
+</div>
+
+{% if object.is_draft %}
+<div class="row">
+    <div class="col-xs-12">
+        <hr>
+        <a class="btn btn-primary" href="{% url 'change_request_update' object.pk %}" role="button">Update / submit for approval</a></a>
+        <hr>
+    </div>
+</div>
+{% endif %}
+
+{% if object.is_submitted and object.approver.email == request.user.email %}
+<div class="row">
+    <div class="col-xs-12">
+        <hr>
+        <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a></a>
+        <hr>
+    </div>
+</div>
+{% endif %}
+
+{% if may_complete %}
+<div class="row">
+    <div class="col-xs-12">
+        <hr>
+        <a class="btn btn-primary" href="{% url 'change_request_complete' object.pk %}" role="button">Record change request outcome</a></a>
+        <hr>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-xs-12">
+        {% include 'registers/changerequest_table.html' %}
+
+        {% if object.changelog_set.exists %}
+            <h2>Actions log</h2>
+            <table class="table table-striped table-bordered table-condensed">
+                {% for log in object.changelog_set.all %}
+                <tr>
+                    <td>{{ log.created }}</td>
+                    <td>{{ log.log }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

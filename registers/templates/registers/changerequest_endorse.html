@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extra_head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-xs-12">
+        <h1>{{ title }}</h1>
+        <p>Please review the details of the change request below, and then click "Endorse" or "Reject"
+        to indicate whether the change is endorsed for subsequent review and approval at CAB.</p>
+        <p>Endorsed changes will be logged and forwarded to CAB for review, while rejected changes
+        will be returned to the requester as drafts.</p>
+
+        {% include 'registers/changerequest_table.html' %}
+
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        {% crispy form %}
+    </div>
+</div>
+{% endblock %}

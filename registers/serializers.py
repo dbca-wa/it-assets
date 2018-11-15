@@ -1,4 +1,4 @@
-from .models import ChangeRequest, ChangeApproval, StandardChange, ITSystem
+from .models import ChangeRequest, StandardChange, ITSystem
 from organisation.api_v2 import DepartmentUserMinSerializer
 from rest_framework import serializers
 
@@ -22,12 +22,6 @@ class ChangeRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChangeRequest
-        fields = '__all__'
-
-
-class ChangeApprovalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChangeApproval
         fields = '__all__'
 
 

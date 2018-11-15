@@ -1,8 +1,11 @@
 from copy import copy
 from django import forms
+from django.conf import settings
 from django.conf.urls import url
+from django.contrib import messages
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
 from django.contrib.auth.models import Group, User
+from django.core.mail import EmailMultiAlternatives
 from django.forms import ModelChoiceField, ModelForm
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
@@ -13,11 +16,11 @@ from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency, Backup, BusinessService,
-    BusinessFunction, BusinessProcess, ProcessITSystemRelationship, Incident, IncidentLog,
-    StandardChange, ChangeRequest, ChangeLog, ChangeApproval)
+    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
+    #Backup, BusinessService, BusinessFunction, BusinessProcess, ProcessITSystemRelationship,
+    Incident, IncidentLog, StandardChange, ChangeRequest, ChangeLog)
 from .utils import smart_truncate
-from .views import IncidentExport
+from .views import IncidentExport, ChangeRequestExport
 
 
 @register(UserGroup)
@@ -143,39 +146,39 @@ class ITSystemAdmin(VersionAdmin):
         'status_html',
         ('authentication', 'access'),
         'description',
-        'notes',
+        #'notes',
         ('criticality', 'availability'),
-        'schema_url',
+        #'schema_url',
         'hardwares',
         'user_groups',
         'system_reqs',
         ('system_type', 'oim_internal_only'),
         'request_access',
-        ('vulnerability_docs', 'recovery_docs'),
-        'workaround',
-        ('mtd', 'rto', 'rpo'),
-        ('contingency_plan', 'contingency_plan_status'),
-        'contingency_plan_last_tested',
-        'system_health',
-        'system_creation_date',
-        'backup_info',
-        'risks',
-        'sla',
-        'critical_period',
-        'alt_processing',
-        'technical_recov',
-        'post_recovery',
-        'variation_iscp',
-        'user_notification',
-        'other_projects',
-        'function',
-        'use',
-        'capability',
-        'unique_evidence',
-        'point_of_truth',
-        'legal_need_to_retain',
+        #('vulnerability_docs', 'recovery_docs'),
+        #'workaround',
+        #('mtd', 'rto', 'rpo'),
+        #('contingency_plan', 'contingency_plan_status'),
+        #'contingency_plan_last_tested',
+        #'system_health',
+        #'system_creation_date',
+        #'backup_info',
+        #'risks',
+        #'sla',
+        #'critical_period',
+        #'alt_processing',
+        #'technical_recov',
+        #'post_recovery',
+        #'variation_iscp',
+        #'user_notification',
+        #'other_projects',
+        #'function',
+        #'use',
+        #'capability',
+        #'unique_evidence',
+        #'point_of_truth',
+        #'legal_need_to_retain',
         'biller_code',
-        'extra_data',
+        #'extra_data',
     ]
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/registers/itsystem/change_list.html'
@@ -289,7 +292,7 @@ class ITSystemDependencyAdmin(VersionAdmin):
         return response
 
 
-@register(Backup)
+#@register(Backup)
 class BackupAdmin(VersionAdmin):
     raw_id_fields = ('computer',)
     list_display = (
@@ -300,13 +303,13 @@ class BackupAdmin(VersionAdmin):
     date_hierarchy = 'last_tested'
 
 
-@register(BusinessService)
+#@register(BusinessService)
 class BusinessServiceAdmin(VersionAdmin):
     list_display = ('number', 'name')
     search_fields = ('name', 'description')
 
 
-@register(BusinessFunction)
+#@register(BusinessFunction)
 class BusinessFunctionAdmin(VersionAdmin):
     list_display = ('name', 'function_services')
     list_filter = ('services',)
@@ -317,14 +320,14 @@ class BusinessFunctionAdmin(VersionAdmin):
     function_services.short_description = 'services'
 
 
-@register(BusinessProcess)
+#@register(BusinessProcess)
 class BusinessProcessAdmin(VersionAdmin):
     list_display = ('name', 'criticality')
     list_filter = ('criticality', 'functions')
     search_fields = ('name', 'description', 'functions__name')
 
 
-@register(ProcessITSystemRelationship)
+#@register(ProcessITSystemRelationship)
 class ProcessITSystemRelationshipAdmin(VersionAdmin):
     list_display = ('process', 'itsystem', 'importance')
     list_filter = ('importance', 'process', 'itsystem')
@@ -442,19 +445,104 @@ class ChangeLogInline(StackedInline):
     extra = 0
 
 
+class CompletionListFilter(SimpleListFilter):
+    """A custom list filter to restrict displayed RFCs by completion status.
+    """
+    title = 'completion'
+    parameter_name = 'completion'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('Complete', 'Complete'),
+            ('Incomplete', 'Incomplete')
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'Complete':
+            return queryset.filter(completed__isnull=False)
+        if self.value() == 'Incomplete':
+            return queryset.filter(completed__isnull=True)
+
+
+def email_approver(modeladmin, request, queryset):
+    """A custom admin action to (re)send an email to the approver, requesting that they endorse an RFC.
+    """
+    for rfc in queryset:
+        if rfc.is_submitted:
+            rfc.email_approver(request)
+
+email_approver.short_description = 'Send email to the approver requesting endorsement of a change'
+
+
+def cab_approve(modeladmin, request, queryset):
+    """A custom admin action to bulk-approve RFCs at CAB.
+    """
+    for rfc in queryset:
+        if rfc.is_scheduled:
+            # Set the RFC status and record a log.
+            rfc.status = 3
+            rfc.save()
+            msg = 'Change request {} has been approved at CAB; it may now be carried out as planned.'.format(rfc.pk)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+            # Send an email to the requester.
+            subject = 'Change request {} has been approved at CAB'.format(rfc.pk)
+            detail_url = request.build_absolute_uri(rfc.get_absolute_url())
+            text_content = """This is an automated message to let you know that change request
+                {} ("{}") has been approved at CAB and may now be carried out as planned.\n
+                Following completion, rollback or cancellation, please visit the following URL
+                and record the outcome of the change:\n
+                {}\n
+                """.format(rfc.pk, rfc.title, detail_url)
+            html_content = """<p>This is an automated message to let you know that change request
+                {0} ("{1}") has been approved at CAB and may now be carried out as planned.</p>
+                <p>Following completion, rollback or cancellation, please visit the following URL
+                and record the outcome of the change:</p>
+                <ul><li><a href="{2}">{2}</a></li></ul>
+                """.format(rfc.pk, rfc.title, detail_url)
+            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
+            # Success notification.
+            msg = 'RFC {} status set to "Ready"; requester has been emailed.'.format(rfc.pk)
+            messages.success(request, msg)
+
+cab_approve.short_description = 'Mark selected change requests as approved at CAB'
+
+
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
+    actions = [cab_approve, email_approver]
+    change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
-        'id', 'created', 'title', 'requester', 'approver', 'change_type', 'status', 'planned_start')
-    list_filter = ('change_type', 'status',)
+        'id', 'title', 'change_type', 'requester_name', 'approver_name', 'implementer_name', 'status',
+        'planned_start', 'planned_end', 'completed')
+    list_filter = ('change_type', 'status', CompletionListFilter)
     raw_id_fields = ('requester', 'approver', 'implementer')
     search_fields = ('id', 'title', 'requester__email', 'approver__email', 'implementer__email')
 
+    def requester_name(self, obj):
+        if obj.requester:
+            return obj.requester.get_full_name()
+        return ''
+    requester_name.short_description = 'requester'
 
-@register(ChangeApproval)
-class ChangeApprovalAdmin(ModelAdmin):
-    list_display = ('id', 'change_request', 'approval_source', 'approver', 'date_approved')
-    date_hierarchy = 'created'
+    def approver_name(self, obj):
+        if obj.approver:
+            return obj.approver.get_full_name()
+        return ''
+    approver_name.short_description = 'approver'
+
+    def implementer_name(self, obj):
+        if obj.implementer:
+            return obj.implementer.get_full_name()
+        return ''
+    implementer_name.short_description = 'implementer'
+
+    def get_urls(self):
+        urls = super(ChangeRequestAdmin, self).get_urls()
+        urls = [path('export/', ChangeRequestExport.as_view(), name='changerequest_export')] + urls
+        return urls
