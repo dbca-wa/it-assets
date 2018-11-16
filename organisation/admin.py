@@ -1,8 +1,7 @@
 from django import forms
-from django.conf.urls import url
 from django.contrib import messages
 from django.contrib.admin import register, site, ModelAdmin
-from django.urls import reverse
+from django.urls import path, reverse
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -18,6 +17,7 @@ import time
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
 from .tasks import alesco_data_import
 from .utils import departmentuser_csv_report
+from .views import DepartmentUserExport
 
 LOGGER = logging.getLogger('sync_tasks')
 
@@ -157,8 +157,9 @@ class DepartmentUserAdmin(VersionAdmin):
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
-            url(r'^alesco-import/$', self.admin_site.admin_view(self.alesco_import), name='alesco_import'),
-            url(r'^export/$', self.admin_site.admin_view(self.export), name='departmentuser_export'),
+            path('alesco-import/', self.admin_site.admin_view(self.alesco_import), name='alesco_import'),
+            path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
+            #path('export/', self.admin_site.admin_view(self.export), name='departmentuser_export'),
         ] + urls
         return urls
 
