@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.contrib import messages
+from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
 from organisation.models import DepartmentUser
@@ -187,6 +188,7 @@ class ChangeRequestUpdate(UpdateView):
                 errors = True
             # No validation errors: change the RFC status, send an email to the approver and make a log.
             if not errors:
+                # TODO: send an email to the requester.
                 rfc.status = 1
                 rfc.save()
                 msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
@@ -236,6 +238,22 @@ class ChangeRequestEndorse(UpdateView):
             messages.success(self.request, msg)
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
+            # Send an email to the requester.
+            subject = 'Change request {} has been endorsed'.format(rfc.pk)
+            detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
+            text_content = """This is an automated message to let you know that change request
+                {} ("{}") has been endorsed by {}, and it is now scheduled to be approved at the
+                next OIM Change Advisory Board meeting.\n
+                {}\n
+                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+            html_content = """<p>This is an automated message to let you know that change request
+                {0} ("{1}") has been endorsed by {2}, and it is now scheduled to be approved at the
+                next OIM Change Advisory Board meeting.</p>
+                <ul><li><a href="{3}">{3}</a></li></ul>
+                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
         elif self.request.POST.get('reject'):
             # If the user clicked "Reject", log this and change status back to Draft.
             rfc.status = 0
@@ -244,6 +262,22 @@ class ChangeRequestEndorse(UpdateView):
             messages.warning(self.request, msg)
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
+            # Send an email to the requester.
+            subject = 'Change request {} has been rejected'.format(rfc.pk)
+            detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
+            text_content = """This is an automated message to let you know that change request
+                {} ("{}") has been rejected by {}. Its status has been reset to "Draft" for updates
+                and re-submission.\n
+                {}\n
+                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+            html_content = """<p>This is an automated message to let you know that change request
+                {0} ("{1}") has been rejected by {2}. Its status has been reset to "Draft" for updates
+                and re-submission.</p>
+                <ul><li><a href="{3}">{3}</a></li></ul>
+                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
         return super(ChangeRequestEndorse, self).form_valid(form)
 
 

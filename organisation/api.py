@@ -45,6 +45,14 @@ def format_account_type(request, value):
         return value
 
 
+def format_location(request, value):
+    if value is not None:
+        location = Location.objects.get(pk=value)
+        return location.as_dict()
+    else:
+        return None
+
+
 class DepartmentUserResource(DjangoResource):
     """An API Resource class to represent DepartmentUser objects.
     This class is used to create & update synchronised user account data from
@@ -59,8 +67,7 @@ class DepartmentUserResource(DjangoResource):
         'org_unit__location__name', 'org_unit__location__address',
         'org_unit__location__pobox', 'org_unit__location__phone',
         'org_unit__location__fax', 'ad_guid',
-        'preferred_name',
-        'expiry_date')
+        'location', 'preferred_name', 'expiry_date')
     VALUES_ARGS = COMPACT_ARGS + (
         'ad_dn', 'ad_data', 'date_updated', 'date_ad_updated', 'active',
         'ad_deleted', 'in_sync', 'given_name', 'surname', 'home_phone',
@@ -75,6 +82,7 @@ class DepartmentUserResource(DjangoResource):
         'photo_ad': format_fileField,
         'position_type': format_position_type,
         'account_type': format_account_type,
+        'location': format_location,
     })
 
     def __init__(self, *args, **kwargs):
@@ -169,6 +177,7 @@ class DepartmentUserResource(DjangoResource):
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
         resp = {'objects': resp}
+        # Cache the response for 300 seconds.
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
@@ -183,9 +192,6 @@ class DepartmentUserResource(DjangoResource):
         Include `populate_groups=true` to output only DepartmentUsers
         with populate_primary_group == True.
         """
-        resp = cache.get(self.request.get_full_path())
-        if resp:
-            return resp
         FILTERS = {}
         sync_o365 = True
         if 'sync_o365' in self.request.GET and self.request.GET['sync_o365'] == 'false':
@@ -248,7 +254,6 @@ class DepartmentUserResource(DjangoResource):
 
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
-        cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
     def detail(self, guid):

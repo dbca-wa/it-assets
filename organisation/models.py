@@ -407,7 +407,7 @@ class Location(models.Model):
 
     def as_dict(self):
         return {k: getattr(self, k) for k in (
-            'name', 'address', 'pobox', 'phone', 'fax', 'email') if getattr(self, k)}
+            'id', 'name', 'address', 'pobox', 'phone', 'fax', 'email') if getattr(self, k)}
 
 
 class OrgUnit(MPTTModel):
