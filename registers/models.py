@@ -870,6 +870,30 @@ class ChangeRequest(models.Model):
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
 
+    def email_implementer(self, request=None):
+        # Send an email to the implementer (if defined) with a link to the change request endorse view.
+        if not self.implementer:
+            return None
+        subject = 'Completion of change request {}'.format(self)
+        if request:
+            complete_url = request.build_absolute_uri(reverse('change_request_complete', kwargs={'pk': self.pk}))
+        else:
+            domain = Site.objects.get_current().domain
+            complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
+        text_content = """This is an automated message to let you know that you are recorded as the
+            implementer for change request {}, scheduled to be undertaken on {}.\n
+            Please visit the following URL and record the outcome of the change in order to finalise it:\n
+            {}\n
+            """.format(self, self.planned_start.strftime('%d/%b/%Y at %H:%M'), complete_url)
+        html_content = """<p>This is an automated message to let you know that you are recorded as the
+            implementer for change request {0}, scheduled to be undertaken on {1}.</p>
+            <p>Please visit the following URL and record the outcome of the change in order to finalise it:</p>
+            <ul><li><a href="{2}">{2}</a></li></ul>
+            """.format(self, self.planned_start.strftime('%d/%b/%Y at %H:%M'), complete_url)
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.implementer.email])
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
+
 
 class ChangeLog(models.Model):
     """Represents a log entry related to a single Change Request.

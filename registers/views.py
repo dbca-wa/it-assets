@@ -369,7 +369,7 @@ class ChangeRequestComplete(UpdateView):
             return HttpResponseRedirect(rfc.get_absolute_url())
         # Business rule: only the implementer or requester may complete the change.
         if self.request.user.email not in [rfc.requester.email, rfc.implementer.email]:
-            messages.warning(self.request, 'You are not authorisated to complete change request {}.'.format(rfc.pk))
+            messages.warning(self.request, 'You are not authorised to complete change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestComplete, self).get(request, *args, **kwargs)
 
