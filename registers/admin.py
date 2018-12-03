@@ -510,9 +510,45 @@ def cab_approve(modeladmin, request, queryset):
 cab_approve.short_description = 'Mark selected change requests as approved at CAB'
 
 
+def cab_reject(modeladmin, request, queryset):
+    """A custom admin action to reject RFCs at CAB.
+    """
+    for rfc in queryset:
+        if rfc.is_scheduled:
+            # Set the RFC status and record a log.
+            rfc.status = 0
+            rfc.save()
+            msg = 'Change request {} has been rejected at CAB; status has been reset to Draft.'.format(rfc.pk)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+            # Send an email to the requester.
+            subject = 'Change request {} has been rejected at CAB'.format(rfc.pk)
+            detail_url = request.build_absolute_uri(rfc.get_absolute_url())
+            text_content = """This is an automated message to let you know that change request
+                {} ("{}") has been rejected at CAB, and its status reset to draft.\n
+                Please review any log messages recorded on the change request as context prior
+                to making any required alterations and re-submission:\n
+                {}\n
+                """.format(rfc.pk, rfc.title, detail_url)
+            html_content = """<p>This is an automated message to let you know that change request
+                {0} ("{1}") has been rejected at CAB, and its status reset to draft.</p>
+                <p>Please review any log messages recorded on the change request as context prior
+                to making any required alterations and re-submission:</p>
+                <ul><li><a href="{2}">{2}</a></li></ul>
+                """.format(rfc.pk, rfc.title, detail_url)
+            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
+            # Success notification.
+            msg = 'RFC {} status set to "Draft"; requester has been emailed.'.format(rfc.pk)
+            messages.success(request, msg)
+
+cab_reject.short_description = 'Mark selected change requests as rejected at CAB (set to draft status)'
+
+
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
-    actions = [cab_approve, email_approver]
+    actions = [cab_approve, cab_reject, email_approver]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
