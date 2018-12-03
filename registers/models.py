@@ -3,6 +3,7 @@ from dateutil.relativedelta import relativedelta
 from django import forms
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
@@ -851,17 +852,18 @@ class ChangeRequest(models.Model):
         if request:
             endorse_url = request.build_absolute_uri(reverse('change_request_endorse', kwargs={'pk': self.pk}))
         else:
-            endorse_url = reverse('change_request_endorse', kwargs={'pk': self.pk})
+            domain = Site.objects.get_current().domain
+            endorse_url = '{}{}'.format(domain, reverse('change_request_endorse', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you have
             been assigned as the approver for a change request submitted to OIM by {}.\n
             Please visit the following URL, review the change request details and register
-            approval or rejection of the change:\n
+            endorsement or rejection of the change:\n
             {}\n
             """.format(self.requester.get_full_name(), endorse_url)
         html_content = """<p>This is an automated message to let you know that you have
             been assigned as the approver for a change request submitted to OIM by {0}.</p>
             <p>Please visit the following URL, review the change request details and register
-            approval or rejection of the change:</p>
+            endorsement or rejection of the change:</p>
             <ul><li><a href="{1}">{1}</a></li></ul>
             """.format(self.requester.get_full_name(), endorse_url)
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.approver.email])
