@@ -1,47 +1,54 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-<title>Change requests calendar: {{ date }}</title>
+<title>Weekly change calendar ({{ week_start|date:"D, j M Y" }})</title>
 {% endblock %}
 
 {% block body %}
 <div class="row">
     <div class="col-xs-12">
-        <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button"><span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button">
+            <span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a>
     </div>
 </div>
 
 <div class="row">
     <div class="col-xs-12">
-        <h1>Change request calendar: {{ date|date:"D, j F Y" }}</h1>
+        <h1>Weekly change calendar starting {{ week_start|date:"l, j F Y" }}</h1>
     </div>
 </div>
 
 <div class="row">
     <div class="col-xs-6">
-        <a href="{% url 'change_request_calendar' date=date_yesterday %}" class="btn btn-info"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Back one day</a></p>
+        <a href="{% url 'change_request_calendar' date=date_last_week %}" class="btn btn-info">
+            <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Back one week</a>
     </div>
     <div class="col-xs-6">
-        <a href="{% url 'change_request_calendar' date=date_tomorrow %}" class="btn btn-info pull-right"><span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span> Forward one day</a></p>
+        <a href="{% url 'change_request_calendar' date=date_next_week %}" class="btn btn-info pull-right">
+            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span> Forward one week</a>
     </div>
 </div>
-
+<br>
 <div class="row">
     <div class="col-xs-12">
     {% if object_list %}
         <table class="table table-striped table-bordered table-condensed table-hover">
             <thead>
                 <tr>
-                    <th>Start time</th>
-                    <th>Title</th>
+                    <th>Date</th>
+                    <th>Start / end</th>
+                    <th>Change</th>
+                    <th>Requested by</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
                 {% for object in object_list %}
                 <tr>
-                    <td>{{ object.planned_start|time:"H:i" }}</td>
+                    <td>{{ object.planned_start|date:"D j-M-y" }}</td>
+                    <td>{{ object.planned_start|time:"H:i" }} - {{ object.planned_end|time:"H:i" }}</td>
                     <td><a href="{{ object.get_absolute_url }}">{{ object.title }}</a></td>
+                    <td>{{ object.requester.get_full_name }}</td>
                     <td>{{ object.get_status_display }}</td>
                 </tr>
                 {% endfor %}

@@ -342,15 +342,20 @@ class ChangeRequestCalendar(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
-        context['date'] = self.get_date_param()
-        context['date_yesterday'] = self.get_date_param() - timedelta(1)
-        context['date_tomorrow'] = self.get_date_param() + timedelta(1)
+        d = self.get_date_param()
+        week_start = d - timedelta(days=d.weekday())
+        context['date'] = d
+        context['week_start'] = week_start
+        context['date_last_week'] = week_start - timedelta(7)
+        context['date_next_week'] = week_start + timedelta(7)
         return context
 
     def get_queryset(self):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
         d = self.get_date_param()
-        return queryset.filter(planned_start__date=d).order_by('planned_start')
+        week_start = d - timedelta(days=d.weekday())
+        week_end = week_start + timedelta(days=6)
+        return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
 
 
 class ChangeRequestComplete(UpdateView):
