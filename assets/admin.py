@@ -57,12 +57,12 @@ class HardwareAssetAdmin(VersionAdmin):
     list_display = (
         'asset_tag', 'vendor', 'model_type', 'hardware_model', 'serial', 'status',
         'age', 'location', 'assigned_user', 'cost_centre')
-    list_filter = ('status', 'hardware_model__model_type', 'vendor')
+    list_filter = ('status', 'cost_centre', 'hardware_model__model_type', 'vendor')
     raw_id_fields = ('assigned_user',)
     search_fields = (
         'asset_tag', 'vendor__name', 'serial', 'hardware_model__model_type',
         'hardware_model__vendor__name', 'hardware_model__model_no', 'service_request_url',
-        'location__name', 'assigned_user__email')
+        'location__name', 'assigned_user__email', 'cost_centre__code')
     readonly_fields = ['extra_data_ro']
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/assets/hardwareasset/change_list.html'
