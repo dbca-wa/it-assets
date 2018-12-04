@@ -1,15 +1,15 @@
 from datetime import date
-from django.conf.urls import url
 from django.contrib.admin import register, TabularInline
-from django.urls import reverse
+from django.urls import path, reverse
 from django.forms import Form, FileField
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from reversion.admin import VersionAdmin
 from io import BytesIO
 
 from .models import Vendor, HardwareModel, HardwareAsset, SoftwareAsset, HardwareInvoice
-from .utils import humanise_age, get_csv
+from .utils import humanise_age
+from .views import HardwareAssetExport
 
 
 @register(Vendor)
@@ -85,23 +85,16 @@ class HardwareAssetAdmin(VersionAdmin):
     def get_urls(self):
         urls = super(HardwareAssetAdmin, self).get_urls()
         extra_urls = [
-            url(
-                r'^import/$', self.admin_site.admin_view(self.asset_import),
+            path(
+                'import/', self.admin_site.admin_view(self.asset_import),
                 name='asset_import'),
-            url(
-                r'^import/confirm/$', self.admin_site.admin_view(self.asset_import_confirm),
+            path(
+                'import/confirm/', self.admin_site.admin_view(self.asset_import_confirm),
                 name='asset_import_confirm'),
-            url(r'^export/$', self.hardwareasset_export, name='hardwareasset_export'),
+            # path('export/', self.hardwareasset_export, name='hardwareasset_export'),
+            path('export/', HardwareAssetExport. as_view(), name='hardwareasset_export'),
         ]
         return extra_urls + urls
-
-    def hardwareasset_export(self, request):
-        """Export all HardwareAssets to a CSV.
-        """
-        f = get_csv(HardwareAsset.objects.all())
-        response = HttpResponse(f.getvalue(), content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=hardwareasset_export.csv'
-        return response
 
     class AssetImportForm(Form):
         assets_csv = FileField()
