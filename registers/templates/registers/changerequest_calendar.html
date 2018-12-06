@@ -45,7 +45,7 @@
             <tbody>
                 {% for object in object_list %}
                 <tr>
-                    <td>{{ object.planned_start|date:"D j-M-y" }}</td>
+                    <td>{{ object.planned_start|date:"D, j M Y" }}</td>
                     <td>{{ object.planned_start|time:"H:i" }} - {{ object.planned_end|time:"H:i" }}</td>
                     <td><a href="{{ object.get_absolute_url }}">{{ object.title }}</a></td>
                     <td>{{ object.requester.get_full_name }}</td>

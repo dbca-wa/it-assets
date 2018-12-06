@@ -56,7 +56,7 @@
             <table class="table table-striped table-bordered table-condensed">
                 {% for log in object.changelog_set.all %}
                 <tr>
-                    <td>{{ log.created }}</td>
+                    <td>{{ log.created|date:"D, j M Y H:i" }}</td>
                     <td>{{ log.log }}</td>
                 </tr>
                 {% endfor %}

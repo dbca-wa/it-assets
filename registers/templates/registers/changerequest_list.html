@@ -54,7 +54,7 @@
                 <td>{{ object.requester.get_full_name }}</td>
                 <td>{{ object.approver.get_full_name }}</td>
                 <td>{{ object.implementer.get_full_name }}</td>
-                <td>{{ object.planned_start }}<br>{{ object.planned_end }}</td>
+                <td>{{ object.planned_start|date:"D, j M Y H:i" }}<br>{{ object.planned_end|date:"D, j M Y H:i" }}</td>
             </tr>
             {% endfor %}
         </tbody>
