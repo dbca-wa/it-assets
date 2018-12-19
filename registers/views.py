@@ -332,7 +332,6 @@ class ChangeRequestExport(View):
 
 
 class ChangeRequestCalendar(ListView):
-    # TODO: refactor the calendar to show a weeks-worth of changes.
     model = ChangeRequest
     template_name = 'registers/changerequest_calendar.html'
 

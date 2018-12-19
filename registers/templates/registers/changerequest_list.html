@@ -21,8 +21,13 @@
         <div class="hidden-xs col-sm-1">
             <label for="search_field">Title:</label>
         </div>
-        <div class="col-xs-12 col-sm-11">
+        <div class="col-xs-11 col-sm-10">
             <input id="search_field" type="text" class="form-control" name="q" placeholder="Title search...">
+        </div>
+        <div class="col-xs-1">
+            <a href="{% url 'change_request_list' %}?mine=" class="btn btn-default">
+                <span class="glyphicon glyphicon-filter" aria-hidden="true"></span> My RFCs
+            </a>
         </div>
     </div>
 </form>
