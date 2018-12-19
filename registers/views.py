@@ -11,6 +11,8 @@ import xlsxwriter
 from .models import Incident, ChangeRequest, ChangeLog
 from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
 
+TZ = timezone(settings.TIME_ZONE)
+
 
 class IncidentList(ListView):
     paginate_by = 20
@@ -51,12 +53,11 @@ class IncidentExport(View):
                 'Root cause', 'Remediation action(s)', 'Division(s) affected'
             ))
             row = 1
-            tz = timezone(settings.TIME_ZONE)
             for i in incidents:
                 register.write_row(row, 0, [
                     i.pk, i.status.capitalize(), i.description, i.get_priority_display(),
-                    i.get_category_display(), i.start.astimezone(tz),
-                    i.resolution.astimezone(tz) if i.resolution else '',
+                    i.get_category_display(), i.start.astimezone(TZ),
+                    i.resolution.astimezone(TZ) if i.resolution else '',
                     str(i.duration) if i.duration else '', i.rto_met(),
                     i.systems_affected, i.locations_affected,
                     i.manager.get_full_name() if i.manager else '',
@@ -86,6 +87,9 @@ class ChangeRequestList(ListView):
 
     def get_queryset(self):
         queryset = super(ChangeRequestList, self).get_queryset()
+        if 'mine' in self.request.GET:
+            email = self.request.user.email
+            queryset = queryset.filter(requester__email__iexact=email)
         if 'q' in self.request.GET and self.request.GET['q']:
             query = self.request.GET['q'].strip()
             queryset = queryset.filter(title__icontains=query)
@@ -98,8 +102,7 @@ class ChangeRequestDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
         rfc = self.get_object()
-        tz = timezone(settings.TIME_ZONE)
-        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(tz)
+        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(TZ)
         return context
 
 
@@ -304,15 +307,15 @@ class ChangeRequestExport(View):
                 'System(s) affected', 'Incident URL',
             ))
             row = 1
-            tz = timezone(settings.TIME_ZONE)
             for i in rfcs:
                 changes.write_row(row, 0, [
                     i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
-                    i.approver.get_full_name(), i.implementer.get_full_name(),
+                    i.approver.get_full_name() if i.approver else '',
+                    i.implementer.get_full_name() if i.implementer else '',
                     i.get_status_display(), i.test_date,
-                    i.planned_start.astimezone(tz) if i.planned_start else '',
-                    i.planned_end.astimezone(tz) if i.planned_end else '',
-                    i.completed.astimezone(tz) if i.completed else '',
+                    i.planned_start.astimezone(TZ) if i.planned_start else '',
+                    i.planned_end.astimezone(TZ) if i.planned_end else '',
+                    i.completed.astimezone(TZ) if i.completed else '',
                     str(i.outage) if i.outage else '', i.systems_affected, i.incident_url,
                 ])
                 row += 1
