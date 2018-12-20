@@ -8,10 +8,67 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import xlsxwriter
 
-from .models import Incident, ChangeRequest, ChangeLog
+from .models import ITSystem, Incident, ChangeRequest, ChangeLog
 from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
 
 TZ = timezone(settings.TIME_ZONE)
+
+
+class ITSystemExport(View):
+    """A custom view to export all IT Systems to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_systems_{}.xlsx'.format(date.today().isoformat())
+
+        with xlsxwriter.Workbook(
+            response,
+            {
+                'in_memory': True,
+                'default_date_format': 'dd-mmm-yyyy HH:MM',
+                'remove_timezone': True,
+            },
+        ) as workbook:
+            itsystems = ITSystem.objects.all().exclude(status=3).order_by('system_id')  # Exclude decommissioned systems.
+            systems = workbook.add_worksheet('IT Systems')
+            systems.write_row('A1', (
+                'System ID', 'Name', 'Status', 'Link', 'Description', 'Owner',
+                'Technology custodian', 'Information custodian', 'BH support', 'AH support',
+                'Availability', 'User groups', 'Application server(s)', 'Network storage',
+                'Backups', 'Recovery category', 'Seasonality', 'User notification',
+                'Emergency operations?', 'Online bookings?', 'Visitor safety?'
+            ))
+            row = 1
+            for i in itsystems:
+                systems.write_row(row, 0, [
+                    i.system_id, i.name, i.get_status_display(), i.link, i.description,
+                    i.owner.get_full_name() if i.owner else '',
+                    i.technology_custodian.get_full_name() if i.technology_custodian else '',
+                    i.information_custodian.get_full_name() if i.information_custodian else '',
+                    i.bh_support.email if i.bh_support else '',
+                    i.ah_support.email if i.ah_support else '',
+                    i.get_availability_display() if i.availability else '',
+                    ', '.join([str(j) for j in i.user_groups.all()]),
+                    i.application_server, i.network_storage,
+                    i.get_backups_display() if i.backups else '',
+                    i.get_recovery_category_display() if i.recovery_category else '',
+                    i.get_seasonality_display() if i.seasonality else '',
+                    i.user_notification, i.emergency_operations, i.online_bookings,
+                    i.visitor_safety,
+                ])
+                row += 1
+            systems.set_column('A:A', 9)
+            systems.set_column('B:B', 45)
+            systems.set_column('C:C', 18)
+            systems.set_column('D:E', 45)
+            systems.set_column('F:H', 21)
+            systems.set_column('I:J', 35)
+            systems.set_column('K:K', 14)
+            systems.set_column('L:O', 35)
+            systems.set_column('P:R', 27)
+            systems.set_column('S:U', 22)
+
+        return response
 
 
 class IncidentList(ListView):
