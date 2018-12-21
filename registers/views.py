@@ -8,7 +8,7 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import xlsxwriter
 
-from .models import ITSystem, Incident, ChangeRequest, ChangeLog
+from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
 from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
 
 TZ = timezone(settings.TIME_ZONE)
@@ -34,7 +34,7 @@ class ITSystemExport(View):
             systems.write_row('A1', (
                 'System ID', 'Name', 'Status', 'Link', 'Description', 'Owner',
                 'Technology custodian', 'Information custodian', 'BH support', 'AH support',
-                'Availability', 'User groups', 'Application server(s)', 'Network storage',
+                'Availability', 'User groups', 'Application server(s)', 'Database server(s)', 'Network storage',
                 'Backups', 'Recovery category', 'Seasonality', 'User notification',
                 'Emergency operations?', 'Online bookings?', 'Visitor safety?'
             ))
@@ -49,7 +49,7 @@ class ITSystemExport(View):
                     i.ah_support.email if i.ah_support else '',
                     i.get_availability_display() if i.availability else '',
                     ', '.join([str(j) for j in i.user_groups.all()]),
-                    i.application_server, i.network_storage,
+                    i.application_server, i.database_server, i.network_storage,
                     i.get_backups_display() if i.backups else '',
                     i.get_recovery_category_display() if i.recovery_category else '',
                     i.get_seasonality_display() if i.seasonality else '',
@@ -64,9 +64,59 @@ class ITSystemExport(View):
             systems.set_column('F:H', 21)
             systems.set_column('I:J', 35)
             systems.set_column('K:K', 14)
-            systems.set_column('L:O', 35)
-            systems.set_column('P:R', 27)
-            systems.set_column('S:U', 22)
+            systems.set_column('L:P', 35)
+            systems.set_column('Q:S', 27)
+            systems.set_column('T:V', 22)
+
+        return response
+
+
+class ITSystemHardwareExport(View):
+    """A custom view to export IT ystem hardware to an Excel spreadsheet.
+    NOTE: report output excludes objects that are marked as decommissioned.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_system_hardware_{}.xlsx'.format(date.today().isoformat())
+
+        with xlsxwriter.Workbook(
+            response,
+            {
+                'in_memory': True,
+                'default_date_format': 'dd-mmm-yyyy HH:MM',
+                'remove_timezone': True,
+            },
+        ) as workbook:
+            hardware = ITSystemHardware.objects.filter(decommissioned=False)
+            hw_sheet = workbook.add_worksheet('IT system hardware')
+            hw_sheet.write_row('A1', (
+                'Hostname', 'Host', 'OS', 'Role', 'Production?', 'EC2 ID', 'Patch group',
+                'IT system ID', 'IT system name', 'IT system CC', 'IT system availability',
+                'IT system custodian', 'IT system owner', 'IT system info custodian'
+            ))
+            row = 1
+            for i in hardware:
+                if i.itsystem_set.all().exclude(status=3).exists():
+                    # Write a row for each linked, non-decommissioned ITSystem.
+                    for it in i.itsystem_set.all().exclude(status=3):
+                        hw_sheet.write_row(row, 0, [
+                            i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
+                            i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
+                            str(i.patch_group), it.system_id, it.name, str(it.cost_centre),
+                            it.get_availability_display(),
+                            it.technology_custodian.get_full_name() if it.technology_custodian else '',
+                            it.owner.get_full_name() if it.owner else '',
+                            it.information_custodian.get_full_name() if it.information_custodian else ''
+                        ])
+                else:
+                    # No IT Systems - just record the hardware details.
+                    hw_sheet.write_row(row, 0, [
+                        i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
+                        i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
+                        str(i.patch_group)
+                    ])
+                row += 1
+            hw_sheet.set_column('A:A', 36)
 
         return response
 

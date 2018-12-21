@@ -213,11 +213,13 @@ class ITSystem(CommonFields):
         help_text='URL to status/uptime info')
     availability = models.PositiveIntegerField(
         choices=AVAILABILITY_CHOICES, null=True, blank=True,
-        help_text='Expected availability for this IT System')
+        help_text='Expected availability for this system')
     user_groups = models.ManyToManyField(
-        UserGroup, blank=True, help_text='User group(s) that use this IT System')
+        UserGroup, blank=True, help_text='User group(s) that use this system')
     application_server = models.TextField(
         blank=True, help_text='Application server(s) that host this system')
+    database_server = models.TextField(
+        blank=True, help_text="Database server(s) that host this system's data")
     network_storage = models.TextField(
         blank=True, help_text='Network storage location(s) used by this system')
     backups = models.PositiveIntegerField(
@@ -233,7 +235,8 @@ class ITSystem(CommonFields):
         choices=SEASONALITY_CHOICES, null=True, blank=True,
         help_text='Season/period when this system is most important')
     user_notification = models.EmailField(
-        null=True, blank=True, help_text='Email address for notification of system incidents')
+        null=True, blank=True,
+        help_text='Users (group email address) to be advised of any changes (outage or upgrade) to the system')
     emergency_operations = models.BooleanField(
         default=False, help_text='System is used for emergency operations')
     online_bookings = models.BooleanField(
@@ -253,10 +256,10 @@ class ITSystem(CommonFields):
     system_type = models.PositiveSmallIntegerField(
         choices=SYSTEM_TYPE_CHOICES, null=True, blank=True)
     oim_internal_only = models.BooleanField(
-        default=False, help_text='For OIM use only')
+        default=False, verbose_name='OIM internal only', help_text='For OIM use only')
     biller_code = models.CharField(
         max_length=64, null=True, blank=True,
-        help_text='BPAY biller code for this IT System (must be unique).')
+        help_text='BPAY biller code for this system (must be unique).')
 
     class Meta:
         verbose_name = 'IT System'
@@ -470,10 +473,10 @@ class ChangeRequest(models.Model):
         help_text='Standard change reference (if applicable)')
     requester = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='requester', null=True, blank=True,
-        help_text='The who is person requesting this change')
+        help_text='The person who is requesting this change')
     approver = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='approver', null=True, blank=True,
-        help_text='The person who will approve this change')
+        help_text='The person who will endorse this change prior to CAB')
     implementer = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
         help_text='The person who will implement this change')

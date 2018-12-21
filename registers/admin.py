@@ -1,4 +1,3 @@
-from copy import copy
 from django import forms
 from django.conf import settings
 from django.conf.urls import url
@@ -19,7 +18,7 @@ from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
     Incident, IncidentLog, StandardChange, ChangeRequest, ChangeLog)
 from .utils import smart_truncate
-from .views import ITSystemExport, IncidentExport, ChangeRequestExport
+from .views import ITSystemExport, ITSystemHardwareExport, IncidentExport, ChangeRequestExport
 
 
 @register(UserGroup)
@@ -46,46 +45,8 @@ class ITSystemHardwareAdmin(VersionAdmin):
 
     def get_urls(self):
         urls = super(ITSystemHardwareAdmin, self).get_urls()
-        urls = [
-            url(r'^export/$',
-                self.admin_site.admin_view(self.export),
-                name='itsystemhardware_export'),
-        ] + urls
+        urls = [path('export/', ITSystemHardwareExport.as_view(), name='itsystemhardware_export')] + urls
         return urls
-
-    def export(self, request):
-        # Exports ITSystemHardware data to a CSV. NOTE: report output excludes objects
-        # that are marked as decommissioned.
-        fields = [
-            'hostname', 'host', 'os_name', 'role', 'production', 'instance_id', 'patch_group', 'itsystem_system_id',
-            'itsystem_name', 'itsystem_cost_centre', 'itsystem_availability', 'itsystem_custodian',
-            'itsystem_owner', 'it_system_data_custodian']
-
-        # Write data for ITSystemHardware objects to the CSV.
-        stream = BytesIO()
-        wr = csv.writer(stream, encoding='utf-8')
-        wr.writerow(fields)  # CSV header row.
-        for i in ITSystemHardware.objects.filter(decommissioned=False):
-            if i.computer.ec2_instance:
-                ec2 = i.computer.ec2_instance.ec2id
-            else:
-                ec2 = ''
-            if i.itsystem_set.all().exclude(status=3).exists():
-                # Write a row for each linked, non-decommissioned ITSystem.
-                for it in i.itsystem_set.all().exclude(status=3):
-                    wr.writerow([
-                        i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
-                        i.production, ec2, i.patch_group, it.system_id, it.name, it.cost_centre,
-                        it.get_availability_display(), it.custodian, it.owner, it.data_custodian])
-            else:
-                # No IT Systems - just record the hardware details.
-                wr.writerow([
-                    i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(), i.production,
-                    ec2, i.patch_group])
-
-        response = HttpResponse(stream.getvalue(), content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=itsystemhardware_export.csv'
-        return response
 
 
 @register(Platform)
@@ -144,6 +105,7 @@ class ITSystemAdmin(VersionAdmin):
         'availability',
         'user_groups',
         'application_server',
+        'database_server',
         'network_storage',
         'backups',
         'system_reqs',
