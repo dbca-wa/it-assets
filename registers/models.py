@@ -436,6 +436,9 @@ class StandardChange(models.Model):
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=256)
     description = models.TextField(blank=True, null=True)
+    implementation = models.TextField(null=True, blank=True, help_text='Implementation/deployment instructions')
+    implementation_docs = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Implementation/deployment instructions (attachment)')
     it_systems = models.ManyToManyField(
         ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected by the standard change')
     approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
