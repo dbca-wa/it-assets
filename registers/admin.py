@@ -82,7 +82,7 @@ class ITSystemAdmin(VersionAdmin):
     list_display = (
         'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support')
     list_filter = (
-        'status', 'system_type', 'availability', 'seasonality', 'recovery_category')
+        'status', 'application_type', 'system_type', 'availability', 'seasonality', 'recovery_category')
     search_fields = (
         'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
         'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation', 'cost_centre__code')
@@ -115,10 +115,11 @@ class ITSystemAdmin(VersionAdmin):
         'emergency_operations',
         'online_bookings',
         'visitor_safety',
+        'application_type',
+        'system_type',
         ('authentication', 'access'),
         'platforms',
         'hardwares',
-        'system_type',
         'oim_internal_only',
         'biller_code',
     ]
@@ -254,7 +255,7 @@ class IncidentStatusListFilter(SimpleListFilter):
             return queryset.filter(resolution__isnull=False)
 
 
-@register(Incident)
+# Don't register Incident model in the admin (for now). Under review.
 class IncidentAdmin(ModelAdmin):
     form = IncidentAdminForm
     date_hierarchy = 'start'

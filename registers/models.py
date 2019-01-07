@@ -156,14 +156,19 @@ class ITSystem(CommonFields):
         (1, '24/7/365'),
         (2, 'Business hours'),
     )
-    SYSTEM_TYPE_CHOICES = (
-        (1, 'System - Web application'),
-        (2, 'System - Client application'),
-        (3, 'System - Mobile application'),
-        (5, 'System - Externally hosted application'),
+    APPLICATION_TYPE_CHOICES = (
+        (1, 'Web application'),
+        (2, 'Client application'),
+        (3, 'Mobile application'),
+        (5, 'Externally hosted application'),
         (4, 'Service'),
         (6, 'Platform'),
         (7, 'Infrastructure'),
+    )
+    SYSTEM_TYPE_CHOICES = (
+        (1, 'Department commercial services'),
+        (2, 'Department fire services'),
+        (3, 'Department visitor services'),
     )
     RECOVERY_CATEGORY_CHOICES = (
         (1, 'MTD: 1+ week; RTO: 5+ days'),
@@ -175,6 +180,7 @@ class ITSystem(CommonFields):
         (2, 'End of financial year'),
         (3, 'Annual reporting'),
         (4, 'School holidays'),
+        (5, 'Default'),
     )
     BACKUP_CHOICES = (
         (1, 'Point in time database with daily local'),
@@ -253,6 +259,8 @@ class ITSystem(CommonFields):
     hardwares = models.ManyToManyField(
         ITSystemHardware, blank=True, verbose_name='hardware',
         help_text='[DEPRECATED] Hardware that is used to provide this system')
+    application_type = models.PositiveSmallIntegerField(
+        choices=APPLICATION_TYPE_CHOICES, null=True, blank=True)
     system_type = models.PositiveSmallIntegerField(
         choices=SYSTEM_TYPE_CHOICES, null=True, blank=True)
     oim_internal_only = models.BooleanField(
@@ -460,7 +468,7 @@ class ChangeRequest(models.Model):
         (0, "Draft"),  # Not yet approved or submitted to CAB.
         (1, "Submitted for endorsement"),  # Submitted for endorsement by approver, not yet ready for CAB assessment.
         (2, "Scheduled for CAB"),  # Approved and ready to be assessed at CAB.
-        (3, "Ready"),  # Approved at CAB, ready to be undertaken.
+        (3, "Ready for implementation"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
         (5, "Rolled back"),  # Undertaken and rolled back.
         (6, "Cancelled"),
@@ -604,7 +612,7 @@ class ChangeRequest(models.Model):
 class ChangeLog(models.Model):
     """Represents a log entry related to a single Change Request.
     """
-    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
+    change_request = models.ForeignKey(ChangeRequest, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     log = models.TextField()
 
