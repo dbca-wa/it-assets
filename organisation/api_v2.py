@@ -46,6 +46,7 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
             'org_unit_chain',
             'parent',
             'children',
+            'employee_id',
         )
 
 
