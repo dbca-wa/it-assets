@@ -26,16 +26,12 @@ class UserChoiceField(forms.ModelChoiceField):
 
 
 class ChangeRequestCreateForm(forms.ModelForm):
-    """Base ModelForm class for referral models.
+    """Base ModelForm class for ChangeRequest models.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
-        self.fields['description'].required = False
-        self.fields['requester'] = UserChoiceField(required=False, help_text='The person requesting this change')
-        self.fields['approver'] = UserChoiceField(required=False, help_text='The person who will approve this change')
-        self.fields['implementer'] = UserChoiceField(required=False, help_text='The person who will implement this change')
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -47,7 +43,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
             ),
             Fieldset(
                 'Overview',
-                'title', 'change_type', 'standard_change', 'description',
+                'title', 'description',
             ),
             Fieldset(
                 'Approval',
@@ -65,6 +61,10 @@ class ChangeRequestCreateForm(forms.ModelForm):
             ),
             Fieldset(
                 'Communication',
+                Div(
+                    HTML('<p>Please include details about any required communications (timing, stakeholders, instructions, etc.)</p><br>'),
+                    css_id='div_id_communication'
+                ),
                 'communication', 'broadcast',
             ),
             FormActions(self.save_button),
@@ -73,9 +73,58 @@ class ChangeRequestCreateForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = [
-            'title', 'change_type', 'standard_change', 'description', 'requester', 'approver',
+            'title', 'description', 'requester', 'approver',
             'implementer', 'test_date', 'planned_start', 'planned_end', 'implementation',
             'implementation_docs', 'outage', 'communication', 'broadcast']
+
+
+class StandardChangeRequestCreateForm(forms.ModelForm):
+    """Base ModelForm class for ChangeRequest models (standard change type).
+    """
+    save_button = Submit('save', 'Save draft', css_class='btn-lg')
+
+    def __init__(self, *args, **kwargs):
+        super(StandardChangeRequestCreateForm, self).__init__(*args, **kwargs)
+        self.fields['standard_change'].required = True
+        self.fields['standard_change'].help_text = 'Standard change reference'
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'Instructions',
+                Div(
+                    HTML('<p>Note that all fields below need not be completed until the point of submission and approval.</p><br>'),
+                    css_id='div_id_instructions'
+                ),
+            ),
+            Fieldset(
+                'Overview',
+                'title', 'standard_change',
+            ),
+            Fieldset(
+                'Approval',
+                'requester', 'approver', 'implementer',
+            ),
+            Fieldset(
+                'Implementation',
+                'planned_start', 'planned_end', 'outage',
+            ),
+            Fieldset(
+                'Communication',
+                Div(
+                    HTML('<p>Please include details about any required communications (timing, stakeholders, instructions, etc.)</p><br>'),
+                    css_id='div_id_communication'
+                ),
+                'communication', 'broadcast',
+            ),
+            FormActions(self.save_button),
+        )
+
+    class Meta:
+        model = ChangeRequest
+        fields = [
+            'title', 'standard_change', 'requester', 'approver',
+            'implementer', 'planned_start', 'planned_end', 'outage',
+            'communication', 'broadcast']
 
 
 class ChangeRequestUpdateForm(ChangeRequestCreateForm):

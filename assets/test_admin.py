@@ -34,7 +34,6 @@ class AssetsAdminTestCase(TestCase):
         url = reverse('admin:assets_hardwareasset_changelist')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        #print(HardwareAsset.objects.first().__dict__)
 
     def test_hardwareasset_import(self):
         """Test the HardwareAssetAdmin asset_import view

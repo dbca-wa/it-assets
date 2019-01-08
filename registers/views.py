@@ -9,7 +9,7 @@ from pytz import timezone
 import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
-from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
 
 TZ = timezone(settings.TIME_ZONE)
 
@@ -210,16 +210,32 @@ class ChangeRequestDetail(DetailView):
         context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
         rfc = self.get_object()
         context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(TZ)
+        # Context variable that determines if implementation & communication info is displayed.
+        emails = []
+        if rfc.requester:
+            emails.append(rfc.requester.email)
+        if rfc.approver:
+            emails.append(rfc.approver.email)
+        if rfc.implementer:
+            emails.append(rfc.implementer.email)
+        context['user_authorised'] = self.request.user.is_staff == True or self.request.user.email in [emails]
         return context
 
 
 class ChangeRequestCreate(CreateView):
     model = ChangeRequest
-    form_class = ChangeRequestCreateForm
+
+    def get_form_class(self):
+        if 'std' in self.kwargs and self.kwargs['std']:
+            return StandardChangeRequestCreateForm
+        return ChangeRequestCreateForm
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
-        context['title'] = 'Create a draft change request'
+        if 'std' in self.kwargs and self.kwargs['std']:
+            context['title'] = 'Create a draft standard change request'
+        else:
+            context['title'] = 'Create a draft change request'
         return context
 
     def get_initial(self):
@@ -228,6 +244,16 @@ class ChangeRequestCreate(CreateView):
         if DepartmentUser.objects.filter(email=self.request.user.email).exists():
             initial['requester'] = DepartmentUser.objects.get(email=self.request.user.email)
         return initial
+
+    def form_valid(self, form):
+        rfc = form.save()
+        # Autocomplete normal/standard change fields.
+        if 'std' in self.kwargs and self.kwargs['std']:
+            rfc.change_type = 1
+        else:
+            rfc.change_type = 0
+        rfc.save()
+        return super(ChangeRequestCreate, self).form_valid(form)
 
 
 class ChangeRequestUpdate(UpdateView):
