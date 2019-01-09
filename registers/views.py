@@ -10,6 +10,7 @@ import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
 from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
 
@@ -193,14 +194,22 @@ class ChangeRequestList(ListView):
     paginate_by = 20
 
     def get_queryset(self):
+        from .admin import ChangeRequestAdmin
         queryset = super(ChangeRequestList, self).get_queryset()
         if 'mine' in self.request.GET:
             email = self.request.user.email
             queryset = queryset.filter(requester__email__iexact=email)
         if 'q' in self.request.GET and self.request.GET['q']:
-            query = self.request.GET['q'].strip()
-            queryset = queryset.filter(title__icontains=query)
+            q = search_filter(ChangeRequestAdmin.search_fields, self.request.GET['q'])
+            queryset = queryset.filter(q)
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestList, self).get_context_data(**kwargs)
+        # Pass in any query string
+        if 'q' in self.request.GET:
+            context['query_string'] = self.request.GET['q']
+        return context
 
 
 class ChangeRequestDetail(DetailView):

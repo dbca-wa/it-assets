@@ -514,6 +514,8 @@ class ChangeRequest(models.Model):
         help_text='The broadcast text to be emailed to users regarding this change')
     unexpected_issues = models.BooleanField(default=False, help_text='Unexpected/unplanned issues were encountered during the change')
     notes = models.TextField(null=True, blank=True, help_text='Details of any unexpected issues, observations, etc.')
+    reference_url = models.URLField(
+        max_length=2048, null=True, blank=True, verbose_name='reference URL', help_text='URL to external reference (discusssion, records, etc.)')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))

@@ -428,7 +428,9 @@ class ChangeRequestAdmin(ModelAdmin):
         'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
     raw_id_fields = ('requester', 'approver', 'implementer')
-    search_fields = ('id', 'title', 'requester__email', 'approver__email', 'implementer__email')
+    search_fields = (
+        'id', 'title', 'requester__email', 'approver__email', 'implementer__email', 'implementation',
+        'communication', 'reference_url')
 
     def requester_name(self, obj):
         if obj.requester:
