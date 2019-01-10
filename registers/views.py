@@ -20,7 +20,7 @@ class ITSystemExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_systems_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=it_systems_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         with xlsxwriter.Workbook(
             response,
@@ -78,7 +78,7 @@ class ITSystemHardwareExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_system_hardware_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=it_system_hardware_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         with xlsxwriter.Workbook(
             response,
@@ -141,7 +141,7 @@ class IncidentExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=incident_register_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=incident_register_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         with xlsxwriter.Workbook(
             response,
@@ -227,7 +227,7 @@ class ChangeRequestDetail(DetailView):
             emails.append(rfc.approver.email)
         if rfc.implementer:
             emails.append(rfc.implementer.email)
-        context['user_authorised'] = self.request.user.is_staff == True or self.request.user.email in [emails]
+        context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
         return context
 
 
@@ -431,7 +431,7 @@ class ChangeRequestExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=change_requests_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=change_requests_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         with xlsxwriter.Workbook(
             response,

@@ -255,7 +255,7 @@ class IncidentStatusListFilter(SimpleListFilter):
             return queryset.filter(resolution__isnull=False)
 
 
-# Don't register Incident model in the admin (for now). Under review.
+@register(Incident)
 class IncidentAdmin(ModelAdmin):
     form = IncidentAdminForm
     date_hierarchy = 'start'
@@ -289,7 +289,7 @@ class IncidentAdmin(ModelAdmin):
 
     def get_urls(self):
         urls = super(IncidentAdmin, self).get_urls()
-        urls = [path('export/', IncidentExport.as_view(), name='incident_export')] + urls
+        urls = [path('export/', self.admin_site.admin_view(IncidentExport.as_view()), name='incident_export')] + urls
         return urls
 
     def it_systems_affected(self, obj):
