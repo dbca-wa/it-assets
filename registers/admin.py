@@ -45,7 +45,7 @@ class ITSystemHardwareAdmin(VersionAdmin):
 
     def get_urls(self):
         urls = super(ITSystemHardwareAdmin, self).get_urls()
-        urls = [path('export/', ITSystemHardwareExport.as_view(), name='itsystemhardware_export')] + urls
+        urls = [path('export/', self.admin_site.admin_view(ITSystemHardwareExport.as_view()), name='itsystemhardware_export')] + urls
         return urls
 
 
@@ -129,7 +129,7 @@ class ITSystemAdmin(VersionAdmin):
 
     def get_urls(self):
         urls = super(ITSystemAdmin, self).get_urls()
-        urls = [path('export/', ITSystemExport.as_view(), name='itsystem_export')] + urls
+        urls = [path('export/', self.admin_site.admin_view(ITSystemExport.as_view()), name='itsystem_export')] + urls
         return urls
 
 
@@ -452,5 +452,5 @@ class ChangeRequestAdmin(ModelAdmin):
 
     def get_urls(self):
         urls = super(ChangeRequestAdmin, self).get_urls()
-        urls = [path('export/', ChangeRequestExport.as_view(), name='changerequest_export')] + urls
+        urls = [path('export/', self.admin_site.admin_view(ChangeRequestExport.as_view()), name='changerequest_export')] + urls
         return urls

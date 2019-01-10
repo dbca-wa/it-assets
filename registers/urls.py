@@ -2,6 +2,7 @@ from django.urls import path, re_path
 from registers import views
 
 urlpatterns = [
+    path('itsystem/export/', views.ITSystemExport.as_view(), name='itsystem_export'),
     path('incident/', views.IncidentList.as_view(), name='incident_list'),
     path('incident/<int:pk>/', views.IncidentDetail.as_view(), name='incident_detail'),
     path('changerequest/', views.ChangeRequestList.as_view(), name='change_request_list'),
