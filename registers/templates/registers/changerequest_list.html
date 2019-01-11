@@ -10,6 +10,7 @@
         <h1>Change requests</h1>
         <p>
             <a href="{% url 'change_request_create' %}" class="btn btn-primary">Create a draft change request</a>
+            <a href="{% url 'std_change_request_create' %}" class="btn btn-default">Create a draft standard change request</a>
             <a href="{% url 'change_request_calendar' %}" class="btn btn-info">Change request calendar</a>
         </p>
     </div>
@@ -19,10 +20,20 @@
 <form action="" method="get">
     <div class="row">
         <div class="hidden-xs col-sm-1">
-            <label for="search_field">Title:</label>
+            <label for="search_field">Search:</label>
         </div>
-        <div class="col-xs-12 col-sm-11">
-            <input id="search_field" type="text" class="form-control" name="q" placeholder="Title search...">
+        <div class="col-xs-8 col-sm-7">
+            <input id="search_field" type="text" class="form-control" name="q" placeholder="Search terms..." value="{{ query_string }}">
+        </div>
+        <div class="col-xs-3">
+            <div class="btn-group" role="group">
+                <a href="{% url 'change_request_list' %}?mine=" class="btn btn-default">
+                    <span class="glyphicon glyphicon-filter" aria-hidden="true"></span> My RFCs
+                </a>
+                <a href="{% url 'change_request_list' %}" class="btn btn-default">
+                    <span class="glyphicon glyphicon-list" aria-hidden="true"></span> All RFCs
+                </a>
+            </div>
         </div>
     </div>
 </form>
@@ -54,7 +65,7 @@
                 <td>{{ object.requester.get_full_name }}</td>
                 <td>{{ object.approver.get_full_name }}</td>
                 <td>{{ object.implementer.get_full_name }}</td>
-                <td>{{ object.planned_start }}<br>{{ object.planned_end }}</td>
+                <td>{{ object.planned_start|date:"D, j M Y H:i" }}<br>{{ object.planned_end|date:"D, j M Y H:i" }}</td>
             </tr>
             {% endfor %}
         </tbody>

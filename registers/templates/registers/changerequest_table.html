@@ -15,7 +15,7 @@
             {% if object.standard_change %}
             <tr>
                 <th>Standard change ref.</th>
-                <td>{{ object.standard_change.pk }}</td>
+                <td>{{ object.standard_change }}</td>
             </tr>
             {% endif %}
             <tr>
@@ -42,16 +42,17 @@
             </tr>
             <tr>
                 <th>Planned start date & time</th>
-                <td>{% if object.planned_start %}{{ object.planned_start }}{% endif %}</td>
+                <td>{% if object.planned_start %}{{ object.planned_start|date:"D, j M Y H:i" }}{% endif %}</td>
             </tr>
             <tr>
                 <th>Planned end date & time</th>
-                <td>{% if object.planned_end %}{{ object.planned_end }}{% endif %}</td>
+                <td>{% if object.planned_end %}{{ object.planned_end|date:"D, j M Y H:i" }}{% endif %}</td>
             </tr>
             <tr>
                 <th>Outage duration (hh:mm:ss)</th>
-                <td>{% if object.outage is not None %}{{ object.outage }}{% else %}Not specified{% endif %}</td>
+                <td>{% if object.outage is not None %}{{ object.outage }}{% else %}Not applicable{% endif %}</td>
             </tr>
+            {% if user_authorised %}
             <tr>
                 <th>Implementation instructions</th>
                 <td>
@@ -81,5 +82,6 @@
                 <th>Notes</th>
                 <td>{{ object.notes }}</td>
             </tr>
+            {% endif %}
             {% endif %}
         </table>

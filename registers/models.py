@@ -1,13 +1,10 @@
-from datetime import timedelta
-from dateutil.relativedelta import relativedelta
 from django import forms
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
-from django.utils import timezone
-from django.utils.safestring import mark_safe
 from os import path
 
 from organisation.models import CommonFields, DepartmentUser, Location
@@ -18,11 +15,6 @@ from .utils import smart_truncate
 CRITICALITY_CHOICES = (
     (1, 'Critical'),
     (2, 'Moderate'),
-    (3, 'Low'),
-)
-IMPORTANCE_CHOICES = (
-    (1, 'High'),
-    (2, 'Medium'),
     (3, 'Low'),
 )
 DOC_STATUS_CHOICES = (
@@ -161,247 +153,128 @@ class ITSystem(CommonFields):
         (3, 'Externally Managed')
     )
     AVAILABILITY_CHOICES = (
-        (1, '24 hours a day, 7 days a week, 365 days a year'),
-        (2, 'Department core business hours'),
+        (1, '24/7/365'),
+        (2, 'Business hours'),
     )
-    SYSTEM_TYPE_CHOICES = (
-        (1, 'System - Web application'),
-        (2, 'System - Client application'),
-        (3, 'System - Mobile application'),
-        (5, 'System - Externally hosted application'),
+    APPLICATION_TYPE_CHOICES = (
+        (1, 'Web application'),
+        (2, 'Client application'),
+        (3, 'Mobile application'),
+        (5, 'Externally hosted application'),
         (4, 'Service'),
         (6, 'Platform'),
         (7, 'Infrastructure'),
     )
-    HEALTH_CHOICES = (
-        (0, 'Healthy'),
-        (1, 'Issues noted'),
-        (2, 'At risk'),
+    SYSTEM_TYPE_CHOICES = (
+        (1, 'Department commercial services'),
+        (2, 'Department fire services'),
+        (3, 'Department visitor services'),
     )
-    RISK_CHOICES = (
-        ('0', 'IT System features not aligned to business processes'),
-        ('1', 'IT System technology refresh lifecycle not safeguarded or future-proofed'),
-        ('2', 'IT System data/information integrity and availability not aligned to business processes'),
-        ('3', 'IT System emergency contingency and disaster recovery approach not well established'),
-        ('4', 'IT System support arrangements not well established, value for money and/or safeguarded'),
-        ('5', 'IT System roles and responsibilities not well established'),
-        ('6', 'IT System solution design not aligned to department IT standards'),
-        ('7', 'IT System change management does not consistently consider risk and security'),
-        ('8', 'IT System incident and security management not triaged on business criticality'),
-        ('9', 'IT System user training not well established'),
+    RECOVERY_CATEGORY_CHOICES = (
+        (1, 'MTD: 1+ week; RTO: 5+ days'),
+        (2, 'MTD: 72 hours; RTO: 48 hours'),
+        (3, 'MTD: 8 hours; RTO: 4 hours'),
     )
-    FUNCTION_CHOICES = (
-        ('0', 'Planning'),
-        ('1', 'Operation'),
-        ('2', 'Reporting'),
+    SEASONALITY_CHOICES = (
+        (1, 'Bushfire season'),
+        (2, 'End of financial year'),
+        (3, 'Annual reporting'),
+        (4, 'School holidays'),
+        (5, 'Default'),
     )
-    USE_CHOICES = (
-        ('0', 'Measurement'),
-        ('1', 'Information'),
-        ('2', 'Wisdom'),
-        ('3', 'Data'),
-        ('4', 'Knowledge'),
-        ('5', 'Intelligence'),
-    )
-    CAPABILITY_CHOICES = (
-        ('0', 'Information lifecycle'),
-        ('1', 'Communication and collaboration'),
-        ('2', 'Automation and integration'),
-        ('3', 'Security and risk management'),
-        ('4', 'Intelligence and analytics'),
+    BACKUP_CHOICES = (
+        (1, 'Point in time database with daily local'),
+        (2, 'Daily local'),
+        (3, 'Vendor-managed'),
     )
 
     name = models.CharField(max_length=128, unique=True)
-    system_id = models.CharField(
-        max_length=16, unique=True, verbose_name='system ID')
     acronym = models.CharField(max_length=16, null=True, blank=True)
-    status = models.PositiveSmallIntegerField(
-        choices=STATUS_CHOICES, default=4)
-    status_display = models.CharField(
-        max_length=128, null=True, editable=False)
+    system_id = models.CharField(max_length=16, unique=True, verbose_name='system ID')
+    status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=4)
+    link = models.CharField(
+        max_length=2048, null=True, blank=True, help_text='URL to web application')
     description = models.TextField(blank=True)
     owner = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True,
-        related_name='systems_owned', help_text='Application owner')
-    custodian = models.ForeignKey(
+        related_name='systems_owned', help_text='IT system owner')
+    technology_custodian = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True,
-        related_name='systems_custodianed', help_text='Application custodian')
-    data_custodian = models.ForeignKey(
+        related_name='systems_tech_custodianed', help_text='Technology custodian')
+    information_custodian = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
-        related_name='systems_data_custodianed', help_text='Application data custodian')
-    preferred_contact = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
-        related_name='systems_preferred_contact')
-    link = models.CharField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to web application')
-    documentation = models.URLField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to end-user documentation')
-    technical_documentation = models.URLField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to technical documentation')
-    status_html = models.URLField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to status/uptime info')
-    authentication = models.PositiveSmallIntegerField(
-        choices=AUTHENTICATION_CHOICES, default=1,
-        help_text='The method by which users authenticate themselve to the system.')
-    authentication_display = models.CharField(
-        max_length=128, null=True, editable=False)
-    access = models.PositiveSmallIntegerField(
-        choices=ACCESS_CHOICES, default=3,
-        help_text='The network upon which this system is accessible.')
-    access_display = models.CharField(
-        max_length=128, null=True, editable=False)
-    request_access = models.TextField(
-        blank=True, help_text='Procedure to request access to this application')
-    criticality = models.PositiveIntegerField(
-        choices=CRITICALITY_CHOICES, null=True, blank=True,
-        help_text='How critical is this system to P&W core functions?')
-    criticality_display = models.CharField(
-        max_length=128, null=True, editable=False)
-    availability = models.PositiveIntegerField(
-        choices=AVAILABILITY_CHOICES, null=True, blank=True,
-        help_text='Expected availability for this IT System')
-    availability_display = models.CharField(
-        max_length=128, null=True, editable=False)
-    schema_url = models.URLField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to schema diagram')
-    user_groups = models.ManyToManyField(
-        UserGroup, blank=True, help_text='User group(s) that use this IT System')
-    hardwares = models.ManyToManyField(
-        ITSystemHardware, blank=True, verbose_name='hardware',
-        help_text='Hardware that is used to provide this IT System')
+        related_name='systems_info_custodianed', help_text='Information custodian')
     bh_support = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True, related_name='bh_support',
         verbose_name='business hours support', help_text='Business hours support contact')
     ah_support = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True, related_name='ah_support',
         verbose_name='after hours support', help_text='After-hours support contact')
+    documentation = models.URLField(
+        max_length=2048, null=True, blank=True, help_text='URL to end-user documentation')
+    technical_documentation = models.URLField(
+        max_length=2048, null=True, blank=True, help_text='URL to technical documentation')
+    status_url = models.URLField(
+        max_length=2048, null=True, blank=True, verbose_name='status URL',
+        help_text='URL to status/uptime info')
+    availability = models.PositiveIntegerField(
+        choices=AVAILABILITY_CHOICES, null=True, blank=True,
+        help_text='Expected availability for this system')
+    user_groups = models.ManyToManyField(
+        UserGroup, blank=True, help_text='User group(s) that use this system')
+    application_server = models.TextField(
+        blank=True, help_text='Application server(s) that host this system')
+    database_server = models.TextField(
+        blank=True, help_text="Database server(s) that host this system's data")
+    network_storage = models.TextField(
+        blank=True, help_text='Network storage location(s) used by this system')
+    backups = models.PositiveIntegerField(
+        choices=BACKUP_CHOICES, null=True, blank=True,
+        help_text='Data backup arrangements for this system')
     system_reqs = models.TextField(
-        blank=True,
+        blank=True, verbose_name='system requirements',
         help_text='A written description of the requirements to use the system (e.g. web browser version)')
+    recovery_category = models.PositiveIntegerField(
+        choices=RECOVERY_CATEGORY_CHOICES, null=True, blank=True,
+        help_text='The recovery requirements for this system')
+    seasonality = models.PositiveIntegerField(
+        choices=SEASONALITY_CHOICES, null=True, blank=True,
+        help_text='Season/period when this system is most important')
+    user_notification = models.EmailField(
+        null=True, blank=True,
+        help_text='Users (group email address) to be advised of any changes (outage or upgrade) to the system')
+    emergency_operations = models.BooleanField(
+        default=False, help_text='System is used for emergency operations')
+    online_bookings = models.BooleanField(
+        default=False, help_text='System is used for online bookings')
+    visitor_safety = models.BooleanField(
+        default=False, help_text='System is used for visitor safety')
+    authentication = models.PositiveSmallIntegerField(
+        choices=AUTHENTICATION_CHOICES, default=1, null=True, blank=True,
+        help_text='The method by which users authenticate themselve to the system.')
+    access = models.PositiveSmallIntegerField(
+        choices=ACCESS_CHOICES, default=3, null=True, blank=True,
+        help_text='The network upon which this system is accessible.')
+    platforms = models.ManyToManyField(Platform, blank=True)
+    hardwares = models.ManyToManyField(
+        ITSystemHardware, blank=True, verbose_name='hardware',
+        help_text='[DEPRECATED] Hardware that is used to provide this system')
+    application_type = models.PositiveSmallIntegerField(
+        choices=APPLICATION_TYPE_CHOICES, null=True, blank=True)
     system_type = models.PositiveSmallIntegerField(
         choices=SYSTEM_TYPE_CHOICES, null=True, blank=True)
-    system_type_display = models.CharField(
-        max_length=128, null=True, editable=False)
-    vulnerability_docs = models.URLField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to documentation related to known vulnerability reports')
-    workaround = models.TextField(
-        blank=True, help_text='Written procedure for users to work around an outage of this system')
-    recovery_docs = models.URLField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to recovery procedure(s) in the event of system failure')
-    mtd = models.DurationField(
-        help_text='Maximum Tolerable Downtime (days hh:mm:ss)',
-        default=timedelta(days=14))
-    rto = models.DurationField(
-        help_text='Recovery Time Objective (days hh:mm:ss)',
-        default=timedelta(days=7))
-    rpo = models.DurationField(
-        help_text='Recovery Point Objective/Data Loss Interval (days hh:mm:ss)',
-        default=timedelta(hours=24))
-    contingency_plan = models.FileField(
-        blank=True, null=True, max_length=255, upload_to='uploads/%Y/%m/%d')
-    contingency_plan_status = models.PositiveIntegerField(
-        choices=DOC_STATUS_CHOICES, null=True, blank=True)
-    contingency_plan_last_tested = models.DateField(
-        null=True, blank=True, help_text='Date that the plan was last tested.')
-    notes = models.TextField(blank=True, null=True)
-    system_health = models.PositiveIntegerField(
-        choices=HEALTH_CHOICES, null=True, blank=True)
-    system_creation_date = models.DateField(
-        null=True, blank=True,
-        help_text='Date that this system went into production.')
-    risks = ChoiceArrayField(
-        null=True, blank=True,
-        base_field=models.CharField(max_length=256, choices=RISK_CHOICES), default=list,
-        verbose_name='IT System risks')
-    backup_info = models.TextField(
-        null=True, blank=True, verbose_name='backup information',
-        help_text="Information about the backup/archiving of this system's data.")
-    critical_period = models.CharField(
-        max_length=255, null=True, blank=True,
-        help_text='Is there a period/season when this system is most important?')
-    alt_processing = models.TextField(
-        null=True, blank=True, verbose_name='alternate processing procedure')
-    technical_recov = models.TextField(
-        null=True, blank=True, verbose_name='technical recovery procedure')
-    post_recovery = models.TextField(
-        null=True, blank=True, verbose_name='post recovery procedure',
-        help_text='Functional testing and post recovery procedure.')
-    variation_iscp = models.TextField(
-        null=True, blank=True, verbose_name='Variation to the ISCP')
-    user_notification = models.TextField(
-        null=True, blank=True,
-        help_text='List of users/stakeholders to contact regarding incidents')
-    function = ChoiceArrayField(
-        null=True, blank=True,
-        base_field=models.CharField(max_length=256, choices=FUNCTION_CHOICES), default=list,
-        verbose_name='IT System function(s)')
-    use = ChoiceArrayField(
-        null=True, blank=True,
-        base_field=models.CharField(max_length=256, choices=USE_CHOICES), default=list,
-        verbose_name='IT System use(s)')
-    capability = ChoiceArrayField(
-        null=True, blank=True,
-        base_field=models.CharField(max_length=256, choices=CAPABILITY_CHOICES), default=list,
-        verbose_name='IT System capabilities')
-    unique_evidence = models.NullBooleanField(
-        default=None, help_text='''Is the digital content kept in this business'''
-        ''' system unique evidence of the official business of the Department?''')
-    point_of_truth = models.NullBooleanField(
-        default=None, help_text='''Is the digital content kept in this business'''
-        ''' system a single point of truth?''')
-    legal_need_to_retain = models.NullBooleanField(
-        default=None, help_text='''Is there a legal or compliance need to keep'''
-        ''' the digital content in this system?''')
-    other_projects = models.TextField(
-        null=True, blank=True,
-        help_text='Details of related IT Systems and projects.')
-    sla = models.TextField(
-        null=True, blank=True, verbose_name='Service Level Agreement',
-        help_text='''Details of any Service Level Agreement that exists for'''
-        ''' this IT System (typically with an external vendor).''')
+    oim_internal_only = models.BooleanField(
+        default=False, verbose_name='OIM internal only', help_text='For OIM use only')
     biller_code = models.CharField(
         max_length=64, null=True, blank=True,
-        help_text='BPAY biller code for this IT System (must be unique).')
-    oim_internal_only = models.BooleanField(
-        default=False, help_text='For OIM use only')
-    platforms = models.ManyToManyField(Platform, blank=True)
+        help_text='BPAY biller code for this system (must be unique).')
 
     class Meta:
         verbose_name = 'IT System'
         ordering = ('name',)
 
-    def __init__(self, *args, **kwargs):
-        super(ITSystem, self).__init__(*args, **kwargs)
-        # Store the pre-save values of some fields on object init.
-        self.__original_contingency_plan = self.contingency_plan
-
     def __str__(self):
         return self.name
-
-    def description_html(self):
-        return mark_safe(self.description)
-
-    def save(self, *args, **kwargs):
-        if not self.system_id:
-            self.system_id = 'S{0:03d}'.format(
-                ITSystem.objects.order_by('-pk').first().pk + 1)
-        self.status_display = self.get_status_display()
-        self.authentication_display = self.get_authentication_display()
-        if not self.link:  # systems with no link default to device
-            self.access = 4
-        self.access_display = self.get_access_display()
-        self.criticality_display = self.get_criticality_display()
-        self.availability_display = self.get_availability_display()
-        self.system_type_display = self.get_system_type_display()
-        # Note that biller_code uniqueness is checked in the admin ModelForm.
-        super(ITSystem, self).save(*args, **kwargs)
 
     @property
     def division_name(self):
@@ -435,167 +308,6 @@ class ITSystemDependency(models.Model):
     def __str__(self):
         return '{} - {} ({})'.format(
             self.itsystem.name, self.dependency.name, self.get_criticality_display())
-
-
-class Backup(CommonFields):
-    """Represents the details of backup & recovery arrangements for a single
-    piece of computing hardware.
-    """
-    ROLE_CHOICES = (
-        (0, 'Generic Server'),
-        (1, 'Domain Controller'),
-        (2, 'Database Server'),
-        (3, 'Application Host'),
-        (4, 'Management Server'),
-        (5, 'Site Server'),
-        (6, 'File Server'),
-        (7, 'Print Server'),
-        (8, 'Block Storage Server'),
-        (9, 'Email Server'),
-        (10, 'Network Device'))
-    STATUS_CHOICES = (
-        (0, 'Production'),
-        (1, 'Pre-Production'),
-        (2, 'Legacy'),
-        (3, 'Decommissioned')
-    )
-    SCHEDULE_CHOICES = (
-        (0, 'Manual'),
-        (1, 'Point in time, 7 day retention'),
-        (2, 'Daily, 7 day retention'),
-        (3, 'Daily, 30 day retention'),
-        (4, 'Weekly, 1 month retention')
-    )
-    computer = models.ForeignKey(
-        Computer, on_delete=models.PROTECT, null=True, blank=True)
-    operating_system = models.CharField(max_length=120)
-    role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES, default=0)
-    status = models.PositiveSmallIntegerField(
-        choices=STATUS_CHOICES, default=0)
-    database_backup = models.CharField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to Database backup/restore/logs info')
-    database_schedule = models.PositiveSmallIntegerField(
-        choices=SCHEDULE_CHOICES, default=0)
-    filesystem_backup = models.CharField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to Filesystem backup/restore/logs info')
-    filesystem_schedule = models.PositiveSmallIntegerField(
-        choices=SCHEDULE_CHOICES, default=0)
-    appdata_backup = models.CharField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to Application Data backup/restore/logs info')
-    appdata_schedule = models.PositiveSmallIntegerField(
-        choices=SCHEDULE_CHOICES, default=0)
-    appconfig_backup = models.CharField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to Config for App/Server')
-    appconfig_schedule = models.PositiveSmallIntegerField(
-        choices=SCHEDULE_CHOICES, default=0)
-    os_backup = models.CharField(
-        max_length=2048, null=True, blank=True,
-        help_text='URL to Build Documentation')
-    os_schedule = models.PositiveSmallIntegerField(
-        choices=SCHEDULE_CHOICES, default=0)
-    last_tested = models.DateField(
-        null=True, blank=True, help_text='Last tested date')
-    test_schedule = models.PositiveSmallIntegerField(
-        default=12, help_text='Test Schedule in Months, 0 for never')
-    comment = models.TextField(blank=True)
-
-    def next_test_date(self):
-        if self.test_schedule == 0:
-            return 'NO TESTING REQUIRED'
-        if not self.last_tested:
-            return 'NEVER TESTED'
-        else:
-            return self.last_tested + relativedelta(months=self.test_schedule)
-
-    def test_overdue(self):
-        if self.test_schedule == 0:
-            return False
-        if not self.last_tested:
-            return True
-        return self.next_test_date() < timezone.now().date()
-
-    def __str__(self):
-        if self.computer:
-            return '{} ({})'.format(self.computer.hostname.split(
-                '.')[0], self.get_status_display())
-        else:
-            return self.get_status_display()
-
-    class Meta:
-        ordering = ('computer__hostname',)
-
-
-class BusinessService(models.Model):
-    """Represents the Department's core business services.
-    """
-    number = models.PositiveIntegerField(
-        unique=True, help_text='Service number')
-    name = models.CharField(max_length=256, unique=True)
-    description = models.TextField(null=True, blank=True)
-
-    class Meta:
-        ordering = ('number',)
-
-    def __str__(self):
-        return 'Service {}: {}'.format(self.number, self.name)
-
-
-class BusinessFunction(models.Model):
-    """Represents a function of the Department, undertaken to meet the
-    Department's core services. Each function must be linked to 1+
-    BusinessService object.
-    """
-    name = models.CharField(max_length=256, unique=True)
-    description = models.TextField(null=True, blank=True)
-    services = models.ManyToManyField(BusinessService)
-
-    class Meta:
-        ordering = ('name',)
-
-    def __str__(self):
-        return self.name
-
-
-class BusinessProcess(models.Model):
-    """Represents a business process that the Department undertakes in order
-    to fulfil one of the Department's functions.
-    """
-    name = models.CharField(max_length=256, unique=True)
-    description = models.TextField(null=True, blank=True)
-    functions = models.ManyToManyField(BusinessFunction)
-    criticality = models.PositiveIntegerField(
-        choices=CRITICALITY_CHOICES, null=True, blank=True,
-        help_text='How critical is the process?')
-
-    class Meta:
-        verbose_name_plural = 'business processes'
-        ordering = ('name',)
-
-    def __str__(self):
-        return self.name
-
-
-class ProcessITSystemRelationship(models.Model):
-    """A model to represent the relationship between a BusinessProcess and an
-    ITSystem object.
-    """
-    process = models.ForeignKey(BusinessProcess, on_delete=models.PROTECT)
-    itsystem = models.ForeignKey(ITSystem, on_delete=models.PROTECT)
-    importance = models.PositiveIntegerField(
-        choices=IMPORTANCE_CHOICES,
-        help_text='How important is the IT System to undertaking this process?')
-
-    class Meta:
-        unique_together = ('process', 'itsystem')
-        verbose_name_plural = 'Process/IT System relationships'
-
-    def __str__(self):
-        return '{} - {} ({})'.format(
-            self.itsystem.name, self.process.name, self.get_importance_display())
 
 
 class Incident(models.Model):
@@ -732,6 +444,9 @@ class StandardChange(models.Model):
     updated = models.DateTimeField(auto_now=True)
     name = models.CharField(max_length=256)
     description = models.TextField(blank=True, null=True)
+    implementation = models.TextField(null=True, blank=True, help_text='Implementation/deployment instructions')
+    implementation_docs = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Implementation/deployment instructions (attachment)')
     it_systems = models.ManyToManyField(
         ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected by the standard change')
     approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
@@ -753,7 +468,7 @@ class ChangeRequest(models.Model):
         (0, "Draft"),  # Not yet approved or submitted to CAB.
         (1, "Submitted for endorsement"),  # Submitted for endorsement by approver, not yet ready for CAB assessment.
         (2, "Scheduled for CAB"),  # Approved and ready to be assessed at CAB.
-        (3, "Ready"),  # Approved at CAB, ready to be undertaken.
+        (3, "Ready for implementation"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
         (5, "Rolled back"),  # Undertaken and rolled back.
         (6, "Cancelled"),
@@ -769,10 +484,10 @@ class ChangeRequest(models.Model):
         help_text='Standard change reference (if applicable)')
     requester = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='requester', null=True, blank=True,
-        help_text='The who is person requesting this change')
+        help_text='The person who is requesting this change')
     approver = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='approver', null=True, blank=True,
-        help_text='The person who will approve this change')
+        help_text='The person who will endorse this change prior to CAB')
     implementer = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
         help_text='The person who will implement this change')
@@ -799,6 +514,8 @@ class ChangeRequest(models.Model):
         help_text='The broadcast text to be emailed to users regarding this change')
     unexpected_issues = models.BooleanField(default=False, help_text='Unexpected/unplanned issues were encountered during the change')
     notes = models.TextField(null=True, blank=True, help_text='Details of any unexpected issues, observations, etc.')
+    reference_url = models.URLField(
+        max_length=2048, null=True, blank=True, verbose_name='reference URL', help_text='URL to external reference (discusssion, records, etc.)')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
@@ -851,20 +568,45 @@ class ChangeRequest(models.Model):
         if request:
             endorse_url = request.build_absolute_uri(reverse('change_request_endorse', kwargs={'pk': self.pk}))
         else:
-            endorse_url = reverse('change_request_endorse', kwargs={'pk': self.pk})
+            domain = Site.objects.get_current().domain
+            endorse_url = '{}{}'.format(domain, reverse('change_request_endorse', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you have
             been assigned as the approver for a change request submitted to OIM by {}.\n
             Please visit the following URL, review the change request details and register
-            approval or rejection of the change:\n
+            endorsement or rejection of the change:\n
             {}\n
             """.format(self.requester.get_full_name(), endorse_url)
         html_content = """<p>This is an automated message to let you know that you have
             been assigned as the approver for a change request submitted to OIM by {0}.</p>
             <p>Please visit the following URL, review the change request details and register
-            approval or rejection of the change:</p>
+            endorsement or rejection of the change:</p>
             <ul><li><a href="{1}">{1}</a></li></ul>
             """.format(self.requester.get_full_name(), endorse_url)
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.approver.email])
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
+
+    def email_implementer(self, request=None):
+        # Send an email to the implementer (if defined) with a link to the change request endorse view.
+        if not self.implementer:
+            return None
+        subject = 'Completion of change request {}'.format(self)
+        if request:
+            complete_url = request.build_absolute_uri(reverse('change_request_complete', kwargs={'pk': self.pk}))
+        else:
+            domain = Site.objects.get_current().domain
+            complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
+        text_content = """This is an automated message to let you know that you are recorded as the
+            implementer for change request {}, scheduled to be undertaken on {}.\n
+            Please visit the following URL and record the outcome of the change in order to finalise it:\n
+            {}\n
+            """.format(self, self.planned_start.strftime('%d/%b/%Y at %H:%M'), complete_url)
+        html_content = """<p>This is an automated message to let you know that you are recorded as the
+            implementer for change request {0}, scheduled to be undertaken on {1}.</p>
+            <p>Please visit the following URL and record the outcome of the change in order to finalise it:</p>
+            <ul><li><a href="{2}">{2}</a></li></ul>
+            """.format(self, self.planned_start.strftime('%d/%b/%Y at %H:%M'), complete_url)
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.implementer.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
 
@@ -872,7 +614,7 @@ class ChangeRequest(models.Model):
 class ChangeLog(models.Model):
     """Represents a log entry related to a single Change Request.
     """
-    change_request = models.ForeignKey(ChangeRequest, on_delete=models.PROTECT)
+    change_request = models.ForeignKey(ChangeRequest, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     log = models.TextField()
 

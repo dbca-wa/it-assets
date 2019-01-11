@@ -22,7 +22,7 @@ class DepartmentUserExport(View):
             },
         ) as workbook:
             users = DepartmentUser.objects.filter(active=True)
-            users_sheet = workbook.add_worksheet('Change requests')
+            users_sheet = workbook.add_worksheet('Department users')
             users_sheet.write_row('A1', (
                 'COST CENTRE', 'NAME', 'EMAIL', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE'
             ))

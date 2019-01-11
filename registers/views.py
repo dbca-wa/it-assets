@@ -8,8 +8,119 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import xlsxwriter
 
-from .models import Incident, ChangeRequest, ChangeLog
-from .forms import ChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
+from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .utils import search_filter
+
+TZ = timezone(settings.TIME_ZONE)
+
+
+class ITSystemExport(View):
+    """A custom view to export all IT Systems to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_systems_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        with xlsxwriter.Workbook(
+            response,
+            {
+                'in_memory': True,
+                'default_date_format': 'dd-mmm-yyyy HH:MM',
+                'remove_timezone': True,
+            },
+        ) as workbook:
+            itsystems = ITSystem.objects.all().exclude(status=3).order_by('system_id')  # Exclude decommissioned systems.
+            systems = workbook.add_worksheet('IT Systems')
+            systems.write_row('A1', (
+                'System ID', 'Name', 'Status', 'Link', 'Description', 'Owner',
+                'Technology custodian', 'Information custodian', 'BH support', 'AH support',
+                'Availability', 'User groups', 'Application server(s)', 'Database server(s)', 'Network storage',
+                'Backups', 'Recovery category', 'Seasonality', 'User notification',
+                'Application type', 'System type',
+            ))
+            row = 1
+            for i in itsystems:
+                systems.write_row(row, 0, [
+                    i.system_id, i.name, i.get_status_display(), i.link, i.description,
+                    i.owner.get_full_name() if i.owner else '',
+                    i.technology_custodian.get_full_name() if i.technology_custodian else '',
+                    i.information_custodian.get_full_name() if i.information_custodian else '',
+                    i.bh_support.email if i.bh_support else '',
+                    i.ah_support.email if i.ah_support else '',
+                    i.get_availability_display() if i.availability else '',
+                    ', '.join([str(j) for j in i.user_groups.all()]),
+                    i.application_server, i.database_server, i.network_storage,
+                    i.get_backups_display() if i.backups else '',
+                    i.get_recovery_category_display() if i.recovery_category else '',
+                    i.get_seasonality_display() if i.seasonality else '',
+                    i.user_notification, i.get_application_type_display() if i.application_type else '',
+                    i.get_system_type_display() if i.system_type else '',
+                ])
+                row += 1
+            systems.set_column('A:A', 9)
+            systems.set_column('B:B', 45)
+            systems.set_column('C:C', 18)
+            systems.set_column('D:E', 45)
+            systems.set_column('F:H', 21)
+            systems.set_column('I:J', 35)
+            systems.set_column('K:K', 14)
+            systems.set_column('L:P', 35)
+            systems.set_column('Q:S', 27)
+            systems.set_column('T:T', 22)
+            systems.set_column('U:U', 28)
+
+        return response
+
+
+class ITSystemHardwareExport(View):
+    """A custom view to export IT ystem hardware to an Excel spreadsheet.
+    NOTE: report output excludes objects that are marked as decommissioned.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_system_hardware_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        with xlsxwriter.Workbook(
+            response,
+            {
+                'in_memory': True,
+                'default_date_format': 'dd-mmm-yyyy HH:MM',
+                'remove_timezone': True,
+            },
+        ) as workbook:
+            hardware = ITSystemHardware.objects.filter(decommissioned=False)
+            hw_sheet = workbook.add_worksheet('IT system hardware')
+            hw_sheet.write_row('A1', (
+                'Hostname', 'Host', 'OS', 'Role', 'Production?', 'EC2 ID', 'Patch group',
+                'IT system ID', 'IT system name', 'IT system CC', 'IT system availability',
+                'IT system custodian', 'IT system owner', 'IT system info custodian'
+            ))
+            row = 1
+            for i in hardware:
+                if i.itsystem_set.all().exclude(status=3).exists():
+                    # Write a row for each linked, non-decommissioned ITSystem.
+                    for it in i.itsystem_set.all().exclude(status=3):
+                        hw_sheet.write_row(row, 0, [
+                            i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
+                            i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
+                            str(i.patch_group), it.system_id, it.name, str(it.cost_centre),
+                            it.get_availability_display(),
+                            it.technology_custodian.get_full_name() if it.technology_custodian else '',
+                            it.owner.get_full_name() if it.owner else '',
+                            it.information_custodian.get_full_name() if it.information_custodian else ''
+                        ])
+                else:
+                    # No IT Systems - just record the hardware details.
+                    hw_sheet.write_row(row, 0, [
+                        i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
+                        i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
+                        str(i.patch_group)
+                    ])
+                row += 1
+            hw_sheet.set_column('A:A', 36)
+
+        return response
 
 
 class IncidentList(ListView):
@@ -31,7 +142,7 @@ class IncidentExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=incident_register_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=incident_register_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         with xlsxwriter.Workbook(
             response,
@@ -51,12 +162,11 @@ class IncidentExport(View):
                 'Root cause', 'Remediation action(s)', 'Division(s) affected'
             ))
             row = 1
-            tz = timezone(settings.TIME_ZONE)
             for i in incidents:
                 register.write_row(row, 0, [
                     i.pk, i.status.capitalize(), i.description, i.get_priority_display(),
-                    i.get_category_display(), i.start.astimezone(tz),
-                    i.resolution.astimezone(tz) if i.resolution else '',
+                    i.get_category_display(), i.start.astimezone(TZ),
+                    i.resolution.astimezone(TZ) if i.resolution else '',
                     str(i.duration) if i.duration else '', i.rto_met(),
                     i.systems_affected, i.locations_affected,
                     i.manager.get_full_name() if i.manager else '',
@@ -85,11 +195,22 @@ class ChangeRequestList(ListView):
     paginate_by = 20
 
     def get_queryset(self):
+        from .admin import ChangeRequestAdmin
         queryset = super(ChangeRequestList, self).get_queryset()
+        if 'mine' in self.request.GET:
+            email = self.request.user.email
+            queryset = queryset.filter(requester__email__iexact=email)
         if 'q' in self.request.GET and self.request.GET['q']:
-            query = self.request.GET['q'].strip()
-            queryset = queryset.filter(title__icontains=query)
+            q = search_filter(ChangeRequestAdmin.search_fields, self.request.GET['q'])
+            queryset = queryset.filter(q)
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(ChangeRequestList, self).get_context_data(**kwargs)
+        # Pass in any query string
+        if 'q' in self.request.GET:
+            context['query_string'] = self.request.GET['q']
+        return context
 
 
 class ChangeRequestDetail(DetailView):
@@ -98,18 +219,33 @@ class ChangeRequestDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
         rfc = self.get_object()
-        tz = timezone(settings.TIME_ZONE)
-        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(tz)
+        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(TZ)
+        # Context variable that determines if implementation & communication info is displayed.
+        emails = []
+        if rfc.requester:
+            emails.append(rfc.requester.email)
+        if rfc.approver:
+            emails.append(rfc.approver.email)
+        if rfc.implementer:
+            emails.append(rfc.implementer.email)
+        context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
         return context
 
 
 class ChangeRequestCreate(CreateView):
     model = ChangeRequest
-    form_class = ChangeRequestCreateForm
+
+    def get_form_class(self):
+        if 'std' in self.kwargs and self.kwargs['std']:
+            return StandardChangeRequestCreateForm
+        return ChangeRequestCreateForm
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
-        context['title'] = 'Create a draft change request'
+        if 'std' in self.kwargs and self.kwargs['std']:
+            context['title'] = 'Create a draft standard change request'
+        else:
+            context['title'] = 'Create a draft change request'
         return context
 
     def get_initial(self):
@@ -118,6 +254,16 @@ class ChangeRequestCreate(CreateView):
         if DepartmentUser.objects.filter(email=self.request.user.email).exists():
             initial['requester'] = DepartmentUser.objects.get(email=self.request.user.email)
         return initial
+
+    def form_valid(self, form):
+        rfc = form.save()
+        # Autocomplete normal/standard change fields.
+        if 'std' in self.kwargs and self.kwargs['std']:
+            rfc.change_type = 1
+        else:
+            rfc.change_type = 0
+        rfc.save()
+        return super(ChangeRequestCreate, self).form_valid(form)
 
 
 class ChangeRequestUpdate(UpdateView):
@@ -286,7 +432,7 @@ class ChangeRequestExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=change_requests_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=change_requests_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         with xlsxwriter.Workbook(
             response,
@@ -304,15 +450,15 @@ class ChangeRequestExport(View):
                 'System(s) affected', 'Incident URL',
             ))
             row = 1
-            tz = timezone(settings.TIME_ZONE)
             for i in rfcs:
                 changes.write_row(row, 0, [
                     i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
-                    i.approver.get_full_name(), i.implementer.get_full_name(),
+                    i.approver.get_full_name() if i.approver else '',
+                    i.implementer.get_full_name() if i.implementer else '',
                     i.get_status_display(), i.test_date,
-                    i.planned_start.astimezone(tz) if i.planned_start else '',
-                    i.planned_end.astimezone(tz) if i.planned_end else '',
-                    i.completed.astimezone(tz) if i.completed else '',
+                    i.planned_start.astimezone(TZ) if i.planned_start else '',
+                    i.planned_end.astimezone(TZ) if i.planned_end else '',
+                    i.completed.astimezone(TZ) if i.completed else '',
                     str(i.outage) if i.outage else '', i.systems_affected, i.incident_url,
                 ])
                 row += 1
@@ -329,7 +475,6 @@ class ChangeRequestExport(View):
 
 
 class ChangeRequestCalendar(ListView):
-    # TODO: refactor the calendar to show a weeks-worth of changes.
     model = ChangeRequest
     template_name = 'registers/changerequest_calendar.html'
 
@@ -342,15 +487,20 @@ class ChangeRequestCalendar(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
-        context['date'] = self.get_date_param()
-        context['date_yesterday'] = self.get_date_param() - timedelta(1)
-        context['date_tomorrow'] = self.get_date_param() + timedelta(1)
+        d = self.get_date_param()
+        week_start = d - timedelta(days=d.weekday())
+        context['date'] = d
+        context['week_start'] = week_start
+        context['date_last_week'] = week_start - timedelta(7)
+        context['date_next_week'] = week_start + timedelta(7)
         return context
 
     def get_queryset(self):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
         d = self.get_date_param()
-        return queryset.filter(planned_start__date=d).order_by('planned_start')
+        week_start = d - timedelta(days=d.weekday())
+        week_end = week_start + timedelta(days=6)
+        return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
 
 
 class ChangeRequestComplete(UpdateView):
@@ -369,7 +519,7 @@ class ChangeRequestComplete(UpdateView):
             return HttpResponseRedirect(rfc.get_absolute_url())
         # Business rule: only the implementer or requester may complete the change.
         if self.request.user.email not in [rfc.requester.email, rfc.implementer.email]:
-            messages.warning(self.request, 'You are not authorisated to complete change request {}.'.format(rfc.pk))
+            messages.warning(self.request, 'You are not authorised to complete change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestComplete, self).get(request, *args, **kwargs)
 

@@ -9,6 +9,8 @@ from recoup import urls as recoup_urls
 from registers import urls as registers_urls
 
 admin.site.site_header = 'IT Assets database administration'
+admin.site.index_title = 'IT Assets database'
+admin.site.site_title = 'IT Assets'
 
 urlpatterns = [
     path('admin/', admin.site.urls),
