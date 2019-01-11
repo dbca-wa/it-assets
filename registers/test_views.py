@@ -3,7 +3,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from mixer.backend.django import mixer
 
-from .models import ChangeRequest, ChangeLog
+from registers.models import ChangeRequest, ChangeLog
 
 User = get_user_model()
 
