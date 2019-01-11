@@ -88,41 +88,41 @@ class ITSystemAdmin(VersionAdmin):
         'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation', 'cost_centre__code')
     raw_id_fields = (
         'owner', 'technology_custodian', 'information_custodian', 'cost_centre', 'bh_support', 'ah_support')
-    fields = [
-        'system_id',
-        ('name', 'acronym'),
-        'link',
-        'cost_centre',
-        'owner',
-        'technology_custodian',
-        'information_custodian',
-        'bh_support',
-        'ah_support',
-        'documentation',
-        'technical_documentation',
-        'status_url',
-        'description',
-        'availability',
-        'user_groups',
-        'application_server',
-        'database_server',
-        'network_storage',
-        'backups',
-        'system_reqs',
-        'recovery_category',
-        'seasonality',
-        'user_notification',
-        'emergency_operations',
-        'online_bookings',
-        'visitor_safety',
-        'application_type',
-        'system_type',
-        ('authentication', 'access'),
-        'platforms',
-        'hardwares',
-        'oim_internal_only',
-        'biller_code',
-    ]
+    fieldsets = (
+        ('Overview', {
+            'fields': (
+                'system_id',
+                ('name', 'acronym'),
+                ('link', 'status'),
+                ('owner', 'cost_centre'),
+                ('technology_custodian', 'information_custodian'),
+                ('bh_support', 'ah_support'),
+                ('availability', 'seasonality'),
+                'description',
+            )
+        }),
+        ('Technical information', {
+            'fields': (
+                ('backups', 'recovery_category'),
+                ('system_type', 'application_type'),
+                ('emergency_operations', 'online_bookings', 'visitor_safety'),
+                'user_notification',
+                'documentation',
+                'technical_documentation',
+                'status_url',
+                'user_groups',
+                'application_server',
+                'database_server',
+                'network_storage',
+                'system_reqs',
+                'platforms',
+                'hardwares',
+                'oim_internal_only',
+                ('authentication', 'access'),
+                'biller_code',
+            )
+        }),
+    )
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/registers/itsystem/change_list.html'
     form = ITSystemForm  # Use the custom ModelForm.
