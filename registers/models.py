@@ -6,11 +6,13 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
 from os import path
+from pytz import timezone
 
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
 from .utils import smart_truncate
 
+TZ = timezone(settings.TIME_ZONE)
 
 CRITICALITY_CHOICES = (
     (1, 'Critical'),
@@ -600,12 +602,12 @@ class ChangeRequest(models.Model):
             implementer for change request {}, scheduled to be undertaken on {}.\n
             Please visit the following URL and record the outcome of the change in order to finalise it:\n
             {}\n
-            """.format(self, self.planned_start.strftime('%d/%b/%Y at %H:%M'), complete_url)
+            """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
         html_content = """<p>This is an automated message to let you know that you are recorded as the
             implementer for change request {0}, scheduled to be undertaken on {1}.</p>
             <p>Please visit the following URL and record the outcome of the change in order to finalise it:</p>
             <ul><li><a href="{2}">{2}</a></li></ul>
-            """.format(self, self.planned_start.strftime('%d/%b/%Y at %H:%M'), complete_url)
+            """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.implementer.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()

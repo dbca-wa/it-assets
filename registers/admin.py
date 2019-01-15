@@ -425,7 +425,7 @@ class ChangeRequestAdmin(ModelAdmin):
     inlines = [ChangeLogInline]
     list_display = (
         'id', 'title', 'change_type', 'requester_name', 'approver_name', 'implementer_name', 'status',
-        'planned_start', 'planned_end', 'completed')
+        'created', 'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
     raw_id_fields = ('requester', 'approver', 'implementer')
     search_fields = (
