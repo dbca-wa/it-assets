@@ -14,4 +14,6 @@ urlpatterns = [
     path('changerequest/create/standard/', views.ChangeRequestCreate.as_view(), name='std_change_request_create', kwargs={'std': True}),
     path('changerequest/calendar/', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
     re_path('^changerequest/calendar/(?P<date>\d{4}-\d{2}-\d{2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
+    re_path('^changerequest/calendar/(?P<date>\d{4}-\d{2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
+    path('changerequest/export/', views.ChangeRequestExport.as_view(), name='change_request_export'),
 ]

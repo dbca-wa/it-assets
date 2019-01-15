@@ -1,4 +1,6 @@
+from calendar import monthrange
 from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import EmailMultiAlternatives
@@ -6,6 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
 from organisation.models import DepartmentUser
 from pytz import timezone
+import re
 import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
@@ -480,27 +483,45 @@ class ChangeRequestCalendar(ListView):
 
     def get_date_param(self, **kwargs):
         if 'date' in self.kwargs:
-            # Parse the date YYYY-MM-DD
-            return datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date()
-        else:
-            return date.today()
+            # Parse the date YYYY-MM-DD, then YYYY-MM.
+            if re.match('^\d{4}-\d{2}-\d{2}$', self.kwargs['date']):
+                return ('week', datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date())
+            elif re.match('^\d{4}-\d{2}$', self.kwargs['date']):
+                return ('month', datetime.strptime(self.kwargs['date'], '%Y-%m').date())
+        # Fall back to today's date.
+        return ('week', date.today())
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
-        d = self.get_date_param()
-        week_start = d - timedelta(days=d.weekday())
+        cal, d = self.get_date_param()
+        print(cal)
         context['date'] = d
-        context['week_start'] = week_start
-        context['date_last_week'] = week_start - timedelta(7)
-        context['date_next_week'] = week_start + timedelta(7)
+        if cal == 'week':
+            context['format'] = 'Weekly'
+            week_start = d - timedelta(days=d.weekday())
+            context['start'] = week_start
+            context['date_last'] = week_start - timedelta(7)
+            context['date_next'] = week_start + timedelta(7)
+        elif cal == 'month':
+            context['format'] = 'Monthly'
+            context['start'] = d
+            context['date_last'] = (d + relativedelta(months=-1)).strftime('%Y-%m')
+            context['date_next'] = (d + relativedelta(months=1)).strftime('%Y-%m')
         return context
 
     def get_queryset(self):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
-        d = self.get_date_param()
-        week_start = d - timedelta(days=d.weekday())
-        week_end = week_start + timedelta(days=6)
-        return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+        cal, d = self.get_date_param()
+        if cal == 'week':
+            week_start = d - timedelta(days=d.weekday())
+            week_end = week_start + timedelta(days=6)
+            return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+        elif cal == 'month':
+            month_start = d
+            month_end = monthrange(d.year, d.month)[1]
+            month_end = date(d.year, d.month, month_end)
+            return queryset.filter(planned_start__range=[month_start, month_end]).order_by('planned_start')
+        return queryset
 
 
 class ChangeRequestComplete(UpdateView):

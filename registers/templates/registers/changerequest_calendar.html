@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-<title>Weekly change calendar ({{ week_start|date:"D, j M Y" }})</title>
+<title>{{ format }} change calendar ({{ start|date:"D, j M Y" }})</title>
 {% endblock %}
 
 {% block body %}
@@ -14,18 +14,18 @@
 
 <div class="row">
     <div class="col-xs-12">
-        <h1>Weekly change calendar starting {{ week_start|date:"l, j F Y" }}</h1>
+        <h1>{{ format }} change calendar starting {{ start|date:"l, j F Y" }}</h1>
     </div>
 </div>
 
 <div class="row">
     <div class="col-xs-6">
-        <a href="{% url 'change_request_calendar' date=date_last_week %}" class="btn btn-info">
-            <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Back one week</a>
+        <a href="{% url 'change_request_calendar' date=date_last %}" class="btn btn-info">
+            <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Back</a>
     </div>
     <div class="col-xs-6">
-        <a href="{% url 'change_request_calendar' date=date_next_week %}" class="btn btn-info pull-right">
-            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span> Forward one week</a>
+        <a href="{% url 'change_request_calendar' date=date_next %}" class="btn btn-info pull-right">
+            <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span> Forward</a>
     </div>
 </div>
 <br>
