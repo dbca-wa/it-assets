@@ -1,3 +1,4 @@
+from datetime import datetime
 from django import forms
 from django.conf import settings
 from django.conf.urls import url
@@ -11,6 +12,7 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 from io import BytesIO
+from pytz import timezone
 from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
@@ -340,8 +342,24 @@ def email_approver(modeladmin, request, queryset):
     for rfc in queryset:
         if rfc.is_submitted:
             rfc.email_approver(request)
+            msg = 'Request for approval emailed to {}.'.format(rfc.approver.get_full_name())
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
 
 email_approver.short_description = 'Send email to the approver requesting endorsement of a change'
+
+
+def email_implementer(modeladmin, request, queryset):
+    """A custom admin action to (re)send email to the implementer requesting that they record completion.
+    """
+    for rfc in queryset:
+        if rfc.status == 3 and rfc.planned_end <= datetime.now().astimezone(timezone(settings.TIME_ZONE)) and rfc.completed is None:
+            rfc.email_implementer(request)
+            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+
+email_implementer.short_description = 'Send email to the implementer to record completion of a finished change'
 
 
 def cab_approve(modeladmin, request, queryset):
@@ -418,7 +436,7 @@ cab_reject.short_description = 'Mark selected change requests as rejected at CAB
 
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
-    actions = [cab_approve, cab_reject, email_approver]
+    actions = [cab_approve, cab_reject, email_approver, email_implementer]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
