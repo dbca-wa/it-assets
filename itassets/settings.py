@@ -49,6 +49,7 @@ INSTALLED_APPS = (
     'knowledge',
     'frontend',
     'recoup',
+    'status',
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -91,6 +92,31 @@ FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
 FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
 AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
+
+
+# Status check external information sources
+
+# - Backups
+ACRONIS_BASE = env('ACRONIS_BASE')
+ACRONIS_USERNAME = env('ACRONIS_USERNAME')
+ACRONIS_PASSWORD = env('ACRONIS_PASSWORD')
+
+# - Vulnerabilities
+NESSUS_BASE = env('NESSUS_BASE')
+NESSUS_ACCESS_KEY = env('NESSUS_ACCESS_KEY')
+NESSUS_SECRET_KEY = env('NESSUS_SECRET_KEY')
+NESSUS_SCAN_FOLDER = env('NESSUS_SCAN_FOLDER')
+
+# - Monitoring
+PRTG_BASE = env('PRTG_BASE')
+PRTG_USERNAME = env('PRTG_USERNAME')
+PRTG_PASSHASH = env('PRTG_PASSHASH')
+
+# - Patching
+AZURE_TENANT = env('AZURE_TENANT')
+AZURE_APP_ID = env('AZURE_APP_ID')
+AZURE_APP_KEY = env('AZURE_APP_KEY')
+AZURE_LOG_WORKSPACE = env('AZURE_LOG_WORKSPACE')
 
 
 # Database configuration
