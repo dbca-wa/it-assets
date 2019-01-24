@@ -40,7 +40,7 @@ class ITSystemExport(View):
                 'Technology custodian', 'Information custodian', 'BH support', 'AH support',
                 'Availability', 'User groups', 'Application server(s)', 'Database server(s)', 'Network storage',
                 'Backups', 'Recovery category', 'Seasonality', 'User notification',
-                'Application type', 'System type',
+                'Application type', 'System type', 'Cost centre', 'Division',
             ))
             row = 1
             for i in itsystems:
@@ -59,6 +59,8 @@ class ITSystemExport(View):
                     i.get_seasonality_display() if i.seasonality else '',
                     i.user_notification, i.get_application_type_display() if i.application_type else '',
                     i.get_system_type_display() if i.system_type else '',
+                    i.cost_centre.code if i.cost_centre else '',
+                    i.cost_centre.division.name if (i.cost_centre and i.cost_centre.division) else '',
                 ])
                 row += 1
             systems.set_column('A:A', 9)
@@ -72,6 +74,8 @@ class ITSystemExport(View):
             systems.set_column('Q:S', 27)
             systems.set_column('T:T', 22)
             systems.set_column('U:U', 28)
+            systems.set_column('V:V', 13)
+            systems.set_column('W:W', 41)
 
         return response
 
