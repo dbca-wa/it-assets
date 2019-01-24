@@ -315,6 +315,8 @@ class StandardChangeAdmin(ModelAdmin):
 class ChangeLogInline(StackedInline):
     model = ChangeLog
     extra = 0
+    fields = ('created', 'log')
+    readonly_fields = ('created',)
 
 
 class CompletionListFilter(SimpleListFilter):
@@ -345,6 +347,7 @@ def email_approver(modeladmin, request, queryset):
             msg = 'Request for approval emailed to {}.'.format(rfc.approver.get_full_name())
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
+            messages.success(request, msg)
 
 email_approver.short_description = 'Send email to the approver requesting endorsement of a change'
 
@@ -358,6 +361,7 @@ def email_implementer(modeladmin, request, queryset):
             msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
+            messages.success(request, msg)
 
 email_implementer.short_description = 'Send email to the implementer to record completion of a finished change'
 
