@@ -12,7 +12,7 @@ import re
 import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
-from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -273,11 +273,11 @@ class ChangeRequestCreate(CreateView):
         return super(ChangeRequestCreate, self).form_valid(form)
 
 
-class ChangeRequestUpdate(UpdateView):
+class ChangeRequestChange(UpdateView):
     """View for all end-user changes to an RFC: update, submit, endorse, etc.
     """
     model = ChangeRequest
-    form_class = ChangeRequestUpdateForm
+    form_class = ChangeRequestChangeForm
 
     def get(self, request, *args, **kwargs):
         # Validate that the RFC may still be updated.
@@ -285,10 +285,10 @@ class ChangeRequestUpdate(UpdateView):
         if not rfc.is_draft:
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestUpdate, self).get(request, *args, **kwargs)
+        return super(ChangeRequestChange, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestUpdate, self).get_context_data(**kwargs)
+        context = super(ChangeRequestChange, self).get_context_data(**kwargs)
         context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
         return context
 
@@ -354,8 +354,8 @@ class ChangeRequestUpdate(UpdateView):
                 log.save()
 
         if errors:
-            return super(ChangeRequestUpdate, self).form_invalid(form)
-        return super(ChangeRequestUpdate, self).form_valid(form)
+            return super(ChangeRequestChange, self).form_invalid(form)
+        return super(ChangeRequestChange, self).form_valid(form)
 
 
 class ChangeRequestEndorse(UpdateView):

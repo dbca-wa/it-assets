@@ -127,11 +127,11 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
             'communication', 'broadcast']
 
 
-class ChangeRequestUpdateForm(ChangeRequestCreateForm):
+class ChangeRequestChangeForm(ChangeRequestCreateForm):
     submit_button = Submit('submit', 'Submit for endorsement', css_class='btn-lg btn-success')
 
     def __init__(self, *args, **kwargs):
-        super(ChangeRequestUpdateForm, self).__init__(*args, **kwargs)
+        super(ChangeRequestChangeForm, self).__init__(*args, **kwargs)
         self.helper.layout = Layout(
             Fieldset(
                 'Instructions',
