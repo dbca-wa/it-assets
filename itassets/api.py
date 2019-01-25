@@ -5,7 +5,7 @@ from restless.preparers import FieldsPreparer
 from restless.resources import skip_prepare
 
 from assets.api import HardwareAssetResource, HardwareAssetCSV
-from organisation.api import DepartmentUserResource, LocationResource, profile
+from organisation.api import DepartmentUserResource, LocationResource, UserSelectResource, profile
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
 from registers.api import ITSystemResource, ITSystemHardwareResource
 from registers.models import ITSystem
@@ -94,6 +94,7 @@ api_urlpatterns = [
     url(r'^locations/', include(LocationResource.urls())),
     url(r'^locations.csv', LocationResource.as_csv),
     url(r'^users/', include(DepartmentUserResource.urls())),
+    url(r'^user-select/', include(UserSelectResource.urls())),
     url(r'^profile/', profile, name='api_profile'),
     url(r'^options/', include(OptionResource.urls())),
 ]
