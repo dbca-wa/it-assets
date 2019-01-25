@@ -28,7 +28,7 @@ def scan():
 
     for scan_range in ScanRange.objects.all():
         print('Scanning {}...'.format(scan_range))
-        scans.append((scan_range, sweep.scan(hosts=scan_range.range, arguments='-sn -R')['scan']))
+        scans.append((scan_range, sweep.scan(hosts=scan_range.range, arguments='-sn -R --system-dns')['scan']))
     
     Host.objects.update(ping_status=1)
 
@@ -52,7 +52,7 @@ def load_monitor():
     PRTG_DEVICES = '{}/api/table.json?content=devices&output=json&columns=objid,host,probe,device,active&count=2000&username={}&passhash={}'.format(settings.PRTG_BASE, settings.PRTG_USERNAME, settings.PRTG_PASSHASH)
     report = requests.get(PRTG_DEVICES, verify=False).json()
 
-    Host.objects.update(monitor_status=1)
+    Host.objects.update(monitor_status=1, monitor_url=None)
 
     for device in report['devices']:
         host = lookup(device['host'])
@@ -65,6 +65,7 @@ def load_monitor():
             'active': device['active']
         }
         host.monitor_status = 3 if device['active'] else 2
+        host.monitor_url = '{}/device.htm?id={}'.format(settings.PRTG_URL, device['objid'])
         host.save()
 
 
@@ -77,7 +78,7 @@ def load_vulnerability():
 
     reports = requests.get(NESSUS_SCANS, headers=NESSUS_HEADERS, verify=False).json()
 
-    Host.objects.update(vulnerability_status=1)
+    Host.objects.update(vulnerability_status=1, vulnerability_url=None)
 
     for report in reports['scans']:
         data = requests.get(NESSUS_REPORT(report['id']), headers=NESSUS_HEADERS, verify=False).json()
@@ -94,6 +95,7 @@ def load_vulnerability():
                 continue
             host.vulnerability_info = {
                 'id': report_host['host_id'],
+                'report_id': report['id'],
                 'scan_name': data['info']['name'],
                 'scan_start': datetime.datetime.fromtimestamp(data['info']['scan_start'], datetime.timezone.utc).isoformat(),
                 'scan_end': datetime.datetime.fromtimestamp(data['info']['scan_end'], datetime.timezone.utc).isoformat(),
@@ -105,7 +107,8 @@ def load_vulnerability():
                 'num_low': report_host['low'],
                 'num_info': report_host['info'],
             }
-            host.vulnerability_status = 3 if int(report_host['critical']) == 0 else 2
+            host.vulnerability_status = 3 if (int(report_host['critical']) == 0) and (int(report_host['high']) == 0) else 2
+            host.vulnerability_url = '{}/#/scans/reports/{}/hosts/{}/vulnerabilities'.format(settings.NESSUS_URL, report['id'], report_host['host_id'])
             host.save()
 
 
@@ -167,8 +170,8 @@ def load_backup():
             continue
         host.backup_info = {
             'id': agent.get('id'),
-            'next_backup': next_backup.isoformat(),
-            'last_backup': last_backup.isoformat(),
+            'next_backup': next_backup.isoformat() if next_backup else None,
+            'last_backup': last_backup.isoformat() if last_backup else None,
             'os': agent.get('os'),
             'status': agent.get('status'),
         }
