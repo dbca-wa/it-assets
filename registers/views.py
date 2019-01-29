@@ -12,7 +12,10 @@ import re
 import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
-from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .forms import (
+    ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
+    StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
+)
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -255,15 +258,15 @@ class ChangeRequestCreate(CreateView):
             context['title'] = 'Create a draft change request'
         return context
 
-    def get_initial(self):
-        initial = super(ChangeRequestCreate, self).get_initial()
-        # Try setting the requester to equal the request user.
-        if DepartmentUser.objects.filter(email=self.request.user.email).exists():
-            initial['requester'] = DepartmentUser.objects.get(email=self.request.user.email)
-        return initial
-
     def form_valid(self, form):
-        rfc = form.save()
+        rfc = form.save(commit=False)
+        # Set the requester as the request user.
+        rfc.requester = DepartmentUser.objects.get(email=self.request.user.email)
+        # Set the approver and implementer (if required).
+        if self.request.POST.get('endorser_choice'):
+            rfc.approver = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
+        if self.request.POST.get('implementer_choice'):
+            rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
         # Autocomplete normal/standard change fields.
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
@@ -277,7 +280,6 @@ class ChangeRequestChange(UpdateView):
     """View for all end-user changes to an RFC: update, submit, endorse, etc.
     """
     model = ChangeRequest
-    form_class = ChangeRequestChangeForm
 
     def get(self, request, *args, **kwargs):
         # Validate that the RFC may still be updated.
@@ -287,18 +289,43 @@ class ChangeRequestChange(UpdateView):
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestChange, self).get(request, *args, **kwargs)
 
+    def get_form_class(self):
+        rfc = self.get_object()
+        if rfc.is_standard_change:
+            return StandardChangeRequestChangeForm
+        return ChangeRequestChangeForm
+
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        rfc = self.get_object()
+        if rfc.approver:
+            form.fields['endorser_choice'].choices = [(rfc.approver.pk, rfc.approver.email)]
+        if rfc.implementer:
+            form.fields['implementer_choice'].choices = [(rfc.implementer.pk, rfc.implementer.email)]
+        return form
+
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestChange, self).get_context_data(**kwargs)
-        context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
+        rfc = self.get_object()
+        if rfc.is_standard_change:
+            context['title'] = 'Update draft standard change request {}'.format(rfc.pk)
+        else:
+            context['title'] = 'Update draft change request {}'.format(rfc.pk)
         return context
 
     def get_success_url(self):
         return self.get_object().get_absolute_url()
 
     def form_valid(self, form):
-        rfc = form.save()
-        errors = False
+        rfc = form.save(commit=False)
+        # Set the approver and implementer (if required).
+        if self.request.POST.get('endorser_choice'):
+            rfc.approver = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
+        if self.request.POST.get('implementer_choice'):
+            rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
+        rfc.save()
 
+        errors = False
         # If the user clicked "submit" (for approval), undertake additional form validation.
         if self.request.POST.get('submit'):
             # If a standard change, this must be selected.

@@ -16,7 +16,17 @@
         $('.datetimeinput').datetimepicker({
             format: 'DD-MM-YYYY HH:mm',
         });
-        $('.select').select2();
+        $('.select-user-choice').select2({
+          ajax: {
+            url: '/api/user-select/',
+            delay: 250,
+            processResults: function (data) {
+              return {
+                results: data.objects
+              };
+            }
+          }
+        });
     });
 </script>
 <title>{{ title }}</title>

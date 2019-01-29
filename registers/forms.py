@@ -13,25 +13,26 @@ class BaseFormHelper(FormHelper):
     field_class = 'col-xs-12 col-sm-8 col-md-7'
 
 
-class UserChoiceField(forms.ModelChoiceField):
-    """Returns a ModelChoiceField of active DepartmentUser objects having "user" account types,
-    i.e. not shared/role-based accounts.
-    """
-    def __init__(self, *args, **kwargs):
-        kwargs['queryset'] = DepartmentUser.objects.filter(active=True, account_type__in=DepartmentUser.ACCOUNT_TYPE_USER).order_by('email')
-        super(UserChoiceField, self).__init__(*args, **kwargs)
-
-    def label_from_instance(self, obj):
-        return obj.get_full_name()
+class UserChoiceField(forms.ChoiceField):
+    # A basic ChoiceField that skips validation.
+    def validate(self, value):
+        pass
 
 
 class ChangeRequestCreateForm(forms.ModelForm):
     """Base ModelForm class for ChangeRequest models.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
+    endorser_choice = UserChoiceField(
+        required=False, label='Endorser', help_text='The person who will endorse this change prior to CAB')
+    implementer_choice = UserChoiceField(
+        required=False, label='Implementer', help_text='The person who will implement this change')
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
+        # Add a CSS class to user choice fields, to upgrade them easier using JS.
+        self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -46,8 +47,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'title', 'description',
             ),
             Fieldset(
-                'Approval',
-                'requester', 'approver', 'implementer',
+                'Endorsement and Implementation',
+                'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
                 'Implementation',
@@ -73,26 +74,40 @@ class ChangeRequestCreateForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = [
-            'title', 'description', 'requester', 'approver',
-            'implementer', 'test_date', 'planned_start', 'planned_end', 'implementation',
+            'title', 'description', 'test_date', 'planned_start', 'planned_end', 'implementation',
             'implementation_docs', 'outage', 'communication', 'broadcast']
+
+    def clean(self):
+        if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
+            if self.cleaned_data['planned_start'] > self.cleaned_data['planned_end']:
+                msg = 'Planned start cannot be later than planned end.'
+                self._errors['planned_start'] = self.error_class([msg])
+                self._errors['planned_end'] = self.error_class([msg])
+        return self.cleaned_data
 
 
 class StandardChangeRequestCreateForm(forms.ModelForm):
     """Base ModelForm class for ChangeRequest models (standard change type).
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
+    endorser_choice = UserChoiceField(
+        required=False, label='Endorser', help_text='The person who will endorse this change prior to CAB')
+    implementer_choice = UserChoiceField(
+        required=False, label='Implementer', help_text='The person who will implement this change')
 
     def __init__(self, *args, **kwargs):
         super(StandardChangeRequestCreateForm, self).__init__(*args, **kwargs)
         self.fields['standard_change'].required = True
         self.fields['standard_change'].help_text = 'Standard change reference'
+        # Add a CSS class to user choice fields, to upgrade them easier using JS.
+        self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
                 'Instructions',
                 Div(
-                    HTML('<p>Note that all fields below need not be completed until the point of submission and approval.</p><br>'),
+                    HTML('<p>Standard changes must be agreed and registered with OIM prior. Note that all fields below need not be completed until the point of submission and approval.</p><br>'),
                     css_id='div_id_instructions'
                 ),
             ),
@@ -101,8 +116,8 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
                 'title', 'standard_change',
             ),
             Fieldset(
-                'Approval',
-                'requester', 'approver', 'implementer',
+                'Endorsement and Implementation',
+                'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
                 'Implementation',
@@ -122,8 +137,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = [
-            'title', 'standard_change', 'requester', 'approver',
-            'implementer', 'planned_start', 'planned_end', 'outage',
+            'title', 'standard_change', 'planned_start', 'planned_end', 'outage',
             'communication', 'broadcast']
 
 
@@ -132,49 +146,17 @@ class ChangeRequestChangeForm(ChangeRequestCreateForm):
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestChangeForm, self).__init__(*args, **kwargs)
-        self.helper.layout = Layout(
-            Fieldset(
-                'Instructions',
-                Div(
-                    HTML('''
-                    <p>Note that all fields below need not be completed until the point of submission and approval.</p>
-                    <p>Upon submitting a change request for approval, a read-only email link will be sent to the approver for review.</p>
-                    <br>'''),
-                    css_id='div_id_instructions'
-                ),
-            ),
-            Fieldset(
-                'Overview',
-                'title', 'change_type', 'standard_change', 'description',
-            ),
-            Fieldset(
-                'Endorsement / implementation',
-                'requester', 'approver', 'implementer',
-            ),
-            Fieldset(
-                'Implementation',
-                'test_date', 'planned_start', 'planned_end', 'outage',
-                Div(
-                    HTML('''<p>Please note that implementation instructions must be supplied prior to submission for approval.
-                         Text instructions or an uploaded document (e.g. Word, PDF) are acceptable.</p><br>'''),
-                    css_id='div_id_implementation_note'
-                ),
-                'implementation', 'implementation_docs',
-            ),
-            Fieldset(
-                'Communication',
-                'communication', 'broadcast',
-            ),
-            FormActions(self.save_button, self.submit_button),
-        )
+        # Update the helper layout FormActions class to include the submit button.
+        self.helper.layout[-1].fields.append(self.submit_button)
 
-    def clean(self):
-        if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
-            if self.cleaned_data['planned_start'] > self.cleaned_data['planned_end']:
-                msg = 'Planned start cannot be later than planned end.'
-                self._errors['planned_start'] = self.error_class([msg])
-                self._errors['planned_end'] = self.error_class([msg])
-        return self.cleaned_data
+
+class StandardChangeRequestChangeForm(StandardChangeRequestCreateForm):
+    submit_button = Submit('submit', 'Submit for endorsement', css_class='btn-lg btn-success')
+
+    def __init__(self, *args, **kwargs):
+        super(StandardChangeRequestChangeForm, self).__init__(*args, **kwargs)
+        # Update the helper layout FormActions class to include the submit button.
+        self.helper.layout[-1].fields.append(self.submit_button)
 
 
 class ChangeRequestEndorseForm(forms.ModelForm):
