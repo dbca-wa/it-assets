@@ -81,7 +81,7 @@ def run_all():
     )
 
     # ping scan all the enabled ranges
-    scan(today)
+    scan(ScanRange.objects.filter(enabled=True), today)
 
     # run all the enabled plugins
     for plugin in ScanPlugin.objects.filter(enabled=True):
