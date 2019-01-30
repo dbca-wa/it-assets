@@ -135,6 +135,7 @@ def load_patching():
 
     today = datetime.date.today()
     HostStatus.objects.filter(date=today, host__type=0).update(patching_status=1)
+    HostStatus.objects.filter(date=today, host__type=1).update(patching_status=0)
     
     for computer in results['tables'][0]['rows']:
         host_status = lookup(computer[0], today)
@@ -163,7 +164,8 @@ def load_backup():
     auth = sess.post(ACRONIS_AUTH+'?{}'.format(req_qs), {'req': req_id, 'login': settings.ACRONIS_USERNAME, 'password': settings.ACRONIS_PASSWORD})
     resources = sess.get(ACRONIS_RESOURCES).json()
 
-    today = datetime.date.today()    
+    today = datetime.date.today()
+    HostStatus.objects.filter(date=today, host__type=1).update(backup_status=0)
     HostStatus.objects.filter(date=today, host__type=0).update(backup_status=1)
 
     for agent in resources['data']:
