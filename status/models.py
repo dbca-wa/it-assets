@@ -1,7 +1,11 @@
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.html import format_html
+
+import datetime
 
 
 class ScanRange(models.Model):
@@ -11,6 +15,57 @@ class ScanRange(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ScanPlugin(models.Model):
+    PLUGIN_CHOICES = (
+        ('monitor_prtg', 'Monitor - PRTG'),
+        ('vulnerability_nessus', 'Vulnerability - Nessus'),
+        ('backup_acronis', 'Backup - Acronis'),
+        ('backup_aws', 'Backup - AWS snapshots'),
+        ('backup_azure', 'Backup - Azure snapshots'),
+        ('backup_veeam', 'Backup - Veeam'),
+        ('backup_restic', 'Backup - Restic'),
+        ('patching_oms', 'Patching - Azure OMS'),
+    )
+    PLUGIN_PARAMS = {
+        'monitor_prtg': ('PRTG_BASE', 'PRTG_USERNAME', 'PRTG_PASSHASH', 'PRTG_URL'),
+        'vulnerability_nessus': ('NESSUS_BASE', 'NESSUS_ACCESS_KEY', 'NESSUS_SECRET_KEY', 'NESSUS_SCAN_FOLDER', 'NESSUS_URL'),
+        'backup_acronis': ('ACRONIS_BASE', 'ACRONIS_USERNAME', 'ACRONIS_PASSWORD', 'ACRONIS_URL'),
+        'patching_oms': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_LOG_WORKSPACE'),
+    }
+
+    name = models.CharField(max_length=256)
+    plugin = models.CharField(max_length=32, choices=PLUGIN_CHOICES)
+    enabled = models.BooleanField(default=True)
+
+    def run(self, date=None):
+        import status.plugins as plugins
+        if date is None:
+            date = datetime.date.today()
+        if hasattr(plugins, self.plugin):
+            getattr(plugins, self.plugin)(self, date)
+        else:
+            print('STUB: {}'.format(self.plugin))
+
+    def __str__(self):
+        return self.name
+    
+
+class ScanPluginParameter(models.Model):
+    scan_plugin = models.ForeignKey(ScanPlugin, on_delete=models.CASCADE, related_name='params')
+    name = models.CharField(max_length=256)
+    value = models.CharField(max_length=2048, blank=True)
+
+    class Meta:
+        unique_together = ('scan_plugin', 'name')
+
+@receiver(post_save, sender=ScanPlugin)
+def scan_plugin_post_save(sender, signal, instance, **kwargs):
+    if instance.plugin in ScanPlugin.PLUGIN_PARAMS:
+        for param in ScanPlugin.PLUGIN_PARAMS[instance.plugin]:
+            obj, _ = ScanPluginParameter.objects.get_or_create(scan_plugin=instance, name=param)
+            obj.save()
 
 
 class Host(models.Model):

@@ -1,6 +1,6 @@
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter, TabularInline
 
-from .models import Host, HostStatus, HostIP, ScanRange
+from .models import Host, HostStatus, HostIP, ScanRange, ScanPlugin, ScanPluginParameter
 
 class HostIPInline(TabularInline):
     model = HostIP
@@ -9,6 +9,8 @@ class HostIPInline(TabularInline):
 
 @register(Host)
 class HostAdmin(ModelAdmin):
+    list_display = ('name',)
+    ordering = ('name',)
     inlines = (HostIPInline,)
 
 
@@ -17,8 +19,11 @@ class HostStatusAdmin(ModelAdmin):
     list_display = ('host', 'date', 'ping_scan_range', 'ping_status_html', 'monitor_status_html', 'vulnerability_status_html', 'backup_status_html', 'patching_status_html')
     ordering = ('-date', '-ping_status', 'monitor_status', 'vulnerability_status', 'backup_status', 'patching_status')
     search_fields = ('host__name', 'host__host_ips__ip')
-    list_filter = ('ping_scan_range',)
-   
+    list_filter = (
+        'ping_scan_range',
+    )
+    date_hierarchy = 'date'
+
     """fieldsets = (
         ('Host details', {
             'fields': (
@@ -50,3 +55,15 @@ class ScanRangeAdmin(ModelAdmin):
     list_display = ('name', 'enabled', 'range')
     ordering = ('range',)
     actions = [enable_scan_ranges, disable_scan_ranges]
+
+
+class ScanPluginParameterInline(TabularInline):
+    model = ScanPluginParameter
+    extra = 1
+
+
+@register(ScanPlugin)
+class ScanPluginAdmin(ModelAdmin):
+    list_display = ('name', 'enabled', 'plugin')
+    ordering = ('name',)
+    inlines = (ScanPluginParameterInline,)
