@@ -6,10 +6,11 @@ from django.utils.html import format_html
 
 class ScanRange(models.Model):
     name = models.CharField(max_length=256)
-    range = models.CharField(max_length=256)
+    range = models.CharField(max_length=2048)
+    enabled = models.BooleanField(default=True)
 
     def __str__(self):
-        return '{} ({})'.format(self.name, self.range)
+        return self.name
 
 
 class Host(models.Model):
@@ -17,7 +18,13 @@ class Host(models.Model):
         (0, 'Server'),
         (1, 'Embedded device'),
     )
+    name = models.CharField(max_length=256)
+    type = models.SmallIntegerField(choices=TYPE_CHOICES, default=0)
 
+    def __str__(self):
+        return self.name
+
+class HostStatus(models.Model):
     STATUS_CHOICES = (
         (0, 'N/A'),
         (1, 'Failure'),
@@ -32,8 +39,8 @@ class Host(models.Model):
         3: ('#ddf7c5', '#376d04'),
     }
 
-    name = models.CharField(max_length=256)
-    type = models.SmallIntegerField(choices=TYPE_CHOICES, default=0)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE, related_name='statuses')
+    date = models.DateField()
 
     ping_status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
     ping_scan_range = models.ForeignKey(ScanRange, null=True, on_delete=models.SET_NULL, related_name='hosts')
@@ -97,7 +104,7 @@ class Host(models.Model):
     patching_status_html.short_description = 'Patching'
 
     def __str__(self):
-        return self.name
+        return '{} - {}'.format(self.host.name, self.date.isoformat())
 
 
 class HostIP(models.Model):
