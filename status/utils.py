@@ -84,7 +84,8 @@ def load_vulnerability():
     NESSUS_HEADERS = {'X-ApiKeys': 'accessKey={}; secretKey={}'.format(settings.NESSUS_ACCESS_KEY, settings.NESSUS_SECRET_KEY), 'Content-Type': 'application/json', 'Accept': 'text/plain'}
     NESSUS_SCAN_FOLDER = 3
     NESSUS_SCANS = '{}/scans?folder_id={}'.format(settings.NESSUS_BASE, settings.NESSUS_SCAN_FOLDER)
-    NESSUS_REPORT = lambda x: '{}/scans/{}'.format(settings.NESSUS_BASE, x)
+    NESSUS_REPORT = lambda scan_id: '{}/scans/{}'.format(settings.NESSUS_BASE, scan_id)
+    NESSUS_VULNS = lambda scan_id, host_id: '{}/scans/{}/hosts/{}'.format(settings.NESSUS_BASE, scan_id, host_id)
 
     reports = requests.get(NESSUS_SCANS, headers=NESSUS_HEADERS, verify=False).json()
 
@@ -118,7 +119,14 @@ def load_vulnerability():
                 'num_low': report_host['low'],
                 'num_info': report_host['info'],
             }
-            host_status.vulnerability_status = 3 if (int(report_host['critical']) == 0) and (int(report_host['high']) == 0) else 2
+            host_status.vulnerability_status = 2
+            if (int(report_host['critical']) == 0) and (int(report_host['high']) == 0):
+                vulns = requests.get(NESSUS_VULNS(report['id'], report_host['host_id']), headers=NESSUS_HEADERS, verify=False).json()
+                name_check = [x['plugin_name'] for x in vulns['vulnerabilities']]
+                if 'Authentication Failure - Local Checks Not Run' in name_check:
+                    print('Authentication is broken for host {}'.format(host_status))
+                else:
+                    host_status.vulnerability_status = 3
             host_status.vulnerability_url = '{}/#/scans/reports/{}/hosts/{}/vulnerabilities'.format(settings.NESSUS_URL, report['id'], report_host['host_id'])
             host_status.save()
 
