@@ -21,11 +21,17 @@ def lookup(address, date):
     return host_status
 
 
-def scan(date):
+def scan(range_qs=None, date=None):
     sweep = nmap.PortScanner()
     scans = []
 
-    for scan_range in ScanRange.objects.filter(enabled=True):
+    if date is None:
+        date = datetime.date.today()
+
+    if range_qs is None:
+        range_qs = ScanRange.objects.filter(enabled=True)
+
+    for scan_range in range_qs:
         print('Scanning {}...'.format(scan_range))
         for hosts in scan_range.range.split(','):
             scans.append((scan_range, sweep.scan(hosts=hosts, arguments='-sn -R --system-dns')['scan']))
@@ -49,22 +55,42 @@ def scan(date):
             host_ip.save()
 
 
+def run_plugin(plugin_id):
+    today = datetime.date.today()
 
-def load_all():
+    plugin = ScanPlugin.objects.filter(id=plugin_id).first()
+    if plugin:
+        plugin.run(today)
+
+
+def run_scan(scan_id):
     today = datetime.date.today()
     
-    scan(today)
+    scan(ScanRange.objects.filter(id=scan_id), today)
+
+
+def run_all():
+    today = datetime.date.today()
+
+    # pre-emptively zero out results for today
     HostStatus.objects.filter(date=today).update(
-        monitor_status=1, monitor_url=None,
-        vulnerability_status=1, vulnerability_url=None,
-    )
-    HostStatus.objects.filter(date=today, host__type=1).update(
+        monitor_status=0, monitor_url=None,
+        vulnerability_status=0, vulnerability_url=None,
         backup_status=0, backup_url=None,
         patching_status=0, patching_url=None,
     )
-    HostStatus.objects.filter(date=today, host__type=0).update(
-        backup_status=1, backup_url=None,
-        patching_status=1, patching_url=None,
-    )
+
+    # ping scan all the enabled ranges
+    scan(today)
+
+    # run all the enabled plugins
     for plugin in ScanPlugin.objects.filter(enabled=True):
         plugin.run(today)
+
+    # for everything, flag missing monitoring and vulnerability
+    HostStatus.objects.filter(date=today, monitor_status=0).update(monitor_status=1)
+    HostStatus.objects.filter(date=today, vulnerability_status=0).update(vulnerability_status=1)
+
+    # for servers only, flag missing backup and patching
+    HostStatus.objects.filter(date=today, host__type=0, backup_status=0).update(backup_status=1)
+    HostStatus.objects.filter(date=today, host__type=0, patching_status=0).update(patching_status=1)

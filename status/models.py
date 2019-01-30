@@ -161,6 +161,9 @@ class HostStatus(models.Model):
     def __str__(self):
         return '{} - {}'.format(self.host.name, self.date.isoformat())
 
+    class Meta:
+        verbose_name_plural = 'host statuses'
+
 
 class HostIP(models.Model):
     ip = models.GenericIPAddressField(unique=True)
