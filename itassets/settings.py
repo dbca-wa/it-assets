@@ -49,6 +49,7 @@ INSTALLED_APPS = (
     'knowledge',
     'frontend',
     'recoup',
+    'status',
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

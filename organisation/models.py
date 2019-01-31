@@ -365,7 +365,7 @@ class DepartmentUser(MPTTModel):
         if self.org_data and 'units' in self.org_data and len(self.org_data['units']) > 0:
             s = self.org_data['units'][0]['acronym']
             if len(self.org_data['units']) > 1:
-                s += ' - {}'.format(self.org_data['units'][1]['name'])
+                s += ' - {}'.format(self.org_data['units'][1]['name']) 
         return s
 
     def get_full_name(self):
@@ -375,7 +375,7 @@ class DepartmentUser(MPTTModel):
 
 
 class Location(models.Model):
-    """A model to represent a physical location used by Department org units.
+    """A model to represent a physical location.
     """
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
@@ -397,6 +397,7 @@ class Location(models.Model):
         help_text='URL to prtg graph of bw utilisation',
         null=True,
         blank=True)
+    ascender_code = models.CharField(max_length=16, null=True, unique=True)
     active = models.BooleanField(default=True)
 
     class Meta:
@@ -508,6 +509,7 @@ class CostCentre(models.Model):
     tech_contact = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='tech_ccs',
         help_text='Technical Contact', null=True, blank=True)
+    ascender_code = models.CharField(max_length=16, null=True, unique=True)
     active = models.BooleanField(default=True)
 
     class Meta:

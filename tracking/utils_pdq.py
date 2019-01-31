@@ -9,6 +9,7 @@ import pytz
 from uuid import UUID
 from .models import Computer
 from assets.models import HardwareAsset
+from tracking.models import LicensingRule
 from organisation.models import DepartmentUser
 
 LOGGER = logging.getLogger('sync_tasks')
@@ -120,6 +121,13 @@ def pdq_load_computers():
     for i, row in enumerate(data):
         try:
             computer, status = pdq_match_computer(ad_guid=row[2], ad_dn=row[3], sam=row[1])
+            
+            # short circuit to prevent PDQ ID collisions
+            computer_pdq = Computer.objects.filter(pdq_id=row[0]).first()
+            if computer_pdq and computer_pdq.id != computer.id:
+                computer_pdq.pdq_id = None
+                computer_pdq.save()
+
             if status == 'created':
                 num_created += 1
             elif status == 'updated':
@@ -129,6 +137,7 @@ def pdq_load_computers():
                 continue
 
             computer.domain_bound = True
+            computer.pdq_id = row[0]
             computer.manufacturer = row[5]
             computer.model = row[6]
             computer.chassis = row[7]
@@ -175,3 +184,39 @@ def pdq_load_computers():
             continue
 
     LOGGER.info('Created {}, updated {}, errors {}'.format(num_created, num_updated, num_errors))
+
+
+def pdq_run_cc_license_report():
+    csv_path = os.path.join(os.environ.get('PDQ_INV_PATH'), 'pdq_installs.csv')
+    data = [x for x in csv_data(csv_path)]
+    
+    software = [(re.compile(x.regex), x) for x in LicensingRule.objects.filter(license=4)]
+    
+    app_match = {}
+    for app_id, comp_id, name, publisher, version in data:
+        if (name, publisher) not in app_match:
+            target = None
+            for i, x in enumerate(software):
+                if x[0].search(name):
+                    target = x[1]
+                    break
+            if target:
+                app_match[(name, publisher)] = target
+            else:
+                app_match[(name, publisher)] = None
+
+
+    computer_map = {}
+    for app_id, comp_id, name, publisher, version in data:
+        comp = int( comp_id )
+        if comp not in computer_map:
+            computer_map[comp] = []
+
+        if app_match[(name, publisher)]:
+            target = app_match[(name, publisher)]
+            computer_map[comp].append((target, name, publisher, version))
+
+    computers = {c.id: c for c in Computer.objects.filter(pdq_id__in=computer_map.keys())}
+    return computer_map, computers
+
+    
