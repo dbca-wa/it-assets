@@ -14,7 +14,7 @@ def monitor_prtg(plugin, date):
     PRTG_PASSHASH = plugin.params.get(name='PRTG_PASSHASH').value
     PRTG_URL = plugin.params.get(name='PRTG_URL').value
     
-    PRTG_DEVICES = '{}/api/table.json?content=devices&output=json&columns=objid,host,probe,device,active&count=2000&username={}&passhash={}'.format(PRTG_BASE, PRTG_USERNAME, PRTG_PASSHASH)
+    PRTG_DEVICES = '{}/api/table.json?content=devices&output=json&columns=objid,host,probe,device,active,status,upsens&count=2000&username={}&passhash={}'.format(PRTG_BASE, PRTG_USERNAME, PRTG_PASSHASH)
     report = requests.get(PRTG_DEVICES, verify=False).json()
 
     for device in report['devices']:
@@ -26,9 +26,21 @@ def monitor_prtg(plugin, date):
             'id': device['objid'],
             'device_name': device['device'],
             'probe': device['probe'],
-            'active': device['active']
+            'active': device['active'],
+            'status': device['status'],
+            'sensors_up': device['upsens_raw'],
         }
-        host_status.monitor_status = 3 if device['active'] else 2
+        host_status.monitor_plugin = plugin
+        if device['active'] and device['upsens_raw']:
+            host_status.monitor_status = 3
+            host_status.monitor_output = 'Device is monitored.'
+        elif device['active'] and not device['upsens_raw']:
+            host_status.monitor_status = 2
+            host_status.monitor_output = 'Device is monitored, but no sensors are up.'
+        else:
+            host_status.monitor_status = 2
+            host_status.monitor_output = 'Device has been added to monitoring, but is deactivated.'
+
         host_status.monitor_url = '{}/device.htm?id={}'.format(PRTG_URL, device['objid'])
         host_status.save()
 
@@ -75,13 +87,16 @@ def vulnerability_nessus(plugin, date):
                 'num_low': report_host['low'],
                 'num_info': report_host['info'],
             }
+            host_status.vulnerability_plugin = plugin
+            host_status.vulnerability_output = 'Device has been scanned, vulnerabilities were found'
             host_status.vulnerability_status = 2
             if (int(report_host['critical']) == 0) and (int(report_host['high']) == 0):
                 vulns = requests.get(NESSUS_VULNS(report['id'], report_host['host_id']), headers=NESSUS_HEADERS, verify=False).json()
                 name_check = [x['plugin_name'] for x in vulns['vulnerabilities']]
                 if 'Authentication Failure - Local Checks Not Run' in name_check:
-                    print('Authentication is broken for host {}'.format(host_status))
+                    host_status.vulnerability_output = 'Device is being scanned, but does not have correct credentials.'
                 else:
+                    host_status.vulnerability_output = 'Device has been scanned, no critical or high vulnerabilities were found.'
                     host_status.vulnerability_status = 3
             host_status.vulnerability_url = '{}/#/scans/reports/{}/hosts/{}/vulnerabilities'.format(NESSUS_URL, report['id'], report_host['host_id'])
             host_status.save()
@@ -125,7 +140,13 @@ def backup_acronis(plugin, date):
             'os': agent.get('os'),
             'status': agent.get('status'),
         }
-        host_status.backup_status = 3 if agent.get('status') == 'ok' else 2
+        host_status.backup_plugin = plugin
+        if agent.get('status') == 'ok':
+            host_status.backup_output = 'Device is present, last backup was successful.'
+            host_status.backup_status = 3
+        else: 
+            host_status.backup_output = 'Device is present, last backup failed.'
+            host_status.backup_status = 2
         host_status.save()
 
 
@@ -155,6 +176,8 @@ def patching_oms(plugin, date):
             'os_major_version': computer[5],
             'os_minor_version': computer[6],
         }
+        host_status.patching_plugin = plugin
+        host_status.patching_output = 'Server has been enrolled in OMS.'
         host_status.patching_status = 3
         host_status.save()
 

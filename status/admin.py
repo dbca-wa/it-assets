@@ -35,20 +35,41 @@ class HostStatusAdmin(ModelAdmin):
     run_full_scan.short_description = 'Run a full scan'
 
 
-    """fieldsets = (
+    fieldsets = (
         ('Host details', {
             'fields': (
-                'name', 'type'
+                'host', 'ping_status', 'ping_scan_range'
             )
         }),
-        ('Ping test', {
+        ('Monitoring', {
             'fields': (
-                'ping_status', 'ping_scan_range'
+                'monitor_status', 'monitor_plugin', 'monitor_output', 'monitor_info_html', 'monitor_url',
+            )
+        }),
+        ('Vulnerability testing', {
+            'fields': (
+                'vulnerability_status', 'vulnerability_plugin', 'vulnerability_output', 'vulnerability_info_html', 'vulnerability_url',
+            )
+        }),
+        ('Backup', {
+            'fields': (
+                'backup_status', 'backup_plugin', 'backup_output', 'backup_info_html', 'backup_url',
+            )
+        }),
+        ('Patching automation', {
+            'fields': (
+                'patching_status', 'patching_plugin', 'patching_output', 'patching_info_html', 'patching_url',
             )
         }),
     )
 
-    readonly_fields = ('name', 'type', 'ping_status', 'ping_scan_range', 'monitor_status', 'monitor_info', 'monitor_url',)"""
+    readonly_fields = (
+        'host', 'ping_status', 'ping_scan_range',
+        'monitor_status', 'monitor_plugin', 'monitor_output', 'monitor_info_html', 'monitor_url',
+        'vulnerability_status', 'vulnerability_plugin', 'vulnerability_output', 'vulnerability_info_html', 'vulnerability_url',
+        'backup_status', 'backup_plugin', 'backup_output', 'backup_info_html', 'backup_url',
+        'patching_status', 'patching_plugin', 'patching_output', 'patching_info_html', 'patching_url',
+    )
 
 
 
@@ -63,7 +84,6 @@ class ScanRangeAdmin(ModelAdmin):
         self.message_user(request, 'Scan ranges have been enabled.')
     enable_scan_ranges.short_description = 'Enable scan ranges'
 
-
     def disable_scan_ranges(self, request, queryset):
         queryset.update(enabled=False)
         self.message_user(request, 'Scan ranges have been disabled.')
@@ -72,7 +92,7 @@ class ScanRangeAdmin(ModelAdmin):
     def ping_sweep(self, request, queryset):
         for obj in queryset:
             async_task('status.utils.run_scan', obj.id)
-        self.message_user('A ping sweep has been scheduled for these scan ranges.')
+        self.message_user(request, 'A ping sweep has been scheduled for these scan ranges.')
     ping_sweep.short_description = 'Run a ping sweep on this scan range'
 
 

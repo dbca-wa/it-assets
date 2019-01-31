@@ -5,6 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
 
+from json2html import json2html
 import datetime
 
 
@@ -99,21 +100,30 @@ class HostStatus(models.Model):
 
     ping_status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
     ping_scan_range = models.ForeignKey(ScanRange, null=True, on_delete=models.SET_NULL, related_name='hosts')
+    ping_output = None
     ping_url = None
 
     monitor_status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
+    monitor_plugin = models.ForeignKey(ScanPlugin, null=True, on_delete=models.SET_NULL, related_name='monitor_statuses')
+    monitor_output = models.CharField(max_length=2048, blank=True)
     monitor_info = JSONField(default=dict)
     monitor_url = models.URLField(max_length=256, null=True)
 
     vulnerability_status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
+    vulnerability_plugin = models.ForeignKey(ScanPlugin, null=True, on_delete=models.SET_NULL, related_name='vulnerability_statuses')
+    vulnerability_output = models.CharField(max_length=2048, blank=True)
     vulnerability_info = JSONField(default=dict)
     vulnerability_url = models.URLField(max_length=256, null=True)
 
     backup_status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
+    backup_plugin = models.ForeignKey(ScanPlugin, null=True, on_delete=models.SET_NULL, related_name='backup_statuses')
+    backup_output = models.CharField(max_length=2048, blank=True)
     backup_info = JSONField(default=dict)
     backup_url = models.URLField(max_length=256, null=True)
 
     patching_status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0)
+    patching_plugin = models.ForeignKey(ScanPlugin, null=True, on_delete=models.SET_NULL, related_name='patching_statuses')
+    patching_output = models.CharField(max_length=2048, blank=True)
     patching_info = JSONField(default=dict)
     patching_url = models.URLField(max_length=256, null=True)
 
@@ -121,17 +131,30 @@ class HostStatus(models.Model):
     def _status_html(self, prefix):
         status = getattr(self, '{}_status'.format(prefix))
         status_url = getattr(self, '{}_url'.format(prefix))
+        status_output = getattr(self, '{}_output'.format(prefix))
         status_name = getattr(self, 'get_{}_status_display'.format(prefix))()
+
+        body = '<div style="text-align: center; font-weight: bold; background-color: {}; color: {}; border-radius: 2px;"'
+        args = [*self.STATUS_COLOURS[status]]
+        if status_output:
+            body += 'title="{}">'
+            args.append(status_output)
+        else:
+            body += '>'
+        
         if status_url:
-            return format_html('<div style="text-align: center; font-weight: bold; background-color: {}; color: {}; border-radius: 2px;"><a href="{}">{}</a></div>',
-                *self.STATUS_COLOURS[status],
-                status_url,
-                status_name,
-            )
-        return format_html('<div style="text-align: center; font-weight: bold; background-color: {}; color: {}; border-radius: 2px;">{}</div>',
-            *self.STATUS_COLOURS[status],
-            status_name
-        )
+            body += '<a target="_blank" href="{}">'
+            args.append(status_url)
+        body += '{}'
+        args.append(status_name)
+        if status_url:
+            body += '</a>'
+        body += '</div>'
+        return format_html(body, *args)
+
+    def _info_html(self, prefix):
+        info = getattr(self, '{}_info'.format(prefix))
+        return format_html(json2html.convert(json=info))
 
     def ping_status_html(self):
         return self._status_html('ping')
@@ -157,6 +180,22 @@ class HostStatus(models.Model):
         return self._status_html('patching')
     patching_status_html.admin_order_field = 'patching_status'
     patching_status_html.short_description = 'Patching'
+
+    def monitor_info_html(self):
+        return self._info_html('monitor')
+    monitor_info_html.short_description = 'Monitor info'
+
+    def vulnerability_info_html(self):
+        return self._info_html('vulnerability')
+    vulnerability_info_html.short_description = 'Vulnerability info'
+
+    def backup_info_html(self):
+        return self._info_html('backup')
+    backup_info_html.short_description = 'Backup info'
+
+    def patching_info_html(self):
+        return self._info_html('patching')
+    patching_info_html.short_description = 'Patching info'
 
     def __str__(self):
         return '{} - {}'.format(self.host.name, self.date.isoformat())

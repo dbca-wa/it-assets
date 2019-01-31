@@ -34,25 +34,22 @@ def scan(range_qs=None, date=None):
     for scan_range in range_qs:
         print('Scanning {}...'.format(scan_range))
         for hosts in scan_range.range.split(','):
-            scans.append((scan_range, sweep.scan(hosts=hosts, arguments='-sn -R --system-dns')['scan']))
+            sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns')['scan']
     
-    HostStatus.objects.filter(date=date).update(ping_status=1)
-
-    for scan_range, sweep_data in scans:
-        for ipv4, context in sweep_data.items():
-            fqdn = context['hostnames'][0]['name'].lower() if context['hostnames'][0]['name'] else ipv4
-            host, _ = Host.objects.get_or_create(name=fqdn)
-            host.save()
-            host_status, _ = HostStatus.objects.get_or_create(host=host, date=date)
-            host_status.ping_status = 3
-            host_status.ping_scan_range = scan_range
-            host_status.save()
-            host_ip = HostIP.objects.filter(ip=ipv4).first()
-            if not host_ip:
-                host_ip = HostIP.objects.create(ip=ipv4, host=host)
-            else:
-                host_ip.host = host
-            host_ip.save()
+            for ipv4, context in sweep_data.items():
+                fqdn = context['hostnames'][0]['name'].lower() if context['hostnames'][0]['name'] else ipv4
+                host, _ = Host.objects.get_or_create(name=fqdn)
+                host.save()
+                host_status, _ = HostStatus.objects.get_or_create(host=host, date=date)
+                host_status.ping_status = 3
+                host_status.ping_scan_range = scan_range
+                host_status.save()
+                host_ip = HostIP.objects.filter(ip=ipv4).first()
+                if not host_ip:
+                    host_ip = HostIP.objects.create(ip=ipv4, host=host)
+                else:
+                    host_ip.host = host
+                host_ip.save()
 
 
 def run_plugin(plugin_id):
@@ -72,16 +69,23 @@ def run_scan(scan_id):
 def run_all():
     today = datetime.date.today()
 
+    # full scan, so create blanks for any hosts in the host list
+    
+    
     # pre-emptively zero out results for today
     HostStatus.objects.filter(date=today).update(
-        monitor_status=0, monitor_url=None,
-        vulnerability_status=0, vulnerability_url=None,
-        backup_status=0, backup_url=None,
-        patching_status=0, patching_url=None,
+        ping_status=0,
+        monitor_status=0, monitor_plugin=None, monitor_output='', monitor_url=None,
+        vulnerability_status=0, vulnerability_plugin=None, vulnerability_output='', vulnerability_url=None,
+        backup_status=0, backup_plugin=None, backup_output='', backup_url=None,
+        patching_status=0, patching_plugin=None, patching_output='', patching_url=None,
     )
 
     # ping scan all the enabled ranges
     scan(ScanRange.objects.filter(enabled=True), today)
+    
+    # flag any remaining hosts as missing ping
+    HostStatus.objects.filter(date=today, ping_status=0).update(ping_status=1)
 
     # run all the enabled plugins
     for plugin in ScanPlugin.objects.filter(enabled=True):
