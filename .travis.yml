@@ -4,7 +4,6 @@ cache: pip
 dist: trusty
 python:
     - 3.6
-    - 3.7
 services:
     - postgresql
     - docker
