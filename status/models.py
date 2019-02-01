@@ -33,6 +33,7 @@ class ScanPlugin(models.Model):
         'monitor_prtg': ('PRTG_BASE', 'PRTG_USERNAME', 'PRTG_PASSHASH', 'PRTG_URL'),
         'vulnerability_nessus': ('NESSUS_BASE', 'NESSUS_ACCESS_KEY', 'NESSUS_SECRET_KEY', 'NESSUS_SCAN_FOLDER', 'NESSUS_URL'),
         'backup_acronis': ('ACRONIS_BASE', 'ACRONIS_USERNAME', 'ACRONIS_PASSWORD', 'ACRONIS_URL'),
+        'backup_aws': ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'),
         'patching_oms': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_LOG_WORKSPACE'),
     }
 

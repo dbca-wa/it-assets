@@ -2,6 +2,7 @@ import datetime
 import urllib
 
 import adal
+import boto3
 import requests
 
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
@@ -147,6 +148,92 @@ def backup_acronis(plugin, date):
         else: 
             host_status.backup_output = 'Device is present, last backup failed.'
             host_status.backup_status = 2
+        host_status.save()
+
+
+def backup_aws(plugin, date):
+    AWS_ACCESS_KEY_ID = plugin.params.get(name='AWS_ACCESS_KEY_ID').value
+    AWS_SECRET_ACCESS_KEY = plugin.params.get(name='AWS_SECRET_ACCESS_KEY').value
+    AWS_REGION = plugin.params.get(name='AWS_REGION').value
+    AWS_URL = 'https://{0}.console.aws.amazon.com/ec2/v2/home?region={0}#Instances:search='.format(AWS_REGION)
+
+    client = boto3.client('ec2', 
+        aws_access_key_id=AWS_ACCESS_KEY_ID, 
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION,
+    )
+
+    snapshot_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+
+    instance_map = {}
+    volume_map = {}
+    # scrape information from EC2 instances list
+    instances = client.describe_instances()
+    for resv in instances['Reservations']:
+        for inst in resv['Instances']:
+            key = inst['InstanceId']
+            instance_map[key] = {
+                'id': key,
+                'ips': [x['PrivateIpAddress'] for x in inst['NetworkInterfaces']],
+                'volumes': [],
+                'snapshots': {},
+            }
+            # find name
+            for tag in inst['Tags']:
+                if tag['Key'].lower() == 'name':
+                    instance_map[key]['name'] = tag['Value']
+                    break
+            # find all volumes
+            for volume in inst['BlockDeviceMappings']:
+                if 'Ebs' in volume:
+                    instance_map[key]['volumes'].append(volume['Ebs']['VolumeId'])
+                    volume_map[volume['Ebs']['VolumeId']] = key
+
+    # scrape information from snapshots list
+    snapshots = client.describe_snapshots()
+    for snap in snapshots['Snapshots']:
+        if snap['State'] != 'completed':
+            continue
+        volume = snap['VolumeId']
+        if not volume in volume_map:
+            continue
+        key = volume_map[volume]
+        if not volume in instance_map[key]['snapshots']:
+            instance_map[key]['snapshots'][volume] = []
+        instance_map[key]['snapshots'][volume].append(snap['StartTime'])
+
+    for instance in instance_map.values():
+        for ip in instance['ips']:
+            host_status = lookup(ip, date)
+            if host_status:
+                break
+        if not host_status:
+            continue
+        host_status.backup_plugin = plugin
+        host_status.backup_url = AWS_URL+instance['id']
+        host_status.backup_info = {
+            'id': instance['id'],
+            'name': instance['name'],
+            'volumes': []
+        }
+        for v in instance['volumes']:
+            snaps = sorted(instance['snapshots'].get(v, []), reverse=True)
+            last_backup = snaps[0].isoformat() if snaps else None
+            host_status.backup_info['volumes'].append({
+                'id': v,
+                'snap_count': len(snaps),
+                'last_backup': last_backup,
+            })
+        
+        if not all([v['snap_count'] for v in host_status.backup_info['volumes']]):
+            host_status.backup_output = 'A volume has not been snapshotted.'
+            host_status.backup_status = 2
+        elif not all ([(v['last_backup'] is not None and v['last_backup'] > snapshot_limit) for v in host_status.backup_info['volumes']]):
+            host_status.backup_output = 'A volume does not have a snapshot from the last 24 hours.'
+            host_status.backup_status = 2
+        else:
+            host_status.backup_output = 'Daily snapshotting was successful.'
+            host_status.backup_status = 3
         host_status.save()
 
 

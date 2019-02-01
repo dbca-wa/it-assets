@@ -62,8 +62,17 @@ def run_plugin(plugin_id):
 
 def run_scan(scan_id):
     today = datetime.date.today()
-    
+    scan_range = ScanRange.objects.filter(id=scan_id).first()
+    HostStatus.objects.filter(date=today, ping_scan_range=scan_range).update(
+        ping_status=0,
+    )
+
     scan(ScanRange.objects.filter(id=scan_id), today)
+
+    HostStatus.objects.filter(date=today, ping_scan_range=scan_range, ping_status=0).update(
+        ping_status=1,
+    )
+
 
 
 def run_all():
