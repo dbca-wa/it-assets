@@ -1,4 +1,4 @@
-FROM python:3.6.8-slim-stretch as builder
+FROM python:3.7.2-slim-stretch as builder
 MAINTAINER asi@dbca.wa.gov.au
 
 # Prepare the base environment.
