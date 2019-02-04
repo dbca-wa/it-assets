@@ -307,9 +307,9 @@ class IncidentAdmin(ModelAdmin):
 class StandardChangeAdmin(ModelAdmin):
     date_hierarchy = 'created'
     filter_horizontal = ('it_systems',)
-    list_display = ('id', 'name', 'approver', 'expiry')
-    raw_id_fields = ('approver',)
-    search_fields = ('id', 'name', 'approver__email')
+    list_display = ('id', 'name', 'endorser', 'expiry')
+    raw_id_fields = ('endorser',)
+    search_fields = ('id', 'name', 'endorser__email')
 
 
 class ChangeLogInline(StackedInline):
@@ -338,18 +338,18 @@ class CompletionListFilter(SimpleListFilter):
             return queryset.filter(completed__isnull=True)
 
 
-def email_approver(modeladmin, request, queryset):
-    """A custom admin action to (re)send an email to the approver, requesting that they endorse an RFC.
+def email_endorser(modeladmin, request, queryset):
+    """A custom admin action to (re)send an email to the endorser, requesting that they endorse an RFC.
     """
     for rfc in queryset:
         if rfc.is_submitted:
-            rfc.email_approver(request)
-            msg = 'Request for approval emailed to {}.'.format(rfc.approver.get_full_name())
+            rfc.email_endorser(request)
+            msg = 'Request for approval emailed to {}.'.format(rfc.endorser.get_full_name())
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
             messages.success(request, msg)
 
-email_approver.short_description = 'Send email to the approver requesting endorsement of a change'
+email_endorser.short_description = 'Send email to the endorser requesting endorsement of a change'
 
 
 def email_implementer(modeladmin, request, queryset):
@@ -440,18 +440,18 @@ cab_reject.short_description = 'Mark selected change requests as rejected at CAB
 
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
-    actions = [cab_approve, cab_reject, email_approver, email_implementer]
+    actions = [cab_approve, cab_reject, email_endorser, email_implementer]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
-        'id', 'title', 'change_type', 'requester_name', 'approver_name', 'implementer_name', 'status',
+        'id', 'title', 'change_type', 'requester_name', 'endorser_name', 'implementer_name', 'status',
         'created', 'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
-    raw_id_fields = ('requester', 'approver', 'implementer')
+    raw_id_fields = ('requester', 'endorser', 'implementer')
     search_fields = (
-        'id', 'title', 'requester__email', 'approver__email', 'implementer__email', 'implementation',
+        'id', 'title', 'requester__email', 'endorser__email', 'implementer__email', 'implementation',
         'communication', 'reference_url')
 
     def requester_name(self, obj):
@@ -460,11 +460,11 @@ class ChangeRequestAdmin(ModelAdmin):
         return ''
     requester_name.short_description = 'requester'
 
-    def approver_name(self, obj):
-        if obj.approver:
-            return obj.approver.get_full_name()
+    def endorser_name(self, obj):
+        if obj.endorser:
+            return obj.endorser.get_full_name()
         return ''
-    approver_name.short_description = 'approver'
+    endorser_name.short_description = 'endorser'
 
     def implementer_name(self, obj):
         if obj.implementer:

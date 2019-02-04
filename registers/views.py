@@ -234,8 +234,8 @@ class ChangeRequestDetail(DetailView):
         emails = []
         if rfc.requester:
             emails.append(rfc.requester.email)
-        if rfc.approver:
-            emails.append(rfc.approver.email)
+        if rfc.endorser:
+            emails.append(rfc.endorser.email)
         if rfc.implementer:
             emails.append(rfc.implementer.email)
         context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
@@ -262,9 +262,9 @@ class ChangeRequestCreate(CreateView):
         rfc = form.save(commit=False)
         # Set the requester as the request user.
         rfc.requester = DepartmentUser.objects.get(email=self.request.user.email)
-        # Set the approver and implementer (if required).
+        # Set the endorser and implementer (if required).
         if self.request.POST.get('endorser_choice'):
-            rfc.approver = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
+            rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
         if self.request.POST.get('implementer_choice'):
             rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
         # Autocomplete normal/standard change fields.
@@ -298,8 +298,8 @@ class ChangeRequestChange(UpdateView):
     def get_form(self, *args, **kwargs):
         form = super().get_form(*args, **kwargs)
         rfc = self.get_object()
-        if rfc.approver:
-            form.fields['endorser_choice'].choices = [(rfc.approver.pk, rfc.approver.email)]
+        if rfc.endorser:
+            form.fields['endorser_choice'].choices = [(rfc.endorser.pk, rfc.endorser.email)]
         if rfc.implementer:
             form.fields['implementer_choice'].choices = [(rfc.implementer.pk, rfc.implementer.email)]
         return form
@@ -318,9 +318,9 @@ class ChangeRequestChange(UpdateView):
 
     def form_valid(self, form):
         rfc = form.save(commit=False)
-        # Set the approver and implementer (if required).
+        # Set the endorser and implementer (if required).
         if self.request.POST.get('endorser_choice'):
-            rfc.approver = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
+            rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
         if self.request.POST.get('implementer_choice'):
             rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
         rfc.save()
@@ -338,7 +338,7 @@ class ChangeRequestChange(UpdateView):
                 form.add_error('requester', 'Requester cannot be blank.')
                 errors = True
             # Endorser is required.
-            if not rfc.approver:
+            if not rfc.endorser:
                 form.add_error('endorser_choice', 'Endorser cannot be blank.')
                 errors = True
             # Implementer is required.
@@ -366,7 +366,7 @@ class ChangeRequestChange(UpdateView):
             if not rfc.is_standard_change and not rfc.communication:
                 form.add_error('communication', 'Details relating to any communications must be specified (or input "NA").')
                 errors = True
-            # No validation errors: change the RFC status, send an email to the approver and make a log.
+            # No validation errors: change the RFC status, send an email to the endorser and make a log.
             if not errors:
                 # TODO: send an email to the requester.
                 rfc.status = 1
@@ -375,9 +375,9 @@ class ChangeRequestChange(UpdateView):
                 messages.success(self.request, msg)
                 log = ChangeLog(change_request=rfc, log=msg)
                 log.save()
-                rfc.email_approver(self.request)
+                rfc.email_endorser(self.request)
                 log = ChangeLog(
-                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.approver.get_full_name()))
+                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.endorser.get_full_name()))
                 log.save()
 
         if errors:
@@ -402,8 +402,8 @@ class ChangeRequestEndorse(UpdateView):
             # Redirect to the object detail view.
             messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        if self.request.user.email != rfc.approver.email:
-            messages.warning(self.request, 'You are not the approver for change request {}.'.format(rfc.pk))
+        if self.request.user.email != rfc.endorser.email:
+            messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestEndorse, self).get(request, *args, **kwargs)
 
@@ -425,12 +425,12 @@ class ChangeRequestEndorse(UpdateView):
                 {} ("{}") has been endorsed by {}, and it is now scheduled to be approved at the
                 next OIM Change Advisory Board meeting.\n
                 {}\n
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             html_content = """<p>This is an automated message to let you know that change request
                 {0} ("{1}") has been endorsed by {2}, and it is now scheduled to be approved at the
                 next OIM Change Advisory Board meeting.</p>
                 <ul><li><a href="{3}">{3}</a></li></ul>
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
@@ -449,12 +449,12 @@ class ChangeRequestEndorse(UpdateView):
                 {} ("{}") has been rejected by {}. Its status has been reset to "Draft" for updates
                 and re-submission.\n
                 {}\n
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             html_content = """<p>This is an automated message to let you know that change request
                 {0} ("{1}") has been rejected by {2}. Its status has been reset to "Draft" for updates
                 and re-submission.</p>
                 <ul><li><a href="{3}">{3}</a></li></ul>
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
@@ -479,7 +479,7 @@ class ChangeRequestExport(View):
             rfcs = ChangeRequest.objects.all()
             changes = workbook.add_worksheet('Change requests')
             changes.write_row('A1', (
-                'Change ref.', 'Title', 'Change type', 'Requester', 'Approver', 'Implementer', 'Status',
+                'Change ref.', 'Title', 'Change type', 'Requester', 'Endorser', 'Implementer', 'Status',
                 'Test date', 'Planned start', 'Planned end', 'Completed', 'Outage duration',
                 'System(s) affected', 'Incident URL',
             ))
@@ -487,7 +487,7 @@ class ChangeRequestExport(View):
             for i in rfcs:
                 changes.write_row(row, 0, [
                     i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
-                    i.approver.get_full_name() if i.approver else '',
+                    i.endorser.get_full_name() if i.endorser else '',
                     i.implementer.get_full_name() if i.implementer else '',
                     i.get_status_display(), i.test_date,
                     i.planned_start.astimezone(TZ) if i.planned_start else '',

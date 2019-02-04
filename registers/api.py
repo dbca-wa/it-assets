@@ -185,9 +185,9 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         if(mychanges):
             if(request.user.is_authenticated):
                 user = request.user.email
-                qa = qa.filter(Q(requestor__email=user) | Q(approver__email=user) | Q(implementor__email=user))
+                qa = qa.filter(Q(requestor__email=user) | Q(endorser__email=user) | Q(implementor__email=user))
         if(search):
-            qa = qa.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(notes__icontains=search) | Q(broadcast__icontains=search) | Q(implementation__icontains=search) | Q(it_system__name__icontains=search) | Q(implementor__name__icontains=search) | Q(approver__name__icontains=search) | Q(requestor__name__icontains=search))
+            qa = qa.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(notes__icontains=search) | Q(broadcast__icontains=search) | Q(implementation__icontains=search) | Q(it_system__name__icontains=search) | Q(implementor__name__icontains=search) | Q(endorser__name__icontains=search) | Q(requestor__name__icontains=search))
         if(datefrom):
             qa = qa.filter(change_start__gte=datefrom)
         if(dateto):
@@ -217,7 +217,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
     def create(self, request):
         data = {
             'requestor': request.data.get('requestor'),
-            'approver': request.data.get('approver'),
+            'endorser': request.data.get('endorser'),
             'implementor': request.data.get('implementor'),
             'title': request.data.get('title'),
             'description': request.data.get('description'),
@@ -274,7 +274,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                 if change.status == 1:
                     data = {
                         'change_request': change.pk,
-                        'approver': change.approver.id,
+                        'endorser': change.endorser.id,
                         'date_approved': datetime.now(),
                         'notes': request.data.get('approvalnotes'),
                     }
@@ -286,7 +286,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                     change.completed_date = datetime.now()
             else:
                 change.requestor_id = request.data.get('requestor')
-                change.approver_id = request.data.get('approver')
+                change.endorser_id = request.data.get('endorser')
                 change.implementor_id = request.data.get('implementor')
                 change.title = request.data.get('title')
                 change.description = request.data.get('description')

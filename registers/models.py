@@ -451,7 +451,7 @@ class StandardChange(models.Model):
         null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Implementation/deployment instructions (attachment)')
     it_systems = models.ManyToManyField(
         ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected by the standard change')
-    approver = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
+    endorser = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
     expiry = models.DateField(null=True, blank=True)
 
     def __str__(self):
@@ -468,7 +468,7 @@ class ChangeRequest(models.Model):
     )
     STATUS_CHOICES = (
         (0, "Draft"),  # Not yet approved or submitted to CAB.
-        (1, "Submitted for endorsement"),  # Submitted for endorsement by approver, not yet ready for CAB assessment.
+        (1, "Submitted for endorsement"),  # Submitted for endorsement, not yet ready for CAB assessment.
         (2, "Scheduled for CAB"),  # Approved and ready to be assessed at CAB.
         (3, "Ready for implementation"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
@@ -487,8 +487,8 @@ class ChangeRequest(models.Model):
     requester = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='requester', null=True, blank=True,
         help_text='The person who is requesting this change')
-    approver = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='approver', null=True, blank=True,
+    endorser = models.ForeignKey(
+        DepartmentUser, on_delete=models.PROTECT, related_name='endorser', null=True, blank=True,
         help_text='The person who will endorse this change prior to CAB')
     implementer = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
@@ -562,9 +562,9 @@ class ChangeRequest(models.Model):
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
-    def email_approver(self, request=None):
-        # Send an email to the approver (if defined) with a link to the change request endorse view.
-        if not self.approver:
+    def email_endorser(self, request=None):
+        # Send an email to the endorser (if defined) with a link to the change request endorse view.
+        if not self.endorser:
             return None
         subject = 'Approval for change request {}'.format(self)
         if request:
@@ -573,18 +573,18 @@ class ChangeRequest(models.Model):
             domain = Site.objects.get_current().domain
             endorse_url = '{}{}'.format(domain, reverse('change_request_endorse', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you have
-            been assigned as the approver for a change request submitted to OIM by {}.\n
+            been assigned as the endorser for a change request submitted to OIM by {}.\n
             Please visit the following URL, review the change request details and register
             endorsement or rejection of the change:\n
             {}\n
             """.format(self.requester.get_full_name(), endorse_url)
         html_content = """<p>This is an automated message to let you know that you have
-            been assigned as the approver for a change request submitted to OIM by {0}.</p>
+            been assigned as the endorser for a change request submitted to OIM by {0}.</p>
             <p>Please visit the following URL, review the change request details and register
             endorsement or rejection of the change:</p>
             <ul><li><a href="{1}">{1}</a></li></ul>
             """.format(self.requester.get_full_name(), endorse_url)
-        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.approver.email])
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.endorser.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
 
