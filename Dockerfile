@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.6.6-slim-stretch as builder_base
+FROM python:3.7.2-slim-stretch as builder_base
 MAINTAINER asi@dbca.wa.gov.au
 RUN apt-get update -y \
   && apt-get install --no-install-recommends -y wget git libmagic-dev gcc binutils libproj-dev gdal-bin python3-dev \
