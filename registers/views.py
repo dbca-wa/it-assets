@@ -337,13 +337,13 @@ class ChangeRequestChange(UpdateView):
             if not rfc.requester:
                 form.add_error('requester', 'Requester cannot be blank.')
                 errors = True
-            # Approver is required.
+            # Endorser is required.
             if not rfc.approver:
-                form.add_error('approver', 'Approver cannot be blank.')
+                form.add_error('endorser_choice', 'Endorser cannot be blank.')
                 errors = True
             # Implementer is required.
             if not rfc.implementer:
-                form.add_error('implementer', 'Implementer cannot be blank.')
+                form.add_error('implementer_choice', 'Implementer cannot be blank.')
                 errors = True
             # Test date is required if not a standard change.
             if not rfc.is_standard_change and not rfc.test_date:
