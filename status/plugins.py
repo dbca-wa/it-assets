@@ -141,6 +141,7 @@ def backup_acronis(plugin, date):
             'os': agent.get('os'),
             'status': agent.get('status'),
         }
+        host_status.backup_url = '{}/#m=Resources&key=All devices'.format(ACRONIS_URL, )
         host_status.backup_plugin = plugin
         if agent.get('status') == 'ok':
             host_status.backup_output = 'Device is present, last backup was successful.'
@@ -237,6 +238,104 @@ def backup_aws(plugin, date):
         host_status.save()
 
 
+def _ms_api(verb, url, previous=None, **kwargs):
+    req = requests.request(verb, url, **kwargs)
+    data = req.json()
+    
+    result = []
+    if previous is not None:
+        result = previous
+
+    if 'value' not in data:
+        return result
+    result.extend(data['value'])
+    if '@nextLink' in data:
+        return _ms_api(verb, data['@nextLink'], previous=result, **kwargs)
+    return result
+
+
+def backup_azure(plugin, date):
+    AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
+    AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
+    AZURE_APP_KEY = plugin.params.get(name='AZURE_APP_KEY').value
+    AZURE_SUBSCRIPTION_ID = plugin.params.get(name='AZURE_SUBSCRIPTION_ID').value
+    AZURE_VAULT_NAME = plugin.params.get(name='AZURE_VAULT_NAME').value
+
+    AZURE_URL = 'https://portal.azure.com/#resource{}/backupSetting'
+
+    MANAGEMENT_BASE = 'https://management.azure.com'
+    MANAGEMENT_SUB = '{}/subscriptions/{}'.format(MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID)
+
+    ctx = adal.AuthenticationContext(AZURE_TENANT)
+    token = ctx.acquire_token_with_client_credentials(MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY)
+    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
+
+    MANAGEMENT_LIST_VMS = '{}/providers/Microsoft.Compute/virtualMachines?api-version=2018-06-01'.format(MANAGEMENT_SUB)
+    vms = _ms_api('GET', MANAGEMENT_LIST_VMS, headers=headers)
+
+    # Get the ID of the specified vault.
+    MANAGEMENT_LIST_VAULTS = '{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01'.format(MANAGEMENT_SUB)
+    vaults = _ms_api('GET', MANAGEMENT_LIST_VAULTS, headers=headers)
+
+    vault = None
+    for v in vaults:
+        if v['name'] == AZURE_VAULT_NAME:
+            vault = v['id']
+            break
+    if vault is None:
+        return
+
+    # Get backup protection container list.
+    MANAGEMENT_LIST_CONTAINERS = '{}{}/backupProtectionContainers?api-version=2016-12-01&$filter=backupManagementType%20eq%20%27AzureIaasVM%27%20and%20status%20eq%20%27Registered%27'.format(MANAGEMENT_BASE, vault)
+    containers = _ms_api('GET', MANAGEMENT_LIST_CONTAINERS, headers=headers)
+
+    vm_mapping = {}
+    for container in containers:
+        vm_id = container['properties']['virtualMachineId']
+        if vm_id not in vm_mapping:
+            vm_mapping[vm_id] = {}
+        vm_mapping[vm_id]['id'] = vm_id
+        vm_mapping[vm_id]['container_name'] = container['name']
+        vm_mapping[vm_id]['container_id'] = container['id']
+        vm_mapping[vm_id]['container_health'] = container['properties']['healthStatus']
+        vm_mapping[vm_id]['ips'] = []
+
+    # Get private IP addresses of each VM
+    MANAGEMENT_LIST_NICS = '{}/providers/Microsoft.Network/networkInterfaces?api-version=2018-10-01'.format(MANAGEMENT_SUB)
+    nics = _ms_api('GET', MANAGEMENT_LIST_NICS, headers=headers)
+
+    for nic in nics:
+        if 'virtualMachine' not in nic['properties']:
+            continue
+        vm_id = nic['properties']['virtualMachine']['id']
+        if vm_id in vm_mapping:
+            vm_mapping[vm_id]['ips'] = [x['properties']['privateIPAddress'] for x in nic['properties']['ipConfigurations']]
+
+    for vm in vm_mapping.values():
+        host_status = None
+        for ip in vm['ips']:
+            host_status = lookup(ip, date)
+            if host_status:
+                break
+        if not host_status:
+            continue
+        host_status.backup_plugin = plugin
+        host_status.backup_url = AZURE_URL.format(vm['id'])
+        host_status.backup_info = {
+            'id': vm['id'],
+            'container_name': vm['container_name'],
+            'container_id': vm['container_id'],
+            'container_health': vm['container_health'],
+        }
+        if vm['container_health'] == 'Healthy':
+            host_status.backup_output = 'VM is enrolled for backups and is healthy.'
+            host_status.backup_status = 3
+        else:
+            host_status.backup_output = 'VM is enrolled for backups, but is not healthy.'
+            host_status.backup_status = 2
+        host_status.save()
+
+
 def patching_oms(plugin, date):
     AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
     AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
@@ -247,9 +346,10 @@ def patching_oms(plugin, date):
     LOG_ANALYTICS_QUERY = '{}/v1/workspaces/{}/query'.format(LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE)
     ctx = adal.AuthenticationContext(AZURE_TENANT)
     token = ctx.acquire_token_with_client_credentials(LOG_ANALYTICS_BASE, AZURE_APP_ID, AZURE_APP_KEY)
+    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
     patching = requests.get(LOG_ANALYTICS_QUERY, params={
         'query': "(ConfigurationData | project Computer, TimeGenerated, VMUUID | distinct Computer) | join kind=inner ( Heartbeat | project Computer, OSType, OSName, OSMajorVersion, OSMinorVersion, ComputerEnvironment, TimeGenerated, TenantId, ComputerIP | summarize arg_max (TimeGenerated, *) by Computer ) on Computer"
-    }, headers={'Authorization': 'Bearer {}'.format(token['accessToken'])})
+    }, headers=headers)
     results = patching.json()
 
     for computer in results['tables'][0]['rows']:

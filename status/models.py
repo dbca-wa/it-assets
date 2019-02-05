@@ -34,6 +34,7 @@ class ScanPlugin(models.Model):
         'vulnerability_nessus': ('NESSUS_BASE', 'NESSUS_ACCESS_KEY', 'NESSUS_SECRET_KEY', 'NESSUS_SCAN_FOLDER', 'NESSUS_URL'),
         'backup_acronis': ('ACRONIS_BASE', 'ACRONIS_USERNAME', 'ACRONIS_PASSWORD', 'ACRONIS_URL'),
         'backup_aws': ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'),
+        'backup_azure': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_SUBSCRIPTION_ID', 'AZURE_VAULT_NAME'),
         'patching_oms': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_LOG_WORKSPACE'),
     }
 
@@ -84,7 +85,7 @@ class Host(models.Model):
 class HostStatus(models.Model):
     STATUS_CHOICES = (
         (0, 'N/A'),
-        (1, 'Failure'),
+        (1, 'No record'),
         (2, 'Unhealthy'),
         (3, 'OK'),
     )
