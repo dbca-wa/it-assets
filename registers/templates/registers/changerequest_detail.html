@@ -27,7 +27,7 @@
 </div>
 {% endif %}
 
-{% if object.is_submitted and object.approver.email == request.user.email %}
+{% if object.is_submitted and object.endorser.email == request.user.email %}
 <div class="row">
     <div class="col-xs-12">
         <hr>
