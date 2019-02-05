@@ -50,7 +50,7 @@
                 <th>Change type</th>
                 <th>Status</th>
                 <th>Requester</th>
-                <th>Approver</th>
+                <th>Endorser</th>
                 <th>Implementer</th>
                 <th>Planned start & end</th>
             </tr>
@@ -63,7 +63,7 @@
                 <td>{{ object.get_change_type_display }}</td>
                 <td>{{ object.get_status_display }}</td>
                 <td>{{ object.requester.get_full_name }}</td>
-                <td>{{ object.approver.get_full_name }}</td>
+                <td>{{ object.endorser.get_full_name }}</td>
                 <td>{{ object.implementer.get_full_name }}</td>
                 <td>{{ object.planned_start|date:"D, j M Y H:i" }}<br>{{ object.planned_end|date:"D, j M Y H:i" }}</td>
             </tr>

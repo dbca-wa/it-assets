@@ -513,6 +513,24 @@ class LocationResource(CSVDjangoResource):
         return data
 
 
+from restless.preparers import FieldsPreparer
+
+class UserSelectResource(DjangoResource):
+    """A small API resource to provide DepartmentUsers for select lists.
+    """
+    preparer = FieldsPreparer(fields={
+        'id': 'id',
+        'text': 'email',
+    })
+
+    def list(self):
+        FILTERS = DepartmentUser.ACTIVE_FILTER.copy()
+        users = DepartmentUser.objects.filter(**FILTERS)
+        if 'q' in self.request.GET:
+            users = DepartmentUser.objects.filter(email__contains=self.request.GET['q'])
+        return users
+
+
 @csrf_exempt
 def profile(request):
     """An API view that returns the profile for the request user.

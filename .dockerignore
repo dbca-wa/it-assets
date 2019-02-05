@@ -4,8 +4,11 @@
 .git*
 .s2i
 .travis.yml
+.pgdump
+.dump
 Dockerfile
 LICENSE
 logs
 media
+staticfiles
 README.md

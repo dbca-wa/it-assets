@@ -1,3 +1,4 @@
+from datetime import datetime
 from django import forms
 from django.conf import settings
 from django.conf.urls import url
@@ -11,6 +12,7 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 from io import BytesIO
+from pytz import timezone
 from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
@@ -305,14 +307,16 @@ class IncidentAdmin(ModelAdmin):
 class StandardChangeAdmin(ModelAdmin):
     date_hierarchy = 'created'
     filter_horizontal = ('it_systems',)
-    list_display = ('id', 'name', 'approver', 'expiry')
-    raw_id_fields = ('approver',)
-    search_fields = ('id', 'name', 'approver__email')
+    list_display = ('id', 'name', 'endorser', 'expiry')
+    raw_id_fields = ('endorser',)
+    search_fields = ('id', 'name', 'endorser__email')
 
 
 class ChangeLogInline(StackedInline):
     model = ChangeLog
     extra = 0
+    fields = ('created', 'log')
+    readonly_fields = ('created',)
 
 
 class CompletionListFilter(SimpleListFilter):
@@ -334,14 +338,32 @@ class CompletionListFilter(SimpleListFilter):
             return queryset.filter(completed__isnull=True)
 
 
-def email_approver(modeladmin, request, queryset):
-    """A custom admin action to (re)send an email to the approver, requesting that they endorse an RFC.
+def email_endorser(modeladmin, request, queryset):
+    """A custom admin action to (re)send an email to the endorser, requesting that they endorse an RFC.
     """
     for rfc in queryset:
         if rfc.is_submitted:
-            rfc.email_approver(request)
+            rfc.email_endorser(request)
+            msg = 'Request for approval emailed to {}.'.format(rfc.endorser.get_full_name())
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+            messages.success(request, msg)
 
-email_approver.short_description = 'Send email to the approver requesting endorsement of a change'
+email_endorser.short_description = 'Send email to the endorser requesting endorsement of a change'
+
+
+def email_implementer(modeladmin, request, queryset):
+    """A custom admin action to (re)send email to the implementer requesting that they record completion.
+    """
+    for rfc in queryset:
+        if rfc.status == 3 and rfc.planned_end <= datetime.now().astimezone(timezone(settings.TIME_ZONE)) and rfc.completed is None:
+            rfc.email_implementer(request)
+            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+            messages.success(request, msg)
+
+email_implementer.short_description = 'Send email to the implementer to record completion of a finished change'
 
 
 def cab_approve(modeladmin, request, queryset):
@@ -418,18 +440,18 @@ cab_reject.short_description = 'Mark selected change requests as rejected at CAB
 
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
-    actions = [cab_approve, cab_reject, email_approver]
+    actions = [cab_approve, cab_reject, email_endorser, email_implementer]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
-        'id', 'title', 'change_type', 'requester_name', 'approver_name', 'implementer_name', 'status',
-        'planned_start', 'planned_end', 'completed')
+        'id', 'title', 'change_type', 'requester_name', 'endorser_name', 'implementer_name', 'status',
+        'created', 'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
-    raw_id_fields = ('requester', 'approver', 'implementer')
+    raw_id_fields = ('requester', 'endorser', 'implementer')
     search_fields = (
-        'id', 'title', 'requester__email', 'approver__email', 'implementer__email', 'implementation',
+        'id', 'title', 'requester__email', 'endorser__email', 'implementer__email', 'implementation',
         'communication', 'reference_url')
 
     def requester_name(self, obj):
@@ -438,11 +460,11 @@ class ChangeRequestAdmin(ModelAdmin):
         return ''
     requester_name.short_description = 'requester'
 
-    def approver_name(self, obj):
-        if obj.approver:
-            return obj.approver.get_full_name()
+    def endorser_name(self, obj):
+        if obj.endorser:
+            return obj.endorser.get_full_name()
         return ''
-    approver_name.short_description = 'approver'
+    endorser_name.short_description = 'endorser'
 
     def implementer_name(self, obj):
         if obj.implementer:

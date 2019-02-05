@@ -1,4 +1,6 @@
+from calendar import monthrange
 from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import EmailMultiAlternatives
@@ -6,10 +8,14 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
 from organisation.models import DepartmentUser
 from pytz import timezone
+import re
 import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
-from .forms import ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestUpdateForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm
+from .forms import (
+    ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
+    StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
+)
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -37,7 +43,7 @@ class ITSystemExport(View):
                 'Technology custodian', 'Information custodian', 'BH support', 'AH support',
                 'Availability', 'User groups', 'Application server(s)', 'Database server(s)', 'Network storage',
                 'Backups', 'Recovery category', 'Seasonality', 'User notification',
-                'Application type', 'System type',
+                'Application type', 'System type', 'Cost centre', 'Division',
             ))
             row = 1
             for i in itsystems:
@@ -56,6 +62,8 @@ class ITSystemExport(View):
                     i.get_seasonality_display() if i.seasonality else '',
                     i.user_notification, i.get_application_type_display() if i.application_type else '',
                     i.get_system_type_display() if i.system_type else '',
+                    i.cost_centre.code if i.cost_centre else '',
+                    i.cost_centre.division.name if (i.cost_centre and i.cost_centre.division) else '',
                 ])
                 row += 1
             systems.set_column('A:A', 9)
@@ -69,6 +77,8 @@ class ITSystemExport(View):
             systems.set_column('Q:S', 27)
             systems.set_column('T:T', 22)
             systems.set_column('U:U', 28)
+            systems.set_column('V:V', 13)
+            systems.set_column('W:W', 41)
 
         return response
 
@@ -224,8 +234,8 @@ class ChangeRequestDetail(DetailView):
         emails = []
         if rfc.requester:
             emails.append(rfc.requester.email)
-        if rfc.approver:
-            emails.append(rfc.approver.email)
+        if rfc.endorser:
+            emails.append(rfc.endorser.email)
         if rfc.implementer:
             emails.append(rfc.implementer.email)
         context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
@@ -248,15 +258,15 @@ class ChangeRequestCreate(CreateView):
             context['title'] = 'Create a draft change request'
         return context
 
-    def get_initial(self):
-        initial = super(ChangeRequestCreate, self).get_initial()
-        # Try setting the requester to equal the request user.
-        if DepartmentUser.objects.filter(email=self.request.user.email).exists():
-            initial['requester'] = DepartmentUser.objects.get(email=self.request.user.email)
-        return initial
-
     def form_valid(self, form):
-        rfc = form.save()
+        rfc = form.save(commit=False)
+        # Set the requester as the request user.
+        rfc.requester = DepartmentUser.objects.get(email=self.request.user.email)
+        # Set the endorser and implementer (if required).
+        if self.request.POST.get('endorser_choice'):
+            rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
+        if self.request.POST.get('implementer_choice'):
+            rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
         # Autocomplete normal/standard change fields.
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
@@ -266,11 +276,10 @@ class ChangeRequestCreate(CreateView):
         return super(ChangeRequestCreate, self).form_valid(form)
 
 
-class ChangeRequestUpdate(UpdateView):
+class ChangeRequestChange(UpdateView):
     """View for all end-user changes to an RFC: update, submit, endorse, etc.
     """
     model = ChangeRequest
-    form_class = ChangeRequestUpdateForm
 
     def get(self, request, *args, **kwargs):
         # Validate that the RFC may still be updated.
@@ -278,20 +287,45 @@ class ChangeRequestUpdate(UpdateView):
         if not rfc.is_draft:
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestUpdate, self).get(request, *args, **kwargs)
+        return super(ChangeRequestChange, self).get(request, *args, **kwargs)
+
+    def get_form_class(self):
+        rfc = self.get_object()
+        if rfc.is_standard_change:
+            return StandardChangeRequestChangeForm
+        return ChangeRequestChangeForm
+
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        rfc = self.get_object()
+        if rfc.endorser:
+            form.fields['endorser_choice'].choices = [(rfc.endorser.pk, rfc.endorser.email)]
+        if rfc.implementer:
+            form.fields['implementer_choice'].choices = [(rfc.implementer.pk, rfc.implementer.email)]
+        return form
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestUpdate, self).get_context_data(**kwargs)
-        context['title'] = 'Update draft change request {}'.format(self.get_object().pk)
+        context = super(ChangeRequestChange, self).get_context_data(**kwargs)
+        rfc = self.get_object()
+        if rfc.is_standard_change:
+            context['title'] = 'Update draft standard change request {}'.format(rfc.pk)
+        else:
+            context['title'] = 'Update draft change request {}'.format(rfc.pk)
         return context
 
     def get_success_url(self):
         return self.get_object().get_absolute_url()
 
     def form_valid(self, form):
-        rfc = form.save()
-        errors = False
+        rfc = form.save(commit=False)
+        # Set the endorser and implementer (if required).
+        if self.request.POST.get('endorser_choice'):
+            rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
+        if self.request.POST.get('implementer_choice'):
+            rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
+        rfc.save()
 
+        errors = False
         # If the user clicked "submit" (for approval), undertake additional form validation.
         if self.request.POST.get('submit'):
             # If a standard change, this must be selected.
@@ -303,13 +337,13 @@ class ChangeRequestUpdate(UpdateView):
             if not rfc.requester:
                 form.add_error('requester', 'Requester cannot be blank.')
                 errors = True
-            # Approver is required.
-            if not rfc.approver:
-                form.add_error('approver', 'Approver cannot be blank.')
+            # Endorser is required.
+            if not rfc.endorser:
+                form.add_error('endorser_choice', 'Endorser cannot be blank.')
                 errors = True
             # Implementer is required.
             if not rfc.implementer:
-                form.add_error('implementer', 'Implementer cannot be blank.')
+                form.add_error('implementer_choice', 'Implementer cannot be blank.')
                 errors = True
             # Test date is required if not a standard change.
             if not rfc.is_standard_change and not rfc.test_date:
@@ -332,7 +366,7 @@ class ChangeRequestUpdate(UpdateView):
             if not rfc.is_standard_change and not rfc.communication:
                 form.add_error('communication', 'Details relating to any communications must be specified (or input "NA").')
                 errors = True
-            # No validation errors: change the RFC status, send an email to the approver and make a log.
+            # No validation errors: change the RFC status, send an email to the endorser and make a log.
             if not errors:
                 # TODO: send an email to the requester.
                 rfc.status = 1
@@ -341,14 +375,14 @@ class ChangeRequestUpdate(UpdateView):
                 messages.success(self.request, msg)
                 log = ChangeLog(change_request=rfc, log=msg)
                 log.save()
-                rfc.email_approver(self.request)
+                rfc.email_endorser(self.request)
                 log = ChangeLog(
-                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.approver.get_full_name()))
+                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.endorser.get_full_name()))
                 log.save()
 
         if errors:
-            return super(ChangeRequestUpdate, self).form_invalid(form)
-        return super(ChangeRequestUpdate, self).form_valid(form)
+            return super(ChangeRequestChange, self).form_invalid(form)
+        return super(ChangeRequestChange, self).form_valid(form)
 
 
 class ChangeRequestEndorse(UpdateView):
@@ -368,8 +402,8 @@ class ChangeRequestEndorse(UpdateView):
             # Redirect to the object detail view.
             messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        if self.request.user.email != rfc.approver.email:
-            messages.warning(self.request, 'You are not the approver for change request {}.'.format(rfc.pk))
+        if self.request.user.email != rfc.endorser.email:
+            messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestEndorse, self).get(request, *args, **kwargs)
 
@@ -391,12 +425,12 @@ class ChangeRequestEndorse(UpdateView):
                 {} ("{}") has been endorsed by {}, and it is now scheduled to be approved at the
                 next OIM Change Advisory Board meeting.\n
                 {}\n
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             html_content = """<p>This is an automated message to let you know that change request
                 {0} ("{1}") has been endorsed by {2}, and it is now scheduled to be approved at the
                 next OIM Change Advisory Board meeting.</p>
                 <ul><li><a href="{3}">{3}</a></li></ul>
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
@@ -415,12 +449,12 @@ class ChangeRequestEndorse(UpdateView):
                 {} ("{}") has been rejected by {}. Its status has been reset to "Draft" for updates
                 and re-submission.\n
                 {}\n
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             html_content = """<p>This is an automated message to let you know that change request
                 {0} ("{1}") has been rejected by {2}. Its status has been reset to "Draft" for updates
                 and re-submission.</p>
                 <ul><li><a href="{3}">{3}</a></li></ul>
-                """.format(rfc.pk, rfc.title, rfc.approver.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
@@ -445,7 +479,7 @@ class ChangeRequestExport(View):
             rfcs = ChangeRequest.objects.all()
             changes = workbook.add_worksheet('Change requests')
             changes.write_row('A1', (
-                'Change ref.', 'Title', 'Change type', 'Requester', 'Approver', 'Implementer', 'Status',
+                'Change ref.', 'Title', 'Change type', 'Requester', 'Endorser', 'Implementer', 'Status',
                 'Test date', 'Planned start', 'Planned end', 'Completed', 'Outage duration',
                 'System(s) affected', 'Incident URL',
             ))
@@ -453,7 +487,7 @@ class ChangeRequestExport(View):
             for i in rfcs:
                 changes.write_row(row, 0, [
                     i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
-                    i.approver.get_full_name() if i.approver else '',
+                    i.endorser.get_full_name() if i.endorser else '',
                     i.implementer.get_full_name() if i.implementer else '',
                     i.get_status_display(), i.test_date,
                     i.planned_start.astimezone(TZ) if i.planned_start else '',
@@ -480,27 +514,45 @@ class ChangeRequestCalendar(ListView):
 
     def get_date_param(self, **kwargs):
         if 'date' in self.kwargs:
-            # Parse the date YYYY-MM-DD
-            return datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date()
-        else:
-            return date.today()
+            # Parse the date YYYY-MM-DD, then YYYY-MM.
+            if re.match('^\d{4}-\d{2}-\d{2}$', self.kwargs['date']):
+                return ('week', datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date())
+            elif re.match('^\d{4}-\d{2}$', self.kwargs['date']):
+                return ('month', datetime.strptime(self.kwargs['date'], '%Y-%m').date())
+        # Fall back to today's date.
+        return ('week', date.today())
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
-        d = self.get_date_param()
-        week_start = d - timedelta(days=d.weekday())
+        cal, d = self.get_date_param()
+        print(cal)
         context['date'] = d
-        context['week_start'] = week_start
-        context['date_last_week'] = week_start - timedelta(7)
-        context['date_next_week'] = week_start + timedelta(7)
+        if cal == 'week':
+            context['format'] = 'Weekly'
+            week_start = d - timedelta(days=d.weekday())
+            context['start'] = week_start
+            context['date_last'] = week_start - timedelta(7)
+            context['date_next'] = week_start + timedelta(7)
+        elif cal == 'month':
+            context['format'] = 'Monthly'
+            context['start'] = d
+            context['date_last'] = (d + relativedelta(months=-1)).strftime('%Y-%m')
+            context['date_next'] = (d + relativedelta(months=1)).strftime('%Y-%m')
         return context
 
     def get_queryset(self):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
-        d = self.get_date_param()
-        week_start = d - timedelta(days=d.weekday())
-        week_end = week_start + timedelta(days=6)
-        return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+        cal, d = self.get_date_param()
+        if cal == 'week':
+            week_start = d - timedelta(days=d.weekday())
+            week_end = week_start + timedelta(days=6)
+            return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+        elif cal == 'month':
+            month_start = d
+            month_end = monthrange(d.year, d.month)[1]
+            month_end = date(d.year, d.month, month_end)
+            return queryset.filter(planned_start__range=[month_start, month_end]).order_by('planned_start')
+        return queryset
 
 
 class ChangeRequestComplete(UpdateView):
