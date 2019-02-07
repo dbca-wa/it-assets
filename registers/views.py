@@ -39,46 +39,51 @@ class ITSystemExport(View):
             itsystems = ITSystem.objects.all().exclude(status=3).order_by('system_id')  # Exclude decommissioned systems.
             systems = workbook.add_worksheet('IT Systems')
             systems.write_row('A1', (
-                'System ID', 'Name', 'Status', 'Link', 'Description', 'Owner',
-                'Technology custodian', 'Information custodian', 'BH support', 'AH support',
-                'Availability', 'User groups', 'Application server(s)', 'Database server(s)', 'Network storage',
-                'Backups', 'Recovery category', 'Seasonality', 'User notification',
-                'Application type', 'System type', 'Cost centre', 'Division',
+                'System ID', 'Name', 'Description', 'Status', 'Recovery category', 'Seasonality',
+                'Availability', 'User groups', 'System type', 'Cost centre', 'Division', 'Owner',
+                'Technology custodian', 'Information custodian', 'Link', 'Technical documentation',
+                'Application server(s)', 'Database server(s)', 'Network storage', 'Backups',
+                'BH support', 'AH support', 'User notification',
             ))
             row = 1
             for i in itsystems:
                 systems.write_row(row, 0, [
-                    i.system_id, i.name, i.get_status_display(), i.link, i.description,
-                    i.owner.get_full_name() if i.owner else '',
-                    i.technology_custodian.get_full_name() if i.technology_custodian else '',
-                    i.information_custodian.get_full_name() if i.information_custodian else '',
-                    i.bh_support.email if i.bh_support else '',
-                    i.ah_support.email if i.ah_support else '',
-                    i.get_availability_display() if i.availability else '',
-                    ', '.join([str(j) for j in i.user_groups.all()]),
-                    i.application_server, i.database_server, i.network_storage,
-                    i.get_backups_display() if i.backups else '',
+                    i.system_id,
+                    i.name,
+                    i.description,
+                    i.get_status_display(),
                     i.get_recovery_category_display() if i.recovery_category else '',
                     i.get_seasonality_display() if i.seasonality else '',
-                    i.user_notification, i.get_application_type_display() if i.application_type else '',
+                    i.get_availability_display() if i.availability else '',
+                    ', '.join([str(j) for j in i.user_groups.all()]),
                     i.get_system_type_display() if i.system_type else '',
                     i.cost_centre.code if i.cost_centre else '',
                     i.cost_centre.division.name if (i.cost_centre and i.cost_centre.division) else '',
+                    i.owner.get_full_name() if i.owner else '',
+                    i.technology_custodian.get_full_name() if i.technology_custodian else '',
+                    i.information_custodian.get_full_name() if i.information_custodian else '',
+                    i.link,
+                    i.technical_documentation if i.technical_documentation else '',
+                    i.application_server,
+                    i.database_server,
+                    i.network_storage,
+                    i.get_backups_display() if i.backups else '',
+                    i.bh_support.email if i.bh_support else '',
+                    i.ah_support.email if i.ah_support else '',
+                    i.user_notification,
                 ])
                 row += 1
             systems.set_column('A:A', 9)
             systems.set_column('B:B', 45)
-            systems.set_column('C:C', 18)
-            systems.set_column('D:E', 45)
-            systems.set_column('F:H', 21)
-            systems.set_column('I:J', 35)
-            systems.set_column('K:K', 14)
-            systems.set_column('L:P', 35)
-            systems.set_column('Q:S', 27)
-            systems.set_column('T:T', 22)
-            systems.set_column('U:U', 28)
-            systems.set_column('V:V', 13)
-            systems.set_column('W:W', 41)
+            systems.set_column('C:D', 18)
+            systems.set_column('E:E', 27)
+            systems.set_column('F:G', 19)
+            systems.set_column('H:H', 50)
+            systems.set_column('I:I', 30)
+            systems.set_column('J:J', 13)
+            systems.set_column('K:K', 41)
+            systems.set_column('L:N', 21)
+            systems.set_column('O:W', 50)
 
         return response
 

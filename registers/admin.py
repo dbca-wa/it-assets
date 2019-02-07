@@ -84,7 +84,7 @@ class ITSystemAdmin(VersionAdmin):
     list_display = (
         'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support')
     list_filter = (
-        'status', 'application_type', 'system_type', 'availability', 'seasonality', 'recovery_category')
+        'status', 'system_type', 'availability', 'seasonality', 'recovery_category')
     search_fields = (
         'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
         'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation', 'cost_centre__code')
@@ -101,12 +101,12 @@ class ITSystemAdmin(VersionAdmin):
                 ('bh_support', 'ah_support'),
                 ('availability', 'seasonality'),
                 'description',
+                'system_type',
             )
         }),
         ('Technical information', {
             'fields': (
                 ('backups', 'recovery_category'),
-                ('system_type', 'application_type'),
                 ('emergency_operations', 'online_bookings', 'visitor_safety'),
                 'user_notification',
                 'documentation',
