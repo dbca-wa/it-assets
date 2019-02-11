@@ -17,6 +17,7 @@
             format: 'DD-MM-YYYY HH:mm',
         });
         $('.select-user-choice').select2({
+          minimumInputLength: 3,
           ajax: {
             url: '/api/user-select/',
             delay: 250,
@@ -27,6 +28,7 @@
             }
           }
         });
+        $('select#id_it_systems').select2();
     });
 </script>
 <title>{{ title }}</title>

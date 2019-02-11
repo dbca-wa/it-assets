@@ -52,7 +52,7 @@
                 <th>Outage duration (hh:mm:ss)</th>
                 <td>{% if object.outage is not None %}{{ object.outage }}{% else %}Not applicable{% endif %}</td>
             </tr>
-            {% if user_authorised %}
+        {% if user_authorised %}
             <tr>
                 <th>Implementation instructions</th>
                 <td>
@@ -83,5 +83,9 @@
                 <td>{{ object.notes }}</td>
             </tr>
             {% endif %}
-            {% endif %}
+            <tr>
+                <th>IT Systems affected</th>
+                <td>{{ object.systems_affected }}</td>
+            </tr>
+        {% endif %}
         </table>

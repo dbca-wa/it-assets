@@ -70,6 +70,13 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 ),
                 'communication', 'broadcast',
             ),
+            Fieldset(
+                'IT Systems',
+                Div(
+                    HTML('<p>IT Systems that are affected by this change request.')
+                ),
+                'it_systems',
+            ),
             FormActions(self.save_button),
         )
 
@@ -77,7 +84,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
         model = ChangeRequest
         fields = [
             'title', 'description', 'test_date', 'planned_start', 'planned_end', 'implementation',
-            'implementation_docs', 'outage', 'communication', 'broadcast']
+            'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems']
 
     def clean(self):
         if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
