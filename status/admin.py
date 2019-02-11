@@ -108,7 +108,17 @@ class ScanPluginAdmin(ModelAdmin):
     ordering = ('name',)
     inlines = (ScanPluginParameterInline,)
 
-    actions = ('run_scan_plugins',)
+    actions = ('enable_scan_plugins', 'disable_scan_plugins', 'run_scan_plugins',)
+
+    def enable_scan_plugins(self, request, queryset):
+        queryset.update(enabled=True)
+        self.message_user(request, 'Scan plugins have been enabled.')
+    enable_scan_plugins.short_description = 'Enable scan plugins'
+
+    def disable_scan_plugins(self, request, queryset):
+        queryset.update(enabled=False)
+        self.message_user(request, 'Scan plugins have been disabled.')
+    disable_scan_plugins.short_description = 'Disable scan plugins'
 
     def run_scan_plugins(self, request, queryset):
         for plugin in queryset:

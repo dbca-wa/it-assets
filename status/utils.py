@@ -8,7 +8,7 @@ from django.conf import settings
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 
 
-def lookup(address, date):
+def lookup_host(address):
     try:
         ip = socket.gethostbyname(address)
     except Exception:
@@ -17,6 +17,13 @@ def lookup(address, date):
     if not host_qs:
         return None
     host = host_qs.first()
+    return host
+
+
+def lookup(address, date):
+    host = lookup_host(address)
+    if not host:
+        return None
     host_status = HostStatus.objects.filter(host=host, date=date).first()
     return host_status
 
@@ -37,8 +44,13 @@ def scan(range_qs=None, date=None):
             sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns')['scan']
     
             for ipv4, context in sweep_data.items():
+                host = lookup_host(ipv4)
                 fqdn = context['hostnames'][0]['name'].lower() if context['hostnames'][0]['name'] else ipv4
-                host, _ = Host.objects.get_or_create(name=fqdn)
+                if host:
+                    if host.name == ipv4 and host.name != fqdn and not Host.objects.filter(name=fqdn):
+                        host.name = fqdn
+                else:
+                    host, _ = Host.objects.get_or_create(name=fqdn)
                 host.save()
                 host_status, _ = HostStatus.objects.get_or_create(host=host, date=date)
                 host_status.ping_status = 3
