@@ -550,7 +550,7 @@ class ChangeRequestCalendar(ListView):
         cal, d = self.get_date_param()
         if cal == 'week':
             week_start = d - timedelta(days=d.weekday())
-            week_end = week_start + timedelta(days=6)
+            week_end = week_start + timedelta(days=7)
             return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
         elif cal == 'month':
             month_start = d
