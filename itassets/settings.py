@@ -125,20 +125,20 @@ USE_TZ = True
 TIME_ZONE = 'Australia/Perth'
 LANGUAGE_CODE = 'en-us'
 DATE_INPUT_FORMATS = (
-    '%d/%m/%y',
     '%d/%m/%Y',
-    '%d-%m-%y',
+    '%d/%m/%y',
     '%d-%m-%Y',
+    '%d-%m-%y',
     '%d %b %Y',
     '%d %b, %Y',
     '%d %B %Y',
     '%d %B, %Y',
 )
 DATETIME_INPUT_FORMATS = (
-    '%d/%m/%y %H:%M',
     '%d/%m/%Y %H:%M',
-    '%d-%m-%y %H:%M',
+    '%d/%m/%y %H:%M',
     '%d-%m-%Y %H:%M',
+    '%d-%m-%y %H:%M',
 )
 
 

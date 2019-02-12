@@ -33,6 +33,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -47,7 +48,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'title', 'description',
             ),
             Fieldset(
-                'Endorsement and Implementation',
+                'Endorsement and Implementer',
                 'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
@@ -55,7 +56,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'test_date', 'planned_start', 'planned_end', 'outage',
                 Div(
                     HTML('''<p>Please note that implementation instructions must be supplied prior to submission for approval.
-                         Text instructions or an uploaded document (e.g. Word, PDF) are acceptable.</p><br>'''),
+                         Text instructions or an uploaded document (e.g. Word, PDF) are acceptable. Implemenation instructions
+                         should include any details related to post-change testing and any rollback procedures.</p><br>'''),
                     css_id='div_id_implementation_note'
                 ),
                 'implementation', 'implementation_docs',
@@ -68,6 +70,13 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 ),
                 'communication', 'broadcast',
             ),
+            Fieldset(
+                'IT Systems',
+                Div(
+                    HTML('<p>IT Systems that are affected by this change request.')
+                ),
+                'it_systems',
+            ),
             FormActions(self.save_button),
         )
 
@@ -75,7 +84,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
         model = ChangeRequest
         fields = [
             'title', 'description', 'test_date', 'planned_start', 'planned_end', 'implementation',
-            'implementation_docs', 'outage', 'communication', 'broadcast']
+            'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems']
 
     def clean(self):
         if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
@@ -116,7 +125,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
                 'title', 'standard_change',
             ),
             Fieldset(
-                'Endorsement and Implementation',
+                'Endorsement and Implementer',
                 'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
@@ -192,11 +201,11 @@ class ChangeRequestCompleteForm(forms.ModelForm):
         self.helper.layout = Layout(
             Fieldset(
                 'Change request outcome',
-                'outcome', 'unexpected_issues', 'notes',
+                'outcome', 'completed', 'unexpected_issues', 'notes',
             ),
             FormActions(self.save_button),
         )
 
     class Meta:
         model = ChangeRequest
-        fields = ['unexpected_issues', 'notes']
+        fields = ['completed', 'unexpected_issues', 'notes']
