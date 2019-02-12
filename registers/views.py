@@ -427,13 +427,13 @@ class ChangeRequestEndorse(UpdateView):
             subject = 'Change request {} has been endorsed'.format(rfc.pk)
             detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
             text_content = """This is an automated message to let you know that change request
-                {} ("{}") has been endorsed by {}, and it is now scheduled to be approved at the
-                next OIM Change Advisory Board meeting.\n
+                {} ("{}") has been endorsed by {}, and it is now scheduled to be assessed by
+                the OIM Change Advisory Board.\n
                 {}\n
                 """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             html_content = """<p>This is an automated message to let you know that change request
-                {0} ("{1}") has been endorsed by {2}, and it is now scheduled to be approved at the
-                next OIM Change Advisory Board meeting.</p>
+                {0} ("{1}") has been endorsed by {2}, and it is now scheduled to be assessed by
+                the OIM Change Advisory Board.</p>
                 <ul><li><a href="{3}">{3}</a></li></ul>
                 """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])

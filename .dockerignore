@@ -6,6 +6,7 @@
 .travis.yml
 .pgdump
 .dump
+__pycache__
 Dockerfile
 LICENSE
 logs
