@@ -36,7 +36,10 @@ class ITSystemExport(View):
                 'remove_timezone': True,
             },
         ) as workbook:
-            itsystems = ITSystem.objects.all().exclude(status=3).order_by('system_id')  # Exclude decommissioned systems.
+            if 'all' in request.GET:  # Return all ITsystems.
+                itsystems = ITSystem.objects.all().order_by('system_id')
+            else:  # Default to prod/prod-legacy IT systems only.
+                itsystems = ITSystem.objects.filter(status__in=[0, 2]).order_by('system_id')
             systems = workbook.add_worksheet('IT Systems')
             systems.write_row('A1', (
                 'System ID', 'Name', 'Description', 'Status', 'Recovery category', 'Seasonality',

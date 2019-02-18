@@ -2,7 +2,7 @@
 
 {% block object-tools-items %}
     <li>
-        <a href="{% url 'admin:itsystem_export' %}">Export IT Systems</a>
+        <a href="{% url 'admin:itsystem_export' %}?all=true">Export IT Systems</a>
     </li>
     {{ block.super }}
 {% endblock %}
