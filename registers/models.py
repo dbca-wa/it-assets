@@ -212,10 +212,10 @@ class ITSystem(CommonFields):
     ah_support = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True, related_name='ah_support',
         verbose_name='after hours support', help_text='After-hours support contact')
-    documentation = models.URLField(
-        max_length=2048, null=True, blank=True, help_text='URL to end-user documentation')
-    technical_documentation = models.URLField(
-        max_length=2048, null=True, blank=True, help_text='URL to technical documentation')
+    documentation = models.CharField(
+        max_length=2048, null=True, blank=True, help_text='A link/URL to end-user documentation')
+    technical_documentation = models.CharField(
+        max_length=2048, null=True, blank=True, help_text='A link/URL to technical documentation')
     status_url = models.URLField(
         max_length=2048, null=True, blank=True, verbose_name='status URL',
         help_text='URL to status/uptime info')
