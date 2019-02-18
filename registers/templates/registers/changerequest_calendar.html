@@ -37,8 +37,10 @@
                 <tr>
                     <th>Change ref.</th>
                     <th>Title</th>
+                    <th>Change type</th>
                     <th>Status</th>
                     <th>Requester</th>
+                    <th>Endorser</th>
                     <th>Implementer</th>
                     <th>Planned start & end</th>
                 </tr>
@@ -48,8 +50,10 @@
                 <tr>
                     <td>{{ object.pk }}</td>
                     <td><a href="{{ object.get_absolute_url }}">{{ object.title }}</a></td>
+                    <td>{{ object.get_change_type_display }}</td>
                     <td>{{ object.get_status_display }}</td>
                     <td>{{ object.requester.get_full_name }}</td>
+                    <td>{{ object.endorser.get_full_name }}</td>
                     <td>{{ object.implementer.get_full_name }}</td>
                     <td>{{ object.planned_start|date:"D, j M Y H:i" }}<br>{{ object.planned_end|date:"D, j M Y H:i" }}</td>
                 </tr>
