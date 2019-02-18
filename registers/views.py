@@ -530,7 +530,6 @@ class ChangeRequestCalendar(ListView):
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
         cal, d = self.get_date_param()
-        print(cal)
         context['date'] = d
         if cal == 'week':
             context['format'] = 'Weekly'

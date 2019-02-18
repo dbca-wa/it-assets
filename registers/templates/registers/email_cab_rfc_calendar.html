@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Weekly change calendar ({{ start|date:"D, j M Y" }})</title>
+        <!-- Basic CSS, copied from purecss.io -->
+        <style type="text/css">
+            html{font-family:sans-serif;-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;}
+            body{margin:0;}
+            td,th{padding:0;}
+            a{background-color:transparent;}
+            a:active,a:hover{outline:0;}
+            h1{font-size:2em;margin:.67em 0;}
+            table{border-collapse:collapse;border-spacing:0;}
+            td,th{padding:0;}
+            .pure-table{border-collapse:collapse;border-spacing:0;empty-cells:show;border:1px solid #cbcbcb;}
+            .pure-table td,.pure-table th{border-left:1px solid #cbcbcb;border-width:0 0 0 1px;font-size:inherit;margin:0;overflow:visible;padding:.5em 1em;}
+            .pure-table td:first-child,.pure-table th:first-child{border-left-width:0;}
+            .pure-table thead{background-color:#e0e0e0;color:#000;text-align:left;vertical-align:bottom;}
+            .pure-table td{background-color:transparent;}
+        </style>
+    </head>
+
+    <body>
+        <h1>Weekly change calendar starting {{ start|date:"l, j F Y" }}</h1>
+        <p>CAB members should note the following change requests have been registered for the current week.</p>
+
+        {% if object_list %}
+            <table class="pure-table">
+                <thead>
+                    <tr>
+                        <th>Change ref.</th>
+                        <th>Title</th>
+                        <th>Change type</th>
+                        <th>Status</th>
+                        <th>Requester</th>
+                        <th>Endorser</th>
+                        <th>Implementer</th>
+                        <th>Planned start and end</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for object in object_list %}
+                    <tr>
+                        <td>{{ object.pk }}</td>
+                        <td><a href="{{ domain }}{{ object.get_absolute_url }}">{{ object.title }}</a></td>
+                        <td>{{ object.get_change_type_display }}</td>
+                        <td>{{ object.get_status_display }}</td>
+                        <td>{{ object.requester.get_full_name }}</td>
+                        <td>{{ object.endorser.get_full_name }}</td>
+                        <td>{{ object.implementer.get_full_name }}</td>
+                        <td>{{ object.planned_start|date:"D, j M Y H:i" }}<br>{{ object.planned_end|date:"D, j M Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No changes planned.</p>
+        {% endif %}
+
+    </body>
+</html>
