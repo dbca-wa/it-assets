@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
@@ -21,7 +22,7 @@ from .utils import search_filter
 TZ = timezone(settings.TIME_ZONE)
 
 
-class ITSystemExport(View):
+class ITSystemExport(LoginRequiredMixin, View):
     """A custom view to export all IT Systems to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
@@ -91,7 +92,7 @@ class ITSystemExport(View):
         return response
 
 
-class ITSystemHardwareExport(View):
+class ITSystemHardwareExport(LoginRequiredMixin, View):
     """A custom view to export IT ystem hardware to an Excel spreadsheet.
     NOTE: report output excludes objects that are marked as decommissioned.
     """
@@ -141,7 +142,7 @@ class ITSystemHardwareExport(View):
         return response
 
 
-class IncidentList(ListView):
+class IncidentList(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
@@ -151,11 +152,11 @@ class IncidentList(ListView):
         return Incident.objects.filter(resolution__isnull=True)
 
 
-class IncidentDetail(DetailView):
+class IncidentDetail(LoginRequiredMixin, DetailView):
     model = Incident
 
 
-class IncidentExport(View):
+class IncidentExport(LoginRequiredMixin, View):
     """A custom view to export all Incident values to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
@@ -208,7 +209,7 @@ class IncidentExport(View):
         return response
 
 
-class ChangeRequestList(ListView):
+class ChangeRequestList(LoginRequiredMixin, ListView):
     model = ChangeRequest
     paginate_by = 20
 
@@ -231,7 +232,7 @@ class ChangeRequestList(ListView):
         return context
 
 
-class ChangeRequestDetail(DetailView):
+class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     model = ChangeRequest
 
     def get_context_data(self, **kwargs):
@@ -250,7 +251,7 @@ class ChangeRequestDetail(DetailView):
         return context
 
 
-class ChangeRequestCreate(CreateView):
+class ChangeRequestCreate(LoginRequiredMixin, CreateView):
     model = ChangeRequest
 
     def get_form_class(self):
@@ -284,7 +285,7 @@ class ChangeRequestCreate(CreateView):
         return super(ChangeRequestCreate, self).form_valid(form)
 
 
-class ChangeRequestChange(UpdateView):
+class ChangeRequestChange(LoginRequiredMixin, UpdateView):
     """View for all end-user changes to an RFC: update, submit, endorse, etc.
     """
     model = ChangeRequest
@@ -393,7 +394,7 @@ class ChangeRequestChange(UpdateView):
         return super(ChangeRequestChange, self).form_valid(form)
 
 
-class ChangeRequestEndorse(UpdateView):
+class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
     model = ChangeRequest
     form_class = ChangeRequestEndorseForm
     template_name = 'registers/changerequest_endorse.html'
@@ -469,7 +470,7 @@ class ChangeRequestEndorse(UpdateView):
         return super(ChangeRequestEndorse, self).form_valid(form)
 
 
-class ChangeRequestExport(View):
+class ChangeRequestExport(LoginRequiredMixin, View):
     """A custom view to export all Incident values to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
@@ -516,7 +517,7 @@ class ChangeRequestExport(View):
         return response
 
 
-class ChangeRequestCalendar(ListView):
+class ChangeRequestCalendar(LoginRequiredMixin, ListView):
     model = ChangeRequest
     template_name = 'registers/changerequest_calendar.html'
 
@@ -562,7 +563,7 @@ class ChangeRequestCalendar(ListView):
         return queryset
 
 
-class ChangeRequestComplete(UpdateView):
+class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
     """View for all 'completion' changes to an RFC: success/failure/notes etc.
     """
     model = ChangeRequest

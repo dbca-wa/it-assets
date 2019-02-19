@@ -21,6 +21,9 @@ class UserChoiceField(forms.ChoiceField):
 
 class ChangeRequestCreateForm(forms.ModelForm):
     """Base ModelForm class for ChangeRequest models.
+    In order to improve user experience, the DepartmentUser select fields are replaced with basic
+    validation-exempt ChoiceFields that are filled client-side via AJAX. Inputted data is then
+    saved to the model after form validation.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
     endorser_choice = UserChoiceField(
@@ -33,13 +36,14 @@ class ChangeRequestCreateForm(forms.ModelForm):
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['test_result_docs'].help_text += ' - OPTIONAL'
         self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
                 'Instructions',
                 Div(
-                    HTML('<p>Note that all fields below need not be completed until the point of submission and approval.</p><br>'),
+                    HTML('<p>Note that all fields below need not be completed until the point of submission for endorsement (RFCs may be saved as drafts).</p><br>'),
                     css_id='div_id_instructions'
                 ),
             ),
@@ -49,13 +53,15 @@ class ChangeRequestCreateForm(forms.ModelForm):
             ),
             Fieldset(
                 'Endorsement and Implementer',
+                HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.'),
                 'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
-                'Implementation',
-                'test_date', 'planned_start', 'planned_end', 'outage',
+                'Testing and Implementation',
+                HTML('<p>Test and implementation dates & times must be supplied prior to submission for endorsement.'),
+                'test_date', 'test_result_docs', 'planned_start', 'planned_end', 'outage',
                 Div(
-                    HTML('''<p>Please note that implementation instructions must be supplied prior to submission for approval.
+                    HTML('''<p>Please note that implementation instructions must be supplied prior to submission for endorsement.
                          Text instructions or an uploaded document (e.g. Word, PDF) are acceptable. Implemenation instructions
                          should include any details related to post-change testing and any rollback procedures.</p><br>'''),
                     css_id='div_id_implementation_note'
@@ -83,7 +89,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = [
-            'title', 'description', 'test_date', 'planned_start', 'planned_end', 'implementation',
+            'title', 'description', 'test_date', 'test_result_docs', 'planned_start', 'planned_end', 'implementation',
             'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems']
 
     def clean(self):
@@ -97,6 +103,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
 
 class StandardChangeRequestCreateForm(forms.ModelForm):
     """Base ModelForm class for ChangeRequest models (standard change type).
+    See notes on ChangeRequestCreateForm about endorser & implementer fields.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
     endorser_choice = UserChoiceField(
@@ -116,7 +123,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
             Fieldset(
                 'Instructions',
                 Div(
-                    HTML('<p>Standard changes must be agreed and registered with OIM prior. Note that all fields below need not be completed until the point of submission and approval.</p><br>'),
+                    HTML('<p>Standard changes must be agreed and registered with OIM prior. Note that all fields below need not be completed until the point of submission for endorsement (RFCs may be saved as drafts).</p><br>'),
                     css_id='div_id_instructions'
                 ),
             ),
@@ -126,10 +133,12 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
             ),
             Fieldset(
                 'Endorsement and Implementer',
+                HTML('<p>Endorser and implementer must be nominated prior to submission.'),
                 'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
                 'Implementation',
+                HTML('<p>Implementation dates & times must be supplied prior to submission.'),
                 'planned_start', 'planned_end', 'outage',
             ),
             Fieldset(

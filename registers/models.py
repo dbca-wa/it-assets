@@ -499,6 +499,8 @@ class ChangeRequest(models.Model):
         max_length=2048, null=True, blank=True, verbose_name='Incident URL',
         help_text='If the change is to address an incident, URL to the incident details')
     test_date = models.DateField(null=True, blank=True, help_text='Date on which the change was tested')
+    test_result_docs = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Test results record (attachment)')
     planned_start = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to begin')
     planned_end = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to end')
     completed = models.DateTimeField(null=True, blank=True, help_text='Time that the change was completed')
