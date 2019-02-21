@@ -537,26 +537,25 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
     def get_date_param(self, **kwargs):
         if 'date' in self.kwargs:
             # Parse the date YYYY-MM-DD, then YYYY-MM.
-            if re.match('^\d{4}-\d{2}-\d{2}$', self.kwargs['date']):
+            if re.match('^\d{4}-\d{1,2}-\d{1,2}$', self.kwargs['date']):
                 return ('week', datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date())
-            elif re.match('^\d{4}-\d{2}$', self.kwargs['date']):
+            elif re.match('^\d{4}-\d{1,2}$', self.kwargs['date']):
                 return ('month', datetime.strptime(self.kwargs['date'], '%Y-%m').date())
-        # Fall back to today's date.
-        return ('week', date.today())
+        else:
+            # If no starting date is specifed, fall back to Monday in the current week.
+            return ('week', date.today() - timedelta(days=date.today().weekday()))
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
         cal, d = self.get_date_param()
-        context['date'] = d
+        context['start'] = d
+        context['today'] = date.today()
         if cal == 'week':
             context['format'] = 'Weekly'
-            week_start = d - timedelta(days=d.weekday())
-            context['start'] = week_start
-            context['date_last'] = week_start - timedelta(7)
-            context['date_next'] = week_start + timedelta(7)
+            context['date_last'] = d - timedelta(7)
+            context['date_next'] = d + timedelta(7)
         elif cal == 'month':
             context['format'] = 'Monthly'
-            context['start'] = d
             context['date_last'] = (d + relativedelta(months=-1)).strftime('%Y-%m')
             context['date_next'] = (d + relativedelta(months=1)).strftime('%Y-%m')
         return context
@@ -565,13 +564,15 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
         cal, d = self.get_date_param()
         if cal == 'week':
-            week_start = d - timedelta(days=d.weekday())
+            # Convert week_start to a TZ-aware datetime object.
+            week_start = datetime.combine(d, datetime.min.time()).astimezone(TZ)
             week_end = week_start + timedelta(days=7)
             return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
         elif cal == 'month':
-            month_start = d
-            month_end = monthrange(d.year, d.month)[1]
-            month_end = date(d.year, d.month, month_end)
+            # Convert month_start to a TZ-aware datetime object.
+            month_start = datetime.combine(d, datetime.min.time()).astimezone(TZ)
+            last_day = monthrange(d.year, d.month)[1]
+            month_end = datetime.combine(date(d.year, d.month, last_day), datetime.min.time()).astimezone(TZ)
             return queryset.filter(planned_start__range=[month_start, month_end]).order_by('planned_start')
         return queryset
 
