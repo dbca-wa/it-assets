@@ -103,11 +103,9 @@ class ChangeRequestCreateForm(forms.ModelForm):
 
 class StandardChangeRequestCreateForm(forms.ModelForm):
     """Base ModelForm class for ChangeRequest models (standard change type).
-    See notes on ChangeRequestCreateForm about endorser & implementer fields.
+    See notes on ChangeRequestCreateForm about implementer field.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
-    endorser_choice = UserChoiceField(
-        required=False, label='Endorser', help_text='The person who will endorse this change prior to CAB')
     implementer_choice = UserChoiceField(
         required=False, label='Implementer', help_text='The person who will implement this change')
 
@@ -115,15 +113,13 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
         super(StandardChangeRequestCreateForm, self).__init__(*args, **kwargs)
         self.fields['standard_change'].required = True
         self.fields['standard_change'].help_text = 'Standard change reference'
-        # Add a CSS class to user choice fields, to upgrade them easier using JS.
-        self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
                 'Instructions',
                 Div(
-                    HTML('<p>Standard changes must be agreed and registered with OIM prior. Note that all fields below need not be completed until the point of submission for endorsement (RFCs may be saved as drafts).</p><br>'),
+                    HTML('<p>Standard changes must be agreed and registered with OIM prior. Note that all fields below need not be completed until the point of submission (RFCs may be saved as drafts).</p><br>'),
                     css_id='div_id_instructions'
                 ),
             ),
@@ -132,14 +128,9 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
                 'title', 'standard_change',
             ),
             Fieldset(
-                'Endorsement and Implementer',
-                HTML('<p>Endorser and implementer must be nominated prior to submission.'),
-                'endorser_choice', 'implementer_choice',
-            ),
-            Fieldset(
                 'Implementation',
-                HTML('<p>Implementation dates & times must be supplied prior to submission.'),
-                'planned_start', 'planned_end', 'outage',
+                HTML('<p>Implementer and implementation dates & times must be supplied prior to submission.'),
+                'implementer_choice', 'planned_start', 'planned_end', 'outage',
             ),
             Fieldset(
                 'Communication',
@@ -158,6 +149,14 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
             'title', 'standard_change', 'planned_start', 'planned_end', 'outage',
             'communication', 'broadcast']
 
+    def clean(self):
+        if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
+            if self.cleaned_data['planned_start'] > self.cleaned_data['planned_end']:
+                msg = 'Planned start cannot be later than planned end.'
+                self._errors['planned_start'] = self.error_class([msg])
+                self._errors['planned_end'] = self.error_class([msg])
+        return self.cleaned_data
+
 
 class ChangeRequestChangeForm(ChangeRequestCreateForm):
     submit_button = Submit('submit', 'Submit for endorsement', css_class='btn-lg btn-success')
@@ -169,7 +168,7 @@ class ChangeRequestChangeForm(ChangeRequestCreateForm):
 
 
 class StandardChangeRequestChangeForm(StandardChangeRequestCreateForm):
-    submit_button = Submit('submit', 'Submit for endorsement', css_class='btn-lg btn-success')
+    submit_button = Submit('submit', 'Submit to CAB', css_class='btn-lg btn-success')
 
     def __init__(self, *args, **kwargs):
         super(StandardChangeRequestChangeForm, self).__init__(*args, **kwargs)

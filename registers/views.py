@@ -279,9 +279,13 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         # Autocomplete normal/standard change fields.
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
+            rfc.endorser = rfc.standard_change.endorser
         else:
             rfc.change_type = 0
         rfc.save()
+        if 'std' in self.kwargs and self.kwargs['std']:
+            # Must be carried out after save()
+            rfc.it_systems.set(rfc.standard_change.it_systems.all())
         return super(ChangeRequestCreate, self).form_valid(form)
 
 
@@ -307,7 +311,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
     def get_form(self, *args, **kwargs):
         form = super().get_form(*args, **kwargs)
         rfc = self.get_object()
-        if rfc.endorser:
+        if rfc.endorser and not rfc.is_standard_change:
             form.fields['endorser_choice'].choices = [(rfc.endorser.pk, rfc.endorser.email)]
         if rfc.implementer:
             form.fields['implementer_choice'].choices = [(rfc.implementer.pk, rfc.implementer.email)]
@@ -377,17 +381,26 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                 errors = True
             # No validation errors: change the RFC status, send an email to the endorser and make a log.
             if not errors:
-                # TODO: send an email to the requester.
-                rfc.status = 1
-                rfc.save()
-                msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
-                messages.success(self.request, msg)
-                log = ChangeLog(change_request=rfc, log=msg)
-                log.save()
-                rfc.email_endorser(self.request)
-                log = ChangeLog(
-                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.endorser.get_full_name()))
-                log.save()
+                # Standard change workflow: submit directly to CAB.
+                if rfc.is_standard_change:
+                    rfc.status = 2
+                    rfc.save()
+                    msg = 'Standard change request {} submitted to CAB.'.format(rfc.pk)
+                    messages.success(self.request, msg)
+                    log = ChangeLog(change_request=rfc, log=msg)
+                    log.save()
+                # Normal change workflow: submit for endorsement, then to CAB.
+                else:
+                    rfc.status = 1
+                    rfc.save()
+                    msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
+                    messages.success(self.request, msg)
+                    log = ChangeLog(change_request=rfc, log=msg)
+                    log.save()
+                    rfc.email_endorser(self.request)
+                    log = ChangeLog(
+                        change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.get_full_name()))
+                    log.save()
 
         if errors:
             return super(ChangeRequestChange, self).form_invalid(form)
