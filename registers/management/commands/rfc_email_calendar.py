@@ -1,21 +1,32 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand, CommandError
 from django.template.loader import render_to_string
+from pytz import timezone
 from registers.models import ChangeRequest
 from texttable import Texttable
 
 
 class Command(BaseCommand):
-    help = 'Emails the current change calendar to users in the "CAB members" group'
+    help = 'Emails the weekly change calendar to users in the "CAB members" group'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--date', action='store', dest='datestring', default=None,
+            help='Date from which to start the calendar in format YYYY-MM-DD')
 
     def handle(self, *args, **options):
-        # Determine the current week's RFCs.
         d = date.today()
-        week_start = d - timedelta(days=d.weekday())
+        if options['datestring']:
+            try:
+                d = datetime.strptime(options['datestring'], '%Y-%m-%d').date()
+            except ValueError:
+                raise CommandError('Invalid date value: {} (use format YYYY-MM-DD)'.format(options['datestring']))
+
+        week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
         week_end = week_start + timedelta(days=7)
         rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
 
@@ -50,7 +61,7 @@ class Command(BaseCommand):
         if not Group.objects.filter(name='CAB members').exists():
             raise CommandError('"CAB members" group does not exist.')
         cab = Group.objects.get(name='CAB members')
-        subject = 'Change requests for week starting {}'.format(week_start.isoformat())
+        subject = 'Weekly change calendar starting {}'.format(week_start.strftime('%A, %d %b %Y'))
         recipients = list(User.objects.filter(groups__in=[cab], is_active=True).values_list('email', flat=True))
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, recipients)
         msg.attach_alternative(html_content, 'text/html')
