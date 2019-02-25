@@ -508,7 +508,8 @@ class ChangeRequestExport(LoginRequiredMixin, View):
             row = 1
             for i in rfcs:
                 changes.write_row(row, 0, [
-                    i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
+                    i.pk, i.title, i.get_change_type_display(),
+                    i.requester.get_full_name() if i.requester else '',
                     i.endorser.get_full_name() if i.endorser else '',
                     i.implementer.get_full_name() if i.implementer else '',
                     i.get_status_display(), i.test_date,
