@@ -11,10 +11,12 @@ class HostIPInline(TabularInline):
 
 @register(Host)
 class HostAdmin(ModelAdmin):
-    list_display = ('name',)
+    list_display = ('name', 'active')
     ordering = ('name',)
     inlines = (HostIPInline,)
 
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @register(HostStatus)
@@ -34,41 +36,43 @@ class HostStatusAdmin(ModelAdmin):
         self.message_user(request, 'A full scan has been scheduled.')
     run_full_scan.short_description = 'Run a full scan'
 
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     fieldsets = (
         ('Host details', {
             'fields': (
-                'host', 'ping_status', 'ping_scan_range'
+                'host_html', 'ping_status_html', 'ping_scan_range'
             )
         }),
         ('Monitoring', {
             'fields': (
-                'monitor_status', 'monitor_plugin', 'monitor_output', 'monitor_info_html', 'monitor_url',
+                'monitor_status_html', 'monitor_plugin', 'monitor_output', 'monitor_info_html', 'monitor_url_html',
             )
         }),
         ('Vulnerability testing', {
             'fields': (
-                'vulnerability_status', 'vulnerability_plugin', 'vulnerability_output', 'vulnerability_info_html', 'vulnerability_url',
+                'vulnerability_status_html', 'vulnerability_plugin', 'vulnerability_output', 'vulnerability_info_html', 'vulnerability_url_html',
             )
         }),
         ('Backup', {
             'fields': (
-                'backup_status', 'backup_plugin', 'backup_output', 'backup_info_html', 'backup_url',
+                'backup_status_html', 'backup_plugin', 'backup_output', 'backup_info_html', 'backup_url_html',
             )
         }),
         ('Patching automation', {
             'fields': (
-                'patching_status', 'patching_plugin', 'patching_output', 'patching_info_html', 'patching_url',
+                'patching_status_html', 'patching_plugin', 'patching_output', 'patching_info_html', 'patching_url_html',
             )
         }),
     )
 
     readonly_fields = (
-        'host', 'ping_status', 'ping_scan_range',
-        'monitor_status', 'monitor_plugin', 'monitor_output', 'monitor_info_html', 'monitor_url',
-        'vulnerability_status', 'vulnerability_plugin', 'vulnerability_output', 'vulnerability_info_html', 'vulnerability_url',
-        'backup_status', 'backup_plugin', 'backup_output', 'backup_info_html', 'backup_url',
-        'patching_status', 'patching_plugin', 'patching_output', 'patching_info_html', 'patching_url',
+        'host_html', 'ping_status_html', 'ping_scan_range',
+        'monitor_status_html', 'monitor_plugin', 'monitor_output', 'monitor_info_html', 'monitor_url_html',
+        'vulnerability_status_html', 'vulnerability_plugin', 'vulnerability_output', 'vulnerability_info_html', 'vulnerability_url_html',
+        'backup_status_html', 'backup_plugin', 'backup_output', 'backup_info_html', 'backup_url_html',
+        'patching_status_html', 'patching_plugin', 'patching_output', 'patching_info_html', 'patching_url_html',
     )
 
 
