@@ -2,6 +2,8 @@ import datetime
 import logging
 from openpyxl import load_workbook
 import psycopg2
+import pytz
+perth = pytz.timezone('Australia/Perth')
 
 from django.conf import settings
 
@@ -58,9 +60,17 @@ def alesco_data_import(fileobj):
     return True
 
 
-def alesco_db_import():
-    from .models import DepartmentUser
+ALESCO_DB_FIELDS = (
+    'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
+    'date_of_birth', 'occup_type', 'current_commence', 'job_term_date',
+    'occup_commence_date', 'occup_term_date', 'position_id', 'occup_pos_title',
+    'clevel1_id', 'clevel1_desc', 'clevel5_id', 'clevel5_desc', 'award',
+    'classification', 'step_id', 'emp_status', 'emp_stat_desc',
+    'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
+)
+ALESCO_DATE_MAX = datetime.date(2049, 12, 31)
 
+def alesco_db_fetch():
     conn = psycopg2.connect(
         host=settings.ALESCO_DB_HOST,
         database=settings.ALESCO_DB_NAME,
@@ -69,14 +79,18 @@ def alesco_db_import():
     )
     cur = conn.cursor()
 
-    fields = [
-        'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
-        'date_of_birth', 'occup_type', 'current_commence', 'job_term_date',
-        'occup_commence_date', 'occup_term_date', 'position_id', 'occup_pos_title',
-        'clevel1_id', 'clevel1_desc', 'clevel5_id', 'clevel5_desc', 'award',
-        'classification', 'step_id', 'emp_status', 'emp_stat_desc',
-        'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
-    ]
+    query = "SELECT {} FROM {};".format(', '.join(ALESCO_DB_FIELDS), settings.ALESCO_DB_TABLE)
+    cur.execute(query)
+    while True:
+        row = cur.fetchone()
+        if row is None:
+            break
+        yield row
+
+
+def alesco_db_import():
+    from .models import DepartmentUser
+
     date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date',]
 
     status_ranking = [
@@ -95,28 +109,17 @@ def alesco_db_import():
         'SCL2', 'R2', 'L2',
         'SCL1', 'R1', 'L12', 'L1',
     ]
-
-
-    query = "SELECT {} FROM {};".format(', '.join(fields), settings.ALESCO_DB_TABLE)
+    
+    date_to_dt = lambda d: perth.localize(datetime.datetime(d.year, d.month, d.day, 0, 0))+datetime.timedelta(days=1)
 
     today = datetime.date.today()
 
-    cur.execute(query)
     records = {}
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
+    alesco_iter = alesco_db_fetch()
+    for row in alesco_iter:
 
-        record = dict(zip(fields, row))
+        record = dict(zip(ALESCO_DB_FIELDS, row))
         eid = record['employee_id']
-        term_date = record['job_term_date']
-        if term_date < today:
-            continue
-
-        for field in date_fields:
-            record[field] = record[field].isoformat() if record[field] else None
-
 
         if eid not in records:
             records[eid] = []
@@ -124,15 +127,30 @@ def alesco_db_import():
 
     users = []
     for key, record in records.items():
+        record.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
+        record.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
+        record.sort(key=lambda x: x['job_term_date'], reverse=True)
+        
+        term_date = record[0]['job_term_date']
+        term_date = date_to_dt(term_date) if term_date != ALESCO_DATE_MAX else None
+        
+        for rec in record:
+            for field in date_fields:
+                rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
+
+
         user = DepartmentUser.objects.filter(employee_id=key).first()
         if not user:
             continue
         user.alesco_data = record
-        user.alesco_data.sort(key=lambda x: x['job_term_date'], reverse=True)
-        user.alesco_data.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
-        user.alesco_data.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
-
+        if term_date:
+            expiry_date = perth.normalize(user.expiry_date) if user.expiry_date else None
+            if term_date != expiry_date:
+                print('Updating expiry for {} from {} to {}'.format( user.email, expiry_date, term_date ))
+            #user.expiry_date = term_date
         user.save()
         users.append(user)
+
+
     return users
 
