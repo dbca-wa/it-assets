@@ -1,4 +1,5 @@
 
+from django.urls import reverse
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models.signals import post_save
@@ -79,8 +80,11 @@ class Host(models.Model):
     name = models.CharField(max_length=256)
     type = models.SmallIntegerField(choices=TYPE_CHOICES, default=0)
 
+    active = models.BooleanField(default=True)
+
     def __str__(self):
         return self.name
+
 
 class HostStatus(models.Model):
     STATUS_CHOICES = (
@@ -130,6 +134,11 @@ class HostStatus(models.Model):
     patching_url = models.URLField(max_length=256, null=True)
 
     # HTML rendered statuses for the admin list view
+    def host_html(self):
+        url = reverse('admin:status_host_change', args=(self.host.id,))
+        return format_html('<a href="{}">{}</a>', url, self.host.name)
+    host_html.short_description = 'Host'
+    
     def _status_html(self, prefix):
         status = getattr(self, '{}_status'.format(prefix))
         status_url = getattr(self, '{}_url'.format(prefix))
@@ -157,6 +166,12 @@ class HostStatus(models.Model):
     def _info_html(self, prefix):
         info = getattr(self, '{}_info'.format(prefix))
         return format_html(json2html.convert(json=info))
+
+    def _url_html(self, prefix):
+        url = getattr(self, '{}_url'.format(prefix))
+        if url is None:
+            return 'None'
+        return format_html('<a href="{}">{}</a>', url, url)
 
     def ping_status_html(self):
         return self._status_html('ping')
@@ -198,6 +213,22 @@ class HostStatus(models.Model):
     def patching_info_html(self):
         return self._info_html('patching')
     patching_info_html.short_description = 'Patching info'
+
+    def monitor_url_html(self):
+        return self._url_html('monitor')
+    monitor_url_html.short_description = 'Monitor URL'
+
+    def vulnerability_url_html(self):
+        return self._url_html('vulnerability')
+    vulnerability_url_html.short_description = 'Vulnerability URL'
+
+    def backup_url_html(self):
+        return self._url_html('backup')
+    backup_url_html.short_description = 'Backup URL'
+
+    def patching_url_html(self):
+        return self._url_html('patching')
+    patching_url_html.short_description = 'Patching URL'
 
     def __str__(self):
         return '{} - {}'.format(self.host.name, self.date.isoformat())

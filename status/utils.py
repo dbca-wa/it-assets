@@ -52,6 +52,8 @@ def scan(range_qs=None, date=None):
                 else:
                     host, _ = Host.objects.get_or_create(name=fqdn)
                 host.save()
+                if not host.active:
+                    continue
                 host_status, _ = HostStatus.objects.get_or_create(host=host, date=date)
                 host_status.ping_status = 3
                 host_status.ping_scan_range = scan_range
@@ -91,7 +93,8 @@ def run_all():
     today = datetime.date.today()
 
     # full scan, so create blanks for any hosts in the host list
-    
+    for host in Host.objects.filter(active=True):
+        host_status, _ = HostStatus.objects.get_or_create(date=today, host=host)
     
     # pre-emptively zero out results for today
     HostStatus.objects.filter(date=today).update(
