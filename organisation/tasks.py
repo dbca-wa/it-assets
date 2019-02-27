@@ -77,7 +77,7 @@ def alesco_db_import():
         'classification', 'step_id', 'emp_status', 'emp_stat_desc',
         'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
     ]
-    date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date']
+    date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date',]
 
     status_ranking = [
         'PFAS', 'PFA', 'PFT', 'CFA', 'CFT', 'NPAYF',
@@ -95,6 +95,7 @@ def alesco_db_import():
         'SCL2', 'R2', 'L2',
         'SCL1', 'R1', 'L12', 'L1',
     ]
+
 
     query = "SELECT {} FROM {};".format(', '.join(fields), settings.ALESCO_DB_TABLE)
 
@@ -116,12 +117,12 @@ def alesco_db_import():
         for field in date_fields:
             record[field] = record[field].isoformat() if record[field] else None
 
+
         if eid not in records:
             records[eid] = []
         records[eid].append(record)
 
     users = []
-
     for key, record in records.items():
         user = DepartmentUser.objects.filter(employee_id=key).first()
         if not user:
@@ -130,7 +131,8 @@ def alesco_db_import():
         user.alesco_data.sort(key=lambda x: x['job_term_date'], reverse=True)
         user.alesco_data.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
         user.alesco_data.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
+
         user.save()
         users.append(user)
-
     return users
+

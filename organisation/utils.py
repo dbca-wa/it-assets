@@ -3,7 +3,6 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 import logging
 import os
-import psycopg2
 from six import BytesIO
 import subprocess
 import unicodecsv
@@ -169,44 +168,3 @@ def load_mugshots(data_dir='/root/mugshots'):
             print('ERROR: Username {} not found'.format(name))
 
     print('{}/{} photos valid'.format(valid, len(files)))
-
-
-def get_alesco_data():
-    """Returns employee data from Alesco for comparison to local data.
-    """
-    conn = psycopg2.connect(
-        host=settings.ALESCO_DB_HOST,
-        database=settings.ALESCO_DB_NAME,
-        user=settings.ALESCO_DB_USERNAME,
-        password=settings.ALESCO_DB_PASSWORD
-    )
-    cur = conn.cursor()
-    fields = [
-        'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
-        'date_of_birth', 'occup_type', 'current_commence', 'job_term_date',
-        'occup_commence_date', 'occup_term_date', 'position_id', 'occup_pos_title',
-        'clevel1_id', 'clevel1_desc', 'clevel5_id', 'clevel5_desc', 'award',
-        'classification', 'step_id', 'emp_status', 'emp_stat_desc',
-        'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
-    ]
-    date_fields = [
-        'date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date']
-    query = "SELECT {} FROM {};".format(', '.join(fields), settings.ALESCO_DB_TABLE)
-    cur.execute(query)
-    records = {}
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
-
-        record = dict(zip(fields, row))
-
-        for field in date_fields:
-            record[field] = record[field].isoformat() if record[field] else None
-
-        eid = record['employee_id']
-        if eid not in records:
-            records[eid] = []
-        records[eid].append(record)
-
-    return records
