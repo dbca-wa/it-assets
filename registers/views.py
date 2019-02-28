@@ -573,7 +573,7 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
             # Convert month_start to a TZ-aware datetime object.
             month_start = datetime.combine(d, datetime.min.time()).astimezone(TZ)
             last_day = monthrange(d.year, d.month)[1]
-            month_end = datetime.combine(date(d.year, d.month, last_day), datetime.min.time()).astimezone(TZ)
+            month_end = datetime.combine(date(d.year, d.month, last_day), datetime.max.time()).astimezone(TZ)
             return queryset.filter(planned_start__range=[month_start, month_end]).order_by('planned_start')
         return queryset
 
