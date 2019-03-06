@@ -143,6 +143,7 @@ def departmentuser_csv_report():
     return stream.getvalue()
 
 
+
 def convert_ad_timestamp(timestamp):
     """Converts an Active Directory timestamp to a Python datetime object.
     Ref: http://timestamp.ooz.ie/p/time-in-python.html
@@ -150,6 +151,106 @@ def convert_ad_timestamp(timestamp):
     epoch_start = datetime(year=1601, month=1, day=1)
     seconds_since_epoch = timestamp / 10**7
     return epoch_start + timedelta(seconds=seconds_since_epoch)
+
+
+ALESCO_DB_FIELDS = (
+    'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
+    'date_of_birth', 'occup_type', 'current_commence', 'job_term_date',
+    'occup_commence_date', 'occup_term_date', 'position_id', 'occup_pos_title',
+    'clevel1_id', 'clevel1_desc', 'clevel5_id', 'clevel5_desc', 'award',
+    'classification', 'step_id', 'emp_status', 'emp_stat_desc',
+    'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
+)
+
+def data_descrepancy():
+    """This functions is used to find the data differences between the
+    Alesco db and the it_asssets db.
+    """
+    from .models import DepartmentUser,CostCentre,Location
+    from .tasks import alesco_db_fetch
+
+
+    discrep_dict = {}
+
+    ALESCO_REQ_FIELDS = ('employee_id','first_name','surname','paypoint','occup_pos_title'
+                            ,'location_desc','manager_emp_no','occup_term_date')
+    records = {}
+    alesco_iter = alesco_db_fetch()
+
+    for row in alesco_iter:
+
+        record = dict(zip(ALESCO_DB_FIELDS, row))
+        eid = record['employee_id']
+
+        if eid not in records:
+            records[eid] = []
+        records[eid].append(record)
+
+
+    dis_users = []
+    for key, record in records.items():
+
+
+
+        surname = record[0]['surname']
+        first_name = record[0]['first_name']
+        occup_pos_title = record[0]['occup_pos_title']
+        paypoint = record[0]['paypoint']
+        location_desc = record[0]['location_desc']
+        manager_emp_no = record[0]['manager_emp_no']
+        #term_date = record[0]['job_term_date']
+        #term_date = date_to_dt(term_date) if term_date != ALESCO_DATE_MAX else None
+
+        #for rec in record:
+         #   for field in date_fields:
+          #      rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
+
+        user = DepartmentUser.objects.filter(employee_id=key).first()
+        if not user:
+            continue
+        user.alesco_data = record
+
+        if (records[key][0]['first_name']).lower() != (user.given_name).lower():
+            print(user.employee_id + 'First name mismatch ' +records[key][0][first_name] +
+                  'name in it assets ' +user.title)
+            dis_users.append(user)
+
+        if (records[key][0]['surname']).lower() != (user.surname).lower():
+            print(user.employee_id + ' Surname  mismatch ' + records[key][0]
+            ['surname'] + ' and name in it assets ' + user.surname)
+            dis_users.append(user)
+
+        if (records[key][0]['occup_pos_title']).lower() != (user.title).lower():
+            print(user.employee_id + ' Title  mismatch ' + records[key][0]
+            ['occup_pos_title'] + ' and title in it assets ' + user.title)
+            dis_users.append(user)
+
+        alesco_location = str((records[key][0]['location_desc']))
+
+        if(user.location):
+            asset_location = Location.objects.filter(name__icontains=alesco_location)
+
+            if (str(user.location)).lower() not in str(asset_location).lower():
+                print(user.employee_id + ' Location mismatch ' + records[key][0]['location_desc'] +
+                  ' location in it-assets ' +str(user.location))
+                dis_users.append(user)
+
+        alesco_cost_center = str((records[key][0]['paypoint']))
+
+        if (user.cost_centre):
+            xyz = CostCentre.objects.filter(code__icontains=alesco_cost_center)
+
+            if (str(user.cost_centre) not in str(xyz)):
+                print(user.employee_id + ' Costcentre mismatch ' + records[key][0]['paypoint'] +
+                    ' location in it-assets ' + str(user.cost_centre))
+                dis_users.append(user)
+
+
+
+
+
+
+
 
 
 def load_mugshots(data_dir='/root/mugshots'):
