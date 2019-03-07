@@ -34,7 +34,6 @@ def logger_setup(name):
         logger.addHandler(fh)
     return logger
 
-
 def departmentuser_csv_report():
     """Output data from all DepartmentUser objects to a CSV, unpacking the
     various JSONField values.
@@ -211,14 +210,24 @@ def data_descrepancy():
         user.alesco_data = record
 
         if (records[key][0]['first_name']).lower() != (user.given_name).lower():
-            print(user.employee_id + 'First name mismatch ' +records[key][0][first_name] +
+            print(user.employee_id + 'First name mismatch ' +records[key][0]['first_name'] +
                   'name in it assets ' +user.title)
             dis_users.append(user)
 
+        #Revamped firstname check
+
+        if (records[key][0]['first_name']).lower() != (user.given_name).lower():
+            namediff = 'alesco first name is {} and in it-assets {} '.format(records[key][0]['first_name'], user.given_name)
+            dis_users.append(namediff)
+            discrep_dict[key] = dis_users
+
+
         if (records[key][0]['surname']).lower() != (user.surname).lower():
-            print(user.employee_id + ' Surname  mismatch ' + records[key][0]
-            ['surname'] + ' and name in it assets ' + user.surname)
-            dis_users.append(user)
+            surnamediff= 'Surname  mismatch from alesco {} in it assets {}'.format(records[key][0]['surname'] ,user.surname)
+            dis_users.append(surnamediff)
+            discrep_dict[key] = dis_users
+
+        dis_users = []
 
         if (records[key][0]['occup_pos_title']).lower() != (user.title).lower():
             print(user.employee_id + ' Title  mismatch ' + records[key][0]
@@ -245,7 +254,11 @@ def data_descrepancy():
                     ' location in it-assets ' + str(user.cost_centre))
                 dis_users.append(user)
 
-
+     #   if (user.parent):
+      #      if(records[key][0]['manager_emp_no'] != user.parent.id):
+       #         print(user.employee_id + ' Manager no mismatch ' + records[key][0]['manager_emp_no'] +
+        #              ' manage_no in it-assets ' + str(user.parent.id))
+         #       dis_users.append(user)
 
 
 
