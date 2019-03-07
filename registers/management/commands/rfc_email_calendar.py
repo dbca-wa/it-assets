@@ -11,12 +11,15 @@ from texttable import Texttable
 
 
 class Command(BaseCommand):
-    help = 'Emails the weekly change calendar to users in the "CAB members" group'
+    help = 'Emails the weekly change calendar to users in the "CAB members" group (plus optional additional recipients)'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--date', action='store', dest='datestring', default=None,
             help='Date from which to start the calendar in format YYYY-MM-DD')
+        parser.add_argument(
+            '--emails', action='store', dest='emails', default=None,
+            help='Comma-separated list of additional emails to which to deliver the report')
 
     def handle(self, *args, **options):
         d = date.today()
@@ -25,6 +28,13 @@ class Command(BaseCommand):
                 d = datetime.strptime(options['datestring'], '%Y-%m-%d').date()
             except ValueError:
                 raise CommandError('Invalid date value: {} (use format YYYY-MM-DD)'.format(options['datestring']))
+
+        emails = None
+        if options['emails']:
+            try:
+                emails = options['emails'].split(',')
+            except ValueError:
+                raise CommandError('Invalid emails value: {} (use comma-separated string)'.format(options['emails']))
 
         week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
         week_end = week_start + timedelta(days=7)
@@ -63,6 +73,11 @@ class Command(BaseCommand):
         cab = Group.objects.get(name='CAB members')
         subject = 'Weekly change calendar starting {}'.format(week_start.strftime('%A, %d %b %Y'))
         recipients = list(User.objects.filter(groups__in=[cab], is_active=True).values_list('email', flat=True))
+
+        # Optional additional email recipients.
+        if emails:
+            recipients = recipients + emails
+
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, recipients)
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
