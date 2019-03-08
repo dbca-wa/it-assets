@@ -7,6 +7,8 @@ from six import BytesIO
 import subprocess
 import unicodecsv
 
+import csv
+
 
 # Python 2 can't serialize unbound functions, so here's some dumb glue
 def get_photo_path(instance, filename='photo.jpg'):
@@ -170,9 +172,7 @@ def data_descrepancy():
 
 
     discrep_dict = {}
-
-    ALESCO_REQ_FIELDS = ('employee_id','first_name','surname','paypoint','occup_pos_title'
-                            ,'location_desc','manager_emp_no','occup_term_date')
+    dis_users = []
     records = {}
     alesco_iter = alesco_db_fetch()
 
@@ -185,76 +185,76 @@ def data_descrepancy():
             records[eid] = []
         records[eid].append(record)
 
-
-    dis_users = []
     for key, record in records.items():
-
-
-
         surname = record[0]['surname']
         first_name = record[0]['first_name']
         occup_pos_title = record[0]['occup_pos_title']
         paypoint = record[0]['paypoint']
         location_desc = record[0]['location_desc']
         manager_emp_no = record[0]['manager_emp_no']
-        #term_date = record[0]['job_term_date']
-        #term_date = date_to_dt(term_date) if term_date != ALESCO_DATE_MAX else None
-
-        #for rec in record:
-         #   for field in date_fields:
-          #      rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
 
         user = DepartmentUser.objects.filter(employee_id=key).first()
         if not user:
             continue
         user.alesco_data = record
 
-        if (records[key][0]['first_name']).lower() != (user.given_name).lower():
-            print(user.employee_id + 'First name mismatch ' +records[key][0]['first_name'] +
-                  'name in it assets ' +user.title)
-            dis_users.append(user)
-
         #Revamped firstname check
+        if(user.given_name):
 
-        if (records[key][0]['first_name']).lower() != (user.given_name).lower():
-            namediff = 'alesco first name is {} and in it-assets {} '.format(records[key][0]['first_name'], user.given_name)
-            dis_users.append(namediff)
-            discrep_dict[key] = dis_users
+            if (records[key][0]['first_name']).lower() != (user.given_name).lower():
+                namediff = 'alesco first name is {} and in it-assets {} '.format(records[key][0]['first_name'], user.given_name)
+                dis_users.append(namediff)
+                discrep_dict[key] = dis_users
 
+        if(user.surname):
 
-        if (records[key][0]['surname']).lower() != (user.surname).lower():
-            surnamediff= 'Surname  mismatch from alesco {} in it assets {}'.format(records[key][0]['surname'] ,user.surname)
-            dis_users.append(surnamediff)
-            discrep_dict[key] = dis_users
+            if (records[key][0]['surname']).lower() != (user.surname).lower():
+                surnamediff= 'Surname  mismatch from alesco {} in it assets {}'.format(records[key][0]['surname'] ,user.surname)
+                dis_users.append(surnamediff)
+                discrep_dict[key] = dis_users
 
-        dis_users = []
+        if(user.title):
 
-        if (records[key][0]['occup_pos_title']).lower() != (user.title).lower():
-            print(user.employee_id + ' Title  mismatch ' + records[key][0]
-            ['occup_pos_title'] + ' and title in it assets ' + user.title)
-            dis_users.append(user)
+            if (records[key][0]['occup_pos_title']).lower() != (user.title).lower():
+                titlediff= 'Title  mismatch from alesco {} in it-assets {} '.format(records[key][0]
+                ['occup_pos_title'],user.title)
+                dis_users.append(titlediff)
+                discrep_dict[key] = dis_users
+
 
         alesco_location = str((records[key][0]['location_desc']))
 
         if(user.location):
             asset_location = Location.objects.filter(name__icontains=alesco_location)
 
-            if (str(user.location)).lower() not in str(asset_location).lower():
-                print(user.employee_id + ' Location mismatch ' + records[key][0]['location_desc'] +
-                  ' location in it-assets ' +str(user.location))
-                dis_users.append(user)
+            if (user.location.name).lower() not in str(asset_location).lower():
+                location_diff=' Location mismatch {} location in it-assets {} '.format(records[key][0]['location_desc'] ,
+                user.location.name)
+                dis_users.append(location_diff)
+                discrep_dict[key] = dis_users
+
 
         alesco_cost_center = str((records[key][0]['paypoint']))
 
         if (user.cost_centre):
-            xyz = CostCentre.objects.filter(code__icontains=alesco_cost_center)
+            assets_costcentre = CostCentre.objects.filter(code__icontains=alesco_cost_center)
 
-            if (str(user.cost_centre) not in str(xyz)):
-                print(user.employee_id + ' Costcentre mismatch ' + records[key][0]['paypoint'] +
-                    ' location in it-assets ' + str(user.cost_centre))
-                dis_users.append(user)
+            if (str(user.cost_centre) not in str(assets_costcentre)):
+                costcentre_diff= 'Costcentre mismatch from Alesco {} in it-assets {}'.format(records[key][0]['paypoint'],
+                                                                                             user.cost_centre.name)
+                dis_users.append(costcentre_diff)
+                discrep_dict[key] = dis_users
 
-     #   if (user.parent):
+        dis_users = []
+
+    #Write the Dictionary in csv form
+    with open('data_difference_%s.csv'%datetime.now(), 'w') as f:
+        w = csv.writer(f)
+
+        for key, val in discrep_dict.items():
+            w.writerow([key] + val)
+
+            #   if (user.parent):
       #      if(records[key][0]['manager_emp_no'] != user.parent.id):
        #         print(user.employee_id + ' Manager no mismatch ' + records[key][0]['manager_emp_no'] +
         #              ' manage_no in it-assets ' + str(user.parent.id))
