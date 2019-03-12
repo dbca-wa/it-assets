@@ -16,6 +16,7 @@ from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeL
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
+    EmergencyChangeRequestForm,
 )
 from .utils import search_filter
 
@@ -238,7 +239,11 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
         rfc = self.get_object()
-        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(TZ)
+        context['may_complete'] = (
+            rfc.is_ready and
+            self.request.user.email in [rfc.requester.email, rfc.implementer.email] and
+            rfc.planned_end <= datetime.now().astimezone(TZ)
+        )
         # Context variable that determines if implementation & communication info is displayed.
         emails = []
         if rfc.requester:
@@ -257,12 +262,16 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
     def get_form_class(self):
         if 'std' in self.kwargs and self.kwargs['std']:
             return StandardChangeRequestCreateForm
+        elif 'emerg' in self.kwargs and self.kwargs['emerg']:
+            return EmergencyChangeRequestForm
         return ChangeRequestCreateForm
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
         if 'std' in self.kwargs and self.kwargs['std']:
             context['title'] = 'Create a draft standard change request'
+        elif 'emerg' in self.kwargs and self.kwargs['emerg']:
+            context['title'] = 'Create an emergency change request'
         else:
             context['title'] = 'Create a draft change request'
         return context
@@ -280,6 +289,10 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
             rfc.endorser = rfc.standard_change.endorser
+        elif 'emerg' in self.kwargs and self.kwargs['emerg']:
+            rfc.change_type = 2
+            if rfc.completed:  # If a completion date was recorded, set the status.
+                rfc.status = 4
         else:
             rfc.change_type = 0
         rfc.save()
@@ -306,6 +319,8 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         rfc = self.get_object()
         if rfc.is_standard_change:
             return StandardChangeRequestChangeForm
+        elif rfc.is_emergency_change:
+            return EmergencyChangeRequestForm
         return ChangeRequestChangeForm
 
     def get_form(self, *args, **kwargs):
@@ -401,6 +416,12 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                     log = ChangeLog(
                         change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.get_full_name()))
                     log.save()
+
+        # Emergency RFC changes.
+        if self.request.POST.get('save') and rfc.is_emergency_change:
+            if rfc.completed:  # If a completed date is recorded, set the status automatically.
+                rfc.status =4
+                rfc.save()
 
         if errors:
             return super(ChangeRequestChange, self).form_invalid(form)

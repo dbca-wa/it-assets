@@ -17,34 +17,40 @@
     </div>
 </div>
 
-{% if object.is_draft and object.requester.email == request.user.email %}
+{% if object.is_draft and not object.is_emergency_change and object.requester.email == request.user.email %}
 <div class="row">
     <div class="col-xs-12">
-        <hr>
         <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit for endorsement</a></a>
-        <hr>
     </div>
 </div>
+<br>
 {% endif %}
 
 {% if object.is_submitted and object.endorser.email == request.user.email %}
 <div class="row">
     <div class="col-xs-12">
-        <hr>
         <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a></a>
-        <hr>
     </div>
 </div>
+<br>
 {% endif %}
 
 {% if may_complete %}
 <div class="row">
     <div class="col-xs-12">
-        <hr>
         <a class="btn btn-primary" href="{% url 'change_request_complete' object.pk %}" role="button">Record change request outcome</a></a>
-        <hr>
     </div>
 </div>
+<br>
+{% endif %}
+
+{% if object.is_emergency_change and user_authorised and not object.completed %}
+<div class="row">
+    <div class="col-xs-12">
+        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update details</a></a>
+    </div>
+</div>
+<br>
 {% endif %}
 
 <div class="row">

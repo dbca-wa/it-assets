@@ -528,8 +528,16 @@ class ChangeRequest(models.Model):
         ordering = ('-planned_start',)
 
     @property
+    def is_normal_change(self):
+        return self.change_type == 0
+
+    @property
     def is_standard_change(self):
         return self.change_type == 1
+
+    @property
+    def is_emergency_change(self):
+        return self.change_type == 2
 
     @property
     def is_draft(self):

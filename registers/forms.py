@@ -2,7 +2,6 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django import forms
-from organisation.models import DepartmentUser
 from .models import ChangeRequest
 
 
@@ -217,3 +216,39 @@ class ChangeRequestCompleteForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = ['completed', 'unexpected_issues', 'notes']
+
+
+class EmergencyChangeRequestForm(forms.ModelForm):
+    """Change form for an Emergency Change. Basically, a simplified RFC form without
+    associated business rules/restrictions.
+    """
+    save_button = Submit('save', 'Save', css_class='btn-lg')
+    endorser_choice = UserChoiceField(
+        required=False, label='Endorser', help_text='The person who endorses this change')
+    implementer_choice = UserChoiceField(
+        required=False, label='Implementer', help_text='The person who will implement this change')
+
+    def __init__(self, *args, **kwargs):
+        super(EmergencyChangeRequestForm, self).__init__(*args, **kwargs)
+        self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'Instructions',
+                Div(
+                    HTML('<p>Please record as much relevant detail as possible about the emergency change in the fields below.</p><br>'),
+                    css_id='div_id_instructions'
+                ),
+            ),
+            Fieldset(
+                'Details',
+                'title', 'description', 'endorser_choice', 'implementer_choice', 'implementation', 'completed', 'it_systems',
+            ),
+            FormActions(self.save_button),
+        )
+
+    class Meta:
+        model = ChangeRequest
+        fields = [
+            'title', 'description', 'completed', 'implementation', 'implementation_docs', 'it_systems']
