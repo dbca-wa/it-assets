@@ -1,12 +1,12 @@
-#!/usr/bin/env python
-import confy
+#!/usr/bin/env python3
+import dotenv
 import os
 import sys
 
 # These lines are required for interoperability between local and container environments.
 dot_env = os.path.join(os.getcwd(), '.env')
 if os.path.exists(dot_env):
-    confy.read_environment_file()
+    dotenv.read_dotenv()
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "itassets.settings")

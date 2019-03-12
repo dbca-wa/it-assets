@@ -333,14 +333,12 @@ class DepartmentUserResource(DjangoResource):
             user.given_name = self.data['given_name']
         if 'Surname' in self.data:
             user.surname = self.data['Surname']
-        elif 'given_name' in self.data:
+        elif 'surname' in self.data:
             user.surname = self.data['surname']
         if 'Modified' in self.data and self.data['Modified']:
             user.date_ad_updated = tz.localize(parse(self.data['Modified']))
         elif 'date_ad_updated' in self.data and self.data['date_ad_updated']:
             user.date_ad_updated = tz.localize(parse(self.data['date_ad_updated']))
-
-        user.save()
 
         try:
             user.save()
