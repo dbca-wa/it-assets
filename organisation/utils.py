@@ -164,7 +164,7 @@ ALESCO_DB_FIELDS = (
 )
 
 def data_descrepancy():
-    """This functions is used to find the data differences between the
+    """This function is used to find the data differences between the
     Alesco db and the it_asssets db.
     """
     from .models import DepartmentUser,CostCentre,Location
@@ -192,6 +192,7 @@ def data_descrepancy():
         paypoint = record[0]['paypoint']
         location_desc = record[0]['location_desc']
         manager_emp_no = record[0]['manager_emp_no']
+        expiry_date = record[0]['job_term_date']
 
         user = DepartmentUser.objects.filter(employee_id=key).first()
         if not user:
@@ -202,21 +203,21 @@ def data_descrepancy():
         if(user.given_name):
 
             if (records[key][0]['first_name']).lower() != (user.given_name).lower():
-                namediff = 'alesco first name is {} and in it-assets {} '.format(records[key][0]['first_name'], user.given_name)
+                namediff = 'FirstName Mismatch Alesco first name is {} and in It-Assets {} '.format(records[key][0]['first_name'], user.given_name)
                 dis_users.append(namediff)
                 discrep_dict[key] = dis_users
 
         if(user.surname):
 
             if (records[key][0]['surname']).lower() != (user.surname).lower():
-                surnamediff= 'Surname  mismatch from alesco {} in it assets {}'.format(records[key][0]['surname'] ,user.surname)
+                surnamediff= 'Surname  MisMatch from Alesco {} and in It-Assets {}'.format(records[key][0]['surname'] ,user.surname)
                 dis_users.append(surnamediff)
                 discrep_dict[key] = dis_users
 
         if(user.title):
 
             if (records[key][0]['occup_pos_title']).lower() != (user.title).lower():
-                titlediff= 'Title  mismatch from alesco {} in it-assets {} '.format(records[key][0]
+                titlediff= 'Title  Mismatch from Alesco {} in It-Assets {} '.format(records[key][0]
                 ['occup_pos_title'],user.title)
                 dis_users.append(titlediff)
                 discrep_dict[key] = dis_users
@@ -228,7 +229,7 @@ def data_descrepancy():
             asset_location = Location.objects.filter(name__icontains=alesco_location)
 
             if (user.location.name).lower() not in str(asset_location).lower():
-                location_diff=' Location mismatch {} location in it-assets {} '.format(records[key][0]['location_desc'] ,
+                location_diff=' Location Mismatch from Alesco {} to location in It-Assets {} '.format(records[key][0]['location_desc'] ,
                 user.location.name)
                 dis_users.append(location_diff)
                 discrep_dict[key] = dis_users
@@ -240,25 +241,45 @@ def data_descrepancy():
             assets_costcentre = CostCentre.objects.filter(code__icontains=alesco_cost_center)
 
             if (str(user.cost_centre) not in str(assets_costcentre)):
-                costcentre_diff= 'Costcentre mismatch from Alesco {} in it-assets {}'.format(records[key][0]['paypoint'],
+                costcentre_diff= 'Costcentre Mismatch from Alesco {} to in It-Assets {}'.format(records[key][0]['paypoint'],
                                                                                              user.cost_centre.name)
                 dis_users.append(costcentre_diff)
                 discrep_dict[key] = dis_users
+
+        if (user.expiry_date):
+
+            if(records[key][0]['job_term_date'] != (user.expiry_date)):
+                expiry_date_diff = 'ExpiryDate Mismatch from Alesco {} to  It-Assets {} '.format(
+                    str(records[key][0]['job_term_date']) , str((user.expiry_date).date()))
+                dis_users.append(expiry_date_diff)
+                discrep_dict[key] = dis_users
+
 
         dis_users = []
 
     #Write the Dictionary in csv form
     with open('data_difference_%s.csv'%datetime.now(), 'w') as f:
         w = csv.writer(f)
+        fieldnames = ['Employee_id','Mismatch']
+        w.writerow(fieldnames)
 
         for key, val in discrep_dict.items():
-            w.writerow([key] + val)
+            w.writerow([key, (" ,".join(val))])
 
             #   if (user.parent):
       #      if(records[key][0]['manager_emp_no'] != user.parent.id):
        #         print(user.employee_id + ' Manager no mismatch ' + records[key][0]['manager_emp_no'] +
         #              ' manage_no in it-assets ' + str(user.parent.id))
          #       dis_users.append(user)
+
+    # Approach 2 to write a csv
+    #with open('data_difference_%s.csv'%datetime.now(), 'wb') as f:
+     #   w = csv.writer(f)
+      #  w.writerow(['Employee_id','Mismatch'])
+       # for key,items in discrep_dict.items():
+        #    for item in items:
+         #       w.writerow([key,item])
+
 
 
 
