@@ -243,7 +243,8 @@ class EmergencyChangeRequestForm(forms.ModelForm):
             ),
             Fieldset(
                 'Details',
-                'title', 'description', 'endorser_choice', 'implementer_choice', 'implementation', 'completed', 'it_systems',
+                'title', 'description', 'endorser_choice', 'implementer_choice', 'implementation',
+                'planned_start', 'planned_end', 'outage', 'completed', 'it_systems',
             ),
             FormActions(self.save_button),
         )
@@ -251,4 +252,4 @@ class EmergencyChangeRequestForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         fields = [
-            'title', 'description', 'completed', 'implementation', 'implementation_docs', 'it_systems']
+            'title', 'description', 'implementation', 'planned_start', 'planned_end', 'outage', 'completed', 'it_systems']
