@@ -12,7 +12,7 @@ from pytz import timezone
 import re
 import xlsxwriter
 
-from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
+from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
@@ -231,6 +231,15 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
         return context
+
+
+class StandardChangeList(LoginRequiredMixin, ListView):
+    model = StandardChange
+    paginate_by = 100
+
+
+class StandardChangeDetail(LoginRequiredMixin, DetailView):
+    model = StandardChange
 
 
 class ChangeRequestDetail(LoginRequiredMixin, DetailView):

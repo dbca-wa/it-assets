@@ -457,6 +457,9 @@ class StandardChange(models.Model):
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.name))
 
+    def get_absolute_url(self):
+        return reverse('standard_change_detail', kwargs={'pk': self.pk})
+
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.
