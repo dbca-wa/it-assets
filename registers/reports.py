@@ -1,7 +1,7 @@
 import xlsxwriter
 
 
-def itsr_staff_discrepancies(filename, it_systems):
+def itsr_staff_discrepancies(fileobj, it_systems):
     """This function will return an Excel workbook of IT Systems where owner & custodian details have issues.
     Pass in a file-like object to write into, plus a queryset of IT Systems.
     """
@@ -24,9 +24,14 @@ def itsr_staff_discrepancies(filename, it_systems):
             if sys.system_id not in discrepancies:
                 discrepancies[sys.system_id] = []
             discrepancies[sys.system_id].append((sys.name, 'Information custodian {} is inactive'.format(sys.information_custodian)))
+        if sys.cost_centre and not sys.cost_centre.active:
+            if sys.system_id not in discrepancies:
+                discrepancies[sys.system_id] = []
+            discrepancies[sys.system_id].append((sys.name, 'Cost centre {} is inactive'.format(sys.cost_centre)))
+
 
     with xlsxwriter.Workbook(
-        filename,
+        fileobj,
         {
             'in_memory': True,
             'default_date_format': 'dd-mmm-yyyy HH:MM',
@@ -44,4 +49,4 @@ def itsr_staff_discrepancies(filename, it_systems):
         sheet.set_column('B:B', 40)
         sheet.set_column('C:C', 100)
 
-    return filename
+    return fileobj
