@@ -2,7 +2,8 @@ import xlsxwriter
 
 
 def itsr_staff_discrepancies(filename, it_systems):
-    """This function will return a list of IT Systems where owner & custodian details have issues.
+    """This function will return an Excel workbook of IT Systems where owner & custodian details have issues.
+    Pass in a file-like object to write into, plus a queryset of IT Systems.
     """
     discrepancies = {}
 
@@ -11,6 +12,10 @@ def itsr_staff_discrepancies(filename, it_systems):
             if sys.system_id not in discrepancies:
                 discrepancies[sys.system_id] = []
             discrepancies[sys.system_id].append((sys.name, 'Owner {} is inactive'.format(sys.owner)))
+        if sys.owner and sys.owner.cost_centre != sys.cost_centre:
+            if sys.system_id not in discrepancies:
+                discrepancies[sys.system_id] = []
+            discrepancies[sys.system_id].append((sys.name, 'Owner {} cost centre ({}) differs from {} cost centre ({})'.format(sys.owner, sys.owner.cost_centre, sys.name, sys.cost_centre)))
         if sys.technology_custodian and not sys.technology_custodian.active:
             if sys.system_id not in discrepancies:
                 discrepancies[sys.system_id] = []
@@ -19,7 +24,6 @@ def itsr_staff_discrepancies(filename, it_systems):
             if sys.system_id not in discrepancies:
                 discrepancies[sys.system_id] = []
             discrepancies[sys.system_id].append((sys.name, 'Information custodian {} is inactive'.format(sys.information_custodian)))
-        # TODO: same as above, but staff belong to the wrong CC.
 
     with xlsxwriter.Workbook(
         filename,
