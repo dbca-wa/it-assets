@@ -3,6 +3,7 @@ from registers import views
 
 urlpatterns = [
     path('itsystem/export/', views.ITSystemExport.as_view(), name='itsystem_export'),
+    path('itsystem/discrepancy-report/', views.ITSystemDiscrepancyReport.as_view(), name='itsystem_discrepancy_report'),
     path('incident/', views.IncidentList.as_view(), name='incident_list'),
     path('incident/<int:pk>/', views.IncidentDetail.as_view(), name='incident_detail'),
     path('changerequest/', views.ChangeRequestList.as_view(), name='change_request_list'),
@@ -17,4 +18,6 @@ urlpatterns = [
     re_path('^changerequest/calendar/(?P<date>\d{4}-\d{1,2}-\d{1,2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
     re_path('^changerequest/calendar/(?P<date>\d{4}-\d{1,2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
     path('changerequest/export/', views.ChangeRequestExport.as_view(), name='change_request_export'),
+    path('standardchange/', views.StandardChangeList.as_view(), name='standard_change_list'),
+    path('standardchange/<int:pk>/', views.StandardChangeDetail.as_view(), name='standard_change_detail'),
 ]

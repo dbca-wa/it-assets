@@ -135,6 +135,7 @@ class ITSystem(CommonFields):
     Department staff (normally vendor or bespoke software), which is supported
     by OIM and/or an external vendor.
     """
+    ACTIVE_FILTER = {'status__in': [0, 2]}  # Defines a queryset filter for "active" IT systems.
     STATUS_CHOICES = (
         (0, 'Production'),
         (1, 'Development'),
@@ -456,6 +457,9 @@ class StandardChange(models.Model):
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.name))
+
+    def get_absolute_url(self):
+        return reverse('standard_change_detail', kwargs={'pk': self.pk})
 
 
 class ChangeRequest(models.Model):

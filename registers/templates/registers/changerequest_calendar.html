@@ -7,18 +7,14 @@
 {% block body %}
 <div class="row">
     <div class="col-xs-12">
-        <p>
-            <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button">
-                <span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a>
-            <a class="btn btn-default" href="{% url 'change_request_calendar' %}{{ today.year }}-{{ today.month }}-{{ today.day }}/" role="button">Weekly calendar from today</a>
-            <a class="btn btn-default" href="{% url 'change_request_calendar' %}{{ today.year }}-{{ today.month }}/" role="button">Monthly calendar</a>
-        </p>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-xs-12">
         <h1>{{ format }} change calendar starting {{ start|date:"l, j F Y" }}</h1>
+        <p>
+            <a href="{% url 'change_request_list' %}" class="btn btn-primary" role="button"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Change request register</a>
+            <a href="{% url 'change_request_calendar' %}{{ today.year }}-{{ today.month }}-{{ today.day }}/" class="btn btn-success" role="button"><span class="glyphicon glyphicon-calendar" aria-hidden="true"></span> Weekly calendar from today</a>
+            <a href="{% url 'change_request_calendar' %}{{ today.year }}-{{ today.month }}/" class="btn btn-success" role="button"><span class="glyphicon glyphicon-calendar" aria-hidden="true"></span> Monthly calendar</a>
+            <a href="{% url 'change_request_export' %}" class="btn btn-info" role="button"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span> Download all</a>
+            <a href="{% url 'standard_change_list' %}" class="btn btn-info"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Standard change register</a>
+        </p>
     </div>
 </div>
 

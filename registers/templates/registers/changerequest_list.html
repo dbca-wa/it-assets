@@ -9,11 +9,12 @@
     <div class="col-xs-12">
         <h1>Change requests</h1>
         <p>
-            <a href="{% url 'change_request_create' %}" class="btn btn-primary">Create a draft RFC</a>
-            <a href="{% url 'std_change_request_create' %}" class="btn btn-default">Create a draft standard RFC</a>
-            <a href="{% url 'emerg_change_request_create' %}" class="btn btn-warning">Create an emergency change</a>
-            <a href="{% url 'change_request_calendar' %}" class="btn btn-success"><span class="glyphicon glyphicon-calendar" aria-hidden="true"></span> Change request calendar</a>
+            <a href="{% url 'change_request_create' %}" class="btn btn-primary"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Create a draft RFC</a>
+            <a href="{% url 'std_change_request_create' %}" class="btn btn-primary"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Create a draft standard RFC</a>
+            <a href="{% url 'emerg_change_request_create' %}" class="btn btn-warning"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Create an emergency change</a>
+            <a href="{% url 'change_request_calendar' %}" class="btn btn-success"><span class="glyphicon glyphicon-calendar" aria-hidden="true"></span> Change calendar</a>
             <a href="{% url 'change_request_export' %}" class="btn btn-info"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span> Download all</a>
+            <a href="{% url 'standard_change_list' %}" class="btn btn-info"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Standard change register</a>
         </p>
     </div>
 </div>
