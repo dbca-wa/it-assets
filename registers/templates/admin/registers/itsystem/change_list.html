@@ -4,5 +4,8 @@
     <li>
         <a href="{% url 'admin:itsystem_export' %}?all=true">Export IT Systems</a>
     </li>
+    <li>
+        <a href="{% url 'admin:itsystem_discrepancies' %}">Discrepancy report</a>
+    </li>
     {{ block.super }}
 {% endblock %}

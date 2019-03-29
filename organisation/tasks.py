@@ -71,6 +71,8 @@ ALESCO_DATE_MAX = datetime.date(2049, 12, 31)
 
 
 def alesco_db_fetch():
+    """Returns an iterator which fields rows from a database query until completed.
+    """
     conn = psycopg2.connect(
         host=settings.ALESCO_DB_HOST,
         database=settings.ALESCO_DB_NAME,

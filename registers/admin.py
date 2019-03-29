@@ -20,7 +20,7 @@ from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
     Incident, IncidentLog, StandardChange, ChangeRequest, ChangeLog)
 from .utils import smart_truncate
-from .views import ITSystemExport, ITSystemHardwareExport, IncidentExport, ChangeRequestExport
+from .views import ITSystemExport, ITSystemDiscrepancyReport, ITSystemHardwareExport, IncidentExport, ChangeRequestExport
 
 
 @register(UserGroup)
@@ -131,7 +131,10 @@ class ITSystemAdmin(VersionAdmin):
 
     def get_urls(self):
         urls = super(ITSystemAdmin, self).get_urls()
-        urls = [path('export/', self.admin_site.admin_view(ITSystemExport.as_view()), name='itsystem_export')] + urls
+        urls = [
+            path('export/', self.admin_site.admin_view(ITSystemExport.as_view()), name='itsystem_export'),
+            path('discrepancies/', self.admin_site.admin_view(ITSystemDiscrepancyReport.as_view()), name='itsystem_discrepancies'),
+        ] + urls
         return urls
 
 

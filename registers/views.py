@@ -18,6 +18,7 @@ from .forms import (
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm,
 )
+from .reports import itsr_staff_discrepancies
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -90,6 +91,18 @@ class ITSystemExport(LoginRequiredMixin, View):
             systems.set_column('L:N', 21)
             systems.set_column('O:W', 50)
 
+        return response
+
+
+class ITSystemDiscrepancyReport(LoginRequiredMixin, View):
+    """A custom view to return a spreadsheet containing discrepancies related to IT Systems.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
+        response = itsr_staff_discrepancies(response, it_systems)
         return response
 
 

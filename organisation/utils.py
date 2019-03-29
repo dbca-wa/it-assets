@@ -156,7 +156,7 @@ def convert_ad_timestamp(timestamp):
 
 def data_descrepancy():
     """This function is used to find the data differences between the
-    Alesco db and the it_asssets db.
+    Alesco db and the it_assets db.
     """
     from .models import DepartmentUser, CostCentre, Location
     from .tasks import alesco_db_fetch, ALESCO_DB_FIELDS
