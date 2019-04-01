@@ -10,7 +10,6 @@ from django.views.generic import View, ListView, DetailView, CreateView, UpdateV
 from organisation.models import DepartmentUser
 from pytz import timezone
 import re
-import xlsxwriter
 
 from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
@@ -18,7 +17,7 @@ from .forms import (
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm,
 )
-from .reports import itsr_staff_discrepancies
+from .reports import it_system_export, itsr_staff_discrepancies, it_system_hardware_export, incident_export, change_request_export
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -31,66 +30,12 @@ class ITSystemExport(LoginRequiredMixin, View):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=it_systems_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
-        with xlsxwriter.Workbook(
-            response,
-            {
-                'in_memory': True,
-                'default_date_format': 'dd-mmm-yyyy HH:MM',
-                'remove_timezone': True,
-            },
-        ) as workbook:
-            if 'all' in request.GET:  # Return all ITsystems.
-                itsystems = ITSystem.objects.all().order_by('system_id')
-            else:  # Default to prod/prod-legacy IT systems only.
-                itsystems = ITSystem.objects.filter(status__in=[0, 2]).order_by('system_id')
-            systems = workbook.add_worksheet('IT Systems')
-            systems.write_row('A1', (
-                'System ID', 'Name', 'Description', 'Status', 'Recovery category', 'Seasonality',
-                'Availability', 'User groups', 'System type', 'Cost centre', 'Division', 'Owner',
-                'Technology custodian', 'Information custodian', 'Link', 'Technical documentation',
-                'Application server(s)', 'Database server(s)', 'Network storage', 'Backups',
-                'BH support', 'AH support', 'User notification',
-            ))
-            row = 1
-            for i in itsystems:
-                systems.write_row(row, 0, [
-                    i.system_id,
-                    i.name,
-                    i.description,
-                    i.get_status_display(),
-                    i.get_recovery_category_display() if i.recovery_category else '',
-                    i.get_seasonality_display() if i.seasonality else '',
-                    i.get_availability_display() if i.availability else '',
-                    ', '.join([str(j) for j in i.user_groups.all()]),
-                    i.get_system_type_display() if i.system_type else '',
-                    i.cost_centre.code if i.cost_centre else '',
-                    i.cost_centre.division.name if (i.cost_centre and i.cost_centre.division) else '',
-                    i.owner.get_full_name() if i.owner else '',
-                    i.technology_custodian.get_full_name() if i.technology_custodian else '',
-                    i.information_custodian.get_full_name() if i.information_custodian else '',
-                    i.link,
-                    i.technical_documentation if i.technical_documentation else '',
-                    i.application_server,
-                    i.database_server,
-                    i.network_storage,
-                    i.get_backups_display() if i.backups else '',
-                    i.bh_support.email if i.bh_support else '',
-                    i.ah_support.email if i.ah_support else '',
-                    i.user_notification,
-                ])
-                row += 1
-            systems.set_column('A:A', 9)
-            systems.set_column('B:B', 45)
-            systems.set_column('C:D', 18)
-            systems.set_column('E:E', 27)
-            systems.set_column('F:G', 19)
-            systems.set_column('H:H', 50)
-            systems.set_column('I:I', 30)
-            systems.set_column('J:J', 13)
-            systems.set_column('K:K', 41)
-            systems.set_column('L:N', 21)
-            systems.set_column('O:W', 50)
+        if 'all' in request.GET:  # Return all IT systems.
+            it_systems = ITSystem.objects.all().order_by('system_id')
+        else:  # Default to prod/prod-legacy IT systems only.
+            it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
 
+        response = it_system_export(response, it_systems)
         return response
 
 
@@ -100,7 +45,6 @@ class ITSystemDiscrepancyReport(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
         response = itsr_staff_discrepancies(response, it_systems)
         return response
@@ -113,46 +57,8 @@ class ITSystemHardwareExport(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=it_system_hardware_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
-        with xlsxwriter.Workbook(
-            response,
-            {
-                'in_memory': True,
-                'default_date_format': 'dd-mmm-yyyy HH:MM',
-                'remove_timezone': True,
-            },
-        ) as workbook:
-            hardware = ITSystemHardware.objects.filter(decommissioned=False)
-            hw_sheet = workbook.add_worksheet('IT system hardware')
-            hw_sheet.write_row('A1', (
-                'Hostname', 'Host', 'OS', 'Role', 'Production?', 'EC2 ID', 'Patch group',
-                'IT system ID', 'IT system name', 'IT system CC', 'IT system availability',
-                'IT system custodian', 'IT system owner', 'IT system info custodian'
-            ))
-            row = 1
-            for i in hardware:
-                if i.itsystem_set.all().exclude(status=3).exists():
-                    # Write a row for each linked, non-decommissioned ITSystem.
-                    for it in i.itsystem_set.all().exclude(status=3):
-                        hw_sheet.write_row(row, 0, [
-                            i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
-                            i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
-                            str(i.patch_group), it.system_id, it.name, str(it.cost_centre),
-                            it.get_availability_display(),
-                            it.technology_custodian.get_full_name() if it.technology_custodian else '',
-                            it.owner.get_full_name() if it.owner else '',
-                            it.information_custodian.get_full_name() if it.information_custodian else ''
-                        ])
-                else:
-                    # No IT Systems - just record the hardware details.
-                    hw_sheet.write_row(row, 0, [
-                        i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
-                        i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
-                        str(i.patch_group)
-                    ])
-                row += 1
-            hw_sheet.set_column('A:A', 36)
-
+        hardware = ITSystemHardware.objects.filter(decommissioned=False)
+        response = it_system_hardware_export(response, hardware)
         return response
 
 
@@ -176,50 +82,8 @@ class IncidentExport(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=incident_register_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
-        with xlsxwriter.Workbook(
-            response,
-            {
-                'in_memory': True,
-                'default_date_format': 'dd-mmm-yyyy HH:MM',
-                'remove_timezone': True,
-            },
-        ) as workbook:
-            # Incident Register worksheet
-            incidents = Incident.objects.all()
-            register = workbook.add_worksheet('Incident register')
-            register.write_row('A1', (
-                'Incident no.', 'Status', 'Description', 'Priority', 'Category', 'Start time',
-                'Resolution time', 'Duration', 'RTO met', 'System(s) affected', 'Location(s) affected',
-                'Incident manager', 'Incident owner', 'Detection method', 'Workaround action(s)',
-                'Root cause', 'Remediation action(s)', 'Division(s) affected'
-            ))
-            row = 1
-            for i in incidents:
-                register.write_row(row, 0, [
-                    i.pk, i.status.capitalize(), i.description, i.get_priority_display(),
-                    i.get_category_display(), i.start.astimezone(TZ),
-                    i.resolution.astimezone(TZ) if i.resolution else '',
-                    str(i.duration) if i.duration else '', i.rto_met(),
-                    i.systems_affected, i.locations_affected,
-                    i.manager.get_full_name() if i.manager else '',
-                    i.owner.get_full_name() if i.owner else '',
-                    i.get_detection_display(), i.workaround, i.root_cause, i.remediation,
-                    i.divisions_affected if i.divisions_affected else ''
-                ])
-                row += 1
-            register.set_column('A:A', 11)
-            register.set_column('C:C', 72)
-            register.set_column('D:D', 13)
-            register.set_column('E:E', 18)
-            register.set_column('F:G', 16)
-            register.set_column('H:H', 13)
-            register.set_column('I:I', 8)
-            register.set_column('J:K', 28)
-            register.set_column('L:M', 16)
-            register.set_column('N:N', 20)
-            register.set_column('O:R', 24)
-
+        incidents = Incident.objects.all()
+        response = incident_export(response, incidents)
         return response
 
 
@@ -442,7 +306,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         # Emergency RFC changes.
         if self.request.POST.get('save') and rfc.is_emergency_change:
             if rfc.completed:  # If a completed date is recorded, set the status automatically.
-                rfc.status =4
+                rfc.status = 4
                 rfc.save()
 
         if errors:
@@ -532,47 +396,8 @@ class ChangeRequestExport(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=change_requests_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
-        with xlsxwriter.Workbook(
-            response,
-            {
-                'in_memory': True,
-                'default_date_format': 'dd-mmm-yyyy HH:MM',
-                'remove_timezone': True,
-            },
-        ) as workbook:
-            rfcs = ChangeRequest.objects.all()
-            changes = workbook.add_worksheet('Change requests')
-            changes.write_row('A1', (
-                'Change ref.', 'Title', 'Change type', 'Requester', 'Endorser', 'Implementer', 'Status',
-                'Test date', 'Planned start', 'Planned end', 'Completed', 'Outage duration',
-                'System(s) affected', 'Incident URL', 'Unexpected issues',
-            ))
-            row = 1
-            for i in rfcs:
-                changes.write_row(row, 0, [
-                    i.pk, i.title, i.get_change_type_display(),
-                    i.requester.get_full_name() if i.requester else '',
-                    i.endorser.get_full_name() if i.endorser else '',
-                    i.implementer.get_full_name() if i.implementer else '',
-                    i.get_status_display(), i.test_date,
-                    i.planned_start.astimezone(TZ) if i.planned_start else '',
-                    i.planned_end.astimezone(TZ) if i.planned_end else '',
-                    i.completed.astimezone(TZ) if i.completed else '',
-                    str(i.outage) if i.outage else '', i.systems_affected, i.incident_url,
-                    i.unexpected_issues,
-                ])
-                row += 1
-            changes.set_column('A:A', 11)
-            changes.set_column('B:B', 44)
-            changes.set_column('C:C', 12)
-            changes.set_column('D:F', 18)
-            changes.set_column('G:G', 26)
-            changes.set_column('H:K', 18)
-            changes.set_column('L:L', 15)
-            changes.set_column('M:N', 30)
-            changes.set_column('O:O', 17)
-
+        rfcs = ChangeRequest.objects.all()
+        response = change_request_export(response, rfcs)
         return response
 
 
