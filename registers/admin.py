@@ -140,7 +140,7 @@ class ITSystemAdmin(VersionAdmin):
 
 @register(ITSystemDependency)
 class ITSystemDependencyAdmin(VersionAdmin):
-    list_display = ('itsystem', 'dependency', 'criticality')
+    list_display = ('itsystem', 'itsystem_status', 'dependency', 'criticality')
     list_filter = ('criticality',)
     search_fields = ('itsystem__name', 'dependency__name', 'description')
     # Override the default reversion/change_list.html template:
@@ -166,6 +166,10 @@ class ITSystemDependencyAdmin(VersionAdmin):
             ),
         ]
         return extra_urls + urls
+
+    def itsystem_status(self, obj):
+        return obj.itsystem.get_status_display()
+    itsystem_status.short_description = 'IT system status'
 
     def itsystem_dependency_reports(self, request):
         context = {'title': 'IT System dependency reports'}
