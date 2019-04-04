@@ -20,7 +20,7 @@
 {% if object.is_draft and not object.is_emergency_change and object.requester.email == request.user.email %}
 <div class="row">
     <div class="col-xs-12">
-        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit for endorsement</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit change request</a></a>
     </div>
 </div>
 <br>
