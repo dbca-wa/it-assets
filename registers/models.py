@@ -580,7 +580,7 @@ class ChangeRequest(models.Model):
         # Send an email to the endorser (if defined) with a link to the change request endorse view.
         if not self.endorser:
             return None
-        subject = 'Approval for change request {}'.format(self)
+        subject = 'Endorsement for change request {}'.format(self)
         if request:
             endorse_url = request.build_absolute_uri(reverse('change_request_endorse', kwargs={'pk': self.pk}))
         else:
