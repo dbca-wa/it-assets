@@ -5,6 +5,7 @@ omit =
     */management/commands/*
     */apps.py
     */__init__.py
+    */utils*.py
     itassets/wsgi.py
     itassets/settings.py
     manage.py

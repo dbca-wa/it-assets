@@ -1,13 +1,12 @@
 import datetime
+from django.conf import settings
 import logging
 from openpyxl import load_workbook
 import psycopg2
 import pytz
-perth = pytz.timezone('Australia/Perth')
-
-from django.conf import settings
 
 
+PERTH = pytz.timezone('Australia/Perth')
 LOGGER = logging.getLogger('sync_tasks')
 
 
@@ -70,7 +69,10 @@ ALESCO_DB_FIELDS = (
 )
 ALESCO_DATE_MAX = datetime.date(2049, 12, 31)
 
+
 def alesco_db_fetch():
+    """Returns an iterator which fields rows from a database query until completed.
+    """
     conn = psycopg2.connect(
         host=settings.ALESCO_DB_HOST,
         database=settings.ALESCO_DB_NAME,
@@ -91,7 +93,7 @@ def alesco_db_fetch():
 def alesco_db_import():
     from .models import DepartmentUser
 
-    date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date',]
+    date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date']
 
     status_ranking = [
         'PFAS', 'PFA', 'PFT', 'CFA', 'CFT', 'NPAYF',
@@ -109,13 +111,11 @@ def alesco_db_import():
         'SCL2', 'R2', 'L2',
         'SCL1', 'R1', 'L12', 'L1',
     ]
-    
-    date_to_dt = lambda d: perth.localize(datetime.datetime(d.year, d.month, d.day, 0, 0))+datetime.timedelta(days=1)
 
-    today = datetime.date.today()
-
+    date_to_dt = lambda d: PERTH.localize(datetime.datetime(d.year, d.month, d.day, 0, 0)) + datetime.timedelta(days=1)
     records = {}
     alesco_iter = alesco_db_fetch()
+
     for row in alesco_iter:
 
         record = dict(zip(ALESCO_DB_FIELDS, row))
@@ -126,31 +126,31 @@ def alesco_db_import():
         records[eid].append(record)
 
     users = []
+
     for key, record in records.items():
         record.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
         record.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
         record.sort(key=lambda x: x['job_term_date'], reverse=True)
-        
         term_date = record[0]['job_term_date']
         term_date = date_to_dt(term_date) if term_date != ALESCO_DATE_MAX else None
-        
+
         for rec in record:
             for field in date_fields:
                 rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
 
-
         user = DepartmentUser.objects.filter(employee_id=key).first()
+
         if not user:
             continue
+
         user.alesco_data = record
+
         if term_date:
-            expiry_date = perth.normalize(user.expiry_date) if user.expiry_date else None
+            expiry_date = PERTH.normalize(user.expiry_date) if user.expiry_date else None
             if term_date != expiry_date:
-                print('Updating expiry for {} from {} to {}'.format( user.email, expiry_date, term_date ))
-            #user.expiry_date = term_date
+                print('Updating expiry for {} from {} to {}'.format(user.email, expiry_date, term_date))
+
         user.save()
         users.append(user)
 
-
     return users
-

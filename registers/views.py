@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
@@ -11,17 +12,19 @@ from pytz import timezone
 import re
 import xlsxwriter
 
-from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog
+from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
+    EmergencyChangeRequestForm,
 )
+from .reports import itsr_staff_discrepancies
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
 
 
-class ITSystemExport(View):
+class ITSystemExport(LoginRequiredMixin, View):
     """A custom view to export all IT Systems to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
@@ -36,7 +39,10 @@ class ITSystemExport(View):
                 'remove_timezone': True,
             },
         ) as workbook:
-            itsystems = ITSystem.objects.all().exclude(status=3).order_by('system_id')  # Exclude decommissioned systems.
+            if 'all' in request.GET:  # Return all ITsystems.
+                itsystems = ITSystem.objects.all().order_by('system_id')
+            else:  # Default to prod/prod-legacy IT systems only.
+                itsystems = ITSystem.objects.filter(status__in=[0, 2]).order_by('system_id')
             systems = workbook.add_worksheet('IT Systems')
             systems.write_row('A1', (
                 'System ID', 'Name', 'Description', 'Status', 'Recovery category', 'Seasonality',
@@ -88,7 +94,19 @@ class ITSystemExport(View):
         return response
 
 
-class ITSystemHardwareExport(View):
+class ITSystemDiscrepancyReport(LoginRequiredMixin, View):
+    """A custom view to return a spreadsheet containing discrepancies related to IT Systems.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
+        response = itsr_staff_discrepancies(response, it_systems)
+        return response
+
+
+class ITSystemHardwareExport(LoginRequiredMixin, View):
     """A custom view to export IT ystem hardware to an Excel spreadsheet.
     NOTE: report output excludes objects that are marked as decommissioned.
     """
@@ -138,7 +156,7 @@ class ITSystemHardwareExport(View):
         return response
 
 
-class IncidentList(ListView):
+class IncidentList(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
@@ -148,11 +166,11 @@ class IncidentList(ListView):
         return Incident.objects.filter(resolution__isnull=True)
 
 
-class IncidentDetail(DetailView):
+class IncidentDetail(LoginRequiredMixin, DetailView):
     model = Incident
 
 
-class IncidentExport(View):
+class IncidentExport(LoginRequiredMixin, View):
     """A custom view to export all Incident values to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
@@ -205,7 +223,7 @@ class IncidentExport(View):
         return response
 
 
-class ChangeRequestList(ListView):
+class ChangeRequestList(LoginRequiredMixin, ListView):
     model = ChangeRequest
     paginate_by = 20
 
@@ -228,13 +246,26 @@ class ChangeRequestList(ListView):
         return context
 
 
-class ChangeRequestDetail(DetailView):
+class StandardChangeList(LoginRequiredMixin, ListView):
+    model = StandardChange
+    paginate_by = 100
+
+
+class StandardChangeDetail(LoginRequiredMixin, DetailView):
+    model = StandardChange
+
+
+class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     model = ChangeRequest
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
         rfc = self.get_object()
-        context['may_complete'] = rfc.is_ready and self.request.user.email in [rfc.requester.email, rfc.implementer.email] and rfc.planned_end <= datetime.now().astimezone(TZ)
+        context['may_complete'] = (
+            rfc.is_ready and
+            self.request.user.email in [rfc.requester.email, rfc.implementer.email] and
+            rfc.planned_end <= datetime.now().astimezone(TZ)
+        )
         # Context variable that determines if implementation & communication info is displayed.
         emails = []
         if rfc.requester:
@@ -247,18 +278,22 @@ class ChangeRequestDetail(DetailView):
         return context
 
 
-class ChangeRequestCreate(CreateView):
+class ChangeRequestCreate(LoginRequiredMixin, CreateView):
     model = ChangeRequest
 
     def get_form_class(self):
         if 'std' in self.kwargs and self.kwargs['std']:
             return StandardChangeRequestCreateForm
+        elif 'emerg' in self.kwargs and self.kwargs['emerg']:
+            return EmergencyChangeRequestForm
         return ChangeRequestCreateForm
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
         if 'std' in self.kwargs and self.kwargs['std']:
             context['title'] = 'Create a draft standard change request'
+        elif 'emerg' in self.kwargs and self.kwargs['emerg']:
+            context['title'] = 'Create an emergency change request'
         else:
             context['title'] = 'Create a draft change request'
         return context
@@ -275,13 +310,21 @@ class ChangeRequestCreate(CreateView):
         # Autocomplete normal/standard change fields.
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
+            rfc.endorser = rfc.standard_change.endorser
+        elif 'emerg' in self.kwargs and self.kwargs['emerg']:
+            rfc.change_type = 2
+            if rfc.completed:  # If a completion date was recorded, set the status.
+                rfc.status = 4
         else:
             rfc.change_type = 0
         rfc.save()
+        if 'std' in self.kwargs and self.kwargs['std']:
+            # Must be carried out after save()
+            rfc.it_systems.set(rfc.standard_change.it_systems.all())
         return super(ChangeRequestCreate, self).form_valid(form)
 
 
-class ChangeRequestChange(UpdateView):
+class ChangeRequestChange(LoginRequiredMixin, UpdateView):
     """View for all end-user changes to an RFC: update, submit, endorse, etc.
     """
     model = ChangeRequest
@@ -298,12 +341,14 @@ class ChangeRequestChange(UpdateView):
         rfc = self.get_object()
         if rfc.is_standard_change:
             return StandardChangeRequestChangeForm
+        elif rfc.is_emergency_change:
+            return EmergencyChangeRequestForm
         return ChangeRequestChangeForm
 
     def get_form(self, *args, **kwargs):
         form = super().get_form(*args, **kwargs)
         rfc = self.get_object()
-        if rfc.endorser:
+        if rfc.endorser and not rfc.is_standard_change:
             form.fields['endorser_choice'].choices = [(rfc.endorser.pk, rfc.endorser.email)]
         if rfc.implementer:
             form.fields['implementer_choice'].choices = [(rfc.implementer.pk, rfc.implementer.email)]
@@ -373,24 +418,39 @@ class ChangeRequestChange(UpdateView):
                 errors = True
             # No validation errors: change the RFC status, send an email to the endorser and make a log.
             if not errors:
-                # TODO: send an email to the requester.
-                rfc.status = 1
+                # Standard change workflow: submit directly to CAB.
+                if rfc.is_standard_change:
+                    rfc.status = 2
+                    rfc.save()
+                    msg = 'Standard change request {} submitted to CAB.'.format(rfc.pk)
+                    messages.success(self.request, msg)
+                    log = ChangeLog(change_request=rfc, log=msg)
+                    log.save()
+                # Normal change workflow: submit for endorsement, then to CAB.
+                else:
+                    rfc.status = 1
+                    rfc.save()
+                    msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
+                    messages.success(self.request, msg)
+                    log = ChangeLog(change_request=rfc, log=msg)
+                    log.save()
+                    rfc.email_endorser(self.request)
+                    log = ChangeLog(
+                        change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.get_full_name()))
+                    log.save()
+
+        # Emergency RFC changes.
+        if self.request.POST.get('save') and rfc.is_emergency_change:
+            if rfc.completed:  # If a completed date is recorded, set the status automatically.
+                rfc.status =4
                 rfc.save()
-                msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
-                messages.success(self.request, msg)
-                log = ChangeLog(change_request=rfc, log=msg)
-                log.save()
-                rfc.email_endorser(self.request)
-                log = ChangeLog(
-                    change_request=rfc, log='Request for approval emailed to {}.'.format(rfc.endorser.get_full_name()))
-                log.save()
 
         if errors:
             return super(ChangeRequestChange, self).form_invalid(form)
         return super(ChangeRequestChange, self).form_valid(form)
 
 
-class ChangeRequestEndorse(UpdateView):
+class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
     model = ChangeRequest
     form_class = ChangeRequestEndorseForm
     template_name = 'registers/changerequest_endorse.html'
@@ -466,7 +526,7 @@ class ChangeRequestEndorse(UpdateView):
         return super(ChangeRequestEndorse, self).form_valid(form)
 
 
-class ChangeRequestExport(View):
+class ChangeRequestExport(LoginRequiredMixin, View):
     """A custom view to export all Incident values to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
@@ -486,12 +546,13 @@ class ChangeRequestExport(View):
             changes.write_row('A1', (
                 'Change ref.', 'Title', 'Change type', 'Requester', 'Endorser', 'Implementer', 'Status',
                 'Test date', 'Planned start', 'Planned end', 'Completed', 'Outage duration',
-                'System(s) affected', 'Incident URL',
+                'System(s) affected', 'Incident URL', 'Unexpected issues',
             ))
             row = 1
             for i in rfcs:
                 changes.write_row(row, 0, [
-                    i.pk, i.title, i.get_change_type_display(), i.requester.get_full_name(),
+                    i.pk, i.title, i.get_change_type_display(),
+                    i.requester.get_full_name() if i.requester else '',
                     i.endorser.get_full_name() if i.endorser else '',
                     i.implementer.get_full_name() if i.implementer else '',
                     i.get_status_display(), i.test_date,
@@ -499,6 +560,7 @@ class ChangeRequestExport(View):
                     i.planned_end.astimezone(TZ) if i.planned_end else '',
                     i.completed.astimezone(TZ) if i.completed else '',
                     str(i.outage) if i.outage else '', i.systems_affected, i.incident_url,
+                    i.unexpected_issues,
                 ])
                 row += 1
             changes.set_column('A:A', 11)
@@ -509,38 +571,37 @@ class ChangeRequestExport(View):
             changes.set_column('H:K', 18)
             changes.set_column('L:L', 15)
             changes.set_column('M:N', 30)
+            changes.set_column('O:O', 17)
 
         return response
 
 
-class ChangeRequestCalendar(ListView):
+class ChangeRequestCalendar(LoginRequiredMixin, ListView):
     model = ChangeRequest
     template_name = 'registers/changerequest_calendar.html'
 
     def get_date_param(self, **kwargs):
         if 'date' in self.kwargs:
             # Parse the date YYYY-MM-DD, then YYYY-MM.
-            if re.match('^\d{4}-\d{2}-\d{2}$', self.kwargs['date']):
+            if re.match('^\d{4}-\d{1,2}-\d{1,2}$', self.kwargs['date']):
                 return ('week', datetime.strptime(self.kwargs['date'], '%Y-%m-%d').date())
-            elif re.match('^\d{4}-\d{2}$', self.kwargs['date']):
+            elif re.match('^\d{4}-\d{1,2}$', self.kwargs['date']):
                 return ('month', datetime.strptime(self.kwargs['date'], '%Y-%m').date())
-        # Fall back to today's date.
-        return ('week', date.today())
+        else:
+            # If no starting date is specifed, fall back to Monday in the current week.
+            return ('week', date.today() - timedelta(days=date.today().weekday()))
 
     def get_context_data(self, **kwargs):
         context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
         cal, d = self.get_date_param()
-        print(cal)
-        context['date'] = d
+        context['start'] = d
+        context['today'] = date.today()
         if cal == 'week':
             context['format'] = 'Weekly'
-            week_start = d - timedelta(days=d.weekday())
-            context['start'] = week_start
-            context['date_last'] = week_start - timedelta(7)
-            context['date_next'] = week_start + timedelta(7)
+            context['date_last'] = d - timedelta(7)
+            context['date_next'] = d + timedelta(7)
         elif cal == 'month':
             context['format'] = 'Monthly'
-            context['start'] = d
             context['date_last'] = (d + relativedelta(months=-1)).strftime('%Y-%m')
             context['date_next'] = (d + relativedelta(months=1)).strftime('%Y-%m')
         return context
@@ -549,18 +610,20 @@ class ChangeRequestCalendar(ListView):
         queryset = super(ChangeRequestCalendar, self).get_queryset()
         cal, d = self.get_date_param()
         if cal == 'week':
-            week_start = d - timedelta(days=d.weekday())
+            # Convert week_start to a TZ-aware datetime object.
+            week_start = datetime.combine(d, datetime.min.time()).astimezone(TZ)
             week_end = week_start + timedelta(days=7)
             return queryset.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
         elif cal == 'month':
-            month_start = d
-            month_end = monthrange(d.year, d.month)[1]
-            month_end = date(d.year, d.month, month_end)
+            # Convert month_start to a TZ-aware datetime object.
+            month_start = datetime.combine(d, datetime.min.time()).astimezone(TZ)
+            last_day = monthrange(d.year, d.month)[1]
+            month_end = datetime.combine(date(d.year, d.month, last_day), datetime.max.time()).astimezone(TZ)
             return queryset.filter(planned_start__range=[month_start, month_end]).order_by('planned_start')
         return queryset
 
 
-class ChangeRequestComplete(UpdateView):
+class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
     """View for all 'completion' changes to an RFC: success/failure/notes etc.
     """
     model = ChangeRequest

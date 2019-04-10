@@ -135,6 +135,7 @@ class ITSystem(CommonFields):
     Department staff (normally vendor or bespoke software), which is supported
     by OIM and/or an external vendor.
     """
+    ACTIVE_FILTER = {'status__in': [0, 2]}  # Defines a queryset filter for "active" IT systems.
     STATUS_CHOICES = (
         (0, 'Production'),
         (1, 'Development'),
@@ -457,6 +458,9 @@ class StandardChange(models.Model):
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.name))
 
+    def get_absolute_url(self):
+        return reverse('standard_change_detail', kwargs={'pk': self.pk})
+
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.
@@ -499,6 +503,8 @@ class ChangeRequest(models.Model):
         max_length=2048, null=True, blank=True, verbose_name='Incident URL',
         help_text='If the change is to address an incident, URL to the incident details')
     test_date = models.DateField(null=True, blank=True, help_text='Date on which the change was tested')
+    test_result_docs = models.FileField(
+        null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Test results record (attachment)')
     planned_start = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to begin')
     planned_end = models.DateTimeField(null=True, blank=True, help_text='Time that the change is planned to end')
     completed = models.DateTimeField(null=True, blank=True, help_text='Time that the change was completed')
@@ -526,8 +532,16 @@ class ChangeRequest(models.Model):
         ordering = ('-planned_start',)
 
     @property
+    def is_normal_change(self):
+        return self.change_type == 0
+
+    @property
     def is_standard_change(self):
         return self.change_type == 1
+
+    @property
+    def is_emergency_change(self):
+        return self.change_type == 2
 
     @property
     def is_draft(self):

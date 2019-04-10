@@ -3,6 +3,7 @@ from registers import views
 
 urlpatterns = [
     path('itsystem/export/', views.ITSystemExport.as_view(), name='itsystem_export'),
+    path('itsystem/discrepancy-report/', views.ITSystemDiscrepancyReport.as_view(), name='itsystem_discrepancy_report'),
     path('incident/', views.IncidentList.as_view(), name='incident_list'),
     path('incident/<int:pk>/', views.IncidentDetail.as_view(), name='incident_detail'),
     path('changerequest/', views.ChangeRequestList.as_view(), name='change_request_list'),
@@ -11,9 +12,12 @@ urlpatterns = [
     path('changerequest/<int:pk>/endorse/', views.ChangeRequestEndorse.as_view(), name='change_request_endorse'),
     path('changerequest/<int:pk>/complete/', views.ChangeRequestComplete.as_view(), name='change_request_complete'),
     path('changerequest/create/', views.ChangeRequestCreate.as_view(), name='change_request_create'),
-    path('changerequest/create/standard/', views.ChangeRequestCreate.as_view(), name='std_change_request_create', kwargs={'std': True}),
+    path('changerequest/create-standard/', views.ChangeRequestCreate.as_view(), name='std_change_request_create', kwargs={'std': True}),
+    path('changerequest/create-emergency/', views.ChangeRequestCreate.as_view(), name='emerg_change_request_create', kwargs={'emerg': True}),
     path('changerequest/calendar/', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
-    re_path('^changerequest/calendar/(?P<date>\d{4}-\d{2}-\d{2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
-    re_path('^changerequest/calendar/(?P<date>\d{4}-\d{2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
+    re_path('^changerequest/calendar/(?P<date>\d{4}-\d{1,2}-\d{1,2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
+    re_path('^changerequest/calendar/(?P<date>\d{4}-\d{1,2})/$', views.ChangeRequestCalendar.as_view(), name='change_request_calendar'),
     path('changerequest/export/', views.ChangeRequestExport.as_view(), name='change_request_export'),
+    path('standardchange/', views.StandardChangeList.as_view(), name='standard_change_list'),
+    path('standardchange/<int:pk>/', views.StandardChangeDetail.as_view(), name='standard_change_detail'),
 ]

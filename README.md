@@ -16,3 +16,16 @@ The following variables are required for the project to run:
 
     DATABASE_URL="postgis://USER:PASSWORD@HOST:PORT/DATABASE_NAME"
     SECRET_KEY="ThisIsASecretKey"
+
+Download of Freshdesk API data requires the following variables:
+
+    FRESHDESK_ENDPOINT="https://dpaw.freshdesk.com/api/v2"
+    FRESHDESK_API_KEY="VALID_API_KEY"
+
+A link to the Alesco database table requires the following variables:
+
+    ALESCO_DB_HOST
+    ALESCO_DB_NAME
+    ALESCO_DB_TABLE
+    ALESCO_DB_USERNAME
+    ALESCO_DB_PASSWORD

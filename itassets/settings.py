@@ -1,4 +1,5 @@
-from confy import database, env
+from dbca_utils.utils import env
+import dj_database_url
 import os
 import sys
 from pathlib import Path
@@ -59,7 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'dpaw_utils.middleware.SSOLoginMiddleware',
+    'dbca_utils.middleware.SSOLoginMiddleware',
 ]
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
@@ -105,13 +106,14 @@ ALESCO_DB_PASSWORD = env('ALESCO_DB_PASSWORD')
 # Database configuration
 DATABASES = {
     # Defined in DATABASE_URL env variable.
-    'default': database.config(),
+    'default': dj_database_url.config(),
 }
 
 
 # Static files configuration
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
+STATICFILES_DIRS = (os.path.join(BASE_DIR, 'itassets', 'static'),)
 # Ensure that the media directory exists:
 if not os.path.exists(os.path.join(BASE_DIR, 'media')):
     os.mkdir(os.path.join(BASE_DIR, 'media'))

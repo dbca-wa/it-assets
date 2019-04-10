@@ -9,11 +9,22 @@ RUN apt-get update -y \
 # Install Python libs from requirements.txt.
 FROM builder_base_itassets as python_libs_itassets
 WORKDIR /app
-COPY . .
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install the project.
 FROM python_libs_itassets
+COPY gunicorn.ini manage.py ./
+COPY assets ./assets
+COPY frontend ./frontend
+COPY itassets ./itassets
+COPY knowledge ./knowledge
+COPY organisation ./organisation
+COPY recoup ./recoup
+COPY registers ./registers
+COPY status ./status
+COPY tracking ./tracking
+COPY webconfig ./webconfig
 RUN python manage.py collectstatic --noinput
 EXPOSE 8080
 HEALTHCHECK --interval=1m --timeout=5s --start-period=10s --retries=3 CMD ["wget", "-q", "-O", "-", "http://localhost:8080/healthcheck/"]
