@@ -439,12 +439,12 @@ class UserSelectResourceTestCase(ApiTestCase):
 
 
 
-class DepartmentUserExportTestCase(TestCase):
+class DepartmentUserExportTestCase(ApiTestCase):
 
-    # def setUp(self):
-    #     super(DepartmentUserExportTestCase, self).setUp()
-    #     # Create some hardware.
-    #     mixer.cycle(10).blend(DepartmentUser)
+    def setUp(self):
+        super(DepartmentUserExportTestCase, self).setUp()
+        # Create some hardware.
+        mixer.cycle(10).blend(DepartmentUser)
 
 
     def test_get(self):
@@ -452,3 +452,7 @@ class DepartmentUserExportTestCase(TestCase):
         url = reverse('admin:departmentuser_export')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'],
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

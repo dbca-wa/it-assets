@@ -47,9 +47,9 @@ class ITSystemHardwareResourceTestCase(ApiTestCase):
 class ChangeRequestViewSetTestCase(ApiTestCase):
 
     def test_list(self):
-        url = reverse('changerequest-list')
+        #url = reverse('changerequest-list')
 
-        #url = '/api/v2/changerequest/'
+        url = '/api/v2/changerequest/list'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 

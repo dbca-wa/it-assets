@@ -50,7 +50,11 @@ class RegistersViewsTestCase(TestCase):
     def test_changerequest_export(self):
         url = reverse('admin:changerequest_export')
         resp = self.client.get(url, follow=True)
+
         self.assertEqual(resp.status_code, 200)
+        # self.assertTrue(resp.has_header("Content-Disposition"))
+        # self.assertEqual(resp['Content-Type'],
+        #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     def test_changerequest_calendar(self):
         url = reverse('change_request_calendar')
@@ -63,20 +67,6 @@ class RegistersViewsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
 
 
-class ITSystemExportTestCase(TestCase):
-
-    def test_get(self):
-        url = reverse('itsystem_export')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-class ITSystemHardwareExportTestCase(TestCase):
-
-    def test_get(self):
-
-        url = reverse('admin:itsystemhardware_export')
-        response = self.client.get(url, follow=True)
-        self.assertEqual(response.status_code, 200)
 
 class IncidentListTestCase(TestCase):
 
@@ -85,11 +75,4 @@ class IncidentListTestCase(TestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
 
-class IncidentExportTestCase(TestCase):
-
-    def test_get(self):
-
-        url = reverse('admin:incident_export',)
-        response = self.client.get(url, follow=True)
-        self.assertEqual(response.status_code, 200)
 

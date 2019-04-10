@@ -39,6 +39,9 @@ class RegistersAdminTestCase(ApiTestCase):
         url = reverse('admin:itsystemhardware_export')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'],
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     def test_itsystem_export(self):
         """Test the ITSystemAdmin export view
@@ -46,6 +49,9 @@ class RegistersAdminTestCase(ApiTestCase):
         url = reverse('admin:itsystem_export')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'],
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     def test_itsystemdependency_reports(self):
         """Test the ITSystemDependencyAdmin reports view
@@ -74,3 +80,6 @@ class RegistersAdminTestCase(ApiTestCase):
         url = reverse('admin:incident_export')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'],
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
