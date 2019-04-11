@@ -10,6 +10,8 @@ from registers.models import ITSystem, Incident, ChangeRequest, ChangeLog
 
 from itassets.test_api import ApiTestCase
 
+from itassets.test_api import ApiTestCase
+
 User = get_user_model()
 TZ = timezone(settings.TIME_ZONE)
 
@@ -79,14 +81,14 @@ class RegistersViewsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
 
 
-    def test_changerequest_export(self):
-        url = reverse('admin:changerequest_export')
-        resp = self.client.get(url, follow=True)
-
-        self.assertEqual(resp.status_code, 200)
-        # self.assertTrue(resp.has_header("Content-Disposition"))
-        # self.assertEqual(resp['Content-Type'],
-        #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    # def test_changerequest_export(self):
+    #     url = reverse('admin:changerequest_export')
+    #     resp = self.client.get(url, follow=True)
+    #
+    #     self.assertEqual(resp.status_code, 200)
+    #     # self.assertTrue(resp.has_header("Content-Disposition"))
+    #     # self.assertEqual(resp['Content-Type'],
+    #     #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     def test_changerequest_calendar(self):
         url = reverse('change_request_calendar')
@@ -151,10 +153,6 @@ class ChangeRequestExportTestCase(ApiTestCase):
         # self.assertTrue(resp.has_header("Content-Disposition"))
         # self.assertEqual(resp['Content-Type'],
         #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-
-
-
 
     def test_change_request_export(self):
         url = reverse('change_request_export')
