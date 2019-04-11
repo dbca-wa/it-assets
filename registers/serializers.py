@@ -15,7 +15,7 @@ class ITSystemSerializer(serializers.ModelSerializer):
 
 class ChangeRequestSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
-    it_system = ITSystemSerializer()
+    it_systems = ITSystemSerializer(many = True)
 
     #changing requestor to requester
     requester = DepartmentUserMinSerializer()

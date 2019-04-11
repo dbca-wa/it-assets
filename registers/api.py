@@ -188,7 +188,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         if(mychanges):
             if(request.user.is_authenticated):
                 user = request.user.email
-                qa = qa.filter(Q(requestor__email=user) | Q(endorser__email=user) | Q(implementor__email=user))
+                qa = qa.filter(Q(requester__email=user) | Q(endorser__email=user) | Q(implementer__email=user))
         if(search):
             qa = qa.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(notes__icontains=search) | Q(broadcast__icontains=search) | Q(implementation__icontains=search) | Q(it_system__name__icontains=search) | Q(implementer__name__icontains=search) | Q(endorser__name__icontains=search) | Q(requester__name__icontains=search))
         if(datefrom):
@@ -219,9 +219,9 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
 
     def create(self, request):
         data = {
-            'requestor': request.data.get('requestor'),
+            'requester': request.data.get('requester'),
             'endorser': request.data.get('endorser'),
-            'implementor': request.data.get('implementor'),
+            'implementer': request.data.get('implementer'),
             'title': request.data.get('title'),
             'description': request.data.get('description'),
             'change_type': request.data.get('changeType'),
@@ -291,9 +291,9 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                 elif change.status == 2:
                     change.completed_date = datetime.now()
             else:
-                change.requestor_id = request.data.get('requestor')
+                change.requester_id = request.data.get('requester')
                 change.endorser_id = request.data.get('endorser')
-                change.implementor_id = request.data.get('implementor')
+                change.implementer_id = request.data.get('implementer')
                 change.title = request.data.get('title')
                 change.description = request.data.get('description')
                 change.change_type = request.data.get('changetype')
@@ -314,10 +314,10 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                     change.change_end = datetime.strptime(request.data.get('changeend'), "%d/%m/%Y %H:%M")
                 systemCode = request.data.get('itsystem')
                 if systemCode == 'System not listed':
-                    change.it_system = None
+                    change.it_systems = None
                 else:
                     system = ITSystem.objects.get(system_id=systemCode)
-                    change.it_system_id = system.pk
+                    change.it_systems_id = system.pk
             change.save()
             serializer = ChangeRequestSerializer(change)
             data = serializer.data
