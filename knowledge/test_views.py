@@ -43,3 +43,37 @@ class KnowledgeViewsTestCase(TestCase):
         url = reverse('km_user_accounts')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+    def test_km_OrganisationStructure(self):
+
+        url = reverse('km_user_accounts')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_km_NewUserForm(self):
+        """test the km_Newuser_accounts GET response
+        """
+        url = reverse('new_user_form')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_km_UpdateUserForm(self):
+        """test the km_Updateuser_accounts GET response
+        """
+        url = reverse('update_user_form')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_km_TransferUserForm(self):
+        """test the km_Transferuser GET response
+        """
+        url = reverse('update_user_form')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_km_DeleteUserForm(self):
+        """test the km_Deleteuser GET response
+        """
+        url = reverse('delete_user_form')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

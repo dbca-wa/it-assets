@@ -1,6 +1,9 @@
 from django.contrib.auth.models import User
 from django.test import TestCase, Client
 from mixer.backend.django import mixer
+
+from django.urls import reverse
+
 import random
 import string
 from uuid import uuid1
@@ -103,3 +106,14 @@ class ApiTestCase(TestCase):
         self.it2 = mixer.blend(ITSystem, status=1, owner=self.user2)
         self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user2)
         self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user2)
+
+class HealthCheckViewTestCase(TestCase):
+
+    def test_get_context(self):
+        url = reverse('health_check')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+
+# class OptionResourceTestCase(TestCase):
+#      url = '/api/options?list={}/'.format()

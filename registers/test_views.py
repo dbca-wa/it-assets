@@ -66,6 +66,30 @@ class RegistersViewsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Create a draft change request')
 
+    def test_changerequest_change(self):
+        url = reverse('change_request_change',kwargs={'pk': self.rfc.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_changerequest_endorse(self):
+        url = reverse('change_request_endorse',kwargs={'pk': self.rfc.pk})
+        resp = self.client.get(url, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_changerequest_export(self):
+        url = reverse('admin:changerequest_export')
+        resp = self.client.get(url, follow=True)
+
+        self.assertEqual(resp.status_code, 200)
+        # self.assertTrue(resp.has_header("Content-Disposition"))
+        # self.assertEqual(resp['Content-Type'],
+        #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_changerequest_calendar(self):
+        url = reverse('change_request_calendar')
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
     def test_std_changerequest_create(self):
         url = reverse('std_change_request_create')
         resp = self.client.get(url)
