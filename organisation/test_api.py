@@ -5,11 +5,19 @@ from itassets.test_api import ApiTestCase
 from unittest import skip
 from uuid import uuid1
 
+from django.test import TestCase, client
+from django.urls import reverse
+
 from organisation.models import DepartmentUser, Location
 
+from django.conf import settings
+import pytz
+from dateutil.parser import parse
 
 class ProfileTestCase(ApiTestCase):
     url = '/api/profile/'
+
+
 
     def test_profile_api_get(self):
         """Test the profile API endpoint GET response
@@ -23,13 +31,26 @@ class ProfileTestCase(ApiTestCase):
         response = self.client.get(self.url)
         j = response.json()
         obj = j['objects'][0]
+        #self.assertFalse(obj['telephone'])
+        #tel = '9111 1111'
+        #response = self.client.post(self.url, {'telephone': tel})
+        #self.assertEqual(response.status_code, 200)
+        #j = response.json()
+        #obj = j['objects'][0]
+        #self.assertEqual(obj['telephone'], tel)
+
         self.assertFalse(obj['telephone'])
         tel = '9111 1111'
-        response = self.client.post(self.url, {'telephone': tel})
-        self.assertEqual(response.status_code, 200)
-        j = response.json()
-        obj = j['objects'][0]
-        self.assertEqual(obj['telephone'], tel)
+        for f, v in [
+            ('telephone', '91111 1111'),
+            ('mobile_phone', '9111 1112'),
+            ('extension', '211'), ('other_phone', '9111 1113'), ('preferred_name', 'amy')
+        ]:
+            response = self.client.post(self.url, {f: v})
+            self.assertEqual(response.status_code, 200)
+            j = response.json()
+            obj = j['objects'][0]
+            self.assertEqual(obj[f], v)
 
     def test_profile_api_anon(self):
         """Test that anonymous users can't use the profile endpoint
@@ -297,21 +318,52 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertEqual(response.status_code, 201)
         self.assertTrue(DepartmentUser.objects.filter(email=data['email']).exists())
 
+
     def test_update(self):
         """Test the DepartmentUserResource update response
         """
+        tz = pytz.timezone(settings.TIME_ZONE)
         self.assertFalse(self.user1.o365_licence)
         url = '/api/users/{}/'.format(self.user1.ad_guid)
         data = {
             'Surname': 'Lebowski',
             'title': 'Bean Counter',
             'o365_licence': True,
+
+            'email' : 'l@example.com' ,
+            'name' : 'Mike' ,
+            'username' : 'MikeLebowski' ,
+            'ad_guid' : '123',
+            'expiry_date' : '2019-03-12',
+            'given_name' : 'Mike',
+            #'Enabled' :'True',
+            'active' : True,
+            'deleted' : False,
+
+
+
         }
         response = self.client.put(url, json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 202)
         user = DepartmentUser.objects.get(pk=self.user1.pk)  # Refresh from db
         self.assertEqual(user.surname, data['Surname'])
         self.assertEqual(user.title, data['title'])
+
+        self.assertEqual(user.name , data['name'])
+        self.assertEqual(user.email, data['email'])
+        self.assertEqual(user.username, data['username'])
+
+        #self.assertEqual(user.expiry_date, data['expiry_date'])
+
+        self.assertEqual(user.ad_guid, data['ad_guid'])
+
+        self.assertEqual(user.expiry_date, tz.localize(parse(data['expiry_date'])))
+
+        self.assertEqual(user.given_name, data['given_name'])
+        #self.assertEqual(user.active, data['Enabled'])
+        self.assertEqual(user.active, data['active'])
+        self.assertEqual(user.ad_deleted, data['deleted'])
+
         self.assertTrue(user.o365_licence)
         self.assertTrue(user.in_sync)
 
@@ -375,3 +427,32 @@ class LocationResourceTestCase(ApiTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, loc_inactive.name)
+
+# Incomplete ..............
+class UserSelectResourceTestCase(ApiTestCase):
+
+    def test_list(self):
+
+        url = '/api/user-select/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+
+
+class DepartmentUserExportTestCase(ApiTestCase):
+
+    def setUp(self):
+        super(DepartmentUserExportTestCase, self).setUp()
+        # Create some hardware.
+        mixer.cycle(10).blend(DepartmentUser)
+
+
+    def test_get(self):
+
+        url = reverse('admin:departmentuser_export')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'],
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

@@ -1,7 +1,11 @@
 from itassets.test_api import ApiTestCase, random_dbca_email
 from mixer.backend.django import mixer
 
-from tracking.models import FreshdeskTicket, FreshdeskContact
+from tracking.models import FreshdeskTicket, FreshdeskContact ,EC2Instance
+
+from datetime import datetime
+import json
+from uuid import uuid1
 
 
 class FreshdeskTicketResourceTestCase(ApiTestCase):
@@ -46,3 +50,33 @@ class FreshdeskTicketResourceTestCase(ApiTestCase):
         url = '/api/freshdesk_tickets/{}/'.format(self.ticket.ticket_id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+class EC2InstanceResourceTestCase(ApiTestCase):
+
+    def test_list(self):
+        url = '/api/ec2_instances/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_list_filter(self):
+
+        url = '/api/ec2_instances/?name=Test'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.user1.name)
+
+
+
+
+    # need a liitle more info to complete
+    # def test_create(self):
+    #     url = '/api/ec2_instances/'
+    #     name = str(uuid1())[:8]
+    #     data = {
+    #         'ec2id' : 'i-9fd95c40' ,
+    #         'name' : '{}'.format(name),
+    #         'launch_time' : datetime.now().isoformat(),
+    #         'running' : True,
+    #         }
+    #     response = self.client.post(url, json.dumps(data), content_type='application/json')
+    #     self.assertEqual(response.status_code, 201)

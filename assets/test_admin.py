@@ -6,7 +6,7 @@ from django.urls import reverse
 from mixer.backend.django import mixer
 from random import randint
 
-from assets.models import HardwareAsset
+from assets.models import HardwareAsset , SoftwareAsset
 
 User = get_user_model()
 
@@ -28,6 +28,9 @@ class AssetsAdminTestCase(TestCase):
         mixer.cycle(5).blend(
             HardwareAsset, purchased_value=randint(100, 1000), date_purchased=random_datetime)
 
+        mixer.cycle(5).blend(
+            SoftwareAsset, support_expiry=random_datetime)
+
     def test_hardwareasset_changelist(self):
         """Test the HardwareAssetAdmin changelist view
         """
@@ -43,6 +46,7 @@ class AssetsAdminTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'admin/hardwareasset_import_start.html')
 
+
     def test_hardwareasset_import_confirm(self):
         """Test the HardwareAssetAdmin asset_import POST response
         """
@@ -52,3 +56,10 @@ class AssetsAdminTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'admin/hardwareasset_import_start.html')
+
+    # find/create path url for admin assets , Test incomplete
+    # def test_softwareasset(self):
+    #
+    #     url = reverse('admin:assets_softwareasset')
+    #     response = self.client.get(url)
+    #     self.assertEqual(response.status_code, 200)
