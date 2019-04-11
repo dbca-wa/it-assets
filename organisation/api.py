@@ -94,6 +94,8 @@ class DepartmentUserResource(DjangoResource):
     def prepare(self, data):
         """Modify the returned object to append the GAL Department value.
         """
+        #import ipdb; ipdb.set_trace()
+
         prepped = super(DepartmentUserResource, self).prepare(data)
         tz = pytz.timezone(settings.TIME_ZONE)
         if 'pk' in data:

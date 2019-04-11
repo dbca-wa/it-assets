@@ -16,9 +16,14 @@ class ITSystemSerializer(serializers.ModelSerializer):
 class ChangeRequestSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
     it_system = ITSystemSerializer()
-    requestor = DepartmentUserMinSerializer()
+
+    #changing requestor to requester
+    requester = DepartmentUserMinSerializer()
+
     endorser = DepartmentUserMinSerializer()
-    implementor = DepartmentUserMinSerializer()
+
+    # changing implementor to implementer
+    implementer = DepartmentUserMinSerializer()
 
     class Meta:
         model = ChangeRequest

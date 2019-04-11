@@ -8,6 +8,8 @@ from pytz import timezone
 
 from registers.models import ITSystem, Incident, ChangeRequest, ChangeLog
 
+from itassets.test_api import ApiTestCase
+
 User = get_user_model()
 TZ = timezone(settings.TIME_ZONE)
 
@@ -76,6 +78,7 @@ class RegistersViewsTestCase(TestCase):
         resp = self.client.get(url, follow=True)
         self.assertEqual(resp.status_code, 200)
 
+
     def test_changerequest_export(self):
         url = reverse('admin:changerequest_export')
         resp = self.client.get(url, follow=True)
@@ -109,6 +112,7 @@ class RegistersViewsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.rfc.title)
 
+
     def test_change_calendar_month(self):
         self.rfc.planned_start = datetime.now().astimezone(TZ)
         self.rfc.save()
@@ -116,6 +120,41 @@ class RegistersViewsTestCase(TestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.rfc.title)
+
+class ChangeRequestExportTestCase(ApiTestCase):
+    client = Client()
+    def setUp(self):
+        #Create/log in a normal user.
+        self.a_user = mixer.blend(User, username='adminuser', is_superuser=True, is_staff=True)
+        self.a_user.set_password('pass')
+        self.a_user.save()
+        self.client.login(username='adminuser', password='pass')
+        mixer.blend(ChangeRequest)
+        mixer.cycle(2).blend(ChangeLog)
+        self.rfc = ChangeRequest.objects.first()
+        #mixer.cycle(5).blend(ChangeRequest)
+
+        # self.n_user = mixer.blend(User, username='normaluser', is_superuser=True, is_staff=False)
+        # self.n_user.set_password('pass')
+        # self.n_user.save()
+        # self.client.login(username='normaluser', password='pass')
+        # mixer.blend(ChangeRequest)
+        # mixer.cycle(2).blend(ChangeLog)
+        # self.rfc = ChangeRequest.objects.first()
+
+
+    def test_changerequest_export(self):
+        url = reverse('admin:changerequest_export')
+        #resp = self.client.get(url,follow=True)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        # self.assertTrue(resp.has_header("Content-Disposition"))
+        # self.assertEqual(resp['Content-Type'],
+        #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+
+
 
     def test_change_request_export(self):
         url = reverse('change_request_export')

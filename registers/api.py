@@ -172,7 +172,10 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
     serializer_class = ChangeRequestSerializer
 
     def list(self, request):
-        qa = ChangeRequest.objects.all().order_by('-submission_date')
+        #changed submission_date to created
+        qa = ChangeRequest.objects.all().order_by('-created')
+
+
         search = request.GET.get('search[value]') if request.GET.get('search[value]') else None
         start = request.GET.get('start') if request.GET.get('start') else 0
         length = request.GET.get('length') if request.GET.get('length') else len(qa)
@@ -187,7 +190,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                 user = request.user.email
                 qa = qa.filter(Q(requestor__email=user) | Q(endorser__email=user) | Q(implementor__email=user))
         if(search):
-            qa = qa.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(notes__icontains=search) | Q(broadcast__icontains=search) | Q(implementation__icontains=search) | Q(it_system__name__icontains=search) | Q(implementor__name__icontains=search) | Q(endorser__name__icontains=search) | Q(requestor__name__icontains=search))
+            qa = qa.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(notes__icontains=search) | Q(broadcast__icontains=search) | Q(implementation__icontains=search) | Q(it_system__name__icontains=search) | Q(implementer__name__icontains=search) | Q(endorser__name__icontains=search) | Q(requester__name__icontains=search))
         if(datefrom):
             qa = qa.filter(change_start__gte=datefrom)
         if(dateto):
@@ -223,7 +226,10 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
             'description': request.data.get('description'),
             'change_type': request.data.get('changeType'),
             'urgency': request.data.get('urgency'),
-            'submission_date': datetime.now(),
+            #changed submission date to created
+            'created': datetime.now(),
+
+
             'alternate_system': request.data.get('altSystem'),
             'outage': request.data.get('outage'),
             'implementation': request.data.get('implementation'),
