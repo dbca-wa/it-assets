@@ -10,8 +10,6 @@ from registers.models import ITSystem, Incident, ChangeRequest, ChangeLog
 
 from itassets.test_api import ApiTestCase
 
-from itassets.test_api import ApiTestCase
-
 User = get_user_model()
 TZ = timezone(settings.TIME_ZONE)
 
