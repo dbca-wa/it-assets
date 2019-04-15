@@ -263,3 +263,4 @@ class CostCentreAdmin(ModelAdmin):
             '<a href="{}?cost_centre={}">{}</a>',
             reverse('admin:organisation_departmentuser_changelist'),
             obj.pk, obj.departmentuser_set.count())
+

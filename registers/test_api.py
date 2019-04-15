@@ -49,7 +49,7 @@ class ChangeRequestViewSetTestCase(ApiTestCase):
     def test_list(self):
         #url = reverse('changerequest-list')
 
-        url = '/api/v2/changerequest/list'
+        url = '/api/v2/changerequest/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 

@@ -89,15 +89,3 @@ class HardwareAssetExportTestCase(ApiTestCase):
         self.assertEqual(response['Content-Type'],
                          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         #self.assertNotEqual(response['Content-Type'],'text/csv')
-
-    # def test_excel_export(self):
-    #     url = reverse('admin:hardwareasset_export')
-    #     response = self.client.get(url)
-    #
-    #     content = response.content.decode('utf-8')
-    #     excel_reader = csv.reader(io.BytesIO(content))
-    #     body = list(cvs_reader)
-    #     headers = body.pop(0)
-    #
-    #     print(body)
-    #     print(headers)

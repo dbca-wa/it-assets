@@ -94,6 +94,7 @@ class DepartmentUserResource(DjangoResource):
     def prepare(self, data):
         """Modify the returned object to append the GAL Department value.
         """
+
         prepped = super(DepartmentUserResource, self).prepare(data)
         tz = pytz.timezone(settings.TIME_ZONE)
         if 'pk' in data:
