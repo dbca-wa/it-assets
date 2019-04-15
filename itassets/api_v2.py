@@ -3,7 +3,7 @@ from rest_framework import routers
 
 from webconfig.api_v2 import SiteViewSet
 from organisation.api_v2 import DepartmentUserViewSet, DepartmentTreeViewSet, LocationViewSet, OrgUnitViewSet, OrgTreeViewSet, CostCentreViewSet
-from registers.api import  ChangeRequestViewSet, StandardChangeViewSet
+from registers.api_v2 import  StandardChangeViewSet ,ChangeRequestViewSet
 
 api_v2_router = routers.DefaultRouter()
 api_v2_router.register(r'webconfig', SiteViewSet)
