@@ -11,6 +11,7 @@ class HardwareAssetViewSet(viewsets.ModelViewSet):
     serializer_class = HardwareAssetSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,
                           IsAdminUserorReadOnly, )
+    http_method_names = ['get', 'Post', 'Put', 'head']
 
 # class HardwareAssetDetail(generics.RetrieveUpdateDestroyAPIView ):
 #
