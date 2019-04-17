@@ -22,7 +22,10 @@ class HardwareAssetExport(View):
             },
         ) as workbook:
             money = workbook.add_format({'num_format': '$#,##0.00;-$#,##0.00'})
-            assets = HardwareAsset.objects.filter(status__in=['In storage', 'Deployed'])
+            if 'all' in request.GET:  # Return all hardware systems.
+                assets = HardwareAsset.objects.all()
+            else:
+                assets = HardwareAsset.objects.filter(status__in=['In storage', 'Deployed'])
             assets_sheet = workbook.add_worksheet('Hardware assets')
             assets_sheet.write_row('A1', (
                 'ASSET TAG', 'FINANCE ASSET TAG', 'SERIAL', 'VENDOR', 'MODEL TYPE', 'HARDWARE MODEL',
