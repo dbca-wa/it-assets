@@ -36,6 +36,19 @@ def itsr_staff_discrepancies(fileobj, it_systems):
             if sys.system_id not in discrepancies:
                 discrepancies[sys.system_id] = []
             discrepancies[sys.system_id].append((sys.name, 'Cost centre {} is inactive'.format(sys.cost_centre)))
+        # Support fields:
+        if not sys.bh_support:
+            if sys.system_id not in discrepancies:
+                discrepancies[sys.system_id] = []
+            discrepancies[sys.system_id].append((sys.name, 'No business hours support contact'))
+        if sys.bh_support and not sys.bh_support.active:
+            if sys.system_id not in discrepancies:
+                discrepancies[sys.system_id] = []
+            discrepancies[sys.system_id].append((sys.name, 'Business hours support contact {} is inactive'.format(sys.bh_support)))
+        if sys.ah_support and not sys.ah_support.active:
+            if sys.system_id not in discrepancies:
+                discrepancies[sys.system_id] = []
+            discrepancies[sys.system_id].append((sys.name, 'After hours support contact {} is inactive'.format(sys.ah_support)))
 
     with xlsxwriter.Workbook(
         fileobj,
