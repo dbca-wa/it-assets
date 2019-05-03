@@ -461,6 +461,12 @@ class StandardChange(models.Model):
     def get_absolute_url(self):
         return reverse('standard_change_detail', kwargs={'pk': self.pk})
 
+    @property
+    def systems_affected(self):
+        if self.it_systems.exists():
+            return ', '.join([i.name for i in self.it_systems.all()])
+        return 'Not specified'
+
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.
