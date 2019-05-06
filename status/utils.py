@@ -2,6 +2,8 @@ import nmap
 
 import socket
 import datetime
+import logging
+LOGGER = logging.getLogger('status_scans')
 
 from django.conf import settings
 
@@ -39,7 +41,7 @@ def scan(range_qs=None, date=None):
         range_qs = ScanRange.objects.filter(enabled=True)
 
     for scan_range in range_qs:
-        print('Scanning {}...'.format(scan_range))
+        LOGGER.info('Scanning {}...'.format(scan_range))
         for hosts in scan_range.range.split(','):
             sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns')['scan']
     
@@ -106,14 +108,24 @@ def run_all():
     )
 
     # ping scan all the enabled ranges
-    scan(ScanRange.objects.filter(enabled=True), today)
+    try:
+        LOGGER.info('Running a full scan')
+        scan(ScanRange.objects.filter(enabled=True), today)
+    except Exception as e:
+        LOGGER.error('Failed to complete scan')
+        LOGGER.exception(e)
     
     # flag any remaining hosts as missing ping
     HostStatus.objects.filter(date=today, ping_status=0).update(ping_status=1)
 
     # run all the enabled plugins
     for plugin in ScanPlugin.objects.filter(enabled=True):
-        plugin.run(today)
+        try:
+            LOGGER.info('Running plugin {}'.format(plugin.name))
+            plugin.run(today)
+        except Exception as e:
+            LOGGER.error('Failed to run plugin {}'.format(plugin.name))
+            LOGGER.exception(e)
 
     # for everything, flag missing monitoring and vulnerability
     HostStatus.objects.filter(date=today, monitor_status=0).update(monitor_status=1)
