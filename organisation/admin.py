@@ -2,7 +2,6 @@ from django import forms
 from django.contrib import messages
 from django.contrib.admin import register, site, ModelAdmin
 from django.urls import path, reverse
-from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.utils.html import format_html
@@ -16,8 +15,7 @@ import time
 
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
 from .tasks import alesco_data_import
-from .utils import departmentuser_csv_report
-from .views import DepartmentUserExport
+from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
 
 LOGGER = logging.getLogger('sync_tasks')
 
@@ -159,7 +157,7 @@ class DepartmentUserAdmin(VersionAdmin):
         urls = [
             path('alesco-import/', self.admin_site.admin_view(self.alesco_import), name='alesco_import'),
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
-            #path('export/', self.admin_site.admin_view(self.export), name='departmentuser_export'),
+            path('departmentuser-discrepancy-report/', DepartmentUserDiscrepancyReport.as_view(), name='departmentuser_discrepancy_report'),
         ] + urls
         return urls
 
@@ -189,14 +187,6 @@ class DepartmentUserAdmin(VersionAdmin):
         context['form'] = form
 
         return TemplateResponse(request, 'organisation/alesco_import.html', context)
-
-    def export(self, request):
-        """Exports DepartmentUser data to a CSV, and returns
-        """
-        data = departmentuser_csv_report()
-        response = HttpResponse(data, content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename=departmentuser_export.csv'
-        return response
 
 
 @register(Location)
@@ -263,4 +253,3 @@ class CostCentreAdmin(ModelAdmin):
             '<a href="{}?cost_centre={}">{}</a>',
             reverse('admin:organisation_departmentuser_changelist'),
             obj.pk, obj.departmentuser_set.count())
-

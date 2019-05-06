@@ -175,6 +175,8 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
             rfc.endorser = rfc.standard_change.endorser
+            rfc.implementation = rfc.standard_change.implementation
+            rfc.description = rfc.standard_change.description
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
             rfc.change_type = 2
             if rfc.completed:  # If a completion date was recorded, set the status.
