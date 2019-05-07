@@ -9,6 +9,8 @@ from knowledge import urls as knowledge_urls
 from recoup import urls as recoup_urls
 from registers import urls as registers_urls
 
+from assets import urls as assets_urls
+
 #Temp added for hardware assets api
 from django.conf.urls import include
 
@@ -22,6 +24,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v2/', include(api_v2_router.urls)),
     path('api/', include(api_urlpatterns)),
+
+    path('assets/', include(assets_urls)),
+
     path('knowledge/', include(knowledge_urls)),
     path('recoup/', include(recoup_urls)),
     path('registers/', include(registers_urls)),

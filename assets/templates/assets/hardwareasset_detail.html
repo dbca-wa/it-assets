@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<title>Hardware Asset #{{ object }}</title>
+{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-xs-12">
+        <a class="btn btn-primary" href="{% url 'hardware_asset_list' %}" role="button"><span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All Hardware Assets</a></a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        <h1>Hardware Asset #{{ object }}</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+
+        <table class="table table-striped table-bordered table-condensed">
+            <tr>
+                <th>Asset tag</th>
+                <td> {{ object.asset_tag }}</td>
+            </tr>
+            <tr>
+                <th>Finance Asset Tag</th>
+                <td>{{ object.finance_asset_tag }}</td>
+            </tr>
+            <tr>
+                <th>Serial</th>
+                <td>{{ object.serial }}</td>
+            </tr>
+            <tr> <th>Vendor and hardware model mashed</th>
+            <td> {{ object.vendor_model }} </td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td> {{ object.status }}</td>
+            </tr>
+            <tr>
+                <th>Cost-Centre</th>
+                <td>{{ object.cost_centre }}</td>
+            </tr>
+            <tr>
+                <th> Location</th>
+                <td>{{ object.location }}</td>
+            </tr>
+            <tr>
+                <th>Assigned_user</th>
+                <td>{{ object.assigned_user }}</td>
+            </tr>
+            <tr>
+                <th>Date_purchased</th>
+                <td>{{ object.date_purchased }}</td>
+            </tr>
+        </table>
+
+
+    </div>
+</div>
+
+
+
+{% endblock %}

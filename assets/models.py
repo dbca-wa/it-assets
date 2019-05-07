@@ -6,6 +6,9 @@ import os
 
 from organisation.models import CommonFields, DepartmentUser, Location
 from tracking.models import Computer
+from django.urls import reverse
+
+from datetime import date
 
 
 class Vendor(models.Model):
@@ -126,6 +129,8 @@ class HardwareModel(models.Model):
 class HardwareAsset(Asset):
     """Represents a physical hardware asset.
     """
+
+
     STATUS_CHOICES = (
         ('In storage', 'In storage'),
         ('Deployed', 'Deployed'),
@@ -170,6 +175,24 @@ class HardwareAsset(Asset):
             self.serial = self.serial.strip()
         if self.asset_tag:
             self.asset_tag = self.asset_tag.strip()
+
+    @property
+    def vendor_model(self):
+        product_model = str(self.vendor) + ' ' + str(self.hardware_model)
+        return product_model
+
+    @property
+    def age(self):
+
+        from .utils import humanise_age
+
+        if not self.date_purchased:
+            return ''
+        d = date.today() - self.date_purchased
+        return humanise_age(d)
+
+    def get_absolute_url(self):
+        return reverse('hardware_asset_detail', kwargs={'pk': self.pk})
 
 
 class HardwareInvoice(models.Model):
