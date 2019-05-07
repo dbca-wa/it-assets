@@ -62,7 +62,7 @@ class DepartmentUserAdmin(VersionAdmin):
     readonly_fields = [
         'username', 'org_data_pretty', 'ad_data_pretty',
         'active', 'in_sync', 'ad_deleted', 'date_ad_updated',
-        'alesco_data_pretty', 'o365_licence', 'shared_account']
+        'alesco_data_pretty', 'o365_licence', 'shared_account', 'date_hr_term']
     fieldsets = (
         ('Email/username', {
             'fields': ('email', 'username'),
@@ -76,7 +76,7 @@ class DepartmentUserAdmin(VersionAdmin):
                 'org_unit', 'location', 'parent', 'security_clearance', 'name_update_reference'),
         }),
         ('Account fields', {
-            'fields': ('account_type', 'expiry_date', 'contractor', 'notes'),
+            'fields': ('account_type', 'expiry_date', 'date_hr_term', 'hr_auto_expiry', 'contractor', 'notes'),
         }),
         ('Other details', {
             'fields': (

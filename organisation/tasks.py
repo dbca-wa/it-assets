@@ -2,12 +2,13 @@ import datetime
 from django.conf import settings
 import logging
 from openpyxl import load_workbook
+from collections import OrderedDict
 import psycopg2
 import pytz
 
-
 PERTH = pytz.timezone('Australia/Perth')
 LOGGER = logging.getLogger('sync_tasks')
+alesco_date_to_dt = lambda d: PERTH.localize(datetime.datetime(d.year, d.month, d.day, 0, 0))+datetime.timedelta(hours=17, minutes=30)
 
 
 def alesco_data_import(fileobj):
@@ -57,6 +58,44 @@ def alesco_data_import(fileobj):
     if multi_matched > 0:
         LOGGER.error('Employee ID was matched for >1 DepartmentUsers for {} rows'.format(multi_matched))
     return True
+
+
+def update_user_from_alesco(user):
+    from .models import DepartmentUser
+    today = alesco_date_to_dt(datetime.date.today())
+    term_date = None
+    manager = None
+    changes = False
+    if user.alesco_data:
+        term_dates = [datetime.date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
+        if term_dates:
+            term_date = max(term_dates)
+            term_date = alesco_date_to_dt(term_date) if term_date and term_date != ALESCO_DATE_MAX else None
+        managers = [x['manager_emp_no'] for x in user.alesco_data if x['manager_emp_no']]
+        managers = OrderedDict.fromkeys(managers).keys()
+        managers = [DepartmentUser.objects.filter(employee_id=x).first() for x in managers]
+        managers = [x for x in managers if x and (user.pk != x.pk)]
+        if managers:
+            manager = managers[0]
+
+    if term_date:
+        stored_term_date = PERTH.normalize(user.date_hr_term) if user.date_hr_term else None
+        if term_date != stored_term_date:
+            
+            if user.hr_auto_expiry:
+                LOGGER.info('Updating expiry for {} from {} to {}'.format( user.email, stored_term_date, term_date ))
+                user.expiry_date = term_date
+            user.date_hr_term = term_date
+            changes = True
+
+    if manager:
+        if manager != user.parent:
+            LOGGER.info('Updating manager for {} from {} to {}'.format(user.email, user.parent.email if user.parent else None, manager.email if manager else None))
+            user.parent = manager
+            changes = True
+    
+    if changes:
+        user.save()
 
 
 ALESCO_DB_FIELDS = (
@@ -131,8 +170,6 @@ def alesco_db_import():
         record.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
         record.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
         record.sort(key=lambda x: x['job_term_date'], reverse=True)
-        term_date = record[0]['job_term_date']
-        term_date = date_to_dt(term_date) if term_date != ALESCO_DATE_MAX else None
 
         for rec in record:
             for field in date_fields:
@@ -145,12 +182,45 @@ def alesco_db_import():
 
         user.alesco_data = record
 
-        if term_date:
-            expiry_date = PERTH.normalize(user.expiry_date) if user.expiry_date else None
-            if term_date != expiry_date:
-                print('Updating expiry for {} from {} to {}'.format(user.email, expiry_date, term_date))
-
         user.save()
+        update_user_from_alesco(user)
         users.append(user)
 
     return users
+
+
+"""def alesco_list_expiry():
+    from .models import DepartmentUser
+    h_calmp = ALESCO_DB_FIELDS
+    user_map = {}
+
+    for row in alesco_db_fetch():
+        term_date = PERTH.localize(datetime.datetime(row[9].year, row[9].month, row[9].day, 0, 0))
+        if row[0] not in user_map:
+            user_map[row[0]] = term_date
+        elif term_date > user_map[row[0]]:
+            user_map[row[0]] = term_date
+
+    today = datetime.date.today()
+    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+
+    end = datetime.datetime(2049, 1, 1, tzinfo=datetime.timezone.utc)
+
+    results = []
+    for user in DepartmentUser.objects.filter(active=True):
+        if user.employee_id in user_map:
+            test_time = user.expiry_date if user.expiry_date is not None else end
+            if user_map[user.employee_id] < test_time:
+                res = [user.email, user.given_name, user.surname, user.employee_id, user.ad_dn, user_map[user.employee_id], test_time]
+                results.append(res)
+
+    return results
+    #outsiders  = [x for x in results if x[6] > now and x[5] < now]
+
+
+    #with open('fixey.csv', 'w') as f:
+    #    c = csv.writer(f)
+    #    c.writerow(['email', 'given_name', 'surname', 'employee_id', 'ad_dn', 'alesco_expiry', 'itassets_expiry'])
+    #    for r in results:
+    #        c.writerow(r)
+"""
