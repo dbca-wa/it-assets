@@ -1,0 +1,137 @@
+
+{% extends "base.html" %}
+
+{% block extra_head %}
+<title>Hardware Assets</title>
+{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-xs-12">
+        <h1>Hardware assets</h1>
+        <p>
+            <a href="{% url 'hardware_asset_export' %}" class="btn btn-primary"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Export HardwareAsset</a>
+            <a href="#" class="btn btn-warning"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Import HardwareAsset</a>
+
+        </p>
+    </div>
+</div>
+
+<!-- Search bar -->
+<form action="" method="get">
+    <div class="row">
+        <div class="hidden-xs col-sm-1">
+            <label for="search_field">Search:</label>
+        </div>
+        <div class="col-xs-8 col-sm-7">
+            <input id="search_field" type="text" class="form-control" name="q" placeholder="Search terms..." value="{{ query_string }}">
+        </div>
+    </div>
+</form>
+<br>
+
+<div class="row">
+  <div class="col-xs-12">
+
+    <table class="table table-striped table-bordered table-condensed table-hover">
+        <thead>
+            <tr>
+                <th>Asset Tag.</th>
+                <th>Vendor</th>
+                <th>model_type</th>
+                <th>Hardware_model</th>
+                <th>Serial</th>
+                <th>Status</th>
+                <th>Age</th>
+                <th>Location</th>
+                <th>Assigned_User</th>
+                <th>Cost_center</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for object in object_list %}
+            <tr>
+
+                <td><a href="{{ object.get_absolute_url }}">{{ object.asset_tag }}</a></td>
+                <td>{{ object.vendor.name }}</td>
+                <td>{{ object.hardware_model.model_type}}</td>
+                <td>{{ object.hardware_model }}</td>
+                <td>{{ object.serial }}</td>
+                <td>{{ object.get_status_display }}</td>
+                <td>{{ object.age}}</td>
+                <td>{{ object.location }}</td>
+                <td>{{ object.assigned_user.email }}</td>
+                <td>{{ object.cost_centre }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+  </div>
+</div>
+
+ <div class="row">
+     <div class="col-xs-12">
+         <section class="paginator text-center">
+             <nav>
+        <ul class="pagination">
+            <li>
+            {% if page_obj.has_previous %}
+              <a href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">Previous</a>
+            {% endif %}
+          </li>
+          {% if paginator.num_pages <= 15 %}
+		  {% for page_num in paginator.page_range %}
+             {% if page_obj.number == page_num %}
+            <li class="active"><a>{{page_num}}</a></li>
+            {% else %}
+            <li><a href="?page={{page_num}}">{{page_num}}</a></li>
+               {% endif %}
+            {% endfor %}
+            <li>
+            {% if page_obj.has_next %}
+              <a href="?page={{page_obj.next_page_number}}" aria-label="Next">Next</a>
+            {% endif %}
+          </li>
+            {% else %}
+            {% for page_num in paginator.page_range %}
+            {% if page_obj.number == page_num %}
+            <li class="active"><a>{{page_num}}</a></li>
+            {% elif page_num == 1 %}
+            <li><a href="?page={{page_num}}">{{page_num}}</a></li>
+            {% elif page_num == paginator.num_pages %}
+            <li><a href="?page={{page_num}}">{{page_num}}</a></li>
+            {% elif page_obj.number <= 10 %}
+            {% if page_num <= 13  %}
+            <li><a href="?page={{page_num}}">{{page_num}}</a></li>
+            {% elif page_num == 14 %}
+            <li class="disabled"><a>...</a></li>
+            {% endif %}
+            {% elif page_obj.number >= paginator.num_pages|add:-9 %}
+            {% if page_num >= paginator.num_pages|add:-12  %}
+            <li><a href="?page={{page_num}}">{{page_num}}</a></li>
+            {% elif page_num == paginator.num_pages|add:-13 %}
+            <li class="disabled"><a>...</a></li>
+            {% endif %}
+            {% else %}
+            {% if page_num == 2 %}
+            <li class="disabled"><a>...</a></li>
+            {% elif page_num == paginator.num_pages|add:-1 %}
+            <li class="disabled"><a>...</a></li>
+            {% elif page_num >= page_obj.number|add:-5  and page_num <= page_obj.number|add:5 %}
+            <li><a href="?page={{page_num}}">{{page_num}}</a></li>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            <li>
+                {% if page_obj.has_next %}
+                <a href="?page={{page_obj.next_page_number}}" aria-label="Next">Next</a>
+                {% endif %}
+            </li>
+            {% endif %}
+        </ul>
+      </nav>
+    </section>
+  </div>
+</div>
+
+{% endblock %}

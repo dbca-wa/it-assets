@@ -3,6 +3,11 @@ from django.http import HttpResponse
 from django.views.generic import View
 import xlsxwriter
 
+from django.views.generic import View, ListView, DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from registers.utils import search_filter
+from django.core.paginator import Paginator
+
 from .models import HardwareAsset
 
 
@@ -62,3 +67,36 @@ class HardwareAssetExport(View):
             assets_sheet.set_column('P:P', 15)
 
         return response
+
+class HardwareAssetList(LoginRequiredMixin, ListView):
+    model = HardwareAsset
+    paginate_by = 50
+
+
+    def get_queryset(self):
+        from .admin import HardwareAssetAdmin
+        queryset = super(HardwareAssetList, self).get_queryset()
+        # if 'mine' in self.request.GET:
+        #     email = self.request.user.email
+        #     queryset = queryset.filter(requester__email__iexact=email)
+        if 'q' in self.request.GET and self.request.GET['q']:
+            q = search_filter(HardwareAssetAdmin.search_fields, self.request.GET['q'])
+            queryset = queryset.filter(q)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(HardwareAssetList, self).get_context_data(**kwargs)
+        # Pass in any query string
+        if 'q' in self.request.GET:
+            context['query_string'] = self.request.GET['q']
+        return context
+
+class HardwareAssetDetail(LoginRequiredMixin, DetailView):
+    model = HardwareAsset
+
+    def get_context_data(self, **kwargs):
+        context = super(HardwareAssetDetail, self).get_context_data(**kwargs)
+        return context
+
+
+
