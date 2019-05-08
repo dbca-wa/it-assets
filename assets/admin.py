@@ -72,10 +72,10 @@ class HardwareAssetAdmin(VersionAdmin):
     model_type.admin_order_field = 'hardware_model__model_type'
 
     def age(self, obj):
-        if not obj.date_purchased:
-            return ''
-        d = date.today() - obj.date_purchased
-        return humanise_age(d)
+        # if not obj.date_purchased:
+        #     return ''
+        # d = date.today() - obj.date_purchased
+        return obj.age
     age.admin_order_field = 'date_purchased'
 
     def extra_data_ro(self, obj):
