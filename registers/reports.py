@@ -41,14 +41,18 @@ def itsr_staff_discrepancies(fileobj, it_systems):
             if sys.system_id not in discrepancies:
                 discrepancies[sys.system_id] = []
             discrepancies[sys.system_id].append((sys.name, 'No business hours support contact'))
-        if sys.bh_support and not sys.bh_support.active:
-            if sys.system_id not in discrepancies:
-                discrepancies[sys.system_id] = []
-            discrepancies[sys.system_id].append((sys.name, 'Business hours support contact {} is inactive'.format(sys.bh_support)))
-        if sys.ah_support and not sys.ah_support.active:
-            if sys.system_id not in discrepancies:
-                discrepancies[sys.system_id] = []
-            discrepancies[sys.system_id].append((sys.name, 'After hours support contact {} is inactive'.format(sys.ah_support)))
+        # For support fields, check if they are NOT shared accounts OR they are inactive.
+        # Shared account types are set as inactive by default.
+        if sys.bh_support and sys.bh_support.account_type != 5:
+            if not sys.bh_support.active:
+                if sys.system_id not in discrepancies:
+                    discrepancies[sys.system_id] = []
+                discrepancies[sys.system_id].append((sys.name, 'Business hours support contact {} is inactive'.format(sys.bh_support)))
+        if sys.ah_support and sys.ah_support.account_type != 5:
+            if not sys.ah_support.active:
+                if sys.system_id not in discrepancies:
+                    discrepancies[sys.system_id] = []
+                discrepancies[sys.system_id].append((sys.name, 'After hours support contact {} is inactive'.format(sys.ah_support)))
 
     with xlsxwriter.Workbook(
         fileobj,
