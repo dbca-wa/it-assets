@@ -91,7 +91,8 @@ def it_system_export(fileobj, it_systems):
             'Availability', 'User groups', 'System type', 'Cost centre', 'Division', 'Owner',
             'Technology custodian', 'Information custodian', 'Link', 'Technical documentation',
             'Application server(s)', 'Database server(s)', 'Network storage', 'Backups',
-            'BH support', 'AH support', 'User notification',
+            'BH support', 'AH support', 'User notification', 'Retention reference no.',
+            'Decommission date', 'Retention/disposal action',
         ))
         row = 1
         for i in it_systems:
@@ -119,6 +120,9 @@ def it_system_export(fileobj, it_systems):
                 i.bh_support.email if i.bh_support else '',
                 i.ah_support.email if i.ah_support else '',
                 i.user_notification,
+                '{:.2f}'.format(i.retention_reference_no) if i.retention_reference_no else '',
+                i.decommission_date,
+                i.get_retention_disposal_action_display(),
             ])
             row += 1
         systems.set_column('A:A', 9)
@@ -132,6 +136,9 @@ def it_system_export(fileobj, it_systems):
         systems.set_column('K:K', 41)
         systems.set_column('L:N', 21)
         systems.set_column('O:W', 50)
+        systems.set_column('X:X', 22)
+        systems.set_column('Y:Y', 18)
+        systems.set_column('Z:Z', 50)
 
     return fileobj
 

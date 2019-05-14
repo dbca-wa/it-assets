@@ -190,6 +190,12 @@ class ITSystem(CommonFields):
         (2, 'Daily local'),
         (3, 'Vendor-managed'),
     )
+    RETENTION_DISPOSAL_ACTION_CHOICES = (
+        (1, 'Retain in agency - migrate records and maintain for the life of Agency.'),
+        (2, 'Required as State Archive - retain in Agency. Migrate records to new database or transfer to SRO when superseded.'),
+        (3, 'Destroy - destroy datasets when superseded. Migrate records and maintain for life of agency.'),
+        (4, 'Destroy - retain 12 months after data migration and decommission (may retain for reference).'),
+    )
 
     name = models.CharField(max_length=128, unique=True)
     acronym = models.CharField(max_length=16, null=True, blank=True)
@@ -271,6 +277,17 @@ class ITSystem(CommonFields):
     biller_code = models.CharField(
         max_length=64, null=True, blank=True,
         help_text='BPAY biller code for this system (must be unique).')
+    retention_reference_no = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text='Retention/disposal reference no.')
+    decommission_date = models.DateField(
+        null=True, blank=True, help_text='Date on which the IT system was decommissioned')
+    retention_disposal_action = models.PositiveSmallIntegerField(
+        choices=RETENTION_DISPOSAL_ACTION_CHOICES, null=True, blank=True,
+        verbose_name='Retention and disposal action')
+    retention_comments = models.TextField(
+        null=True, blank=True, verbose_name='comments',
+        help_text='Comments/notes related to retention and disposal')
 
     class Meta:
         verbose_name = 'IT System'
