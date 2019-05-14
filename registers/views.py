@@ -261,10 +261,6 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
             if not rfc.implementer:
                 form.add_error('implementer_choice', 'Implementer cannot be blank.')
                 errors = True
-            # Test date is required if not a standard change.
-            if not rfc.is_standard_change and not rfc.test_date:
-                form.add_error('test_date', 'Test date must be specified.')
-                errors = True
             # Planned start is required.
             if not rfc.planned_start:
                 form.add_error('planned_start', 'Planned start time must be specified.')
