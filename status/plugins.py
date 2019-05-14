@@ -1,4 +1,5 @@
 import datetime
+import re
 import urllib
 
 import adal
@@ -67,7 +68,7 @@ def vulnerability_nessus(plugin, date):
             continue
         name = data['info']['name']
 
-        print('Report {} ({})'.format(name, report['id']))
+        #print('Report {} ({})'.format(name, report['id']))
         for report_host in data['hosts']:
             #print('{}: {} {} {} {} {} - {} {}'.format(host['hostname'], host['critical'], host['high'], host['medium'], host['low'], host['info'], host['severity'], host['score']))
             
@@ -109,28 +110,48 @@ def backup_acronis(plugin, date):
     ACRONIS_PASSWORD = plugin.params.get(name='ACRONIS_PASSWORD').value
     ACRONIS_URL = plugin.params.get(name='ACRONIS_URL').value
 
-    ACRONIS_AUTH = '{}/idp/authorize/local/'.format(ACRONIS_BASE)
-    ACRONIS_RESOURCES = '{}/api/ams/resources_v2?filter=all&limit=2000'.format(ACRONIS_BASE)
+    ACRONIS_AUTH = '{}/idp/authorize/local'.format(ACRONIS_BASE)
+    ACRONIS_RESOURCES = '{}/api/resource_manager/v1/resources?filter=all&limit=2000&embed=details&embed=agent'.format(ACRONIS_BASE)
+
+    backup_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+
 
     sess = requests.session()
     base = sess.get(ACRONIS_BASE)
     req_qs = urllib.parse.urlparse(base.url).query
-    req_id = urllib.parse.parse_qs(req_qs)['req'][0]
-    auth = sess.post(ACRONIS_AUTH+'?{}'.format(req_qs), {'req': req_id, 'login': ACRONIS_USERNAME, 'password': ACRONIS_PASSWORD})
+    #req_id = urllib.parse.parse_qs(req_qs)['req'][0]
+
+    req_id = re.search('/idp/authorize/sspi\?req=([a-z0-9]+)', base.content.decode('utf8')).group(1)
+
+    auth = sess.post(ACRONIS_AUTH+'?req_id={}'.format(req_id), {'req': req_id, 'login': ACRONIS_USERNAME, 'password': ACRONIS_PASSWORD})
     resources = sess.get(ACRONIS_RESOURCES).json()
 
-    for agent in resources['data']:
+    for agent in resources['items']:
         host_status = None
-        if 'ip' not in agent:
+        if 'details' not in agent or 'parameters' not in agent['details']:
             continue
-        for ip in agent['ip']:
+        if 'IP' not in agent['details']['parameters']:
+            continue
+        for ip in agent['details']['parameters']['IP']:
             host_status = lookup(ip, date)
             if host_status:
                 break
-        if not host_status or agent.get('lastBackup') is None:
+        if 'status' not in agent:
             continue
-        next_backup = datetime.datetime.fromisoformat(agent['nextBackup']) if 'nextBackup' in agent and agent['nextBackup'] is not None else None
-        last_backup = datetime.datetime.fromisoformat(agent['lastBackup']) if 'lastBackup' in agent and agent['lastBackup'] is not None else None
+        if not host_status or agent['status'].get('lastBackup') is None:
+            continue
+
+        os_name = None
+        if 'OperatingSystem' in agent['details']['parameters']:
+            os_name = agent['details']['parameters']['OperatingSystem'][0]
+        next_backup = None
+        if 'nextBackup' in agent['status'] and agent['status']['nextBackup'] is not None:
+            next_backup = datetime.datetime.fromisoformat(agent['status']['nextBackup'].split('Z', 1)[0])
+        last_backup = None
+        if 'lastBackup' in agent['status'] and agent['status']['lastBackup'] is not None:
+            last_backup = datetime.datetime.fromisoformat(agent['status']['lastBackup'].split('Z', 1)[0])
+
+        state = agent['status'].get('state')
 
         if 'last_backup' in host_status.backup_info and last_backup < datetime.datetime.fromisoformat(host_status.backup_info['last_backup']):
             continue
@@ -138,17 +159,21 @@ def backup_acronis(plugin, date):
             'id': agent.get('id'),
             'next_backup': next_backup.isoformat() if next_backup else None,
             'last_backup': last_backup.isoformat() if last_backup else None,
-            'os': agent.get('os'),
-            'status': agent.get('status'),
+            'os': os_name,
+            'status': state,
         }
         host_status.backup_url = '{}/#m=Resources&key=All devices'.format(ACRONIS_URL, )
         host_status.backup_plugin = plugin
-        if agent.get('status') == 'ok':
+        if state == 'notProtected' and last_backup is not None:
+            host_status.backup_output = 'Device is present, automatic backups are disabled'
+            host_status.backup_status = 2
+        elif not (host_status.backup_info['last_backup'] is not None and host_status.backup_info['last_backup'] > backup_limit): 
+            host_status.backup_output = 'Device is present, last backup older than 24 hours.'
+            host_status.backup_status = 2
+        else:
             host_status.backup_output = 'Device is present, last backup was successful.'
             host_status.backup_status = 3
-        else: 
-            host_status.backup_output = 'Device is present, last backup failed.'
-            host_status.backup_status = 2
+         
         host_status.save()
 
 
