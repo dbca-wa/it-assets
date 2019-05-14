@@ -107,7 +107,11 @@ class DepartmentUser(MPTTModel):
         related_name='children', editable=True, verbose_name='Reports to',
         help_text='Person that this employee reports to')
     expiry_date = models.DateTimeField(
-        null=True, blank=True, help_text='Date that the AD account is set to expire.')
+        null=True, blank=True, help_text='Date that the AD account will expire.')
+    date_hr_term = models.DateTimeField(
+        null=True, blank=True, editable=False, verbose_name='HR termination date', help_text='Date on file with HR as the job termination date.')
+    hr_auto_expiry = models.BooleanField(
+        default=False, verbose_name='HR auto expiry', help_text='When the HR termination date changes, automatically update the expiry date to match.')
     date_ad_updated = models.DateTimeField(
         null=True, editable=False, verbose_name='Date AD updated',
         help_text='The date when the AD account was last updated.')

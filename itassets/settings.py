@@ -48,7 +48,6 @@ INSTALLED_APPS = (
     'assets',
     'webconfig',
     'knowledge',
-    'frontend',
     'recoup',
     'status',
 )
