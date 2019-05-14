@@ -124,10 +124,19 @@ class ITSystemAdmin(VersionAdmin):
                 'biller_code',
             )
         }),
+        ('Retention and disposal', {
+            'fields': (
+                'retention_reference_no',
+                'decommission_date',
+                'retention_disposal_action',
+                'retention_comments',
+            )
+        }),
     )
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/registers/itsystem/change_list.html'
     form = ITSystemForm  # Use the custom ModelForm.
+    save_on_top = True
 
     def get_urls(self):
         urls = super(ITSystemAdmin, self).get_urls()

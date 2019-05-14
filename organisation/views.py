@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 from django.http import HttpResponse
 from django.views.generic import View
-import xlsxwriter
 
 from .models import DepartmentUser
+from .reports import department_user_export, departmentuser_alesco_descrepancy
 
 
 class DepartmentUserExport(View):
@@ -11,33 +11,26 @@ class DepartmentUserExport(View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=department_users_{}.xlsx'.format(date.today().isoformat())
+        response['Content-Disposition'] = 'attachment; filename=department_users_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
-        with xlsxwriter.Workbook(
-            response,
-            {
-                'in_memory': True,
-                'default_date_format': 'dd-mmm-yyyy HH:MM',
-                'remove_timezone': True,
-            },
-        ) as workbook:
+        if 'all' in request.GET:  # Return all objects.
+            users = DepartmentUser.objects.all()
+        else:  # Default to active users only.
             users = DepartmentUser.objects.filter(active=True)
-            users_sheet = workbook.add_worksheet('Department users')
-            users_sheet.write_row('A1', (
-                'COST CENTRE', 'NAME', 'EMAIL', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE'
-            ))
-            row = 1
-            for i in users:
-                users_sheet.write_row(row, 0, [
-                    i.cost_centre.code if i.cost_centre else '', i.get_full_name(), i.email, i.get_account_type_display(),
-                    i.get_position_type_display(), i.expiry_date if i.expiry_date else ''
-                ])
-                row += 1
-            users_sheet.set_column('A:A', 13)
-            users_sheet.set_column('B:B', 34)
-            users_sheet.set_column('C:C', 46)
-            users_sheet.set_column('D:D', 42)
-            users_sheet.set_column('E:E', 13)
-            users_sheet.set_column('F:F', 17)
 
+        response = department_user_export(response, users)
+        return response
+
+
+class DepartmentUserDiscrepancyReport(View):
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=departmentuser_alesco_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        if 'all' in request.GET:  # Return all objects with an Employee ID.
+            users = DepartmentUser.objects.filter(employee_id__isnull=False)
+        else:  # Default to active users only.
+            users = DepartmentUser.objects.filter(active=True, employee_id__isnull=False)
+
+        response = departmentuser_alesco_descrepancy(response, users)
         return response

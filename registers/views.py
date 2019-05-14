@@ -175,6 +175,8 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
             rfc.endorser = rfc.standard_change.endorser
+            rfc.implementation = rfc.standard_change.implementation
+            rfc.description = rfc.standard_change.description
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
             rfc.change_type = 2
             if rfc.completed:  # If a completion date was recorded, set the status.
@@ -258,10 +260,6 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
             # Implementer is required.
             if not rfc.implementer:
                 form.add_error('implementer_choice', 'Implementer cannot be blank.')
-                errors = True
-            # Test date is required if not a standard change.
-            if not rfc.is_standard_change and not rfc.test_date:
-                form.add_error('test_date', 'Test date must be specified.')
                 errors = True
             # Planned start is required.
             if not rfc.planned_start:

@@ -29,3 +29,10 @@ A link to the Alesco database table requires the following variables:
     ALESCO_DB_TABLE
     ALESCO_DB_USERNAME
     ALESCO_DB_PASSWORD
+
+# Unit tests
+
+Start with `pip install coverage`. Run unit tests and obtain test coverage as follows:
+
+    coverage run --source='.' manage.py -k
+    coverage report -m
