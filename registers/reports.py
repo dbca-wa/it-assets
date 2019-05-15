@@ -120,7 +120,7 @@ def it_system_export(fileobj, it_systems):
                 i.bh_support.email if i.bh_support else '',
                 i.ah_support.email if i.ah_support else '',
                 i.user_notification,
-                '{:.2f}'.format(i.retention_reference_no) if i.retention_reference_no else '',
+                i.retention_reference_no,
                 i.decommission_date,
                 i.get_retention_disposal_action_display(),
             ])
