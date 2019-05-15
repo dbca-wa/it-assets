@@ -62,18 +62,19 @@ def departmentuser_alesco_descrepancy(fileobj, users):
             user = users.get(employee_id=key)
             alesco_record = record[0]  # GROSS ASSUMPTION: the first Alesco record in the list is the newest/most current.
 
-        if user.given_name:
-            if alesco_record['first_name'].lower() != user.given_name.lower():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Given name mismatch',
-                        alesco_record['first_name'],
-                        user.given_name
-                    )
-                )
+        # Commenting out the check of first name to exclude the many false positives (e.g. Tom != Thomas)
+        #if user.given_name:
+        #    if alesco_record['first_name'].lower() != user.given_name.lower():
+        #        if key not in discrepancies:
+        #            discrepancies[key] = []
+        #        discrepancies[key].append(
+        #            (
+        #                user.get_full_name(),
+        #                'Given name mismatch',
+        #                alesco_record['first_name'],
+        #                user.given_name
+        #            )
+        #        )
 
         if user.surname:
             if alesco_record['surname'].lower() != user.surname.lower():
@@ -113,8 +114,38 @@ def departmentuser_alesco_descrepancy(fileobj, users):
                         user.expiry_date.strftime('%d/%b/%Y')
                     )
                 )
-        # TODO: Location
-        # TODO: Cost centre
+
+        # NOTE: skip every Alesco CC starting with K (they all differ).
+        if user.cost_centre and alesco_record['paypoint'] and alesco_record['paypoint'][0] != 'K':
+            # If the CC in Alesco start with R or Z, remove that starting letter before comparing.
+            if alesco_record['paypoint'][0] in ['R', 'Z']:
+                alesco_cc = alesco_record['paypoint'][1:]
+            else:
+                alesco_cc = alesco_record['paypoint']
+            if alesco_cc not in user.cost_centre.code:
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Cost centre mismatch',
+                        alesco_record['paypoint'],
+                        user.cost_centre.code
+                    )
+                )
+
+        if user.location and alesco_record['location_desc']:
+            if alesco_record['location_desc'].lower() not in user.location.name.lower():
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Location mismatch',
+                        alesco_record['location_desc'],
+                        user.location.name
+                    )
+                )
         # TODO: Manager
 
     with xlsxwriter.Workbook(

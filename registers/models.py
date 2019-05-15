@@ -277,9 +277,8 @@ class ITSystem(CommonFields):
     biller_code = models.CharField(
         max_length=64, null=True, blank=True,
         help_text='BPAY biller code for this system (must be unique).')
-    retention_reference_no = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True,
-        help_text='Retention/disposal reference no.')
+    retention_reference_no = models.CharField(
+        max_length=256, null=True, blank=True, help_text='Retention/disposal reference no.')
     decommission_date = models.DateField(
         null=True, blank=True, help_text='Date on which the IT system was decommissioned')
     retention_disposal_action = models.PositiveSmallIntegerField(
