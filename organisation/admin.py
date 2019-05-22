@@ -1,12 +1,8 @@
 from django import forms
-from django.contrib import messages
-from django.contrib.admin import register, site, ModelAdmin
+from django.contrib.admin import register, ModelAdmin
 from django.urls import path, reverse
-from django.shortcuts import redirect
-from django.template.response import TemplateResponse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
-from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
@@ -14,7 +10,6 @@ from threading import Thread
 import time
 
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
-from .tasks import alesco_data_import
 from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
 
 LOGGER = logging.getLogger('sync_tasks')
@@ -155,38 +150,10 @@ class DepartmentUserAdmin(VersionAdmin):
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
-            path('alesco-import/', self.admin_site.admin_view(self.alesco_import), name='alesco_import'),
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
             path('departmentuser-discrepancy-report/', DepartmentUserDiscrepancyReport.as_view(), name='departmentuser_discrepancy_report'),
         ] + urls
         return urls
-
-    class AlescoImportForm(forms.Form):
-        spreadsheet = forms.FileField()
-
-    def alesco_import(self, request):
-        """Displays a form prompting user to upload an Excel spreadsheet of
-        employee data from Alesco. Temporary measure until database link is
-        worked out.
-        """
-        context = dict(
-            site.each_context(request),
-            title='Alesco data import'
-        )
-
-        if request.method == 'POST':
-            form = self.AlescoImportForm(request.POST, request.FILES)
-            if form.is_valid():
-                upload = request.FILES['spreadsheet']
-                # Run the task asynchronously.
-                async_task(alesco_data_import, upload)
-                messages.info(request, 'Alesco data spreadsheet uploaded successfully; data is now being processed.')
-                return redirect('admin:organisation_departmentuser_changelist')
-        else:
-            form = self.AlescoImportForm()
-        context['form'] = form
-
-        return TemplateResponse(request, 'organisation/alesco_import.html', context)
 
 
 @register(Location)
