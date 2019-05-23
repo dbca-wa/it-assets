@@ -126,8 +126,8 @@ class ITSystemAdmin(VersionAdmin):
         }),
         ('Retention and disposal', {
             'fields': (
+                'defunct_date',
                 'retention_reference_no',
-                'decommission_date',
                 'retention_disposal_action',
                 'retention_comments',
             )
