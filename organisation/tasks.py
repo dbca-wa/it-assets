@@ -5,7 +5,7 @@ from collections import OrderedDict
 import psycopg2
 import pytz
 
-PERTH = pytz.timezone('Australia/Perth')
+TZ = pytz.timezone(settings.TIME_ZONE)
 LOGGER = logging.getLogger('sync_tasks')
 ALESCO_DB_FIELDS = (
     'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
@@ -19,14 +19,15 @@ ALESCO_DATE_MAX = date(2049, 12, 31)
 
 
 def alesco_date_to_dt(dt, hour=0, minute=0, second=0):
-    """Take in a date object and return it as a localised datetime.
-    Reason: Alesco date has no timestamp, so we convert a date to datetime at end of business hours.
+    """Take in a date object and return it as a timezone-aware datetime.
     """
-    d = PERTH.localize(datetime(dt.year, dt.month, dt.day, 0, 0))
+    d = TZ.localize(datetime(dt.year, dt.month, dt.day, 0, 0))
     return d + timedelta(hours=hour, minutes=minute, seconds=second)
 
 
 def update_user_from_alesco(user):
+    """Update a DepartmentUser object's field values from the data in the alesco_data field.
+    """
     from .models import DepartmentUser
     term_date = None
     manager = None
@@ -36,7 +37,11 @@ def update_user_from_alesco(user):
         term_dates = [datetime.strptime(x['job_term_date'], '%Y-%m-%d') for x in user.alesco_data if x['job_term_date']]
         if term_dates:
             term_date = max(term_dates)
-            term_date = alesco_date_to_dt(term_date, 17, 30) if term_date and term_date != ALESCO_DATE_MAX else None
+            # Convert the Alesco date to a timezone-aware datetime (use end of business hours).
+            if term_date and term_date != ALESCO_DATE_MAX:
+                term_date = alesco_date_to_dt(term_date, 17, 30)
+            else:
+                term_date = None
         managers = [x['manager_emp_no'] for x in user.alesco_data if x['manager_emp_no']]
         managers = OrderedDict.fromkeys(managers).keys()
         managers = [DepartmentUser.objects.filter(employee_id=x).first() for x in managers]
@@ -45,7 +50,7 @@ def update_user_from_alesco(user):
             manager = managers[0]
 
     if term_date:
-        stored_term_date = PERTH.normalize(user.date_hr_term) if user.date_hr_term else None
+        stored_term_date = TZ.normalize(user.date_hr_term) if user.date_hr_term else None
         if term_date != stored_term_date:
 
             if user.hr_auto_expiry:
@@ -84,17 +89,19 @@ def alesco_db_fetch():
         yield row
 
 
-def alesco_db_import():
+def alesco_db_import(update_dept_user=False):
+    """A task to update DepartmentUser field values from Alesco database information.
+    By default, it saves Alesco data in the alesco_data JSON field.
+    If update_dept_user == True, the function will also update several other field values.
+    """
     from .models import DepartmentUser
 
     date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date']
-
     status_ranking = [
         'PFAS', 'PFA', 'PFT', 'CFA', 'CFT', 'NPAYF',
         'PPA', 'PPT', 'CPA', 'CPT', 'NPAYP',
         'CCFA', 'CAS', 'SEAS', 'TRAIN', 'NOPAY', 'NON',
     ]
-
     classification_ranking = [
         'CEO', 'CL3', 'CL2', 'CL1',
         'L9', 'L8', 'L7',
@@ -105,12 +112,11 @@ def alesco_db_import():
         'SCL2', 'R2', 'L2',
         'SCL1', 'R1', 'L12', 'L1',
     ]
-
     records = {}
     alesco_iter = alesco_db_fetch()
 
+    LOGGER.info('Querying Alesco database for employee information')
     for row in alesco_iter:
-
         record = dict(zip(ALESCO_DB_FIELDS, row))
         eid = record['employee_id']
 
@@ -118,24 +124,24 @@ def alesco_db_import():
             records[eid] = []
         records[eid].append(record)
 
-    users = []
-
+    LOGGER.info('Updating local DepartmentUser information from Alesco data')
     for key, record in records.items():
         if not DepartmentUser.objects.filter(employee_id=key).exists():
             continue
 
+        # Perform some sorting to place the employee's Alesco record(s) in order from
+        # most applicable to least applicable.
         record.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
         record.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
         record.sort(key=lambda x: x['job_term_date'], reverse=True)
 
-        for rec in record:
+        for r in record:
             for field in date_fields:
-                rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
+                r[field] = r[field].isoformat() if r[field] and r[field] != ALESCO_DATE_MAX else None
 
         user = DepartmentUser.objects.get(employee_id=key)
         user.alesco_data = record
         user.save()
-        update_user_from_alesco(user)
-        users.append(user)
 
-    return users
+        if update_dept_user:
+            update_user_from_alesco(user)
