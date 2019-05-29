@@ -32,7 +32,6 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
     location = UserLocationSerializer()
     org_unit = UserOrgUnitSerializer()
     group_unit = UserOrgUnitSerializer()
-    #children = serializers.ListField(source='children_filtered')
 
     class Meta:
         model = DepartmentUser
@@ -46,7 +45,6 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
             'org_unit_chain',
             'parent',
             'children',
-            'employee_id',
         )
 
 
