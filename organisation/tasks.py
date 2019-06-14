@@ -1,76 +1,47 @@
-import datetime
+from datetime import date, datetime, timedelta
 from django.conf import settings
 import logging
-from openpyxl import load_workbook
 from collections import OrderedDict
 import psycopg2
 import pytz
 
-PERTH = pytz.timezone('Australia/Perth')
+TZ = pytz.timezone(settings.TIME_ZONE)
 LOGGER = logging.getLogger('sync_tasks')
-alesco_date_to_dt = lambda d: PERTH.localize(datetime.datetime(d.year, d.month, d.day, 0, 0))+datetime.timedelta(hours=17, minutes=30)
+ALESCO_DB_FIELDS = (
+    'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
+    'date_of_birth', 'occup_type', 'current_commence', 'job_term_date',
+    'occup_commence_date', 'occup_term_date', 'position_id', 'occup_pos_title',
+    'clevel1_id', 'clevel1_desc', 'clevel5_id', 'clevel5_desc', 'award',
+    'classification', 'step_id', 'emp_status', 'emp_stat_desc',
+    'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
+)
+ALESCO_DATE_MAX = date(2049, 12, 31)
 
 
-def alesco_data_import(fileobj):
-    """Import task expects to be passed a file object (an uploaded .xlsx).
+def alesco_date_to_dt(dt, hour=0, minute=0, second=0):
+    """Take in a date object and return it as a timezone-aware datetime.
     """
-    from .models import DepartmentUser
-    LOGGER.info('Alesco data for DepartmentUsers is being updated')
-    wb = load_workbook(fileobj, read_only=True)
-    ws = wb.worksheets[0]
-    keys = []
-    values = []
-    non_matched = 0
-    multi_matched = 0
-    updates = 0
-    # Iterate over each row in the worksheet.
-    for k, row in enumerate(ws.iter_rows()):
-        values = []
-        for cell in row:
-            # First row: generate keys.
-            if k == 0:
-                keys.append(cell.value)
-            # Otherwise make a list of values.
-            else:
-                # Serialise datetime objects.
-                if isinstance(cell.value, datetime.datetime):
-                    values.append(cell.value.isoformat())
-                else:
-                    values.append(cell.value)
-        if k > 0:
-            # Construct a dictionary of row values.
-            record = dict(zip(keys, values))
-            # Try to find a matching DepartmentUser by employee id.
-            d = DepartmentUser.objects.filter(employee_id=record['EMPLOYEE_NO'])
-            if d.count() > 1:
-                multi_matched += 1
-            elif d.count() == 1:
-                d = d[0]
-                d.alesco_data = record
-                d.save()
-                updates += 1
-            else:
-                non_matched += 0
-    if updates > 0:
-        LOGGER.info('Alesco data for {} DepartmentUsers was updated'.format(updates))
-    if non_matched > 0:
-        LOGGER.warning('Employee ID was not matched for {} rows'.format(non_matched))
-    if multi_matched > 0:
-        LOGGER.error('Employee ID was matched for >1 DepartmentUsers for {} rows'.format(multi_matched))
-    return True
+    d = TZ.localize(datetime(dt.year, dt.month, dt.day, 0, 0))
+    return d + timedelta(hours=hour, minutes=minute, seconds=second)
 
 
 def update_user_from_alesco(user):
+    """Update a DepartmentUser object's field values from the data in the alesco_data field.
+    """
     from .models import DepartmentUser
-    today = alesco_date_to_dt(datetime.date.today())
     term_date = None
     manager = None
     changes = False
+
     if user.alesco_data:
-        term_dates = [datetime.date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
+        term_dates = [datetime.strptime(x['job_term_date'], '%Y-%m-%d') for x in user.alesco_data if x['job_term_date']]
         if term_dates:
             term_date = max(term_dates)
-            term_date = alesco_date_to_dt(term_date) if term_date and term_date != ALESCO_DATE_MAX else None
+            # Convert the Alesco date to a timezone-aware datetime (use end of business hours).
+            if term_date and term_date != ALESCO_DATE_MAX:
+                term_date = alesco_date_to_dt(term_date, 17, 30)
+            else:
+                term_date = None
         managers = [x['manager_emp_no'] for x in user.alesco_data if x['manager_emp_no']]
         managers = OrderedDict.fromkeys(managers).keys()
         managers = [DepartmentUser.objects.filter(employee_id=x).first() for x in managers]
@@ -79,11 +50,11 @@ def update_user_from_alesco(user):
             manager = managers[0]
 
     if term_date:
-        stored_term_date = PERTH.normalize(user.date_hr_term) if user.date_hr_term else None
+        stored_term_date = TZ.normalize(user.date_hr_term) if user.date_hr_term else None
         if term_date != stored_term_date:
-            
+
             if user.hr_auto_expiry:
-                LOGGER.info('Updating expiry for {} from {} to {}'.format( user.email, stored_term_date, term_date ))
+                LOGGER.info('Updating expiry for {} from {} to {}'.format(user.email, stored_term_date, term_date))
                 user.expiry_date = term_date
             user.date_hr_term = term_date
             changes = True
@@ -93,20 +64,9 @@ def update_user_from_alesco(user):
             LOGGER.info('Updating manager for {} from {} to {}'.format(user.email, user.parent.email if user.parent else None, manager.email if manager else None))
             user.parent = manager
             changes = True
-    
+
     if changes:
         user.save()
-
-
-ALESCO_DB_FIELDS = (
-    'employee_id', 'surname', 'initials', 'first_name', 'second_name', 'gender',
-    'date_of_birth', 'occup_type', 'current_commence', 'job_term_date',
-    'occup_commence_date', 'occup_term_date', 'position_id', 'occup_pos_title',
-    'clevel1_id', 'clevel1_desc', 'clevel5_id', 'clevel5_desc', 'award',
-    'classification', 'step_id', 'emp_status', 'emp_stat_desc',
-    'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
-)
-ALESCO_DATE_MAX = datetime.date(2049, 12, 31)
 
 
 def alesco_db_fetch():
@@ -129,17 +89,19 @@ def alesco_db_fetch():
         yield row
 
 
-def alesco_db_import():
+def alesco_db_import(update_dept_user=False):
+    """A task to update DepartmentUser field values from Alesco database information.
+    By default, it saves Alesco data in the alesco_data JSON field.
+    If update_dept_user == True, the function will also update several other field values.
+    """
     from .models import DepartmentUser
 
     date_fields = ['date_of_birth', 'current_commence', 'job_term_date', 'occup_commence_date', 'occup_term_date']
-
     status_ranking = [
         'PFAS', 'PFA', 'PFT', 'CFA', 'CFT', 'NPAYF',
         'PPA', 'PPT', 'CPA', 'CPT', 'NPAYP',
         'CCFA', 'CAS', 'SEAS', 'TRAIN', 'NOPAY', 'NON',
     ]
-
     classification_ranking = [
         'CEO', 'CL3', 'CL2', 'CL1',
         'L9', 'L8', 'L7',
@@ -150,13 +112,11 @@ def alesco_db_import():
         'SCL2', 'R2', 'L2',
         'SCL1', 'R1', 'L12', 'L1',
     ]
-
-    date_to_dt = lambda d: PERTH.localize(datetime.datetime(d.year, d.month, d.day, 0, 0)) + datetime.timedelta(days=1)
     records = {}
     alesco_iter = alesco_db_fetch()
 
+    LOGGER.info('Querying Alesco database for employee information')
     for row in alesco_iter:
-
         record = dict(zip(ALESCO_DB_FIELDS, row))
         eid = record['employee_id']
 
@@ -164,63 +124,24 @@ def alesco_db_import():
             records[eid] = []
         records[eid].append(record)
 
-    users = []
-
+    LOGGER.info('Updating local DepartmentUser information from Alesco data')
     for key, record in records.items():
+        if not DepartmentUser.objects.filter(employee_id=key).exists():
+            continue
+
+        # Perform some sorting to place the employee's Alesco record(s) in order from
+        # most applicable to least applicable.
         record.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
         record.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
         record.sort(key=lambda x: x['job_term_date'], reverse=True)
 
-        for rec in record:
+        for r in record:
             for field in date_fields:
-                rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
+                r[field] = r[field].isoformat() if r[field] and r[field] != ALESCO_DATE_MAX else None
 
-        user = DepartmentUser.objects.filter(employee_id=key).first()
-
-        if not user:
-            continue
-
+        user = DepartmentUser.objects.get(employee_id=key)
         user.alesco_data = record
-
         user.save()
-        update_user_from_alesco(user)
-        users.append(user)
 
-    return users
-
-
-"""def alesco_list_expiry():
-    from .models import DepartmentUser
-    h_calmp = ALESCO_DB_FIELDS
-    user_map = {}
-
-    for row in alesco_db_fetch():
-        term_date = PERTH.localize(datetime.datetime(row[9].year, row[9].month, row[9].day, 0, 0))
-        if row[0] not in user_map:
-            user_map[row[0]] = term_date
-        elif term_date > user_map[row[0]]:
-            user_map[row[0]] = term_date
-
-    today = datetime.date.today()
-    now = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
-
-    end = datetime.datetime(2049, 1, 1, tzinfo=datetime.timezone.utc)
-
-    results = []
-    for user in DepartmentUser.objects.filter(active=True):
-        if user.employee_id in user_map:
-            test_time = user.expiry_date if user.expiry_date is not None else end
-            if user_map[user.employee_id] < test_time:
-                res = [user.email, user.given_name, user.surname, user.employee_id, user.ad_dn, user_map[user.employee_id], test_time]
-                results.append(res)
-
-    return results
-    #outsiders  = [x for x in results if x[6] > now and x[5] < now]
-
-
-    #with open('fixey.csv', 'w') as f:
-    #    c = csv.writer(f)
-    #    c.writerow(['email', 'given_name', 'surname', 'employee_id', 'ad_dn', 'alesco_expiry', 'itassets_expiry'])
-    #    for r in results:
-    #        c.writerow(r)
-"""
+        if update_dept_user:
+            update_user_from_alesco(user)

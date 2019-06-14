@@ -292,11 +292,11 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                 else:
                     rfc.status = 1
                     rfc.save()
+                    rfc.email_endorser()
                     msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
                     messages.success(self.request, msg)
                     log = ChangeLog(change_request=rfc, log=msg)
                     log.save()
-                    rfc.email_endorser(self.request)
                     log = ChangeLog(
                         change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.get_full_name()))
                     log.save()

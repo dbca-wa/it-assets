@@ -1,7 +1,7 @@
 git+git://github.com/dbca-wa/dbca-utils@1.0.0
-psycopg2-binary==2.7.7
-Django==2.1.7
-django-extensions==2.1.5
+psycopg2-binary==2.8.2
+Django==2.1.9
+django-extensions==2.1.9
 django-dotenv==1.4.2
 dj-database-url==0.5.0
 django-reversion==3.0.2
@@ -10,7 +10,7 @@ dj-static==0.0.6
 json2html==1.2.1
 django-mptt==0.9.1
 django-mptt-admin==0.6.0
-openpyxl==2.5.8
+openpyxl==2.6.2
 unicodecsv==0.14.1
 python-dateutil==2.7.3
 django-leaflet==0.24.0
@@ -23,7 +23,7 @@ requests==2.20.0
 django-q==1.0.1
 redis==2.10.6
 XlsxWriter==1.1.1
-raven==6.9.0
+raven==6.10.0
 djangorestframework==3.8.2
 djangorestframework-csv==2.1.0
 djangorestframework-gis==0.13

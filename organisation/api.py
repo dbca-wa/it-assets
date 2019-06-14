@@ -61,7 +61,7 @@ class DepartmentUserResource(DjangoResource):
     structure membership.
     """
     COMPACT_ARGS = (
-        'pk', 'name', 'title', 'employee_id', 'email', 'telephone',
+        'pk', 'name', 'title', 'email', 'telephone',
         'mobile_phone', 'extension', 'photo', 'photo_ad', 'org_data', 'parent__email',
         'parent__name', 'username', 'org_unit__location__id',
         'org_unit__location__name', 'org_unit__location__address',

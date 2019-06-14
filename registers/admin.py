@@ -126,8 +126,8 @@ class ITSystemAdmin(VersionAdmin):
         }),
         ('Retention and disposal', {
             'fields': (
+                'defunct_date',
                 'retention_reference_no',
-                'decommission_date',
                 'retention_disposal_action',
                 'retention_comments',
             )
@@ -359,7 +359,7 @@ def email_endorser(modeladmin, request, queryset):
     """
     for rfc in queryset:
         if rfc.is_submitted:
-            rfc.email_endorser(request)
+            rfc.email_endorser()
             msg = 'Request for approval emailed to {}.'.format(rfc.endorser.get_full_name())
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
@@ -373,7 +373,7 @@ def email_implementer(modeladmin, request, queryset):
     """
     for rfc in queryset:
         if rfc.status == 3 and rfc.planned_end <= datetime.now().astimezone(timezone(settings.TIME_ZONE)) and rfc.completed is None:
-            rfc.email_implementer(request)
+            rfc.email_implementer()
             msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()

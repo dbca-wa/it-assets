@@ -279,8 +279,8 @@ class ITSystem(CommonFields):
         help_text='BPAY biller code for this system (must be unique).')
     retention_reference_no = models.CharField(
         max_length=256, null=True, blank=True, help_text='Retention/disposal reference no.')
-    decommission_date = models.DateField(
-        null=True, blank=True, help_text='Date on which the IT system was decommissioned')
+    defunct_date = models.DateField(
+        null=True, blank=True, help_text='Date on which the IT System first becomes a production (legacy) or decommissioned system')
     retention_disposal_action = models.PositiveSmallIntegerField(
         choices=RETENTION_DISPOSAL_ACTION_CHOICES, null=True, blank=True,
         verbose_name='Retention and disposal action')
@@ -598,16 +598,16 @@ class ChangeRequest(models.Model):
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
-    def email_endorser(self, request=None):
+    def email_endorser(self):
         # Send an email to the endorser (if defined) with a link to the change request endorse view.
         if not self.endorser:
             return None
         subject = 'Endorsement for change request {}'.format(self)
-        if request:
-            endorse_url = request.build_absolute_uri(reverse('change_request_endorse', kwargs={'pk': self.pk}))
+        if Site.objects.filter(name='Change Requests').exists():
+            domain = Site.objects.get(name='Change Requests').domain
         else:
             domain = Site.objects.get_current().domain
-            endorse_url = '{}{}'.format(domain, reverse('change_request_endorse', kwargs={'pk': self.pk}))
+        endorse_url = '{}{}'.format(domain, reverse('change_request_endorse', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you have
             been assigned as the endorser for a change request submitted to OIM by {}.\n
             Please visit the following URL, review the change request details and register
@@ -624,16 +624,16 @@ class ChangeRequest(models.Model):
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
 
-    def email_implementer(self, request=None):
+    def email_implementer(self):
         # Send an email to the implementer (if defined) with a link to the change request endorse view.
         if not self.implementer:
             return None
         subject = 'Completion of change request {}'.format(self)
-        if request:
-            complete_url = request.build_absolute_uri(reverse('change_request_complete', kwargs={'pk': self.pk}))
+        if Site.objects.filter(name='Change Requests').exists():
+            domain = Site.objects.get(name='Change Requests').domain
         else:
             domain = Site.objects.get_current().domain
-            complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
+        complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you are recorded as the
             implementer for change request {}, scheduled to be undertaken on {}.\n
             Please visit the following URL and record the outcome of the change in order to finalise it:\n
