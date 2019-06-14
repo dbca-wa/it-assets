@@ -334,9 +334,10 @@ class DepartmentUser(MPTTModel):
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
         """
-        for org in self.org_unit.get_ancestors(ascending=True):
-            if org.unit_type in (0, 1):
-                return org
+        if self.org_unit is not None:
+            for org in self.org_unit.get_ancestors(ascending=True):
+                if org.unit_type in (0, 1):
+                    return org
         return self.org_unit
 
     def get_gal_department(self):
