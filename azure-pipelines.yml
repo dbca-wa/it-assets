@@ -10,10 +10,10 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- task: Docker@2
+  inputs:
+    containerRegistry: 'Docker Hub'
+    repository: 'dbca-wa/it-assets'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile'
+    tags: 'azure-pipeline-$(Build.BuildId)'
