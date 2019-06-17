@@ -150,10 +150,27 @@ def update_title_from_alesco(user):
             user.save()
 
 
+def update_location_from_alesco(user):
+    from .models import DepartmentUser, Location
+    location = None
+
+    if user.alesco_data:
+        location = next((x['location'] for x in user.alesco_data if 'location' in x and x['location']), None)
+        location = Location.objects.filter(ascender_code=location).first()
+
+    if location:
+        if location != user.location:
+            LOGGER.info('Updating location for {} from {} to {}'.format(user.email, user.location, location))
+            user.location = location
+            user.save()
+
+
+
 def update_user_from_alesco(user):
     update_manager_from_alesco(user)
     update_term_date_from_alesco(user)
     update_title_from_alesco(user)
+    update_location_from_alesco(user)
 
 
 def alesco_db_fetch():
@@ -201,6 +218,7 @@ def alesco_db_import(update_dept_user=False):
     ]
     records = {}
     alesco_iter = alesco_db_fetch()
+    today = datetime.date.today()
 
     LOGGER.info('Querying Alesco database for employee information')
     for row in alesco_iter:
@@ -220,13 +238,23 @@ def alesco_db_import(update_dept_user=False):
         # most applicable to least applicable.
         record.sort(key=lambda x: classification_ranking.index(x['classification']) if x['classification'] in classification_ranking else 100)
         record.sort(key=lambda x: status_ranking.index(x['emp_status']) if x['emp_status'] in status_ranking else 100)
-        record.sort(key=lambda x: x['job_term_date'], reverse=True)
+        # start off by current jobs sorted by rank, follow up by chronological list of expired jobs
+        current = [x for x in record if x['job_term_date'] is None or x['job_term_date'] >= today]
+        expired = [x for x in record if x['job_term_date'] and x['job_term_date'] < today]
+        expired.sort(key=lambda x: x['job_term_date'], reverse=True)
+        record = current + expired
 
-        for r in record:
+        for rec in record:
             for field in date_fields:
-                r[field] = r[field].isoformat() if r[field] and r[field] != ALESCO_DATE_MAX else None
+                rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
 
         user = DepartmentUser.objects.get(employee_id=key)
+#        order = lambda obj: tuple([x['position_id'] for x in obj])
+#        if order(user.alesco_data) != order(record):
+#            print('Changing {}'.format(user.email))
+#            print([(x['classification'], x['emp_stat_desc'], x['occup_pos_title'], x['job_term_date']) for x in user.alesco_data])
+#            print([(x['classification'], x['emp_stat_desc'], x['occup_pos_title'], x['job_term_date']) for x in record])
+
         user.alesco_data = record
         user.save()
 
