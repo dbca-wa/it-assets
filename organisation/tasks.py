@@ -4,6 +4,7 @@ import logging
 from collections import OrderedDict
 import psycopg2
 import pytz
+import titlecase
 
 TZ = pytz.timezone(settings.TIME_ZONE)
 LOGGER = logging.getLogger('sync_tasks')
@@ -16,6 +17,66 @@ ALESCO_DB_FIELDS = (
     'location', 'location_desc', 'paypoint', 'paypoint_desc', 'manager_emp_no',
 )
 ALESCO_DATE_MAX = date(2049, 12, 31)
+
+
+def alesco_scrub_title(title):
+    # remove extra spaces
+    title_raw = ' '.join(title.upper().split())
+
+    # ranger job titles have too much junk attached, jettison!
+    if title_raw.startswith('RANGER'):
+        return 'Ranger'
+    if title_raw.startswith('SENIOR RANGER'):
+        return 'Senior Ranger'
+
+    def replace(word, **kwargs):
+        result = None
+        prefix = ''
+        suffix = ''
+        if word.startswith('('):
+            prefix = '('
+            word = word[1:]
+        if word.endswith(')'):
+            suffix = ')'
+            word = word[:-1]
+        if word.upper() in ('RIA', 'DBCA', 'BGPA', 'ZPA', 'PVS', 'IT', 'ICT', 'AV', 'HR', 'GIS', 'FMDP', 'SFM', 'OIM', 'HAAMC', 'TEC', 'MATES', 'AWU', 'FOI', 'KABC', 'VOG', 'WSS', 'EDRMS', 'LUP', 'WA', 'KSCS', 'OT'):
+            result = word.upper()
+        else:
+            expand = {
+                '&': 'and',
+                'BG': 'Botanic Garden',
+                'DEPT': 'Department',
+                'CONS': 'Conservation',
+                'CONSER': 'Conservation',
+                'CONSERV': 'Conservation',
+                'COORD': 'Coordinator',
+                'CO-ORDINATOR': 'Coordinator',
+                'COORDIN': 'Coordinator',
+                'CUST': 'Customer',
+                'MGMT': 'Management',
+                'NP': 'National Park',
+                'OCC': 'Occupational',
+                'SAF': 'Safety',
+                'SRV': 'Service',
+                'SNR': 'Senior',
+                'SERVIC': 'Services',
+                'SCIENT': 'Scientist',
+                'SCIENT.': 'Scientist',
+                'ODG': 'Office of the Director General',
+                'CHAIRPERSON,': 'Chairperson -',
+                'OFFICER,': 'Officer -',
+                'DIRECTOR,': 'Director -',
+                'LEADER,': 'Leader -',
+                'MANAGER,': 'Manager -',
+                'COORDINATOR,': 'Coordinator -',
+            }
+            if word.upper() in expand:
+                result = expand[word.upper()]
+        if result:
+            return prefix + result + suffix
+
+    title_fixed = titlecase.titlecase(title_raw, callback=replace)
+    return title_fixed
 
 
 def alesco_date_to_dt(dt, hour=0, minute=0, second=0):
@@ -31,6 +92,7 @@ def update_user_from_alesco(user):
     from .models import DepartmentUser
     term_date = None
     manager = None
+    title = None
     changes = False
 
     if user.alesco_data:
@@ -48,6 +110,9 @@ def update_user_from_alesco(user):
         managers = [x for x in managers if x and (user.pk != x.pk)]
         if managers:
             manager = managers[0]
+        title = next((x['occup_pos_title'] for x in user.alesco_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
+        if title:
+            title = alesco_scrub_title(title)
 
     if term_date:
         stored_term_date = TZ.normalize(user.date_hr_term) if user.date_hr_term else None
@@ -63,6 +128,12 @@ def update_user_from_alesco(user):
         if manager != user.parent:
             LOGGER.info('Updating manager for {} from {} to {}'.format(user.email, user.parent.email if user.parent else None, manager.email if manager else None))
             user.parent = manager
+            changes = True
+
+    if title:
+        if title != user.title:
+            LOGGER.info('Updating title for {} from {} to {}'.format(user.email, user.title, title))
+            user.title = title
             changes = True
 
     if changes:
