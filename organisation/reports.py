@@ -276,3 +276,40 @@ def departmentuser_csv_report():
         wr.writerow(record)
 
     return stream.getvalue()
+
+
+def user_account_export(fileobj, users):
+    """Writes a passed-in queryset of DepartmentUser objects to a file-like object as an
+    Excel spreadsheet.
+    """
+    with xlsxwriter.Workbook(
+        fileobj,
+        {
+            'in_memory': True,
+            'default_date_format': 'dd-mmm-yyyy HH:MM',
+            'remove_timezone': True,
+        },
+    ) as workbook:
+        users_sheet = workbook.add_worksheet('Department users')
+        users_sheet.write_row('A1', (
+            'ACCOUNT NAME', 'COST CENTRE', 'CONTACT NUMBER', 'OFFICE LOCATION', 'SHARED/ROLE-BASED ACCOUNT?', 'ACCOUNT ACTIVE?'
+        ))
+        row = 1
+        for i in users:
+            users_sheet.write_row(row, 0, [
+                i.get_full_name(),
+                i.cost_centre.code if i.cost_centre else '',
+                i.telephone,
+                i.location.name if i.location else '',
+                i.shared_account,
+                i.active,
+            ])
+            row += 1
+        users_sheet.set_column('A:A', 30)
+        users_sheet.set_column('B:B', 15)
+        users_sheet.set_column('C:C', 22)
+        users_sheet.set_column('D:D', 50)
+        users_sheet.set_column('E:E', 29)
+        users_sheet.set_column('F:F', 17)
+
+    return fileobj
