@@ -14,10 +14,9 @@ from django.conf import settings
 import pytz
 from dateutil.parser import parse
 
+
 class ProfileTestCase(ApiTestCase):
     url = '/api/profile/'
-
-
 
     def test_profile_api_get(self):
         """Test the profile API endpoint GET response

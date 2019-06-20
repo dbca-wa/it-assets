@@ -165,7 +165,8 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         rfc = form.save(commit=False)
         # Set the requester as the request user.
-        rfc.requester = DepartmentUser.objects.get(email=self.request.user.email)
+        if DepartmentUser.objects.filter(email=self.request.user.email).exists():
+            rfc.requester = DepartmentUser.objects.get(email=self.request.user.email)
         # Set the endorser and implementer (if required).
         if self.request.POST.get('endorser_choice'):
             rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))

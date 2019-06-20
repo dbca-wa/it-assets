@@ -34,5 +34,5 @@ A link to the Alesco database table requires the following variables:
 
 Start with `pip install coverage`. Run unit tests and obtain test coverage as follows:
 
-    coverage run --source='.' manage.py -k
+    coverage run --source='.' manage.py test -k
     coverage report -m
