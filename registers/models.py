@@ -290,8 +290,11 @@ class ITSystem(CommonFields):
         null=True, blank=True,
         help_text='Date on which the IT System first becomes a production (legacy) or decommissioned system')
     disposal_action = models.PositiveSmallIntegerField(
-        choices=DISPOSAL_ACTION_CHOICES, null=True, blank=True, verbose_name='Disposal action')
-    custody = models.PositiveSmallIntegerField(choices=CUSTODY_CHOICES, null=True, blank=True)
+        choices=DISPOSAL_ACTION_CHOICES, null=True, blank=True, verbose_name='Disposal action',
+        help_text='Final disposal action required once the custody period has expired')
+    custody = models.PositiveSmallIntegerField(
+        choices=CUSTODY_CHOICES, null=True, blank=True,
+        help_text='Period the records will be retained before they are archived or destroyed')
     retention_comments = models.TextField(
         null=True, blank=True, verbose_name='comments',
         help_text='Comments/notes related to retention and disposal')
