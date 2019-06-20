@@ -92,7 +92,8 @@ def it_system_export(fileobj, it_systems):
             'Technology custodian', 'Information custodian', 'Link', 'Technical documentation',
             'Application server(s)', 'Database server(s)', 'Network storage', 'Backups',
             'BH support', 'AH support', 'User notification', 'Defunct date',
-            'Retention reference no.', 'Retention/disposal action', 'Retention/disposal notes'
+            'Retention reference no.', 'Retention/disposal action', 'Retention/disposal notes',
+            'Custody',
         ))
         row = 1
         for i in it_systems:
@@ -122,8 +123,9 @@ def it_system_export(fileobj, it_systems):
                 i.user_notification,
                 i.defunct_date,
                 i.retention_reference_no,
-                i.get_retention_disposal_action_display(),
+                i.get_disposal_action_display(),
                 i.retention_comments,
+                i.get_custody_verbose(),
             ])
             row += 1
 
@@ -140,7 +142,7 @@ def it_system_export(fileobj, it_systems):
         systems.set_column('O:W', 50)
         systems.set_column('X:X', 18)
         systems.set_column('Y:Y', 22)
-        systems.set_column('Z:AA', 50)
+        systems.set_column('Z:AB', 50)
 
     return fileobj
 
