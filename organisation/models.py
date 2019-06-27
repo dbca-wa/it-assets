@@ -344,10 +344,9 @@ class DepartmentUser(MPTTModel):
         """Return a string to place into the "Department" field for the Global Address List.
         """
         s = ''
-        if self.org_data and 'units' in self.org_data and len(self.org_data['units']) > 0:
-            s = self.org_data['units'][0]['acronym']
-            if len(self.org_data['units']) > 1:
-                s += ' - {}'.format(self.org_data['units'][1]['name'])
+        unit = self.group_unit
+        if unit:
+            s = '{}'.format(unit.name)
         return s
 
     def get_full_name(self):
