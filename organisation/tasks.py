@@ -46,6 +46,7 @@ def alesco_scrub_title(title):
                 '&': 'and',
                 'BG': 'Botanic Garden',
                 'DEPT': 'Department',
+                'CON': 'Conservation',
                 'CONS': 'Conservation',
                 'CONSER': 'Conservation',
                 'CONSERV': 'Conservation',
@@ -54,6 +55,7 @@ def alesco_scrub_title(title):
                 'COORDIN': 'Coordinator',
                 'CUST': 'Customer',
                 'MGMT': 'Management',
+                'IS': 'Island',
                 'NP': 'National Park',
                 'OCC': 'Occupational',
                 'SAF': 'Safety',
@@ -86,33 +88,40 @@ def alesco_date_to_dt(dt, hour=0, minute=0, second=0):
     return d + timedelta(hours=hour, minutes=minute, seconds=second)
 
 
-def update_user_from_alesco(user):
-    """Update a DepartmentUser object's field values from the data in the alesco_data field.
-    """
+def update_manager_from_alesco(user):
     from .models import DepartmentUser
-    term_date = None
     manager = None
-    title = None
-    changes = False
 
     if user.alesco_data:
-        term_dates = [datetime.strptime(x['job_term_date'], '%Y-%m-%d') for x in user.alesco_data if x['job_term_date']]
-        if term_dates:
-            term_date = max(term_dates)
-            # Convert the Alesco date to a timezone-aware datetime (use end of business hours).
-            if term_date and term_date != ALESCO_DATE_MAX:
-                term_date = alesco_date_to_dt(term_date, 17, 30)
-            else:
-                term_date = None
         managers = [x['manager_emp_no'] for x in user.alesco_data if x['manager_emp_no']]
         managers = OrderedDict.fromkeys(managers).keys()
         managers = [DepartmentUser.objects.filter(employee_id=x).first() for x in managers]
         managers = [x for x in managers if x and (user.pk != x.pk)]
         if managers:
             manager = managers[0]
-        title = next((x['occup_pos_title'] for x in user.alesco_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
-        if title:
-            title = alesco_scrub_title(title)
+
+    if manager:
+        if manager != user.parent:
+            if manager in user.get_descendants():
+                LOGGER.info('Removing manager relationship from {}, should be fixed next cycle'.format(manager.email))
+                manager.parent = None
+                manager.save()
+
+            LOGGER.info('Updating manager for {} from {} to {}'.format(user.email, user.parent.email if user.parent else None, manager.email if manager else None))
+            user.parent = manager
+            user.save()
+
+
+def update_term_date_from_alesco(user):
+    from .models import DepartmentUser
+    today = alesco_date_to_dt(datetime.date.today())
+    term_date = None
+
+    if user.alesco_data:
+        term_dates = [datetime.date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
+        if term_dates:
+            term_date = max(term_dates)
+            term_date = alesco_date_to_dt(term_date) if term_date and term_date != ALESCO_DATE_MAX else None
 
     if term_date:
         stored_term_date = TZ.normalize(user.date_hr_term) if user.date_hr_term else None
@@ -122,22 +131,29 @@ def update_user_from_alesco(user):
                 LOGGER.info('Updating expiry for {} from {} to {}'.format(user.email, stored_term_date, term_date))
                 user.expiry_date = term_date
             user.date_hr_term = term_date
-            changes = True
+            user.save()
 
-    if manager:
-        if manager != user.parent:
-            LOGGER.info('Updating manager for {} from {} to {}'.format(user.email, user.parent.email if user.parent else None, manager.email if manager else None))
-            user.parent = manager
-            changes = True
+
+def update_title_from_alesco(user):
+    from .models import DepartmentUser
+    title = None
+
+    if user.alesco_data:
+        title = next((x['occup_pos_title'] for x in user.alesco_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
+        if title:
+            title = alesco_scrub_title(title)
 
     if title:
         if title != user.title:
             LOGGER.info('Updating title for {} from {} to {}'.format(user.email, user.title, title))
             user.title = title
-            changes = True
+            user.save()
 
-    if changes:
-        user.save()
+
+def update_user_from_alesco(user):
+    update_manager_from_alesco(user)
+    update_term_date_from_alesco(user)
+    update_title_from_alesco(user)
 
 
 def alesco_db_fetch():
