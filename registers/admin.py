@@ -128,7 +128,8 @@ class ITSystemAdmin(VersionAdmin):
             'fields': (
                 'defunct_date',
                 'retention_reference_no',
-                'retention_disposal_action',
+                'disposal_action',
+                'custody',
                 'retention_comments',
             )
         }),

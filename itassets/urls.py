@@ -8,31 +8,28 @@ from itassets.views import HealthCheckView
 from knowledge import urls as knowledge_urls
 from recoup import urls as recoup_urls
 from registers import urls as registers_urls
-
 from assets import urls as assets_urls
+from organisation import urls as organisation_urls
 
-#Temp added for hardware assets api
-from django.conf.urls import include
 
 admin.site.site_header = 'IT Assets database administration'
 admin.site.index_title = 'IT Assets database'
 admin.site.site_title = 'IT Assets'
 
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v2/', include(api_v2_router.urls)),
+    path('api/v1/', include(api_urlpatterns)),
     path('api/', include(api_urlpatterns)),
-
     path('assets/', include(assets_urls)),
-
     path('knowledge/', include(knowledge_urls)),
     path('recoup/', include(recoup_urls)),
     path('registers/', include(registers_urls)),
+    path('organisation/', include(organisation_urls)),
     path('healthcheck/', HealthCheckView.as_view(), name='health_check'),
-    path('', RedirectView.as_view(url='/admin')),
     path('favicon.ico', RedirectView.as_view(url='{}favicon.ico'.format(settings.STATIC_URL)), name='favicon'),
+    path('', RedirectView.as_view(url='/admin')),
 ]
 
 urlpatterns += [

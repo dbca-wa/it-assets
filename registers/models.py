@@ -190,11 +190,17 @@ class ITSystem(CommonFields):
         (2, 'Daily local'),
         (3, 'Vendor-managed'),
     )
-    RETENTION_DISPOSAL_ACTION_CHOICES = (
-        (1, 'Retain in agency - migrate records and maintain for the life of Agency.'),
-        (2, 'Required as State Archive - retain in Agency. Migrate records to new database or transfer to SRO when superseded.'),
-        (3, 'Destroy - destroy datasets when superseded. Migrate records and maintain for life of agency.'),
-        (4, 'Destroy - retain 12 months after data migration and decommission (may retain for reference).'),
+    DISPOSAL_ACTION_CHOICES = (
+        (1, 'Retain in agency'),
+        (2, 'Required as State Archive'),
+        (3, 'Destroy'),
+    )
+    # NOTE: if the following options are updated, remember to update the get_custody_verbose method also.
+    CUSTODY_CHOICES = (
+        (1, 'Migrate records and maintain for the life of agency'),
+        (2, 'Retain in agency, migrate records to new database or transfer to SRO when superseded'),
+        (3, 'Destroy datasets when superseded, migrate records and maintain for life of agency'),
+        (4, 'Retain 12 months after data migration and decommission (may retain for reference)'),
     )
 
     name = models.CharField(max_length=128, unique=True)
@@ -278,12 +284,17 @@ class ITSystem(CommonFields):
         max_length=64, null=True, blank=True,
         help_text='BPAY biller code for this system (must be unique).')
     retention_reference_no = models.CharField(
-        max_length=256, null=True, blank=True, help_text='Retention/disposal reference no.')
+        max_length=256, null=True, blank=True,
+        help_text='Retention/disposal reference no. in the current retention and disposal schedule')
     defunct_date = models.DateField(
-        null=True, blank=True, help_text='Date on which the IT System first becomes a production (legacy) or decommissioned system')
-    retention_disposal_action = models.PositiveSmallIntegerField(
-        choices=RETENTION_DISPOSAL_ACTION_CHOICES, null=True, blank=True,
-        verbose_name='Retention and disposal action')
+        null=True, blank=True,
+        help_text='Date on which the IT System first becomes a production (legacy) or decommissioned system')
+    disposal_action = models.PositiveSmallIntegerField(
+        choices=DISPOSAL_ACTION_CHOICES, null=True, blank=True, verbose_name='Disposal action',
+        help_text='Final disposal action required once the custody period has expired')
+    custody = models.PositiveSmallIntegerField(
+        choices=CUSTODY_CHOICES, null=True, blank=True,
+        help_text='Period the records will be retained before they are archived or destroyed')
     retention_comments = models.TextField(
         null=True, blank=True, verbose_name='comments',
         help_text='Comments/notes related to retention and disposal')
@@ -299,6 +310,20 @@ class ITSystem(CommonFields):
     def division_name(self):
         if self.cost_centre and self.cost_centre.division:
             return self.cost_centre.division.name
+        else:
+            return ''
+
+    def get_custody_verbose(self):
+        """Return verbose/detailed output based upon the object custody field value.
+        """
+        map = {
+            1: 'Retain in agency for the life of the Department and successor agencies, migrating records through successive upgrades of hardware and software.',
+            2: 'Retain as a State archive within the agency. Migrate all data to successor database or transfer to the State Records Office when database is superseded.',
+            3: 'Destroy electronic datasets when reference ceases, or data is superseded. Migrate records through successive upgrades of hardware and software for the life of the Department and successor agencies.',
+            4: 'Retain 12 months after decommissioning is complete and all required data has been successfully migrated.  Note: Legacy data may be retained until reference ceases.',
+        }
+        if self.custody:
+            return map[self.custody]
         else:
             return ''
 

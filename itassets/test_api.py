@@ -107,6 +107,7 @@ class ApiTestCase(TestCase):
         self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user2)
         self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user2)
 
+
 class HealthCheckViewTestCase(TestCase):
 
     def test_get_context(self):
