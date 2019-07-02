@@ -114,11 +114,11 @@ def update_manager_from_alesco(user):
 
 def update_term_date_from_alesco(user):
     from .models import DepartmentUser
-    today = alesco_date_to_dt(datetime.date.today())
+    today = alesco_date_to_dt(date.today())
     term_date = None
 
     if user.alesco_data:
-        term_dates = [datetime.date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
+        term_dates = [date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
         if term_dates:
             term_date = max(term_dates)
             term_date = alesco_date_to_dt(term_date) if term_date and term_date != ALESCO_DATE_MAX else None
@@ -218,7 +218,7 @@ def alesco_db_import(update_dept_user=False):
     ]
     records = {}
     alesco_iter = alesco_db_fetch()
-    today = datetime.date.today()
+    today = date.today()
 
     LOGGER.info('Querying Alesco database for employee information')
     for row in alesco_iter:
