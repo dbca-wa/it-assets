@@ -207,7 +207,7 @@ Q_CLUSTER = {
     'name': 'itassets',
     'workers': 4,
     'recycle': 500,
-    'timeout': 3600,
+    'timeout': 7200,
     'compress': True,
     'save_limit': 250,
     'queue_limit': 500,

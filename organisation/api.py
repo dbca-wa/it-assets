@@ -452,7 +452,7 @@ class DepartmentUserResource(DjangoResource):
             orgunits = OrgUnit.objects.filter(active=True)
             costcentres = CostCentre.objects.filter(active=True)
             locations = Location.objects.filter(active=True)
-        defaultowner = 'support@dbca.wa.gov.au'
+        defaultowner = None
         for obj in orgunits:
             members = [d[0] for d in qs.filter(org_unit__in=obj.get_descendants(include_self=True)).values_list('email')]
             # We also need to iterate through DepartmentUsers to add those with
