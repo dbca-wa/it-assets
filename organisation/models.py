@@ -334,19 +334,19 @@ class DepartmentUser(MPTTModel):
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
         """
-        for org in self.org_unit.get_ancestors(ascending=True, include_self=True):
-            if org.unit_type in (0, 1):
-                return org
+        if self.org_unit is not None:
+            for org in self.org_unit.get_ancestors(ascending=True):
+                if org.unit_type in (0, 1):
+                    return org
         return self.org_unit
 
     def get_gal_department(self):
         """Return a string to place into the "Department" field for the Global Address List.
         """
         s = ''
-        if self.org_data and 'units' in self.org_data and len(self.org_data['units']) > 0:
-            s = self.org_data['units'][0]['acronym']
-            if len(self.org_data['units']) > 1:
-                s += ' - {}'.format(self.org_data['units'][1]['name'])
+        unit = self.group_unit
+        if unit:
+            s = '{}'.format(unit.name)
         return s
 
     def get_full_name(self):
@@ -458,6 +458,9 @@ class OrgUnit(MPTTModel):
         if not getattr(self, 'cheap_save', False):
             for user in self.members():
                 user.save()
+
+    def children_active(self):
+        return self.children.filter(active=True)
 
     def get_descendants_active(self, *args, **kwargs):
         """Exclude 'inactive' OrgUnit objects from get_descendants() queryset.
