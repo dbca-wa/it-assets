@@ -234,3 +234,6 @@ REST_FRAMEWORK = {
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
+
+# status scanning settings
+STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 30)
