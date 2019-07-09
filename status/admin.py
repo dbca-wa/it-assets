@@ -47,9 +47,6 @@ class HostStatusAdmin(ModelAdmin):
         self.message_user(request, 'A full scan has been scheduled.')
     run_full_scan.short_description = 'Run a full scan'
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
     fieldsets = (
         ('Host details', {
             'fields': (
