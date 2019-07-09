@@ -82,6 +82,9 @@ class Host(models.Model):
 
     active = models.BooleanField(default=True)
 
+    def ip_list(self):
+        return ','.join(self.host_ips.values_list('ip', flat=True))
+
     def __str__(self):
         return self.name
 
