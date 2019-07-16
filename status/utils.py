@@ -43,7 +43,7 @@ def scan(range_qs=None, date=None):
     for scan_range in range_qs:
         LOGGER.info('Scanning {}...'.format(scan_range))
         for hosts in scan_range.range.split(','):
-            sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns --host-timeout=5')['scan']
+            sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns --host-timeout={}'.format(settings.STATUS_NMAP_TIMEOUT))['scan']
     
             for ipv4, context in sweep_data.items():
                 host = lookup_host(ipv4)

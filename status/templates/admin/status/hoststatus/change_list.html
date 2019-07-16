@@ -1,0 +1,8 @@
+{% extends "reversion/change_list.html" %}
+
+{% block object-tools-items %}
+    <li>
+        <a href="{% url 'admin:host_status_report' %}">Download Report</a>
+    </li>
+    {{ block.super }}
+{% endblock %}
