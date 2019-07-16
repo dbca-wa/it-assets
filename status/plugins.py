@@ -60,6 +60,8 @@ def vulnerability_nessus(plugin, date):
     NESSUS_REPORT = lambda scan_id: '{}/scans/{}'.format(NESSUS_BASE, scan_id)
     NESSUS_VULNS = lambda scan_id, host_id: '{}/scans/{}/hosts/{}'.format(NESSUS_BASE, scan_id, host_id)
 
+    requests.packages.urllib3.disable_warnings()
+
     reports = requests.get(NESSUS_SCANS, headers=NESSUS_HEADERS, verify=False).json()
 
     for report in reports['scans']:
@@ -75,6 +77,11 @@ def vulnerability_nessus(plugin, date):
             host_status = lookup(report_host['hostname'], date)
             if host_status is None:
                 continue
+            os = None
+            detail = requests.get(NESSUS_VULNS(report['id'], report_host['host_id']), headers=NESSUS_HEADERS, verify=False).json()
+            if 'operating-system' in detail['info']:
+                os = detail['info']['operating-system']
+            #print((report_host['hostname'], os))
             host_status.vulnerability_info = {
                 'id': report_host['host_id'],
                 'report_id': report['id'],
@@ -88,13 +95,15 @@ def vulnerability_nessus(plugin, date):
                 'num_medium': report_host['medium'],
                 'num_low': report_host['low'],
                 'num_info': report_host['info'],
+                'os': os
             }
             host_status.vulnerability_plugin = plugin
             host_status.vulnerability_output = 'Device has been scanned, vulnerabilities were found'
             host_status.vulnerability_status = 2
+
+
             if (int(report_host['critical']) == 0) and (int(report_host['high']) == 0):
-                vulns = requests.get(NESSUS_VULNS(report['id'], report_host['host_id']), headers=NESSUS_HEADERS, verify=False).json()
-                name_check = [x['plugin_name'] for x in vulns['vulnerabilities']]
+                name_check = [x['plugin_name'] for x in detail['vulnerabilities']]
                 if 'Authentication Failure - Local Checks Not Run' in name_check:
                     host_status.vulnerability_output = 'Device is being scanned, but does not have correct credentials.'
                 else:
