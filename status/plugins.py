@@ -58,14 +58,19 @@ def vulnerability_nessus(plugin, date):
     NESSUS_SCAN_FOLDER = 3
     NESSUS_SCANS = '{}/scans?folder_id={}'.format(NESSUS_BASE, NESSUS_SCAN_FOLDER)
     NESSUS_REPORT = lambda scan_id: '{}/scans/{}'.format(NESSUS_BASE, scan_id)
-    NESSUS_VULNS = lambda scan_id, host_id: '{}/scans/{}/hosts/{}'.format(NESSUS_BASE, scan_id, host_id)
-
+    NESSUS_VULNS = lambda scan_id, host_id, history_id: '{}/scans/{}/hosts/{}?history_id={}'.format(NESSUS_BASE, scan_id, host_id, history_id)
+    NESSUS_RESULT_URL = lambda scan_id, host_id, history_id: '{}/#/scans/reports/{}/hosts/{}/vulnerabilities'.format(NESSUS_URL, scan_id, host_id, history_id)
     requests.packages.urllib3.disable_warnings()
 
     reports = requests.get(NESSUS_SCANS, headers=NESSUS_HEADERS, verify=False).json()
 
     for report in reports['scans']:
+
         data = requests.get(NESSUS_REPORT(report['id']), headers=NESSUS_HEADERS, verify=False).json()
+        if len(data['history']) == 0:
+            continue
+        history_id = data['history'][-1]['history_id']
+
         if data['info']['policy'].startswith('Web'):
             continue
         name = data['info']['name']
@@ -78,13 +83,14 @@ def vulnerability_nessus(plugin, date):
             if host_status is None:
                 continue
             os = None
-            detail = requests.get(NESSUS_VULNS(report['id'], report_host['host_id']), headers=NESSUS_HEADERS, verify=False).json()
+            detail = requests.get(NESSUS_VULNS(report['id'], report_host['host_id'], history_id), headers=NESSUS_HEADERS, verify=False).json()
             if 'operating-system' in detail['info']:
                 os = detail['info']['operating-system']
             #print((report_host['hostname'], os))
             host_status.vulnerability_info = {
-                'id': report_host['host_id'],
                 'report_id': report['id'],
+                'history_id': history_id,
+                'host_id': report_host['host_id'],
                 'scan_name': data['info']['name'],
                 'scan_start': datetime.datetime.fromtimestamp(data['info']['scan_start'], datetime.timezone.utc).isoformat(),
                 'scan_end': datetime.datetime.fromtimestamp(data['info']['scan_end'], datetime.timezone.utc).isoformat(),
@@ -109,7 +115,7 @@ def vulnerability_nessus(plugin, date):
                 else:
                     host_status.vulnerability_output = 'Device has been scanned, no critical or high vulnerabilities were found.'
                     host_status.vulnerability_status = 3
-            host_status.vulnerability_url = '{}/#/scans/reports/{}/hosts/{}/vulnerabilities'.format(NESSUS_URL, report['id'], report_host['host_id'])
+            host_status.vulnerability_url = NESSUS_RESULT_URL(report['id'], report_host['host_id'], history_id)
             host_status.save()
 
 
