@@ -6,19 +6,7 @@ from assets.permissions import IsAdminUserorReadOnly
 
 
 class HardwareAssetViewSet(viewsets.ModelViewSet):
-
     queryset = HardwareAsset.objects.all()
     serializer_class = HardwareAssetSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,
-                          IsAdminUserorReadOnly, )
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsAdminUserorReadOnly)
     http_method_names = ['get', 'Post', 'Put', 'head']
-
-# class HardwareAssetDetail(generics.RetrieveUpdateDestroyAPIView ):
-#
-#     queryset = HardwareAsset.objects.all()
-#     serializer_class = HardwareAssetSerializer
-#     permission_classes = (permissions.IsAuthenticatedOrReadOnly,
-#                           IsAdminUserorReadOnly, )
-
-
-

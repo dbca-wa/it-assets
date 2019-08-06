@@ -1,19 +1,14 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
-import itertools
 from rest_framework import viewsets
 from rest_framework.response import Response
 from datetime import datetime
 from collections import OrderedDict
 
-from .models import ITSystem, ChangeRequest, StandardChange
+from .models import ChangeRequest, StandardChange
 from .serializers import ChangeRequestSerializer, StandardChangeSerializer
 
 
-"""Changed the viewset to be readonly,and disable the create,update
- functionality, also made changes from requestor and implementor to
- requester and implementer"""
-
-# class ChangeRequestViewSet(viewsets.ModelViewSet):
 class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
     """Used to allow users to create change requests. These can be viewed
     updated or created.
@@ -23,10 +18,7 @@ class ChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ChangeRequestSerializer
 
     def list(self, request):
-        #changed submission_date to created
         qa = ChangeRequest.objects.all().order_by('-created')
-
-
         search = request.GET.get('search[value]') if request.GET.get('search[value]') else None
         start = request.GET.get('start') if request.GET.get('start') else 0
         length = request.GET.get('length') if request.GET.get('length') else len(qa)

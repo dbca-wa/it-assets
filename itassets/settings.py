@@ -148,15 +148,13 @@ EMAIL_PORT = env('EMAIL_PORT', 25)
 NOREPLY_EMAIL = env('NOREPLY_EMAIL', 'noreply@dbca.wa.gov.au')
 
 
-# Logging settings
-# Ensure that the logs directory exists:
-if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
-    os.mkdir(os.path.join(BASE_DIR, 'logs'))
+# Logging settings - log to stdout/stderr
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
     'formatters': {
         'console': {'format': '%(asctime)s %(name)-12s %(message)s'},
-        'verbose': {'format': '%(levelname)s %(asctime)s %(module)s %(message)s'},
+        'verbose': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
     },
     'handlers': {
         'console': {
@@ -176,7 +174,7 @@ LOGGING = {
         },
         'django.request': {
             'handlers': ['console', 'sentry'],
-            'level': 'ERROR',
+            'level': 'WARNING',
 			'propagate': False,
         },
         'itassets': {

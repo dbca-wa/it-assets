@@ -1,8 +1,5 @@
-
-from rest_framework import viewsets, serializers, status, generics, views
-from rest_framework.decorators import detail_route, list_route, renderer_classes, authentication_classes, permission_classes
-
-from webconfig.models import Site, Location, FQDN, Domain
+from rest_framework import viewsets, serializers
+from webconfig.models import Site, Location
 
 
 class LocationSerializer(serializers.ModelSerializer):
