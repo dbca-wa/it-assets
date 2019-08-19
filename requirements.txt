@@ -23,10 +23,9 @@ requests==2.20.0
 django-q==1.0.1
 redis==2.10.6
 XlsxWriter==1.1.1
-raven==6.10.0
-djangorestframework==3.8.2
+djangorestframework==3.9.1
 djangorestframework-csv==2.1.0
-djangorestframework-gis==0.13
+djangorestframework-gis==0.14
 djangorestframework-recursive==0.1.2
 django-cors-headers==2.4.0
 django-crispy-forms==1.7.2
@@ -35,3 +34,4 @@ boto3==1.9.86
 python-nmap==0.6.1
 texttable==1.6.1
 titlecase==0.12.0
+#sentry-sdk==0.10.2
