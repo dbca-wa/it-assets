@@ -180,8 +180,10 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
             rfc.description = rfc.standard_change.description
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
             rfc.change_type = 2
-            if rfc.completed:  # If a completion date was recorded, set the status.
+            if rfc.completed:  # If a completion date was recorded, set the status as "Completed".
                 rfc.status = 4
+            else:  # Otherwise, just set the status to "Scheduled for CAB".
+                rfc.status = 2
         else:
             rfc.change_type = 0
         rfc.save()
