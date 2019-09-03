@@ -1,3 +1,4 @@
+from datetime import date
 from django import forms
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -571,6 +572,8 @@ class ChangeRequest(models.Model):
     notes = models.TextField(null=True, blank=True, help_text='Details of any unexpected issues, observations, etc.')
     reference_url = models.URLField(
         max_length=2048, null=True, blank=True, verbose_name='reference URL', help_text='URL to external reference (discusssion, records, etc.)')
+    post_complete_email_date = models.DateField(
+        null=True, blank=True, help_text='Date on which the implementer was emailed about completion')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
@@ -672,6 +675,8 @@ class ChangeRequest(models.Model):
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.implementer.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
+        self.post_complete_email_date = date.today()
+        self.save()
 
 
 class ChangeLog(models.Model):

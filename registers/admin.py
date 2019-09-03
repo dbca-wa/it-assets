@@ -460,6 +460,7 @@ class ChangeRequestAdmin(ModelAdmin):
     actions = [cab_approve, cab_reject, email_endorser, email_implementer]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
+    exclude =('post_complete_email_date',)
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
