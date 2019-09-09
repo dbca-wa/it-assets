@@ -66,7 +66,7 @@ class DepartmentUserResource(DjangoResource):
         'parent__name', 'username', 'org_unit__location__id',
         'org_unit__location__name', 'org_unit__location__address',
         'org_unit__location__pobox', 'org_unit__location__phone',
-        'org_unit__location__fax', 'ad_guid',
+        'org_unit__location__fax', 'ad_guid', 'employee_id',
         'location', 'preferred_name', 'expiry_date')
     VALUES_ARGS = COMPACT_ARGS + (
         'ad_dn', 'ad_data', 'date_updated', 'date_ad_updated', 'active',
