@@ -1,13 +1,19 @@
 import datetime
 import re
 import urllib
+import json
 
 import adal
 import boto3
 import requests
+from bs4 import BeautifulSoup
+import pytz
 
+from django.conf import settings
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 from .utils import lookup
+
+TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 def monitor_prtg(plugin, date):
@@ -117,6 +123,132 @@ def vulnerability_nessus(plugin, date):
                     host_status.vulnerability_status = 3
             host_status.vulnerability_url = NESSUS_RESULT_URL(report['id'], report_host['host_id'], history_id)
             host_status.save()
+
+
+def backup_phoenix(plugin, date):
+    PHOENIX_USERNAME = plugin.params.get(name='PHOENIX_USERNAME').value
+    PHOENIX_PASSWORD = plugin.params.get(name='PHOENIX_PASSWORD').value
+    PHOENIX_SITE_ID = plugin.params.get(name='PHOENIX_SITE_ID').value
+    
+    PHOENIX_BASE = 'https://phoenix.druva.com'
+    PHOENIX_LOGIN_ADMIN = 'https://login.druva.com/api/commonlogin/admin'
+    PHOENIX_LOGIN_SESSION = 'https://login.druva.com/api/commonlogin/session'
+    PHOENIX_LOGIN = 'https://login.druva.com/api/commonlogin/login'
+    PHOENIX_ADMIN = '{}/admin/'.format( PHOENIX_BASE )
+    PHOENIX_DATA = '{}/server/loadpage'.format( PHOENIX_BASE )
+    PHOENIX_URL = PHOENIX_ADMIN + '#op=server-details/id={}/siteid={}'
+    backup_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
+
+    sess = requests.session()
+
+    # convert email address into admin ID
+    admin = sess.get(PHOENIX_LOGIN_ADMIN, params={'input': json.dumps({
+        'request': {
+            'method': 'GetAuthType',
+            'args': [PHOENIX_USERNAME],
+        }
+    })})
+    admin_id = admin.json()['response']['accounts'][0]['adminIdentifier']
+
+    # login with admin ID and password
+    login = sess.post(PHOENIX_LOGIN, json={
+        'request': {
+            'kwargs': {
+                'auth_input': {
+                    'admin_identifier': admin_id,
+                    'password': PHOENIX_PASSWORD
+                },
+                'caller_product_id': 4097,
+                'redirect_on_success': False,
+                'source_url': '{}/admin'.format( PHOENIX_BASE ),
+            },
+            'method': 'LoginUsingPassword',
+        }
+    })
+
+    # get an OTP to activate cross-domain session cookie
+    phoenix_session = sess.get(PHOENIX_LOGIN_SESSION,params={'input': json.dumps({
+        'request': {
+            'method': 'CheckGlobalSession',
+            'kwargs': {
+                'caller_product_id': '12289',
+                'source_url': '{}/'.format( PHOENIX_BASE ),
+                'is_dashboard_url': 'True',
+                'redirect_on_success': False
+            }}
+        })}
+    )
+    redirect_url = phoenix_session.json()['response']['redirectURL']
+    login_phoenix = sess.get(redirect_url)
+    
+    # rip the CSRF token from the page
+    phoenix_page = sess.get(PHOENIX_ADMIN)
+    phoenix_soup = BeautifulSoup(phoenix_page.content, 'html.parser')
+    csrf = phoenix_soup.find_all(id='csrf_token')[0].attrs['value']
+
+    # request all of the backup information
+    data = sess.post(PHOENIX_DATA, params={   
+        'csrf_token': csrf,
+        'op': 'server-manage',
+        'tabName': 'file_backupsets',
+        'stype': 'storage',
+        'siteid': PHOENIX_SITE_ID,
+        'pageSize': 300,
+    })
+    backup_sets = data.json()['result']['file_backupsets']
+
+    for backup in backup_sets:
+        name = None
+        is_connected = False
+        os_version = None
+        device_id = None
+        if 'device_info' in backup:
+            name = backup['device_info'].get('name', None)
+            is_connected = backup['device_info'].get('is_connected', False)
+            os_version = backup['device_info'].get('os_version', None)
+            device_id = backup['device_info'].get('id', None)
+
+        host_status = lookup(name, date)
+        if not host_status:
+            continue
+
+        last_backup_id = None
+        last_backup_time = None
+        last_backup_status = None
+        if 'last_backup_info' in backup:
+            last_backup = backup['last_backup_info']
+            last_backup_id = last_backup['job_id']
+            last_backup_time = datetime.datetime.fromtimestamp(last_backup['time_stamp'], tz=TZ)
+            last_backup_status = last_backup['status']
+
+        host_status.backup_plugin = plugin
+        if device_id:
+            host_status.backup_url = PHOENIX_URL.format( device_id, PHOENIX_SITE_ID )
+        host_status.backup_info = {
+            'id': backup['id'],
+            'device_id': device_id,
+            'job_id': last_backup_id,
+            'last_backup': last_backup_time.isoformat(),
+            'os': os_version,
+        }
+
+        if not is_connected:
+            host_status.backup_output = 'Device is present, automatic backups are disabled.'
+            host_status.backup_status = 2
+        elif last_backup_id is None:
+            host_status.backup_output = 'Device is present, awaiting first backup.'
+            host_status.backup_status = 2
+        elif last_backup_time and last_backup_time < backup_limit:
+            host_status.backup_output = 'Device is present, last backup older than 24 hours.'
+            host_status.backup_status = 2
+        elif last_backup_status != 1:
+            host_status.backup_output = 'Device is present, last backup wasn\'t successful.'
+            host_status.backup_status = 2
+        else:
+            host_status.backup_output = 'Device is present, last backup was successful.'
+            host_status.backup_status = 3
+
+        host_status.save()
 
 
 def backup_acronis(plugin, date):

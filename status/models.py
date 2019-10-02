@@ -28,6 +28,7 @@ class ScanPlugin(models.Model):
         ('backup_azure', 'Backup - Azure snapshots'),
         ('backup_veeam', 'Backup - Veeam'),
         ('backup_restic', 'Backup - Restic'),
+        ('backup_phoenix', 'Backup - Druva Phoenix'),
         ('patching_oms', 'Patching - Azure OMS'),
     )
     PLUGIN_PARAMS = {
@@ -36,6 +37,7 @@ class ScanPlugin(models.Model):
         'backup_acronis': ('ACRONIS_BASE', 'ACRONIS_USERNAME', 'ACRONIS_PASSWORD', 'ACRONIS_URL'),
         'backup_aws': ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'),
         'backup_azure': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_SUBSCRIPTION_ID', 'AZURE_VAULT_NAME'),
+        'backup_phoenix': ('PHOENIX_USERNAME', 'PHOENIX_PASSWORD', 'PHOENIX_SITE_ID'),
         'patching_oms': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_LOG_WORKSPACE'),
     }
 
