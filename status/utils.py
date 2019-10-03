@@ -1,11 +1,14 @@
-import nmap
-
+import multiprocessing
 import socket
 import datetime
+import uuid
+
 import logging
 LOGGER = logging.getLogger('status_scans')
 
 from django.conf import settings
+import nmap
+from django_q import tasks
 
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 
@@ -30,21 +33,19 @@ def lookup(address, date):
     return host_status
 
 
-def scan(range_qs=None, date=None):
-    sweep = nmap.PortScanner()
-    scans = []
-
+scan_write_lock = multiprocessing.Lock()
+def scan_single(range_id, date=None):
     if date is None:
         date = datetime.date.today()
-
-    if range_qs is None:
-        range_qs = ScanRange.objects.filter(enabled=True)
-
-    for scan_range in range_qs:
-        LOGGER.info('Scanning {}...'.format(scan_range))
-        for hosts in scan_range.range.split(','):
-            sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns --host-timeout={}'.format(settings.STATUS_NMAP_TIMEOUT))['scan']
+    scan_range = ScanRange.objects.get(id=range_id)
+    LOGGER.info('Scanning {}...'.format(scan_range))
     
+    sweep = nmap.PortScanner()
+    for hosts in scan_range.range.split(','):
+        sweep_data = sweep.scan(hosts=hosts, arguments='-sn -R --system-dns --host-timeout={}'.format(settings.STATUS_NMAP_TIMEOUT))['scan']
+
+        scan_write_lock.acquire()
+        try:
             for ipv4, context in sweep_data.items():
                 host = lookup_host(ipv4)
                 fqdn = context['hostnames'][0]['name'].lower() if context['hostnames'][0]['name'] else ipv4
@@ -66,6 +67,26 @@ def scan(range_qs=None, date=None):
                 else:
                     host_ip.host = host
                 host_ip.save()
+        finally:
+            scan_write_lock.release()
+
+    LOGGER.info('Scan of {} complete.'.format(scan_range))
+
+
+
+def scan(range_qs=None, date=None):
+    if date is None:
+        date = datetime.date.today()
+
+    if range_qs is None:
+        range_qs = ScanRange.objects.filter(enabled=True)
+
+    group = 'status_scan_{}'.format(uuid.uuid4())
+
+    for scan_range in range_qs:
+        tasks.async_task('status.utils.scan_single', scan_range.id, date, group=group)
+    results = tasks.result_group(group, count=range_qs.count())
+    return results
 
 
 def run_plugin(plugin_id):

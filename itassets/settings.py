@@ -197,7 +197,7 @@ CORS_ALLOW_CREDENTIALS = True
 # django-q configuration
 Q_CLUSTER = {
     'name': 'itassets',
-    'workers': 4,
+    'workers': 16,
     'recycle': 500,
     'timeout': 7200,
     'compress': True,
@@ -228,4 +228,4 @@ REST_FRAMEWORK = {
 CRISPY_TEMPLATE_PACK = 'bootstrap3'
 
 # status scanning settings
-STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 300)
+STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 600)
