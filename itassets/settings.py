@@ -196,7 +196,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # django-q configuration
 Q_CLUSTER = {
-    'name': 'itassets',
+    'name': env('REDIS_QUEUE_NAME', 'itassets'),
     'workers': 16,
     'recycle': 500,
     'timeout': 7200,
