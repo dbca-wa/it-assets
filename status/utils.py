@@ -83,9 +83,11 @@ def scan(range_qs=None, date=None):
 
     group = 'status_scan_{}'.format(uuid.uuid4())
 
+    count = 0
     for scan_range in range_qs:
         tasks.async_task('status.utils.scan_single', scan_range.id, date, group=group)
-    results = tasks.result_group(group, count=range_qs.count())
+        count += 1
+    results = tasks.result_group(group, failures=True, count=count)
     return results
 
 
