@@ -56,7 +56,10 @@ class ScanPlugin(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+    class Meta:
+        ordering = ('name',)
+
 
 class ScanPluginParameter(models.Model):
     scan_plugin = models.ForeignKey(ScanPlugin, on_delete=models.CASCADE, related_name='params')
@@ -65,6 +68,7 @@ class ScanPluginParameter(models.Model):
 
     class Meta:
         unique_together = ('scan_plugin', 'name')
+        ordering = ('scan_plugin', 'name')
 
 @receiver(post_save, sender=ScanPlugin)
 def scan_plugin_post_save(sender, signal, instance, **kwargs):
@@ -89,6 +93,9 @@ class Host(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ['name']
 
 
 class HostStatus(models.Model):
