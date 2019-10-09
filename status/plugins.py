@@ -508,6 +508,85 @@ def backup_azure(plugin, date):
         host_status.save()
 
 
+def backup_storagesync(plugin, date):
+    AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
+    AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
+    AZURE_APP_KEY = plugin.params.get(name='AZURE_APP_KEY').value
+    AZURE_SUBSCRIPTION_ID = plugin.params.get(name='AZURE_SUBSCRIPTION_ID').value
+    AZURE_RESOURCE_GROUP = plugin.params.get(name='AZURE_RESOURCE_GROUP').value
+    AZURE_STORAGE_SYNC_NAME = plugin.params.get(name='AZURE_STORAGE_SYNC_NAME').value
+
+    AZURE_URL = 'https://portal.azure.com/#resource/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}/syncGroups'.format( AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME )
+    MANAGEMENT_BASE = 'https://management.azure.com'
+
+    backup_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+
+    ctx = adal.AuthenticationContext(AZURE_TENANT)
+    token = ctx.acquire_token_with_client_credentials(MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY)
+    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
+
+    # Get list of sync groups
+    MANAGEMENT_SYNC_BASE = '{}/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}'.format( MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME )
+
+    MANAGEMENT_SYNC_GROUPS = '{}/syncGroups?api-version=2019-03-01'.format( MANAGEMENT_SYNC_BASE )
+
+    sync_groups = {}
+
+    group_list = _ms_api('GET', MANAGEMENT_SYNC_GROUPS, headers=headers)
+    
+    for group in group_list:
+        sync_groups[group['name']] = _ms_api('GET', '{}/syncGroups/{}/serverEndpoints?api-version=2019-03-01'.format( MANAGEMENT_SYNC_BASE, group['name'] ), headers=headers)
+
+    server_map = {}
+    for name, servers in sync_groups.items():
+        for server in servers:
+            key = server['properties']['friendlyName']
+            if key not in server_map:
+                server_map[key] = []
+            server_map[key].append({
+                'name': name,
+                'path': server['properties']['serverLocalPath'],
+                'upload_health': server['properties']['syncStatus']['uploadHealth'],
+                'download_health': server['properties']['syncStatus']['downloadHealth'],
+                'files_not_syncing': server['properties']['syncStatus']['totalPersistentFilesNotSyncingCount'],
+                'last_upload': server['properties']['syncStatus']['uploadStatus']['lastSyncTimestamp'],
+                'last_upload_success': server['properties']['syncStatus']['uploadStatus']['lastSyncSuccessTimestamp'],
+
+                'last_download': server['properties']['syncStatus']['downloadStatus']['lastSyncTimestamp'],
+
+                'last_download_success': server['properties']['syncStatus']['downloadStatus']['lastSyncSuccessTimestamp'],
+
+
+                'id': server['id'],
+            })
+    
+    for name, servers in server_map.items():
+        host_status = lookup(name, date)
+        if not host_status or host_status.backup_plugin:
+            continue
+
+        host_status.backup_plugin = plugin
+        host_status.backup_url = AZURE_URL
+        host_status.backup_info = servers
+
+        for server in servers:
+            if server['last_upload_success'] < backup_limit:
+                host_status.backup_output = 'File shares are being backed up, last backup older than 24 hours.'
+                host_status.backup_status = 2
+                host_status.save()
+                return
+
+            if server['upload_health'] != 'Healthy':
+                host_status.backup_output = 'File shares are being backed up, uploads not marked as healthy.'
+                host_status.backup_status = 2
+                host_status.save()
+                return
+            
+        host_status.backup_output = 'File shares are being backed up, last backup was successful.'
+        host_status.backup_status = 3
+        host_status.save()
+
+
 def patching_oms(plugin, date):
     AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
     AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
