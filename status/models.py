@@ -26,8 +26,10 @@ class ScanPlugin(models.Model):
         ('backup_acronis', 'Backup - Acronis'),
         ('backup_aws', 'Backup - AWS snapshots'),
         ('backup_azure', 'Backup - Azure snapshots'),
-        ('backup_veeam', 'Backup - Veeam'),
-        ('backup_restic', 'Backup - Restic'),
+        ('backup_storagesync', 'Backup - Azure Storage Sync Services'),
+        #('backup_veeam', 'Backup - Veeam'),
+        #('backup_restic', 'Backup - Restic'),
+        ('backup_phoenix', 'Backup - Druva Phoenix'),
         ('patching_oms', 'Patching - Azure OMS'),
     )
     PLUGIN_PARAMS = {
@@ -36,6 +38,8 @@ class ScanPlugin(models.Model):
         'backup_acronis': ('ACRONIS_BASE', 'ACRONIS_USERNAME', 'ACRONIS_PASSWORD', 'ACRONIS_URL'),
         'backup_aws': ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'),
         'backup_azure': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_SUBSCRIPTION_ID', 'AZURE_VAULT_NAME'),
+        'backup_storagesync': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_SUBSCRIPTION_ID', 'AZURE_RESOURCE_GROUP', 'AZURE_STORAGE_SYNC_NAME'),
+        'backup_phoenix': ('PHOENIX_USERNAME', 'PHOENIX_PASSWORD', 'PHOENIX_SITE_ID'),
         'patching_oms': ('AZURE_TENANT', 'AZURE_APP_ID', 'AZURE_APP_KEY', 'AZURE_LOG_WORKSPACE'),
     }
 
@@ -54,7 +58,10 @@ class ScanPlugin(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+    class Meta:
+        ordering = ('name',)
+
 
 class ScanPluginParameter(models.Model):
     scan_plugin = models.ForeignKey(ScanPlugin, on_delete=models.CASCADE, related_name='params')
@@ -63,6 +70,7 @@ class ScanPluginParameter(models.Model):
 
     class Meta:
         unique_together = ('scan_plugin', 'name')
+        ordering = ('scan_plugin', 'name')
 
 @receiver(post_save, sender=ScanPlugin)
 def scan_plugin_post_save(sender, signal, instance, **kwargs):
@@ -87,6 +95,9 @@ class Host(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ['name']
 
 
 class HostStatus(models.Model):

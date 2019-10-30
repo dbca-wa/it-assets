@@ -1,6 +1,7 @@
-from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter, TabularInline
+from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter, TabularInline, SimpleListFilter
 from django.urls import path
 from django_q.tasks import async_task
+from django.db.models import Q
 
 from .models import Host, HostStatus, HostIP, ScanRange, ScanPlugin, ScanPluginParameter
 from .views import HostStatusReport
@@ -30,12 +31,25 @@ class HostAdmin(ModelAdmin):
     disable_hosts.short_description = 'Disable hosts'
 
 
+class ScanPluginFilter(SimpleListFilter):
+    title = 'scan plugin'
+    parameter_name = 'scan_plugin'
+
+    def lookups(self, request, model_admin):
+        return [(p.id, p.name) for p in ScanPlugin.objects.all()]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(Q(monitor_plugin__id=self.value()) | Q(vulnerability_plugin__id=self.value()) | Q(backup_plugin__id=self.value()) | Q(patching_plugin__id=self.value()) )
+
+
 @register(HostStatus)
 class HostStatusAdmin(ModelAdmin):
     list_display = ('host', 'date', 'ping_scan_range', 'ping_status_html', 'monitor_status_html', 'vulnerability_status_html', 'backup_status_html', 'patching_status_html')
     ordering = ('-date', '-ping_status', 'monitor_status', 'vulnerability_status', 'backup_status', 'patching_status')
     search_fields = ('host__name', 'host__host_ips__ip', 'ping_scan_range__name')
     list_filter = (
+        ScanPluginFilter,
         'ping_scan_range',
     )
     date_hierarchy = 'date'

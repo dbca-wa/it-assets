@@ -1,13 +1,19 @@
 import datetime
 import re
 import urllib
+import json
 
 import adal
 import boto3
 import requests
+from bs4 import BeautifulSoup
+import pytz
 
+from django.conf import settings
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 from .utils import lookup
+
+TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 def monitor_prtg(plugin, date):
@@ -117,6 +123,132 @@ def vulnerability_nessus(plugin, date):
                     host_status.vulnerability_status = 3
             host_status.vulnerability_url = NESSUS_RESULT_URL(report['id'], report_host['host_id'], history_id)
             host_status.save()
+
+
+def backup_phoenix(plugin, date):
+    PHOENIX_USERNAME = plugin.params.get(name='PHOENIX_USERNAME').value
+    PHOENIX_PASSWORD = plugin.params.get(name='PHOENIX_PASSWORD').value
+    PHOENIX_SITE_ID = plugin.params.get(name='PHOENIX_SITE_ID').value
+    
+    PHOENIX_BASE = 'https://phoenix.druva.com'
+    PHOENIX_LOGIN_ADMIN = 'https://login.druva.com/api/commonlogin/admin'
+    PHOENIX_LOGIN_SESSION = 'https://login.druva.com/api/commonlogin/session'
+    PHOENIX_LOGIN = 'https://login.druva.com/api/commonlogin/login'
+    PHOENIX_ADMIN = '{}/admin/'.format( PHOENIX_BASE )
+    PHOENIX_DATA = '{}/server/loadpage'.format( PHOENIX_BASE )
+    PHOENIX_URL = PHOENIX_ADMIN + '#op=server-details/id={}/siteid={}'
+    backup_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
+
+    sess = requests.session()
+
+    # convert email address into admin ID
+    admin = sess.get(PHOENIX_LOGIN_ADMIN, params={'input': json.dumps({
+        'request': {
+            'method': 'GetAuthType',
+            'args': [PHOENIX_USERNAME],
+        }
+    })})
+    admin_id = admin.json()['response']['accounts'][0]['adminIdentifier']
+
+    # login with admin ID and password
+    login = sess.post(PHOENIX_LOGIN, json={
+        'request': {
+            'kwargs': {
+                'auth_input': {
+                    'admin_identifier': admin_id,
+                    'password': PHOENIX_PASSWORD
+                },
+                'caller_product_id': 4097,
+                'redirect_on_success': False,
+                'source_url': '{}/admin'.format( PHOENIX_BASE ),
+            },
+            'method': 'LoginUsingPassword',
+        }
+    })
+
+    # get an OTP to activate cross-domain session cookie
+    phoenix_session = sess.get(PHOENIX_LOGIN_SESSION,params={'input': json.dumps({
+        'request': {
+            'method': 'CheckGlobalSession',
+            'kwargs': {
+                'caller_product_id': '12289',
+                'source_url': '{}/'.format( PHOENIX_BASE ),
+                'is_dashboard_url': 'True',
+                'redirect_on_success': False
+            }}
+        })}
+    )
+    redirect_url = phoenix_session.json()['response']['redirectURL']
+    login_phoenix = sess.get(redirect_url)
+    
+    # rip the CSRF token from the page
+    phoenix_page = sess.get(PHOENIX_ADMIN)
+    phoenix_soup = BeautifulSoup(phoenix_page.content, 'html.parser')
+    csrf = phoenix_soup.find_all(id='csrf_token')[0].attrs['value']
+
+    # request all of the backup information
+    data = sess.post(PHOENIX_DATA, params={   
+        'csrf_token': csrf,
+        'op': 'server-manage',
+        'tabName': 'file_backupsets',
+        'stype': 'storage',
+        'siteid': PHOENIX_SITE_ID,
+        'pageSize': 300,
+    })
+    backup_sets = data.json()['result']['file_backupsets']
+
+    for backup in backup_sets:
+        name = None
+        is_connected = False
+        os_version = None
+        device_id = None
+        if 'device_info' in backup:
+            name = backup['device_info'].get('name', None)
+            is_connected = backup['device_info'].get('is_connected', False)
+            os_version = backup['device_info'].get('os_version', None)
+            device_id = backup['device_info'].get('id', None)
+
+        host_status = lookup(name, date)
+        if not host_status:
+            continue
+
+        last_backup_id = None
+        last_backup_time = None
+        last_backup_status = None
+        if 'last_backup_info' in backup:
+            last_backup = backup['last_backup_info']
+            last_backup_id = last_backup['job_id']
+            last_backup_time = datetime.datetime.fromtimestamp(last_backup['time_stamp'], tz=TZ)
+            last_backup_status = last_backup['status']
+
+        host_status.backup_plugin = plugin
+        if device_id:
+            host_status.backup_url = PHOENIX_URL.format( device_id, PHOENIX_SITE_ID )
+        host_status.backup_info = {
+            'id': backup['id'],
+            'device_id': device_id,
+            'job_id': last_backup_id,
+            'last_backup': last_backup_time.isoformat(),
+            'os': os_version,
+        }
+
+        if not is_connected:
+            host_status.backup_output = 'Device is present, automatic backups are disabled.'
+            host_status.backup_status = 2
+        elif last_backup_id is None:
+            host_status.backup_output = 'Device is present, awaiting first backup.'
+            host_status.backup_status = 2
+        elif last_backup_time and last_backup_time < backup_limit:
+            host_status.backup_output = 'Device is present, last backup older than 24 hours.'
+            host_status.backup_status = 2
+        elif last_backup_status != 1:
+            host_status.backup_output = 'Device is present, last backup wasn\'t successful.'
+            host_status.backup_status = 2
+        else:
+            host_status.backup_output = 'Device is present, last backup was successful.'
+            host_status.backup_status = 3
+
+        host_status.save()
 
 
 def backup_acronis(plugin, date):
@@ -373,6 +505,85 @@ def backup_azure(plugin, date):
         else:
             host_status.backup_output = 'VM is enrolled for backups, but is not healthy.'
             host_status.backup_status = 2
+        host_status.save()
+
+
+def backup_storagesync(plugin, date):
+    AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
+    AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
+    AZURE_APP_KEY = plugin.params.get(name='AZURE_APP_KEY').value
+    AZURE_SUBSCRIPTION_ID = plugin.params.get(name='AZURE_SUBSCRIPTION_ID').value
+    AZURE_RESOURCE_GROUP = plugin.params.get(name='AZURE_RESOURCE_GROUP').value
+    AZURE_STORAGE_SYNC_NAME = plugin.params.get(name='AZURE_STORAGE_SYNC_NAME').value
+
+    AZURE_URL = 'https://portal.azure.com/#resource/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}/syncGroups'.format( AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME )
+    MANAGEMENT_BASE = 'https://management.azure.com'
+
+    backup_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+
+    ctx = adal.AuthenticationContext(AZURE_TENANT)
+    token = ctx.acquire_token_with_client_credentials(MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY)
+    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
+
+    # Get list of sync groups
+    MANAGEMENT_SYNC_BASE = '{}/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}'.format( MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME )
+
+    MANAGEMENT_SYNC_GROUPS = '{}/syncGroups?api-version=2019-03-01'.format( MANAGEMENT_SYNC_BASE )
+
+    sync_groups = {}
+
+    group_list = _ms_api('GET', MANAGEMENT_SYNC_GROUPS, headers=headers)
+    
+    for group in group_list:
+        sync_groups[group['name']] = _ms_api('GET', '{}/syncGroups/{}/serverEndpoints?api-version=2019-03-01'.format( MANAGEMENT_SYNC_BASE, group['name'] ), headers=headers)
+
+    server_map = {}
+    for name, servers in sync_groups.items():
+        for server in servers:
+            key = server['properties']['friendlyName']
+            if key not in server_map:
+                server_map[key] = []
+            server_map[key].append({
+                'name': name,
+                'path': server['properties']['serverLocalPath'],
+                'upload_health': server['properties']['syncStatus']['uploadHealth'],
+                'download_health': server['properties']['syncStatus']['downloadHealth'],
+                'files_not_syncing': server['properties']['syncStatus']['totalPersistentFilesNotSyncingCount'],
+                'last_upload': server['properties']['syncStatus']['uploadStatus']['lastSyncTimestamp'],
+                'last_upload_success': server['properties']['syncStatus']['uploadStatus']['lastSyncSuccessTimestamp'],
+
+                'last_download': server['properties']['syncStatus']['downloadStatus']['lastSyncTimestamp'],
+
+                'last_download_success': server['properties']['syncStatus']['downloadStatus']['lastSyncSuccessTimestamp'],
+
+
+                'id': server['id'],
+            })
+    
+    for name, servers in server_map.items():
+        host_status = lookup(name, date)
+        if not host_status or host_status.backup_plugin:
+            continue
+
+        host_status.backup_plugin = plugin
+        host_status.backup_url = AZURE_URL
+        host_status.backup_info = servers
+
+        for server in servers:
+            if server['last_upload_success'] < backup_limit:
+                host_status.backup_output = 'File shares are being backed up, last backup older than 24 hours.'
+                host_status.backup_status = 2
+                host_status.save()
+                return
+
+            if server['upload_health'] != 'Healthy':
+                host_status.backup_output = 'File shares are being backed up, uploads not marked as healthy.'
+                host_status.backup_status = 2
+                host_status.save()
+                return
+            
+        host_status.backup_output = 'File shares are being backed up, last backup was successful.'
+        host_status.backup_status = 3
         host_status.save()
 
 
