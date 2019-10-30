@@ -19,21 +19,27 @@ def department_user_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'COST CENTRE', 'NAME', 'EMAIL', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE'
+            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'ACTIVE', 'O365 LICENCE',
         ))
         row = 1
         for i in users:
             users_sheet.write_row(row, 0, [
-                i.cost_centre.code if i.cost_centre else '', i.get_full_name(), i.email, i.get_account_type_display(),
-                i.get_position_type_display(), i.expiry_date if i.expiry_date else ''
+                i.get_full_name(),
+                i.email,
+                i.title,
+                i.get_account_type_display(),
+                i.get_position_type_display(),
+                i.expiry_date if i.expiry_date else '',
+                i.cost_centre.code if i.cost_centre else '',
+                i.active,
+                i.o365_licence,
             ])
             row += 1
-        users_sheet.set_column('A:A', 13)
-        users_sheet.set_column('B:B', 34)
-        users_sheet.set_column('C:C', 46)
-        users_sheet.set_column('D:D', 42)
-        users_sheet.set_column('E:E', 13)
-        users_sheet.set_column('F:F', 17)
+        users_sheet.set_column('A:A', 35)
+        users_sheet.set_column('B:D', 45)
+        users_sheet.set_column('E:E', 15)
+        users_sheet.set_column('F:F', 18)
+        users_sheet.set_column('G:I', 13)
 
     return fileobj
 
