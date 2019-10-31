@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<title>Change Request Approval</title>
+{% endblock %}
+
+{% block body %}
+<p>Do you approve of these changes?</p>
+<a href="{% url 'change_request_detail' object.pk %}">{{object.title}}</a>
+<br></br>
+<form action="" method="post"> {% csrf_token %}
+    <input type="submit" name="confirm" value="Confirm" >
+    <input type="submit" name="cancel" value="Cancel">
+    {{form}}
+</form>
+{% endblock %}

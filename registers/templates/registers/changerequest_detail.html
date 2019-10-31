@@ -8,6 +8,9 @@
 <div class="row">
     <div class="col-xs-12">
         <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button"><span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a></a>
+        {% if User_is_CAB %}
+        <a class="btn btn-primary" href="{% url 'change_request_approval' object.id %}" role="button"><span  aria-hidden="true"></span>Approve This Change</a></a>
+        {% endif %}
     </div>
 </div>
 
