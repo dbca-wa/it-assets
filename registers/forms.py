@@ -34,7 +34,9 @@ class ChangeRequestCreateForm(forms.ModelForm):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].label = 'Implementer email'
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
         self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
         self.helper = BaseFormHelper()
@@ -113,6 +115,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
         self.fields['standard_change'].required = True
         self.fields['standard_change'].help_text = 'Standard change reference'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].label = 'Implementer email'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -231,7 +234,9 @@ class EmergencyChangeRequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(EmergencyChangeRequestForm, self).__init__(*args, **kwargs)
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].label = 'Implementer email'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
