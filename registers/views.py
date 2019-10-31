@@ -208,7 +208,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         if not rfc.is_draft:
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestChange, self)
+        return super(ChangeRequestChange, self).get(request, *args, **kwargs)
 
     def get_form_class(self):
         rfc = self.get_object()
