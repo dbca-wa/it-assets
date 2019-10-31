@@ -17,7 +17,7 @@ from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeL
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
-    EmergencyChangeRequestForm, ChangeRequstApprovalForm
+    EmergencyChangeRequestForm, ChangeRequestApprovalForm
 )
 from .reports import it_system_export, itsr_staff_discrepancies, it_system_hardware_export, incident_export, change_request_export
 from .utils import search_filter
@@ -396,7 +396,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
 
 
 class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
-    form_class = ChangeRequstApprovalForm
+    form_class = ChangeRequestApprovalForm
     template_name = 'registers/changerequest_approval.html'
     model = ChangeRequest
 
