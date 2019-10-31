@@ -5,8 +5,10 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import EmailMultiAlternatives
+from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
+from django.shortcuts import get_object_or_404, render
 from organisation.models import DepartmentUser
 from pytz import timezone
 import re
@@ -15,7 +17,7 @@ from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeL
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
-    EmergencyChangeRequestForm,
+    EmergencyChangeRequestForm, ChangeRequstApprovalForm
 )
 from .reports import it_system_export, itsr_staff_discrepancies, it_system_hardware_export, incident_export, change_request_export
 from .utils import search_filter
@@ -139,6 +141,8 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
         if rfc.implementer:
             emails.append(rfc.implementer.email)
         context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
+        #displays the 'Approve This Change' button
+        context['User_is_CAB'] = self.request.user.groups.filter(name='CAB members').exists()
         return context
 
 
@@ -389,6 +393,32 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
         return super(ChangeRequestEndorse, self).form_valid(form)
+
+
+class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
+    form_class = ChangeRequstApprovalForm
+    template_name = 'registers/changerequest_approval.html'
+    model = ChangeRequest
+
+    def form_valid(self, form):
+        obj = self.get_object()
+
+        if not self.request.user.groups.filter(name='CAB members').exists():
+            msg = 'You are not logged in as a member of CAB, The action has been cancelled.'
+            messages.success(self.request, msg)
+            return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
+        else:
+            if 'confirm' in self.request.POST:
+                logText = 'This change request has been approved by: ' + self.request.user.get_full_name() + '.'
+                changelog = ChangeLog(change_request=self.object, log=logText)
+                changelog.save()
+                msg = 'You have approved this change.'
+                messages.success(self.request, msg)
+                return HttpResponseRedirect(reverse('change_request_list'))
+            elif 'cancel' in self.request.POST:
+                return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
+            else:
+                return super(ChangeRequestApproval, self).form_valid(form)
 
 
 class ChangeRequestExport(LoginRequiredMixin, View):
