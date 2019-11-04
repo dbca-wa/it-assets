@@ -2,7 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django import forms
-from .models import ChangeRequest, ChangeLog
+from .models import ChangeRequest
 
 
 class BaseFormHelper(FormHelper):
@@ -255,7 +255,7 @@ class EmergencyChangeRequestForm(forms.ModelForm):
             'title', 'description', 'implementation', 'planned_start', 'planned_end', 'outage', 'completed', 'it_systems']
 
 
-class ChangeRequstApprovalForm(forms.ModelForm):
+class ChangeRequestApprovalForm(forms.ModelForm):
     class Meta:
         model = ChangeRequest
         exclude = [
@@ -282,7 +282,7 @@ class ChangeRequstApprovalForm(forms.ModelForm):
             'implementation',
             'implementation_docs',
             'outage',
-            
+
             'communication',
             'broadcast',
             'unexpected_issues',

@@ -129,8 +129,6 @@ class HardwareModel(models.Model):
 class HardwareAsset(Asset):
     """Represents a physical hardware asset.
     """
-
-
     STATUS_CHOICES = (
         ('In storage', 'In storage'),
         ('Deployed', 'Deployed'),
