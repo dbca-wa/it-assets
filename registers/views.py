@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import Group, User
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
@@ -368,6 +369,18 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
+
+            #email changeManger/s
+            if  User.objects.filter(groups__name='Change Managers').exists():
+                changeManagers = User.objects.filter(groups__name='Change Managers')
+                if changeManagers.count() > 0:
+                    for i in changeManagers:
+                        #send email
+                        eAddress = i.email
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [eAddress])
+                        msg.attach_alternative(html_content, 'text/html')
+                        msg.send()
+
         elif self.request.POST.get('reject'):
             # If the user clicked "Reject", log this and change status back to Draft.
             rfc.status = 0
