@@ -36,3 +36,5 @@ texttable==1.6.1
 titlecase==0.12.0
 #sentry-sdk==0.10.2
 beautifulsoup4==4.8.0
+django-helpdesk==0.2.17
+django-markdown-deux==1.0.5

@@ -49,6 +49,9 @@ INSTALLED_APPS = (
     'knowledge',
     'recoup',
     'status',
+    'helpdesk',
+    'markdown_deux',
+    'bootstrapform',
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
