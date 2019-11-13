@@ -1,16 +1,23 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 
 {% block extra_head %}
-<title>Change Request Approval</title>
+<title>CAB approval - change request #{{ object }}</title>
 {% endblock %}
 
 {% block body %}
-<p>Do you approve of these changes?</p>
-<a href="{% url 'change_request_detail' object.pk %}">{{object.title}}</a>
-<br></br>
-<form action="" method="post"> {% csrf_token %}
-    <input type="submit" name="confirm" value="Confirm" >
-    <input type="submit" name="cancel" value="Cancel">
-    {{form}}
-</form>
+<div class="row">
+    <div class="col-xs-12">
+        <h1>CAB approval</h1>
+        <h4>Change request #{{ object }}</h4>
+        <p>Planned start date & time: {% if object.planned_start %}{{ object.planned_start|date:"D, j M Y H:i" }}{% endif %}</p>
+        {% if object.description %}<p>{{ object.description }}</p>{% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xs-12">
+        {% crispy form %}
+    </div>
+</div>
 {% endblock %}

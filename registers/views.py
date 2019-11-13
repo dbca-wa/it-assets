@@ -4,12 +4,11 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
-from django.shortcuts import get_object_or_404, render
 from organisation.models import DepartmentUser
 from pytz import timezone
 import re
@@ -142,8 +141,8 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
         if rfc.implementer:
             emails.append(rfc.implementer.email)
         context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
-        #displays the 'Approve This Change' button
-        context['User_is_CAB'] = self.request.user.groups.filter(name='CAB members').exists()
+        # Displays the 'Approve This Change' button:
+        context['user_is_cab'] = self.request.user.groups.filter(name='CAB members').exists()
         return context
 
 
@@ -370,16 +369,12 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
 
-            #email changeManger/s
-            if  User.objects.filter(groups__name='Change Managers').exists():
+            # Email Change Manager(s), if they are specified.
+            if User.objects.filter(groups__name='Change Managers').exists():
                 changeManagers = User.objects.filter(groups__name='Change Managers')
-                if changeManagers.count() > 0:
-                    for i in changeManagers:
-                        #send email
-                        eAddress = i.email
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [eAddress])
-                        msg.attach_alternative(html_content, 'text/html')
-                        msg.send()
+                msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [i.email for i in changeManagers])
+                msg.attach_alternative(html_content, 'text/html')
+                msg.send()
 
         elif self.request.POST.get('reject'):
             # If the user clicked "Reject", log this and change status back to Draft.
@@ -418,14 +413,14 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
 
         if not self.request.user.groups.filter(name='CAB members').exists():
             msg = 'You are not logged in as a member of CAB, The action has been cancelled.'
-            messages.success(self.request, msg)
+            messages.warning(self.request, msg)
             return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
         else:
-            if 'confirm' in self.request.POST:
-                logText = 'This change request has been approved by: ' + self.request.user.get_full_name() + '.'
+            if 'approve' in self.request.POST:
+                logText = 'CAB member approval: change request has been approved by {}.'.format(self.request.user.get_full_name())
                 changelog = ChangeLog(change_request=self.object, log=logText)
                 changelog.save()
-                msg = 'You have approved this change.'
+                msg = 'You have approved this change on behalf of CAB'
                 messages.success(self.request, msg)
                 return HttpResponseRedirect(reverse('change_request_list'))
             elif 'cancel' in self.request.POST:

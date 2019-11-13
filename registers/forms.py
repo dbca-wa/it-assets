@@ -34,7 +34,9 @@ class ChangeRequestCreateForm(forms.ModelForm):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].label = 'Implementer email'
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
         self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
         self.helper = BaseFormHelper()
@@ -113,6 +115,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
         self.fields['standard_change'].required = True
         self.fields['standard_change'].help_text = 'Standard change reference'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].label = 'Implementer email'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -231,7 +234,9 @@ class EmergencyChangeRequestForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(EmergencyChangeRequestForm, self).__init__(*args, **kwargs)
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.fields['implementer_choice'].label = 'Implementer email'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -255,38 +260,23 @@ class EmergencyChangeRequestForm(forms.ModelForm):
             'title', 'description', 'implementation', 'planned_start', 'planned_end', 'outage', 'completed', 'it_systems']
 
 
-class ChangeRequestApprovalForm(forms.ModelForm):
-    class Meta:
-        model = ChangeRequest
-        exclude = [
-            'created',
-            'updated',
-            'title',
-            'change_type',
-            'status',
+class ChangeRequestApprovalForm(forms.Form):
+    approve_button = Submit('approve', 'Approve', css_class='btn-lg')
+    cancel_button = Submit('cancel', 'Cancel')
 
-            'standard_change',
-            'requester',
-            'endorser',
-            'implementer',
-            'description',
-
-            'incident_url',
-            'test_date',
-            'test_result_docs',
-            'planned_start',
-            'planned_end',
-
-            'completed',
-            'it_systems',
-            'implementation',
-            'implementation_docs',
-            'outage',
-
-            'communication',
-            'broadcast',
-            'unexpected_issues',
-            'notes',
-            'reference_url',
-            'post_complete_email_date',
-        ]
+    def __init__(self, instance, *args, **kwargs):
+        # NOTE: we've added instance to the args above to pretend that this is a ModelForm.
+        super(ChangeRequestApprovalForm, self).__init__(*args, **kwargs)
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            Fieldset(
+                'CAB member instructions',
+                Div(
+                    HTML('''
+                    <p><strong>Please record your approval for this change request to proceed by clicking on the "Approve" button.</strong></p>
+                    <p>Do not record approval prior to discussion and assessment being completed.</p>'''),
+                    css_id='div_id_instructions'
+                ),
+            ),
+            FormActions(self.approve_button, self.cancel_button),
+        )
