@@ -336,7 +336,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             # Redirect to the object detail view.
             messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        if self.request.user.email != rfc.endorser.email:
+        if self.request.user.email.lower() != rfc.endorser.email.lower():
             messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestEndorse, self).get(request, *args, **kwargs)
