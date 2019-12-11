@@ -52,6 +52,8 @@ class Command(BaseCommand):
         table.set_cols_dtype(['i', 't', 't', 't', 't', 't', 't', 't'])
         rows = [['Change ref', 'Title', 'Change type', 'Status', 'Requester', 'Endorser', 'Implementer', 'Planned start & end']]
         for rfc in rfcs:
+            # Planned end date field might be blank.
+            planned_end = rfc.planned_end.strftime('%A, %d-%b-%Y %H:%M') if rfc.planned_end else ''
             rows.append(
                 [
                     rfc.pk,
@@ -61,7 +63,7 @@ class Command(BaseCommand):
                     rfc.requester.get_full_name(),
                     rfc.endorser.get_full_name(),
                     rfc.implementer.get_full_name(),
-                    '{}\n{}'.format(rfc.planned_start.strftime('%A, %d-%b-%Y %H:%M'), rfc.planned_end.strftime('%A, %d-%b-%Y %H:%M'))
+                    '{}\n{}'.format(rfc.planned_start.strftime('%A, %d-%b-%Y %H:%M'), planned_end)
                 ]
             )
         table.add_rows(rows, header=True)
