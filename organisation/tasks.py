@@ -113,8 +113,6 @@ def update_manager_from_alesco(user):
 
 
 def update_term_date_from_alesco(user):
-    from .models import DepartmentUser
-    today = alesco_date_to_dt(date.today())
     term_date = None
 
     if user.alesco_data:
@@ -135,7 +133,6 @@ def update_term_date_from_alesco(user):
 
 
 def update_title_from_alesco(user):
-    from .models import DepartmentUser
     title = None
 
     if user.alesco_data:
@@ -151,7 +148,7 @@ def update_title_from_alesco(user):
 
 
 def update_location_from_alesco(user):
-    from .models import DepartmentUser, Location
+    from .models import Location
     location = None
 
     if user.alesco_data:
@@ -163,7 +160,6 @@ def update_location_from_alesco(user):
             LOGGER.info('Updating location for {} from {} to {}'.format(user.email, user.location, location))
             user.location = location
             user.save()
-
 
 
 def update_user_from_alesco(user):

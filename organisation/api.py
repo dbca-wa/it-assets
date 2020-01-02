@@ -67,12 +67,12 @@ class DepartmentUserResource(DjangoResource):
         'org_unit__location__name', 'org_unit__location__address',
         'org_unit__location__pobox', 'org_unit__location__phone',
         'org_unit__location__fax', 'ad_guid', 'employee_id',
-        'location', 'preferred_name', 'expiry_date')
+        'location', 'preferred_name', 'expiry_date', 'o365_licence')
     VALUES_ARGS = COMPACT_ARGS + (
         'ad_dn', 'ad_data', 'date_updated', 'date_ad_updated', 'active',
         'ad_deleted', 'in_sync', 'given_name', 'surname', 'home_phone',
         'other_phone', 'notes', 'working_hours', 'position_type',
-        'account_type', 'o365_licence', 'shared_account')
+        'account_type', 'shared_account')
     MINIMAL_ARGS = (
         'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone')
     PROPERTY_ARGS = ('password_age_days',)
@@ -146,7 +146,10 @@ class DepartmentUserResource(DjangoResource):
         FILTERS = {}
         # DepartmentUser object response.
         # Some of the request parameters below are mutually exclusive.
-        if 'email' in self.request.GET:
+        if 'all' in self.request.GET:
+            # Return all objects, including those deleted in AD.
+            users = DepartmentUser.objects.all()
+        elif 'email' in self.request.GET:
             # Always return an object by email.
             users = DepartmentUser.objects.filter(email__iexact=self.request.GET['email'])
         elif 'ad_guid' in self.request.GET:
