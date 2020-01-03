@@ -19,7 +19,7 @@ admin.site.site_title = 'IT Assets'
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('helpdesk/', include('helpdesk.urls', namespace='helpdesk')),
+    #path('helpdesk/', include('helpdesk.urls', namespace='helpdesk')),
     path('api/v2/', include(api_v2_router.urls)),
     path('api/v1/', include(api_urlpatterns)),
     path('api/', include(api_urlpatterns)),
