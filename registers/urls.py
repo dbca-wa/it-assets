@@ -12,6 +12,7 @@ urlpatterns = [
     path('changerequest/<int:pk>/endorse/', views.ChangeRequestEndorse.as_view(), name='change_request_endorse'),
     path('changerequest/<int:pk>/approval/', views.ChangeRequestApproval.as_view(), name='change_request_approval'),
     path('changerequest/<int:pk>/complete/', views.ChangeRequestComplete.as_view(), name='change_request_complete'),
+    path('changerequest/add/', views.ChangeRequestCreate.as_view(), name='change_request_create'),
     path('changerequest/create/', views.ChangeRequestCreate.as_view(), name='change_request_create'),
     path('changerequest/create-standard/', views.ChangeRequestCreate.as_view(), name='std_change_request_create', kwargs={'std': True}),
     path('changerequest/create-emergency/', views.ChangeRequestCreate.as_view(), name='emerg_change_request_create', kwargs={'emerg': True}),
