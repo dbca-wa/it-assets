@@ -635,6 +635,11 @@ class ChangeRequest(models.Model):
             domain = Site.objects.get(name='Change Requests').domain
         else:
             domain = Site.objects.get_current().domain
+        # We need to append https below because this method is often called outside of a request.
+        if domain.startswith('http://'):
+            domain = domain.replace('http', 'https')
+        if not domain.startswith('https://'):
+            domain = 'https://' + domain
         endorse_url = '{}{}'.format(domain, reverse('change_request_endorse', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you have
             been assigned as the endorser for a change request submitted to OIM by {}.\n
@@ -661,6 +666,11 @@ class ChangeRequest(models.Model):
             domain = Site.objects.get(name='Change Requests').domain
         else:
             domain = Site.objects.get_current().domain
+        # We need to append https below because this method is often called outside of a request.
+        if domain.startswith('http://'):
+            domain = domain.replace('http', 'https')
+        if not domain.startswith('https://'):
+            domain = 'https://' + domain
         complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you are recorded as the
             implementer for change request {}, scheduled to be undertaken on {}.\n
