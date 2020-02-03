@@ -5,6 +5,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django.template.loader import render_to_string
 from django.urls import reverse
 from os import path
 from pytz import timezone
@@ -327,6 +328,28 @@ class ITSystem(CommonFields):
             return map[self.custody]
         else:
             return ''
+
+    def get_detail_markdown(self, template=None):
+        if not template:
+            template = 'registers/itsystem.md'
+        d = self.__dict__
+        d['status'] = self.get_status_display()
+        d['owner'] = self.owner.get_full_name() if self.owner else ''
+        d['technology_custodian'] = self.technology_custodian.get_full_name() if self.technology_custodian else ''
+        d['information_custodian'] = self.information_custodian.get_full_name() if self.information_custodian else ''
+        if not d['system_reqs']:
+            d['system_reqs'] = 'Not specified'
+        if not d['documentation']:
+            d['documentation'] = 'Not specified'
+        if not self.bh_support:
+            d['bh_support_name'] = 'Not specified'
+            d['bh_support_telephone'] = ''
+            d['bh_support_email'] = ''
+        else:
+            d['bh_support_name'] = self.bh_support.get_full_name()
+            d['bh_support_telephone'] = self.bh_support.telephone
+            d['bh_support_email'] = self.bh_support.email
+        return render_to_string(template, d)
 
 
 class ITSystemDependency(models.Model):
