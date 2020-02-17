@@ -133,7 +133,8 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
             rfc.planned_end <= datetime.now().astimezone(TZ)
         )
         # Context variables that determines if determine is certain template elements are displayed.
-        context['is_requester'] = self.request.user.email.lower() == rfc.requester.email.lower()
+        if rfc.requester:
+            context['is_requester'] = self.request.user.email.lower() == rfc.requester.email.lower()
         if rfc.endorser:
             context['is_endorser'] = self.request.user.email.lower() == rfc.endorser.email.lower()
         else:
