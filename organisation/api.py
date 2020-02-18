@@ -529,7 +529,7 @@ class UserSelectResource(DjangoResource):
         FILTERS = DepartmentUser.ACTIVE_FILTER.copy()
         users = DepartmentUser.objects.filter(**FILTERS)
         if 'q' in self.request.GET:
-            users = DepartmentUser.objects.filter(email__contains=self.request.GET['q'])
+            users = DepartmentUser.objects.filter(email__icontains=self.request.GET['q'])
         return users
 
 

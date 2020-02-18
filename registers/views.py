@@ -132,15 +132,21 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
             self.request.user.email in [rfc.requester.email, rfc.implementer.email] and
             rfc.planned_end <= datetime.now().astimezone(TZ)
         )
-        # Context variable that determines if implementation & communication info is displayed.
+        # Context variables that determines if determine is certain template elements are displayed.
+        if rfc.requester:
+            context['is_requester'] = self.request.user.email.lower() == rfc.requester.email.lower()
+        if rfc.endorser:
+            context['is_endorser'] = self.request.user.email.lower() == rfc.endorser.email.lower()
+        else:
+            context['is_endorser'] = False
         emails = []
         if rfc.requester:
-            emails.append(rfc.requester.email)
+            emails.append(rfc.requester.email.lower())
         if rfc.endorser:
-            emails.append(rfc.endorser.email)
+            emails.append(rfc.endorser.email.lower())
         if rfc.implementer:
-            emails.append(rfc.implementer.email)
-        context['user_authorised'] = self.request.user.is_staff is True or self.request.user.email in [emails]
+            emails.append(rfc.implementer.email.lower())
+        context['user_authorised'] = self.request.user.email.lower() in [emails] or self.request.user.is_staff is True
         # Displays the 'Approve This Change' button:
         context['user_is_cab'] = self.request.user.groups.filter(name='CAB members').exists()
         return context
