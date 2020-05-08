@@ -17,7 +17,7 @@
     </div>
 </div>
 
-{% if object.is_draft and not object.is_emergency_change and object.requester.email == request.user.email %}
+{% if object.is_draft and not object.is_emergency_change and is_requester %}
 <div class="row">
     <div class="col-xs-12">
         <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit change request</a></a>
@@ -26,7 +26,7 @@
 <br>
 {% endif %}
 
-{% if object.is_submitted and object.endorser.email == request.user.email %}
+{% if object.is_submitted and is_endorser %}
 <div class="row">
     <div class="col-xs-12">
         <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a></a>

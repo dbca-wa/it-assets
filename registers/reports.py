@@ -87,7 +87,7 @@ def it_system_export(fileobj, it_systems):
     ) as workbook:
         systems = workbook.add_worksheet('IT Systems')
         systems.write_row('A1', (
-            'System ID', 'Name', 'Description', 'Status', 'Recovery category', 'Seasonality',
+            'System ID', 'Name', 'Description', 'Status', 'Seasonality',
             'Availability', 'User groups', 'System type', 'Cost centre', 'Division', 'Owner',
             'Technology custodian', 'Information custodian', 'Link', 'Technical documentation',
             'Application server(s)', 'Database server(s)', 'Network storage', 'Backups',
@@ -101,7 +101,6 @@ def it_system_export(fileobj, it_systems):
                 i.name,
                 i.description,
                 i.get_status_display(),
-                i.get_recovery_category_display() if i.recovery_category else '',
                 i.get_seasonality_display() if i.seasonality else '',
                 i.get_availability_display() if i.availability else '',
                 ', '.join([str(j) for j in i.user_groups.all()]),
@@ -131,17 +130,15 @@ def it_system_export(fileobj, it_systems):
         systems.set_column('A:A', 9)
         systems.set_column('B:B', 45)
         systems.set_column('C:D', 18)
-        systems.set_column('E:E', 27)
-        systems.set_column('F:G', 19)
-        systems.set_column('H:H', 50)
-        systems.set_column('I:I', 30)
-        systems.set_column('J:J', 13)
-        systems.set_column('K:K', 41)
-        systems.set_column('L:N', 21)
-        systems.set_column('O:W', 50)
-        systems.set_column('X:X', 18)
-        systems.set_column('Y:Y', 22)
-        systems.set_column('Z:AB', 50)
+        systems.set_column('E:F', 19)
+        systems.set_column('G:G', 50)
+        systems.set_column('H:H', 30)
+        systems.set_column('I:I', 13)
+        systems.set_column('J:J', 41)
+        systems.set_column('K:M', 21)
+        systems.set_column('N:V', 50)
+        systems.set_column('W:X', 18)
+        systems.set_column('Y:AA', 50)
 
     return fileobj
 

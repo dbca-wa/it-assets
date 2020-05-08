@@ -1,3 +1,4 @@
+markdown_output/
 virtualenv/
 venv/
 .env
