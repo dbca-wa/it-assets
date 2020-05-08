@@ -4,6 +4,7 @@ venv/
 staticfiles/
 media/
 logs/
+start_server
 *.py~
 *.pyc
 *.log

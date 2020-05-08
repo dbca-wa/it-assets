@@ -256,3 +256,117 @@ def alesco_db_import(update_dept_user=False):
 
         if update_dept_user:
             update_user_from_alesco(user)
+
+def departmentuser_alesco_descrepancy(users):
+    """This function is used to find the data differences between the
+    Alesco database and the IT Assets database.
+    """
+    discrepancies = {}
+    alesco_records = {}
+    alesco_iter = alesco_db_fetch()
+
+    # Get Alesco data.
+    for row in alesco_iter:
+        record = dict(zip(ALESCO_DB_FIELDS, row))
+        eid = record['employee_id']
+
+        if eid not in alesco_records:
+            alesco_records[eid] = []
+        alesco_records[eid].append(record)
+
+    for key, record in alesco_records.items():
+        if not users.filter(employee_id=key).exists():
+            continue
+        else:
+            user = users.get(employee_id=key)
+            alesco_record = record[0]  # GROSS ASSUMPTION: the first Alesco record in the list is the newest/most current.
+
+        # Commenting out the check of first name to exclude the many false positives (e.g. Tom != Thomas)
+        #if user.given_name:
+        #    if alesco_record['first_name'].lower() != user.given_name.lower():
+        #        if key not in discrepancies:
+        #            discrepancies[key] = []
+        #        discrepancies[key].append(
+        #            (
+        #                user.get_full_name(),
+        #                'Given name mismatch',
+        #                alesco_record['first_name'],
+        #                user.given_name
+        #            )
+        #        )
+
+        if user.surname:
+            if alesco_record['surname'].lower() != user.surname.lower():
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Surname mismatch',
+                        alesco_record['surname'],
+                        user.surname
+                    )
+                )
+
+        if user.title:
+            if alesco_record['occup_pos_title'].lower() != user.title.lower():
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Title mismatch',
+                        alesco_record['occup_pos_title'],
+                        user.title
+                    )
+                )
+
+        if user.expiry_date:
+            if alesco_record['job_term_date'] != user.expiry_date.date():
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Expiry date mismatch',
+                        alesco_record['job_term_date'].strftime('%d/%b/%Y'),
+                        user.expiry_date.strftime('%d/%b/%Y')
+                    )
+                )
+
+        # NOTE: skip every Alesco CC starting with K (they all differ).
+        if user.cost_centre and alesco_record['paypoint'] and alesco_record['paypoint'][0] != 'K':
+            # If the CC in Alesco start with R or Z, remove that starting letter before comparing.
+            if alesco_record['paypoint'][0] in ['R', 'Z']:
+                alesco_cc = alesco_record['paypoint'][1:]
+            else:
+                alesco_cc = alesco_record['paypoint']
+            if alesco_cc not in user.cost_centre.code:
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Cost centre mismatch',
+                        alesco_record['paypoint'],
+                        user.cost_centre.code
+                    )
+                )
+
+        if user.location and alesco_record['location_desc']:
+            if alesco_record['location_desc'].lower() not in user.location.name.lower():
+                if key not in discrepancies:
+                    discrepancies[key] = []
+                discrepancies[key].append(
+                    (
+                        user.get_full_name(),
+                        'Location mismatch',
+                        alesco_record['location_desc'],
+                        user.location.name
+                    )
+                )
+        # TODO: Manager
+
+    return discrepancies
+
+
