@@ -25,7 +25,11 @@ COPY registers ./registers
 COPY status ./status
 COPY tracking ./tracking
 COPY webconfig ./webconfig
+
+COPY env ./.env
 RUN python manage.py collectstatic --noinput
+RUN rm .env
+
 # Run the application as the www-data user.
 USER www-data
 EXPOSE 8080
