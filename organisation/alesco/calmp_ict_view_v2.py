@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 ALESCO_DATE_MAX = date(2049, 12, 31)
 
-ALESCO_FIELDS = (
+FOREIGN_TABLE_FIELDS = (
     ('employee_no','employee_id'),'job_no', 'surname', 'first_name', 'second_name', 'gender',
     ('date_of_birth',lambda record,val: val.isoformat() if val else None), 
     'clevel1_id','clevel1_desc','clevel2_desc','clevel3_desc','clevel4_desc','clevel5_desc',
@@ -26,9 +26,44 @@ ALESCO_FIELDS = (
     'term_reason',('manager_emp_no','manager_employee_no')
 )
 
-ALESCO_DB_FIELDS = [ f[0] if isinstance(f,(list,tuple)) else f for f in ALESCO_FIELDS if (f[0] if isinstance(f,(list,tuple)) else f)]
+FOREIGN_DB_QUERY_SQL = "SELECT {} FROM \"{}\".\"{}\" ORDER BY employee_no;".format(
+    ', '.join(f[0] if isinstance(f,(list,tuple)) else f for f in FOREIGN_TABLE_FIELDS if (f[0] if isinstance(f,(list,tuple)) else f)),
+    settings.FOREIGN_SCHEMA,
+    settings.FOREIGN_TABLE)
 
-ALESCO_DB_QUERY_SQL = "SELECT {} FROM {} ORDER BY employee_no;".format(', '.join(ALESCO_DB_FIELDS), settings.ALESCO_DB_TABLE)
+FOREIGN_TABLE_SQL="""
+CREATE FOREIGN TABLE "{foreign_schema}"."{foreign_table}" (
+ employee_no  VARCHAR(8),
+ job_no 	  VARCHAR(2),
+ surname      VARCHAR(50),
+ first_name   VARCHAR(50),
+ second_name  VARCHAR(16),
+ date_of_birth DATE,
+ gender        VARCHAR(1),
+ clevel1_id    VARCHAR(50),
+ clevel1_desc  VARCHAR(50),
+ clevel2_desc  VARCHAR(50),
+ clevel3_desc  VARCHAR(50),
+ clevel4_desc  VARCHAR(50),
+ clevel5_desc  VARCHAR(50),
+ position_no   VARCHAR(10),
+ occup_pos_title VARCHAR(100),
+ award  VARCHAR(5),
+ award_desc  VARCHAR(50),
+ emp_status  VARCHAR(5),
+ emp_stat_desc VARCHAR(50),
+ location VARCHAR(5),
+ loc_desc  VARCHAR(50),
+ paypoint  VARCHAR(5),
+ paypoint_desc  VARCHAR(50),
+ geo_location_desc VARCHAR(50),
+ occup_type   VARCHAR(5),
+ job_start_date DATE,
+ manager_emp_no VARCHAR(8),
+ occup_term_date  DATE,
+ term_reason VARCHAR(5)
+) SERVER {foreign_server} OPTIONS (schema '{alesco_db_schema}', table '{alesco_db_table}');
+"""
 
 status_ranking = [
     'PFAS', 'PFA', 'PFT', 'CFA', 'CFT', 'NPAYF',
@@ -254,48 +289,66 @@ def update_user_from_alesco(user,update_fields=[]):
     update_term_date_from_alesco(user,update_fields=update_fields,commit=False)
     update_title_from_alesco(user,update_fields=update_fields,commit=False)
 
-    update_surname_from_alesco(user,update_fields=update_fields,commit=False)
-    update_firstname_from_alesco(user,update_fields=update_fields,commit=False)
+    #update_surname_from_alesco(user,update_fields=update_fields,commit=False)
+    #update_firstname_from_alesco(user,update_fields=update_fields,commit=False)
 
     update_location_from_alesco(user,update_fields=update_fields,commit=True)
+
+def alesco_db_connection():
+    return psycopg2.connect(
+        host=settings.FOREIGN_DB_HOST,
+        port=settings.FOREIGN_DB_PORT,
+        database=settings.FOREIGN_DB_NAME,
+        user=settings.FOREIGN_DB_USERNAME,
+        password=settings.FOREIGN_DB_PASSWORD
+    )
 
 
 def alesco_db_fetch():
     """
     Returns an iterator which fields rows from a database query until completed.
     """
-    conn = psycopg2.connect(
-        host=settings.ALESCO_DB_HOST,
-        database=settings.ALESCO_DB_NAME,
-        user=settings.ALESCO_DB_USERNAME,
-        password=settings.ALESCO_DB_PASSWORD
-    )
-    cur = conn.cursor()
-
-    cur.execute(ALESCO_DB_QUERY_SQL)
-    record = None
-    fields =  len(ALESCO_FIELDS)
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
-        index = 0
-        record = {}
-        while index < fields:
-            column = ALESCO_FIELDS[index]
-            if isinstance(column,(list,tuple)):
-                if callable(column[-1]):
-                    if len(column) == 2:
-                        record[column[0]] = column[-1](record,row[index])
+    conn = alesco_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor()
+    
+        cur.execute(FOREIGN_DB_QUERY_SQL)
+        record = None
+        fields =  len(FOREIGN_TABLE_FIELDS)
+        while True:
+            row = cur.fetchone()
+            if row is None:
+                break
+            index = 0
+            record = {}
+            while index < fields:
+                column = FOREIGN_TABLE_FIELDS[index]
+                if isinstance(column,(list,tuple)):
+                    if callable(column[-1]):
+                        if len(column) == 2:
+                            record[column[0]] = column[-1](record,row[index])
+                        else:
+                            record[column[1]] = column[-1](record,row[index])
                     else:
-                        record[column[1]] = column[-1](record,row[index])
+                        record[column[1]] = row[index]
                 else:
-                    record[column[1]] = row[index]
-            else:
-                record[column] = row[index]
+                    record[column] = row[index]
+    
+                index += 1
+            yield record
+    except:
+        if cur:
+            try:
+                cur.close()
+            except:
+                logger.error(traceback.format_exc())
 
-            index += 1
-        yield record
+        if conn:
+            try:
+                conn.close()
+            except:
+                logger.error(traceback.format_exc())
 
 def alesco_employee_fetch():
     """
