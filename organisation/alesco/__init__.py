@@ -1,8 +1,11 @@
 import importlib
+import logging
+import traceback
 import os
 
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
 
 def _import_synctask():
     table_name = settings.FOREIGN_TABLE
@@ -78,5 +81,7 @@ def aleso_db_init():
             except:
                 logger.error(traceback.format_exc())
 
-
-aleso_db_init()
+try:
+    aleso_db_init()
+except:
+    logger.error(traceback.format_exc())
