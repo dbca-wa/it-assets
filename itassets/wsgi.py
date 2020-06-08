@@ -11,7 +11,7 @@ from pathlib import Path
 d = Path(__file__).resolve().parents[1]
 dot_env = os.path.join(str(d), '.env')
 if os.path.exists(dot_env):
-    dotenv.load_dotenv(dot_env)  # Must precede dj_static imports.
+    dotenv.read_dotenv(dot_env)  # Must precede dj_static imports.
 
 from dj_static import Cling, MediaCling
 
