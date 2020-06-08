@@ -52,6 +52,7 @@ INSTALLED_APPS = (
     #'helpdesk',
     #'markdown_deux',
     #'bootstrapform',
+    'nginx',
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -111,6 +112,11 @@ ALESCO_DB_TABLE=env('ALESCO_DB_TABLE',required=True)
 ALESCO_DB_SCHEMA=env('ALESCO_DB_SCHEMA',required=True)
 
 
+NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING",required=True)
+NGINX_CONTAINER = env("NGINX_CONTAINER",required=True)
+NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME",required=True)
+NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID",required=True)
+
 # Database configuration
 DATABASES = {
     # Defined in DATABASE_URL env variable.
@@ -163,12 +169,12 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'console': {'format': '%(asctime)s %(name)-12s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)-8s %(name)-12s %(message)s'},
         'verbose': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
@@ -190,6 +196,14 @@ LOGGING = {
         'sync_tasks': {
             'handlers': ['console'],
             'level': 'INFO'
+        },
+        'data_storage': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO'
+        },
+        'nginx': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO'
         },
     }
 }

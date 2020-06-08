@@ -15,3 +15,4 @@ start_server
 *.db
 *.sqlite3
 .coverage
+*.swp

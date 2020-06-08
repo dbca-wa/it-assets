@@ -38,3 +38,7 @@ sentry-sdk==0.13.5
 beautifulsoup4==4.8.0
 #django-helpdesk==0.2.17
 #django-markdown-deux==1.0.5
+
+
+git+git://github.com/dbca-wa/data-storage@v2.1#egg=data-storage
+pyyaml==5.3.1
