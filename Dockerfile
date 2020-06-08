@@ -25,6 +25,7 @@ COPY registers ./registers
 COPY status ./status
 COPY tracking ./tracking
 COPY webconfig ./webconfig
+COPY nginx ./nginx
 
 COPY env ./.env
 RUN python manage.py collectstatic --noinput
