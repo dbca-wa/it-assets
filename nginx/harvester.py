@@ -6,7 +6,7 @@ import json
 from datetime import date,datetime
 
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist,FieldDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 
@@ -44,66 +44,6 @@ def get_blob_resource_client():
             settings.NGINX_RESOURCE_CLIENTID
         )
     return _blob_resource_client
-
-def set_config(obj,field_name,field_value,update_fields):
-    """
-    set field to new value.
-    if the field is editable, save the value to original_configs and also update the field if not edited by the user
-    if the field is not editable, just update the field directly
-    """
-    field = obj._meta.get_field(field_name)
-    original_configs_field = None
-    try:
-        original_configs_field = obj._meta.get_field("original_configs")
-    except FieldDoesNotExist as ex:
-        pass
-
-    if field.editable and original_configs_field:
-        #field is editable,update the original value
-        if isinstance(field,models.ForeignKey):
-            if (obj.original_configs.get(field_name) if obj.original_configs else None) == (field_value.pk if field_value else None):
-                #configure is not changed
-                return 
-            else:
-                #configure is changed
-                if not obj.original_configs:
-                    obj.original_configs = {}
-                if hasattr(obj,field_name) and getattr(obj,field_name):
-                    if getattr(obj,field_name).pk == obj.original_configs.get(field_name):
-                        #configure was not edited by the user
-                        setattr(obj,field_name,field_value)
-                        update_fields.append(field_name)
-                elif not obj.original_configs.get(field_name):
-                    #configure was not edited by the user
-                    setattr(obj,field_name,field_value)
-                    update_fields.append(field_name)
-
-                obj.original_configs[field_name] = (field_value.pk if field_value else None)
-                if "original_configs" not in update_fields:
-                    update_fields.append("original_configs")
-        else:
-            if (obj.original_configs.get(field_name) if obj.original_configs else None) == field_value:
-                #configure is not changed
-                return
-            else:
-                #configure is changed
-                if not obj.original_configs:
-                    obj.original_configs = {}
-                if getattr(obj,field_name) == obj.original_configs.get(field_name):
-                    #configure was not edited by the user
-                    setattr(obj,field_name,field_value)
-                    update_fields.append(field_name)
-
-                obj.original_configs[field_name] = field_value
-                if "original_configs" not in update_fields:
-                    update_fields.append("original_configs")
-    else:
-        if getattr(obj,field_name) == field_value:
-            #not changed
-            return
-        else:
-            setattr(obj,field_name,field_value)
-            update_fields.append(field_name)
 
 upstream_block_re = re.compile("(\s+|^)upstream\s+(?P<name>[a-zA-Z0-9_\-]+)\s*{(?P<body>[^\}]+)}")
 upstream_comments_re = re.compile("#[^\n]+(\n|$)")
@@ -319,7 +259,7 @@ Locations
             ("redirect_path",None),
             ("auth_domain",auth_domain)
         ]:
-            set_config(app,f,val,update_fields)
+            app.set_config(f,val,update_fields)
 
         if not app.pk:
             app.save()
@@ -407,7 +347,7 @@ Locations
                     ("forward_path",server_location["forward_path"]),
                     ("configure_txt",server_location["configure_txt"])
                 ]:
-                    set_config(location,f,val,update_fields)
+                    location.set_config(f,val,update_fields)
                 if update_fields:
                     location.config_changed_columns = list(update_fields)
                     update_fields.append("config_changed_columns")
@@ -446,7 +386,7 @@ Locations
                 ("forward_path",server_location["forward_path"]),
                 ("configure_txt",server_location["configure_txt"])
             ]:
-                set_config(location,f,val,update_fields)
+                location.set_config(f,val,update_fields)
             location.save()
             logger.debug("Create the WebAppLocation({1}) from server({0})".format(app,location))
             if server_location["forward_servers"]:
@@ -484,7 +424,7 @@ Locations
                     ("auth_domain",target_server.auth_domain),
                     ("configure_txt",server_config)
                 ]:
-                    set_config(app,f,val,update_fields)
+                    app.set_config(f,val,update_fields)
 
                 if not app.pk:
                     app.save()
@@ -529,7 +469,7 @@ Locations
                     ("auth_domain",WebApp.SSO_AUTH_NOT_REQUIRED),
                     ("configure_txt",server_config)
                 ]:
-                    set_config(app,f,val,update_fields)
+                    app.set_config(f,val,update_fields)
 
                 if not app.pk:
                     app.save()
@@ -908,9 +848,9 @@ def harvest(reconsume=False):
         if get_blob_resource_client().is_behind(resource_ids_list=["nginx-config.yml","nginx.yml"]):
             reconsume = True
         else:
-            return
+            return 0
 
     #consume nginx config file
-    get_blob_resource_client().consume(process_nginx,resource_ids_list=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
+    return get_blob_resource_client().consume(process_nginx,resource_ids_list=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
 
 

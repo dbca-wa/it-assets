@@ -5,6 +5,7 @@ import logging
 from django.db import models
 from django.contrib.postgres.fields import JSONField,ArrayField
 
+from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
 
 logger = logging.getLogger(__name__)
@@ -134,7 +135,7 @@ class SystemEnv(models.Model):
     def __str__(self):
         return self.name
 
-class WebApp(models.Model):
+class WebApp(OriginalConfigMixin,models.Model):
     SSO_AUTH_NOT_REQUIRED = 0
     SSO_AUTH_TO_DBCA = 11
     SSO_AUTH_TO_DPAW = 12
@@ -154,7 +155,6 @@ class WebApp(models.Model):
     redirect_to = models.ForeignKey("self", on_delete=models.PROTECT, related_name='redirect_from',null=True,editable=False)
     redirect_to_other = models.CharField(max_length=128,editable=False,null=True)
     redirect_path = models.CharField(max_length=128,editable=False,null=True)
-    original_configs = JSONField(null=True,editable=False)
     configure_txt = models.TextField(editable=False)
     auth_domain = models.PositiveSmallIntegerField(editable=False,choices=SSO_AUTH_DOMAINS)
     modified = models.DateTimeField(auto_now=True)
@@ -216,7 +216,7 @@ class WebServer(models.Model):
     def __str__(self):
         return "{}({})".format(self.name,self.get_category_display())
 
-class WebAppLocation(models.Model):
+class WebAppLocation(OriginalConfigMixin,models.Model):
     EXACT_LOCATION = 1
     PREFIX_LOCATION = 2
     CASE_SENSITIVE_REGEX_LOCATION = 3
@@ -267,7 +267,6 @@ class WebAppLocation(models.Model):
     redirect = models.CharField(max_length=256,editable=False,null=True)
     return_code = models.PositiveSmallIntegerField(editable=False,null=True)
     refuse = models.BooleanField(default=False,editable=False)
-    original_configs = JSONField(null=True,editable=False)
     configure_txt = models.TextField(editable=False)
     modified = models.DateTimeField(auto_now=True)
     config_modified = models.DateTimeField(null=True,editable=False)
