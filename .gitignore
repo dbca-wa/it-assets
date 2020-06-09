@@ -1,6 +1,9 @@
 markdown_output/
 virtualenv/
 venv/
+build_image
+build_image.sh
+env
 .env
 staticfiles/
 media/
