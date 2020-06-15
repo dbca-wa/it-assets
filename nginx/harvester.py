@@ -198,6 +198,7 @@ location {} {{
     system_envs = list(SystemEnv.objects.all())
     system_envs.sort(key=lambda e:len(e.name),reverse=True)
     redirect_servers = []
+    serverids = []
     for server in sorted(servers.keys(),key=lambda name:name.split(".",1)[0]):
         server_config = servers[server]
         if server not in [ "wildlifelicensing-internal.dpaw.wa.gov.au"]:
@@ -263,8 +264,10 @@ Locations
 
         if not app.pk:
             app.save()
+            serverids.append(app.pk)
             logger.debug("Create the WebApp({})".format(app))
         else:
+            serverids.append(app.pk)
             if update_fields:
                 app.config_changed_columns = list(update_fields)
                 update_fields.append("config_changed_columns")
@@ -428,9 +431,11 @@ Locations
 
                 if not app.pk:
                     app.save()
+                    serverids.append(app.pk)
                     logger.debug("Create the WebApp({})".format(app))
                     created_servers += 1
                 else:
+                    serverids.append(app.pk)
                     if update_fields:
                         app.config_changed_columns = list(update_fields)
                         update_fields.append("config_changed_columns")
@@ -473,9 +478,11 @@ Locations
 
                 if not app.pk:
                     app.save()
+                    serverids.append(app.pk)
                     logger.debug("Create the WebApp({})".format(app))
                     created_servers += 1
                 else:
+                    serverids.append(app.pk)
                     if update_fields:
                         app.config_changed_columns = list(update_fields)
                         update_fields.append("config_changed_columns")
@@ -495,10 +502,9 @@ Locations
                     WebAppLocation.objects.filter(app = app).delete()
             break
 
-
                 
     #delete the not exist server 
-    WebApp.objects.exclude(name__in=servers.keys()).delete()
+    WebApp.objects.exclude(pk__in=serverids).delete()
 
     logger.info("Parsing nginx configuration successfully.")
 
@@ -845,12 +851,12 @@ def parse_server_config(server,server_config,upstream_servers):
 def harvest(reconsume=False):
     if not reconsume:
         #check whether some nginx configuration has been changed after last consuming.
-        if get_blob_resource_client().is_behind(resource_ids_list=["nginx-config.yml","nginx.yml"]):
+        if get_blob_resource_client().is_behind(resources=["nginx-config.yml","nginx.yml"]):
             reconsume = True
         else:
             return 0
 
     #consume nginx config file
-    return get_blob_resource_client().consume(process_nginx,resource_ids_list=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
+    return get_blob_resource_client().consume(process_nginx,resources=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
 
 
