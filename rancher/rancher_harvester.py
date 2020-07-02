@@ -1301,7 +1301,7 @@ def harvest(cluster,reconsume=False):
 
 #harvest('az-k3s-oim01',True)
 
-def havest_all(reconsume=False):
+def harvest_all(reconsume=False):
     consume_results = []
     for cluster in Cluster.objects.all():
         consume_results.append((cluster,harvest(cluster,reconsume=reconsume)))
