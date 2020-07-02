@@ -4,9 +4,12 @@ import logging
 
 from django.db import models
 from django.contrib.postgres.fields import JSONField,ArrayField
+from django.db.models.signals import post_save,post_delete
+from django.dispatch import receiver
 
 from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
+from rancher.models import Cluster,Workload,WorkloadListening
 
 logger = logging.getLogger(__name__)
 
@@ -207,14 +210,45 @@ class WebServer(models.Model):
         (WEB_SERVER,"Web Server")
     )
 
+    IP_ADDRESS_RE = re.compile("^[0-9]{1,3}(\.[0-9]{1,3}){3}$")
+
     name = models.CharField(max_length=128,unique=True)
     category = models.PositiveSmallIntegerField(choices=SERVER_CATEGORIES,null=True)
+    other_names = ArrayField(models.CharField(max_length=128),editable=False,null=True)
     desc = models.TextField(null=True,blank=True)
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
     
+    @property
+    def hostname(self):
+        return self.get_hostname(self.name)
+
+    @classmethod
+    def get_hostname(cls,name):
+        if cls.IP_ADDRESS_RE.search(name):
+            return name
+        else:
+            for domain in (".corporateict.domain",".lan.fyi"):
+                if name.endswith(domain):
+                    return name[:-1 * len(domain)]
+            return name
+
+
     def __str__(self):
         return "{}({})".format(self.name,self.get_category_display())
+
+
+class ClusterEventListener(object):
+    @staticmethod
+    @receiver(post_delete, sender=Cluster)
+    def _post_delete(sender, instance, **args):
+        WebServer.objects.filter(models.Q(name__startswith=instance.name) | models.Q(name=instance.ip)).update(category=None)
+
+    @staticmethod
+    @receiver(post_save, sender=Cluster)
+    def _post_save(sender, instance, **args):
+        WebServer.objects.filter(models.Q(name__startswith=instance.name) | models.Q(name=instance.ip)).update(category=WebServer.RANCHER_CLUSTER)
+
 
 class WebAppLocation(OriginalConfigMixin,models.Model):
     EXACT_LOCATION = 1
@@ -284,9 +318,47 @@ class WebAppLocationServer(models.Model):
     server = models.ForeignKey(WebServer, on_delete=models.PROTECT, related_name='+')
     port = models.PositiveIntegerField()
     user_added = models.BooleanField(default=True,editable=False)
+    rancher_workload = models.ForeignKey(Workload, on_delete=models.SET_NULL, related_name='servers',editable=False,null=True)
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
+    def clean(self):
+        super().clean()
+        self.rancher_workload = self.locate_rancher_workload
+
+    def locate_rancher_workload(self):
+        if self.server.category != WebServer.RANCHER_CLUSTER:
+            return None
+
+        hostname = self.server.hostname
+        qs = WorkloadListening.objects.filter(models.Q(workload__cluster__name=hostname) | models.Q(workload__cluster__ip=hostname))
+        workloadlistening = None
+        path = None
+        #try to find the workloadlistening object through ingress rule
+        for listening in qs.filter(ingress_rule__hostname=self.server.name,ingress_rule__port=self.port).order_by("-ingress_rule__path"):
+            if not listening.path:
+                if not workloadlistening:
+                    workloadlistening = listening
+            elif self.location.startswith(listening.path):
+                if not workloadlistening:
+                    workloadlistening = listening
+                    path = listening.path
+                elif listening.path.startswith(path):
+                    workloadlistening = listening
+                    path = listening.path
+
+        if not workloadlistening:
+            workloadlistening = qs.filter(listen_port=self.port).first()
+
+        return workloadlistening.workload if workloadlistening else None
+
+    @classmethod
+    def refresh_rancher_workload(cls,cluster):
+        for location_server in cls.objects.filter(server__category = WebServer.RANCHER_CLUSTER).filter(models.Q(server__name__startswith=cluster.name) | models.Q(server__name=cluster.ip)):
+            rancher_workload = location_server.locate_rancher_workload()
+            if location_server.rancher_workload != rancher_workload:
+                location_server.rancher_workload = rancher_workload
+                location_server.save(update_fields=["rancher_workload"])
 
     def __str__(self):
         return "{}:{}".format(self.server.name,self.port)

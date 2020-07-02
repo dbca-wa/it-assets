@@ -1,6 +1,7 @@
 from dbca_utils.utils import env
 import dj_database_url
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -53,6 +54,7 @@ INSTALLED_APPS = (
     #'markdown_deux',
     #'bootstrapform',
     'nginx',
+    'rancher'
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -116,6 +118,12 @@ NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING",required
 NGINX_CONTAINER = env("NGINX_CONTAINER",required=True)
 NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME",required=True)
 NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID",required=True)
+
+RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING",required=True)
+RANCHER_CONTAINER = env("RANCHER_CONTAINER",required=True)
+RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME",required=True)
+RANCHER_RESOURCE_CLIENTID = env("RANCHER_RESOURCE_CLIENTID",required=True)
+RANCHER_MANAGEMENT_URL = env("RANCHER_MANAGEMENT_URL",default="https://rks.dbca.wa.gov.au")
 
 # Database configuration
 DATABASES = {
@@ -202,6 +210,10 @@ LOGGING = {
             'level': 'DEBUG' if DEBUG else 'INFO'
         },
         'nginx': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO'
+        },
+        'rancher': {
             'handlers': ['console'],
             'level': 'DEBUG' if DEBUG else 'INFO'
         },

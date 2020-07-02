@@ -19,7 +19,7 @@ def department_user_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'ACTIVE', 'O365 LICENCE',
+            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE','CC MANAGER','CC MANAGER EMAIL','CC BMANAGER','CC BMANAGER EMAIL', 'ACTIVE', 'O365 LICENCE',
         ))
         row = 1
         for i in users:
@@ -31,6 +31,10 @@ def department_user_export(fileobj, users):
                 i.get_position_type_display(),
                 i.expiry_date if i.expiry_date else '',
                 i.cost_centre.code if i.cost_centre else '',
+                i.cost_centre.manager.get_full_name() if i.cost_centre and i.const_centre.manager else '',
+                i.cost_centre.manager.email if i.cost_centre and i.const_centre.manager else '',
+                i.cost_centre.business_manager.get_full_name() if i.cost_centre and i.const_centre.business_manager else '',
+                i.cost_centre.business_manager.email if i.cost_centre and i.const_centre.business_manager else '',
                 i.active,
                 i.o365_licence,
             ])
@@ -39,7 +43,12 @@ def department_user_export(fileobj, users):
         users_sheet.set_column('B:D', 45)
         users_sheet.set_column('E:E', 15)
         users_sheet.set_column('F:F', 18)
-        users_sheet.set_column('G:I', 13)
+        users_sheet.set_column('G:G', 13)
+        users_sheet.set_column('H:H', 35)
+        users_sheet.set_column('I:I', 45)
+        users_sheet.set_column('J:J', 35)
+        users_sheet.set_column('K:K', 45)
+        users_sheet.set_column('L:M', 13)
 
     return fileobj
 

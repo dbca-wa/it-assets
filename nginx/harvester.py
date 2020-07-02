@@ -13,6 +13,8 @@ from django.utils import timezone
 from data_storage import AzureBlobResourceClient
 from .models import (Domain,SystemAlias,SystemEnv,WebApp,WebAppLocation,WebAppListen,WebServer,WebAppLocationServer)
 
+from rancher.models import Cluster
+
 logger = logging.getLogger(__name__)
 
 class JSONEncoder(json.JSONEncoder):
@@ -48,7 +50,6 @@ def get_blob_resource_client():
 upstream_block_re = re.compile("(\s+|^)upstream\s+(?P<name>[a-zA-Z0-9_\-]+)\s*{(?P<body>[^\}]+)}")
 upstream_comments_re = re.compile("#[^\n]+(\n|$)")
 upstream_server_re = re.compile("(^|\s+|;)\s*server\s+(?P<server>[a-zA-Z0-9_\-\.]+):(?P<port>[0-9]+)")
-
 
 sso_auth_domains = [
     (WebAppLocation.SSO_AUTH_TO_DBCA,WebApp.SSO_AUTH_TO_DBCA),
@@ -520,14 +521,35 @@ def save_location_forward_servers(app_location,location_servers,created=False):
     for location_server in location_servers:
         if isinstance(location_server[0],WebServer):
             continue
+
+        hostcategory = None
+        hostname = WebServer.get_hostname(location_server[0])
+        other_name = None if hostname == location_server[0] else location_server[0]
+        if Cluster.objects.filter(models.Q(name=hostname) | models.Q(ip=hostname)).first():
+            hostcategory = WebServer.RANCHER_CLUSTER
         try:
-            location_server[0] = WebServer.objects.get(name=location_server[0])
+            location_server[0] = WebServer.objects.get(name=hostname)
+            update_fields = []
+            if hostcategory and location_server[0].category != hostcategory:
+                location_server[0].category = hostcategory
+                update_fields.append("category")
+
+            if other_name and (not location_server[0].other_names or other_name not in location_server[0].other_names):
+                if location_server[0].other_names:
+                    location_server[0].other_names.append(other_name)
+                else:
+                    location_server[0].other_names = [other_name]
+                update_fields.append("other_names")
+            if update_fields:
+                location_server[0].save(update_fields=update_fields)
         except ObjectDoesNotExist as ex:
-            location_server[0] = WebServer(name=location_server[0])
+            location_server[0] = WebServer(name=hostname,category=hostcategory,other_names=[other_name] if other_name else None)
             location_server[0].save()
 
 
     #save location forward servers
+
+    #delete the removed webapplicationserver
     founded_index = set()
     for server in list(WebAppLocationServer.objects.filter(location = app_location)):
         index = len(location_servers) - 1
@@ -546,18 +568,26 @@ def save_location_forward_servers(app_location,location_servers,created=False):
     #create location forward server
     index = len(location_servers) - 1
     while index >= 0:
-        if index in founded_index:
-            index -= 1
-            continue
         location_server = location_servers[index]
-        server = WebAppLocationServer(
-            location = app_location,
-            server = location_server[0],
-            port = location_server[1],
-            user_added = False
-        )
-        server.save()
-        logger.debug("Create the WebAppLocationServer({1}) from location({0})".format(app_location,server))
+        if index in founded_index:
+            #already created
+            server = WebAppLocationServer.objects.get(location = app_location,server=location_server[0],port=location_server[1])
+            rancher_workload = server.locate_rancher_workload()
+            if rancher_workload != server.rancher_workload:
+                server.rancher_workload = rancher_workload
+                server.save(update_fields=["rancher_workload"])
+                logger.debug("Update the WebAppLocationServer({1}) from location({0})".format(app_location,server))
+        else:
+            #new location server, create it
+            server = WebAppLocationServer(
+                location = app_location,
+                server = location_server[0],
+                port = location_server[1],
+                user_added = False
+            )
+            server.rancher_workload = server.locate_rancher_workload()
+            server.save()
+            logger.debug("Create the WebAppLocationServer({1}) from location({0})".format(app_location,server))
         index -= 1
 
 
