@@ -1,5 +1,6 @@
+import traceback
 from django.core.management.base import BaseCommand, CommandError
-from organisation.tasks import alesco_db_import
+from organisation.alesco import synctask
 
 
 class Command(BaseCommand):
@@ -10,6 +11,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            alesco_db_import(update_dept_user=options['update'])
+            synctask.alesco_db_import(update_dept_user=options['update'])
         except:
+            traceback.print_exc()
             raise CommandError('Syncronisation from Alesco database failed')

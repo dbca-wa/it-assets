@@ -1,6 +1,7 @@
 from dbca_utils.utils import env
 import dj_database_url
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -52,6 +53,8 @@ INSTALLED_APPS = (
     #'helpdesk',
     #'markdown_deux',
     #'bootstrapform',
+    'nginx',
+    'rancher'
 )
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -95,13 +98,32 @@ AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
 
 # alesco binding information
-ALESCO_DB_HOST = env('ALESCO_DB_HOST')
-ALESCO_DB_NAME = env('ALESCO_DB_NAME')
-ALESCO_DB_TABLE = env('ALESCO_DB_TABLE')
-ALESCO_DB_USERNAME = env('ALESCO_DB_USERNAME')
-ALESCO_DB_PASSWORD = env('ALESCO_DB_PASSWORD')
+FOREIGN_DB_HOST = env('FOREIGN_DB_HOST',required=True)
+FOREIGN_DB_PORT = env('FOREIGN_DB_PORT',default=5432)
+FOREIGN_DB_NAME = env('FOREIGN_DB_NAME',required=True)
+FOREIGN_DB_USERNAME = env('FOREIGN_DB_USERNAME',required=True)
+FOREIGN_DB_PASSWORD = env('FOREIGN_DB_PASSWORD',required=True)
+FOREIGN_SERVER = env('FOREIGN_SERVER',required=True)
+FOREIGN_SCHEMA = env('FOREIGN_SCHEMA',default='public')
+FOREIGN_TABLE = env('FOREIGN_TABLE',required=True)
+
+ALESCO_DB_SERVER=env('ALESCO_DB_SERVER',required=True)
+ALESCO_DB_USER=env('ALESCO_DB_USER',required=True)
+ALESCO_DB_PASSWORD=env('ALESCO_DB_PASSWORD',required=True)
+ALESCO_DB_TABLE=env('ALESCO_DB_TABLE',required=True)
+ALESCO_DB_SCHEMA=env('ALESCO_DB_SCHEMA',required=True)
 
 
+NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING",required=True)
+NGINX_CONTAINER = env("NGINX_CONTAINER",required=True)
+NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME",required=True)
+NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID",required=True)
+
+RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING",required=True)
+RANCHER_CONTAINER = env("RANCHER_CONTAINER",required=True)
+RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME",required=True)
+RANCHER_RESOURCE_CLIENTID = env("RANCHER_RESOURCE_CLIENTID",required=True)
+RANCHER_MANAGEMENT_URL = env("RANCHER_MANAGEMENT_URL",default="https://rks.dbca.wa.gov.au")
 
 # Database configuration
 DATABASES = {
@@ -155,12 +177,12 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'console': {'format': '%(asctime)s %(name)-12s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)-8s %(name)-12s %(message)s'},
         'verbose': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
@@ -182,6 +204,18 @@ LOGGING = {
         'sync_tasks': {
             'handlers': ['console'],
             'level': 'INFO'
+        },
+        'data_storage': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO'
+        },
+        'nginx': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO'
+        },
+        'rancher': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO'
         },
     }
 }
