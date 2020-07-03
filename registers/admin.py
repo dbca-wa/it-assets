@@ -4,9 +4,7 @@ from django.conf import settings
 from django.conf.urls import url
 from django.contrib import messages
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
-from django.contrib.auth.models import Group, User
 from django.core.mail import EmailMultiAlternatives
-from django.forms import ModelChoiceField, ModelForm
 from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -18,9 +16,8 @@ import unicodecsv as csv
 
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
-    Incident, IncidentLog, StandardChange, ChangeRequest, ChangeLog)
-from .utils import smart_truncate
-from .views import ITSystemExport, ITSystemDiscrepancyReport, ITSystemHardwareExport, IncidentExport, ChangeRequestExport
+    StandardChange, ChangeRequest, ChangeLog)
+from .views import ITSystemExport, ITSystemDiscrepancyReport, ITSystemHardwareExport, ChangeRequestExport
 
 
 @register(UserGroup)
@@ -223,103 +220,6 @@ class ITSystemDependencyAdmin(VersionAdmin):
         return response
 
 
-class IncidentLogInline(StackedInline):
-    model = IncidentLog
-    extra = 0
-
-
-class UserModelChoiceField(ModelChoiceField):
-    """A lightly-customised choice field for users (displays user full name).
-    """
-    def label_from_instance(self, obj):
-        # Return a string of the format: "firstname lastname (username)"
-        return "{} ({})".format(obj.get_full_name(), obj.username)
-
-
-class IncidentAdminForm(ModelForm):
-    """A lightly-customised ModelForm for Incidents, to use the UserModelChoiceField widget.
-    """
-    owner = UserModelChoiceField(queryset=None, required=False, help_text='Incident owner')
-    manager = UserModelChoiceField(queryset=None, required=False, help_text='Incident manager')
-
-    def __init__(self, *args, **kwargs):
-        super(IncidentAdminForm, self).__init__(*args, **kwargs)
-        # Set the user choice querysets on __init__ in order that the project still works with an empty database.
-        self.fields['owner'].queryset = User.objects.filter(
-            groups__in=[Group.objects.get(name='OIM Staff')], is_active=True, is_staff=True).order_by('first_name')
-        self.fields['manager'].queryset = User.objects.filter(
-            groups__in=[Group.objects.get(name='IT Coordinators')], is_active=True, is_staff=True).order_by('first_name')
-
-    class Meta:
-        model = Incident
-        exclude = []
-
-
-class IncidentStatusListFilter(SimpleListFilter):
-    """A custom list filter to restrict displayed incidents to ongoing/resolved status.
-    """
-    title = 'status'
-    parameter_name = 'status'
-
-    def lookups(self, request, model_admin):
-        return (
-            ('Ongoing', 'Ongoing'),
-            ('Resolved', 'Resolved')
-        )
-
-    def queryset(self, request, queryset):
-        if self.value() == 'Ongoing':
-            return queryset.filter(resolution__isnull=True)
-        if self.value() == 'Resolved':
-            return queryset.filter(resolution__isnull=False)
-
-
-@register(Incident)
-class IncidentAdmin(ModelAdmin):
-    form = IncidentAdminForm
-    date_hierarchy = 'start'
-    filter_horizontal = ('it_systems', 'locations')
-    inlines = [IncidentLogInline]
-    list_display = (
-        'id', 'created', 'description_trunc', 'priority', 'start', 'resolution', 'manager_name',
-        'owner_name')
-    list_filter = (IncidentStatusListFilter, 'priority', 'detection', 'category')
-    list_select_related = ('manager', 'owner')
-    search_fields = (
-        'id', 'description', 'it_systems__name', 'locations__name', 'manager__email', 'owner__email',
-        'url', 'workaround', 'root_cause', 'remediation')
-    change_list_template = 'admin/registers/incident/change_list.html'
-
-    def manager_name(self, obj):
-        if obj.manager:
-            return obj.manager.get_full_name()
-        return ''
-    manager_name.short_description = 'manager'
-
-    def owner_name(self, obj):
-        if obj.owner:
-            return obj.owner.get_full_name()
-        return ''
-    owner_name.short_description = 'owner'
-
-    def description_trunc(self, obj):
-        return smart_truncate(obj.description)
-    description_trunc.short_description = 'description'
-
-    def get_urls(self):
-        urls = super(IncidentAdmin, self).get_urls()
-        urls = [path('export/', self.admin_site.admin_view(IncidentExport.as_view()), name='incident_export')] + urls
-        return urls
-
-    def it_systems_affected(self, obj):
-        return ', '.join([i.name for i in obj.it_systems.all()])
-    it_systems_affected.short_description = 'IT Systems'
-
-    def locations_affected(self, obj):
-        return ', '.join([i.name for i in obj.locations.all()])
-    locations_affected.short_description = 'locations'
-
-
 @register(StandardChange)
 class StandardChangeAdmin(ModelAdmin):
     date_hierarchy = 'created'
@@ -366,6 +266,7 @@ def email_endorser(modeladmin, request, queryset):
             log.save()
             messages.success(request, msg)
 
+
 email_endorser.short_description = 'Send email to the endorser requesting endorsement of a change'
 
 
@@ -379,6 +280,7 @@ def email_implementer(modeladmin, request, queryset):
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
             messages.success(request, msg)
+
 
 email_implementer.short_description = 'Send email to the implementer to record completion of a finished change'
 
@@ -416,6 +318,7 @@ def cab_approve(modeladmin, request, queryset):
             msg = 'RFC {} status set to "Ready"; requester has been emailed.'.format(rfc.pk)
             messages.success(request, msg)
 
+
 cab_approve.short_description = 'Mark selected change requests as approved at CAB'
 
 
@@ -452,6 +355,7 @@ def cab_reject(modeladmin, request, queryset):
             msg = 'RFC {} status set to "Draft"; requester has been emailed.'.format(rfc.pk)
             messages.success(request, msg)
 
+
 cab_reject.short_description = 'Mark selected change requests as rejected at CAB (set to draft status)'
 
 
@@ -460,7 +364,7 @@ class ChangeRequestAdmin(ModelAdmin):
     actions = [cab_approve, cab_reject, email_endorser, email_implementer]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
-    exclude =('post_complete_email_date',)
+    exclude = ('post_complete_email_date',)
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
