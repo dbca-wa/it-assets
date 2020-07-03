@@ -2,7 +2,7 @@ from six import BytesIO
 import unicodecsv
 import xlsxwriter
 
-from .tasks import alesco_db_fetch, ALESCO_DB_FIELDS
+from .alesco import synctask
 
 
 def department_user_export(fileobj, users):
@@ -19,7 +19,7 @@ def department_user_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'ACTIVE', 'O365 LICENCE',
+            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE','CC MANAGER','CC MANAGER EMAIL','CC BMANAGER','CC BMANAGER EMAIL', 'ACTIVE', 'O365 LICENCE',
         ))
         row = 1
         for i in users:
@@ -31,6 +31,10 @@ def department_user_export(fileobj, users):
                 i.get_position_type_display(),
                 i.expiry_date if i.expiry_date else '',
                 i.cost_centre.code if i.cost_centre else '',
+                i.cost_centre.manager.get_full_name() if i.cost_centre and i.const_centre.manager else '',
+                i.cost_centre.manager.email if i.cost_centre and i.const_centre.manager else '',
+                i.cost_centre.business_manager.get_full_name() if i.cost_centre and i.const_centre.business_manager else '',
+                i.cost_centre.business_manager.email if i.cost_centre and i.const_centre.business_manager else '',
                 i.active,
                 i.o365_licence,
             ])
@@ -39,7 +43,12 @@ def department_user_export(fileobj, users):
         users_sheet.set_column('B:D', 45)
         users_sheet.set_column('E:E', 15)
         users_sheet.set_column('F:F', 18)
-        users_sheet.set_column('G:I', 13)
+        users_sheet.set_column('G:G', 13)
+        users_sheet.set_column('H:H', 35)
+        users_sheet.set_column('I:I', 45)
+        users_sheet.set_column('J:J', 35)
+        users_sheet.set_column('K:K', 45)
+        users_sheet.set_column('L:M', 13)
 
     return fileobj
 
@@ -48,111 +57,7 @@ def departmentuser_alesco_descrepancy(fileobj, users):
     """This function is used to find the data differences between the
     Alesco database and the IT Assets database.
     """
-    discrepancies = {}
-    alesco_records = {}
-    alesco_iter = alesco_db_fetch()
-
-    # Get Alesco data.
-    for row in alesco_iter:
-        record = dict(zip(ALESCO_DB_FIELDS, row))
-        eid = record['employee_id']
-
-        if eid not in alesco_records:
-            alesco_records[eid] = []
-        alesco_records[eid].append(record)
-
-    for key, record in alesco_records.items():
-        if not users.filter(employee_id=key).exists():
-            continue
-        else:
-            user = users.get(employee_id=key)
-            alesco_record = record[0]  # GROSS ASSUMPTION: the first Alesco record in the list is the newest/most current.
-
-        # Commenting out the check of first name to exclude the many false positives (e.g. Tom != Thomas)
-        #if user.given_name:
-        #    if alesco_record['first_name'].lower() != user.given_name.lower():
-        #        if key not in discrepancies:
-        #            discrepancies[key] = []
-        #        discrepancies[key].append(
-        #            (
-        #                user.get_full_name(),
-        #                'Given name mismatch',
-        #                alesco_record['first_name'],
-        #                user.given_name
-        #            )
-        #        )
-
-        if user.surname:
-            if alesco_record['surname'].lower() != user.surname.lower():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Surname mismatch',
-                        alesco_record['surname'],
-                        user.surname
-                    )
-                )
-
-        if user.title:
-            if alesco_record['occup_pos_title'].lower() != user.title.lower():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Title mismatch',
-                        alesco_record['occup_pos_title'],
-                        user.title
-                    )
-                )
-
-        if user.expiry_date:
-            if alesco_record['job_term_date'] != user.expiry_date.date():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Expiry date mismatch',
-                        alesco_record['job_term_date'].strftime('%d/%b/%Y'),
-                        user.expiry_date.strftime('%d/%b/%Y')
-                    )
-                )
-
-        # NOTE: skip every Alesco CC starting with K (they all differ).
-        if user.cost_centre and alesco_record['paypoint'] and alesco_record['paypoint'][0] != 'K':
-            # If the CC in Alesco start with R or Z, remove that starting letter before comparing.
-            if alesco_record['paypoint'][0] in ['R', 'Z']:
-                alesco_cc = alesco_record['paypoint'][1:]
-            else:
-                alesco_cc = alesco_record['paypoint']
-            if alesco_cc not in user.cost_centre.code:
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Cost centre mismatch',
-                        alesco_record['paypoint'],
-                        user.cost_centre.code
-                    )
-                )
-
-        if user.location and alesco_record['location_desc']:
-            if alesco_record['location_desc'].lower() not in user.location.name.lower():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Location mismatch',
-                        alesco_record['location_desc'],
-                        user.location.name
-                    )
-                )
-        # TODO: Manager
+    discrepancies = synctask.departmentuser_alesco_descrepancy(users)
 
     with xlsxwriter.Workbook(
         fileobj,

@@ -1,10 +1,14 @@
 markdown_output/
 virtualenv/
 venv/
+build_image
+build_image.sh
+env
 .env
 staticfiles/
 media/
 logs/
+start_server
 *.py~
 *.pyc
 *.log
@@ -14,3 +18,4 @@ logs/
 *.db
 *.sqlite3
 .coverage
+*.swp
