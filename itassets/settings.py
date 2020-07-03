@@ -216,7 +216,7 @@ Q_CLUSTER = {
 
 
 # Sentry configuration
-if env('SENTRY_DSN', False):
+if env('SENTRY_DSN', ''):
     SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
 
 
