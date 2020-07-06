@@ -1,8 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField,ArrayField
-
-from itassets.models import OriginalConfigMixin
+from django.contrib.postgres.fields import ArrayField
 
 
 class Cluster(models.Model):
@@ -19,6 +17,7 @@ class Cluster(models.Model):
 
     class Meta:
         ordering = ["name"]
+
 
 class Project(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='projects',editable=False)
@@ -52,6 +51,7 @@ class Namespace(models.Model):
         unique_together = [["cluster","name"]]
         ordering = ["cluster__name",'name']
 
+
 class PersistentVolume(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='volumes',editable=False)
     name = models.CharField(max_length=128,editable=False)
@@ -76,6 +76,7 @@ class PersistentVolume(models.Model):
     class Meta:
         unique_together = [["cluster","name"],["cluster","volumepath"]]
         ordering = ["cluster__name",'name']
+
 
 class PersistentVolumeClaim(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='volumeclaims',editable=False)
@@ -119,6 +120,7 @@ class Ingress(models.Model):
         unique_together = [["cluster","namespace","name"]]
         ordering = ["cluster__name",'name']
 
+
 class IngressRule(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='ingresserules',editable=False)
     ingress = models.ForeignKey(Ingress, on_delete=models.CASCADE, related_name='rules',editable=False)
@@ -150,6 +152,7 @@ class IngressRule(models.Model):
 
     class Meta:
         unique_together = [["ingress","protocol","hostname","path"],["cluster","servicename"]]
+
 
 class Workload(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads',editable=False)
@@ -198,6 +201,7 @@ class Workload(models.Model):
         unique_together = [["cluster","namespace","name"]]
         ordering = ["cluster__name",'namespace','name']
 
+
 class WorkloadListening(models.Model):
     workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='listenings',editable=False)
     servicename = models.CharField(max_length=128,editable=False)
@@ -226,11 +230,12 @@ class WorkloadListening(models.Model):
     class Meta:
         unique_together = [["workload","servicename"]]
 
+
 class WorkloadEnv(models.Model):
     workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='envs',editable=False)
     name = models.CharField(max_length=128,editable=False)
     value = models.CharField(max_length=1024,editable=False,null=True)
-    
+
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
@@ -242,7 +247,7 @@ class WorkloadEnv(models.Model):
         unique_together = [["workload","name"]]
         ordering = ["workload",'name']
 
-    
+
 class WorkloadVolume(models.Model):
     workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='volumes',editable=False)
     name = models.CharField(max_length=128,editable=False)
@@ -257,7 +262,6 @@ class WorkloadVolume(models.Model):
 
     writable = models.BooleanField(default=False,editable=False)
 
-    
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
@@ -269,7 +273,7 @@ class WorkloadVolume(models.Model):
         unique_together = [["workload","name"],["workload","mountpath"]]
         ordering = ["workload",'name']
 
- 
+
 class DatabaseServer(models.Model):
     POSTGRES = "posgres"
     MYSQL = "mysql"
@@ -292,7 +296,6 @@ class DatabaseServer(models.Model):
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
 
-
     def __str__(self):
         if self.kind == "postgres" and self.port == 5432:
             return self.host
@@ -310,12 +313,12 @@ class Database(models.Model):
 
     created = models.DateTimeField(editable=False)
 
-
     def __str__(self):
         return "{}/{}".format(self.server,self.name)
 
     class Meta:
         ordering = ['server','name']
+
 
 class DatabaseUser(models.Model):
     server = models.ForeignKey(DatabaseServer, on_delete=models.CASCADE, related_name='users',editable=False)
@@ -332,6 +335,7 @@ class DatabaseUser(models.Model):
     class Meta:
         unique_together = [["server","user"]]
         ordering = ['server','user']
+
 
 class WorkloadDatabase(models.Model):
     workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='databases',editable=False)
@@ -350,4 +354,3 @@ class WorkloadDatabase(models.Model):
     class Meta:
         unique_together = [["workload","database","config_items"]]
         ordering = ['workload','database']
-
