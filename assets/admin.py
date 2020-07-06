@@ -1,4 +1,3 @@
-from datetime import date
 from django.contrib.admin import register, TabularInline
 from django.urls import path, reverse
 from django.forms import Form, FileField
@@ -7,8 +6,7 @@ from django.template.response import TemplateResponse
 from reversion.admin import VersionAdmin
 from io import BytesIO
 
-from .models import Vendor, HardwareModel, HardwareAsset, SoftwareAsset, HardwareInvoice
-from .utils import humanise_age
+from .models import Vendor, HardwareModel, HardwareAsset, HardwareInvoice
 from .views import HardwareAssetExport
 
 
@@ -171,24 +169,3 @@ class HardwareAssetAdmin(VersionAdmin):
         context['record_count'] = len(assets_created)
         return TemplateResponse(
             request, 'admin/hardwareasset_import_complete.html', context)
-
-
-@register(SoftwareAsset)
-class SoftwareAssetAdmin(VersionAdmin):
-    date_hierarchy = 'date_purchased'
-    fieldsets = (
-        ('Software asset details', {
-            'fields': (
-                'name', 'url', 'vendor', 'publisher', 'support', 'support_expiry',
-                'purchased_value', 'notes', 'service_request_url')
-        }),
-        ('License details', {
-            'fields': ('license', 'license_details', 'license_count')
-        }),
-        ('Asset ownership details', {
-            'fields': ('cost_centre', 'date_purchased')
-        }),
-    )
-    list_display = ('name', 'vendor', 'license')
-    list_filter = ('license',)
-    search_fields = ('name', 'vendor__name', 'service_request_url')

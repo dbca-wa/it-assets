@@ -1,15 +1,17 @@
 import importlib
 import logging
 import traceback
-import os
-
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+
 def _import_synctask():
+    if not settings.FOREIGN_TABLE:
+        return None
     table_name = settings.FOREIGN_TABLE
     return importlib.import_module("organisation.alesco.{}".format(table_name))
+
 
 synctask = _import_synctask()
 
@@ -21,7 +23,7 @@ def aleso_db_init():
     conn = synctask.alesco_db_connection()
     cur = None
     try:
-        conn.autocommit=True
+        conn.autocommit = True
         cur = conn.cursor()
 
         #check whether foreign table exist or not
@@ -38,12 +40,12 @@ def aleso_db_init():
         if not cur.fetchone()[0]:
             #oracle_fdw extension is not created
             cur.execute("create extension oracle_fdw;")
-            
+
         #create foreign server
         cur.execute("SELECT COUNT(*) FROM pg_foreign_server WHERE srvname='{}';".format(settings.FOREIGN_SERVER))
         if not cur.fetchone()[0]:
             #foreign server is not created
-            cur.execute("CREATE SERVER {} FOREIGN DATA WRAPPER oracle_fdw OPTIONS (dbserver '{}');".format(settings.FOREIGN_SERVER,settings.ALESCO_DB_SERVER))
+            cur.execute("CREATE SERVER {} FOREIGN DATA WRAPPER oracle_fdw OPTIONS (dbserver '{}');".format(settings.FOREIGN_SERVER, settings.ALESCO_DB_SERVER))
 
         #create user mapping
         cur.execute("SELECT COUNT(*) FROM pg_user_mapping a JOIN pg_authid b ON a.umuser=b.oid JOIN pg_foreign_server c ON a.umserver = c.oid  WHERE b.rolname='{}' AND c.srvname='{}';".format(
@@ -58,7 +60,7 @@ def aleso_db_init():
                 settings.ALESCO_DB_USER,
                 settings.ALESCO_DB_PASSWORD
             ))
-            
+
         #foreign table is not created
         cur.execute(synctask.FOREIGN_TABLE_SQL.format(
             foreign_schema=settings.FOREIGN_SCHEMA,
@@ -81,7 +83,9 @@ def aleso_db_init():
             except:
                 logger.error(traceback.format_exc())
 
-try:
-    aleso_db_init()
-except:
-    logger.error(traceback.format_exc())
+
+if settings.FOREIGN_TABLE and settings.FOREIGN_SCHEMA:
+    try:
+        aleso_db_init()
+    except:
+        logger.error(traceback.format_exc())

@@ -1,0 +1,56 @@
+[tool.poetry]
+name = "it-assets"
+version = "2.0.37"
+description = "DBCA IT assets (both physical and knowledge-based) management system"
+authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+Django = "2.2.14"
+psycopg2-binary = "2.8.5"
+dbca-utils = "1.1.1"
+django-extensions = "2.2.5"
+django-dotenv = "1.4.2"
+dj-database-url = "0.5.0"
+django-reversion = "3.0.7"
+gunicorn = "20.0.4"
+dj-static = "0.0.6"
+json2html = "1.2.1"
+django-mptt = "0.11.0"
+django-mptt-admin = "1.0.2"
+openpyxl = "2.6.2"
+unicodecsv = "0.14.1"
+python-dateutil = "2.8.1"
+django-leaflet = "0.24.0"
+Pillow = "7.2.0"
+restless = "2.1.1"
+django-queryset-csv = "1.0.0"
+Babel = "2.6.0"
+django-q = "1.0.2"
+redis = "3.5.3"
+XlsxWriter = "1.1.1"
+djangorestframework = "3.9.1"
+djangorestframework-csv = "2.1.0"
+djangorestframework-gis = "0.14"
+djangorestframework-recursive = "0.1.2"
+django-cors-headers = "2.4.0"
+django-crispy-forms = "1.7.2"
+adal = "1.2.0"
+boto3 = "1.9.86"
+python-nmap = "0.6.1"
+texttable = "1.6.1"
+titlecase = "0.12.0"
+sentry-sdk = "0.13.5"
+beautifulsoup4 = "4.8.0"
+pyyaml = "5.3.1"
+data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v2.7.1"}
+
+[tool.poetry.dev-dependencies]
+ipython = "^7.16.1"
+ipdb = "^0.13.3"
+mixer = "6.1.3"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
