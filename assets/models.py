@@ -5,7 +5,6 @@ from json2html import json2html
 import os
 
 from organisation.models import CommonFields, DepartmentUser, Location
-from tracking.models import Computer
 from django.urls import reverse
 
 from datetime import date
@@ -148,7 +147,6 @@ class HardwareAsset(Asset):
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True)
     assigned_user = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
-    tracked_computer = models.OneToOneField(Computer, on_delete=models.PROTECT, null=True, blank=True)
     local_property = models.BooleanField(
         default=False, help_text='''Indicates an item that is not registered with Finance (i.e. is
             valued <$5,000 and is not defined as portable and attractive).''')
@@ -232,8 +230,6 @@ class SoftwareAsset(Asset):
     license_count = models.PositiveSmallIntegerField(
         default=1, null=True, blank=True,
         help_text='The number of licenses, seats or subscriptions provided with this software asset.')
-    installations = models.ManyToManyField(
-        Computer, blank=True, help_text='Department computers on which this software is physically installed.')
 
     def __str__(self):
         return self.name

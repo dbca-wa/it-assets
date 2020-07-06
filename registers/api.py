@@ -10,7 +10,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 
 from itassets.utils import CSVDjangoResource
-from .models import ITSystem, ITSystemHardware, ChangeRequest, StandardChange
+from .models import ITSystem, ChangeRequest, StandardChange
 from .serializers import ChangeRequestSerializer, StandardChangeSerializer
 
 
@@ -145,21 +145,3 @@ class ITSystemResource(CSVDjangoResource):
 
     def list(self):
         return list(self.list_qs())
-
-
-class ITSystemHardwareResource(CSVDjangoResource):
-    VALUES_ARGS = ()
-
-    def prepare(self, data):
-        # Exclude decommissioned systems from the list of systems returned.
-        it_systems = data.itsystem_set.all().exclude(status=3)
-        return {
-            'hostname': data.computer.hostname,
-            'role': data.get_role_display(),
-            'it_systems': [i.name for i in it_systems],
-        }
-
-    def list(self):
-        return ITSystemHardware.objects.all()
-
-

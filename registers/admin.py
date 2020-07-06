@@ -15,7 +15,7 @@ from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
+    UserGroup, Platform, ITSystem, ITSystemDependency,
     StandardChange, ChangeRequest, ChangeLog)
 from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
 

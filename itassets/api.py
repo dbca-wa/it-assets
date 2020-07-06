@@ -85,11 +85,8 @@ class OptionResource(DjangoResource):
 api_urlpatterns = [
     url(r'^hardware-assets/csv/', HardwareAssetCSV.as_view()),
     url(r'^hardware-assets/', include(HardwareAssetResource.urls())),
-    # url(r'^ec2_instances/', include(EC2InstanceResource.urls())),
-    # url(r'^freshdesk_tickets/', include(FreshdeskTicketResource.urls())),
     url(r'^itsystems/', include(ITSystemResource.urls())),
     url(r'^itsystems.csv', ITSystemResource.as_csv),
-    # url(r'^itsystem-hardware/', include(ITSystemHardwareResource.urls())),
     url(r'^locations/', include(LocationResource.urls())),
     url(r'^locations.csv', LocationResource.as_csv),
     url(r'^users/', include(DepartmentUserResource.urls())),
