@@ -335,20 +335,20 @@ class WebAppLocationServer(models.Model):
         workloadlistening = None
         path = None
         #try to find the workloadlistening object through ingress rule
-        for listening in qs.filter(ingress_rule__hostname=self.server.name,ingress_rule__port=self.port).order_by("-ingress_rule__path"):
-            if not listening.path:
+        for listening in qs.filter(ingress_rule__hostname=self.location.app.name,ingress_rule__port=self.port).order_by("-ingress_rule__path"):
+            if not listening.ingress_rule.path:
                 if not workloadlistening:
                     workloadlistening = listening
-            elif self.location.startswith(listening.path):
+            elif self.location.startswith(listening.ingress_rule.path):
                 if not workloadlistening:
                     workloadlistening = listening
-                    path = listening.path
-                elif listening.path.startswith(path):
+                    path = listening.ingress_rule.path
+                elif listening.ingress_rule.path.startswith(path):
                     workloadlistening = listening
-                    path = listening.path
+                    path = listening.ingress_rule.path
 
-        if not workloadlistening and self.port >= 10000:
-            #try to locate the workload if port is larger than 10000
+        if not workloadlistening and self.port >= 30000:
+            #try to locate the workload if port is larger than 30000(custom container port)
             workloadlistening = qs.filter(listen_port=self.port).first()
 
         return workloadlistening.workload if workloadlistening else None
