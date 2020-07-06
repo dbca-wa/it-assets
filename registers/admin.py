@@ -17,35 +17,13 @@ import unicodecsv as csv
 from .models import (
     UserGroup, ITSystemHardware, Platform, ITSystem, ITSystemDependency,
     StandardChange, ChangeRequest, ChangeLog)
-from .views import ITSystemExport, ITSystemDiscrepancyReport, ITSystemHardwareExport, ChangeRequestExport
+from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
 
 
 @register(UserGroup)
 class UserGroupAdmin(VersionAdmin):
     list_display = ('name', 'user_count')
     search_fields = ('name',)
-
-
-@register(ITSystemHardware)
-class ITSystemHardwareAdmin(VersionAdmin):
-    list_display = ('computer', 'role', 'affected_itsystems', 'production', 'decommissioned', 'patch_group', 'host')
-    list_filter = ('role', 'production', 'decommissioned', 'patch_group', 'host')
-    raw_id_fields = ('computer',)
-    search_fields = ('computer__hostname', 'computer__sam_account_name', 'description', 'host')
-    # Override the default reversion/change_list.html template:
-    change_list_template = 'admin/registers/itsystemhardware/change_list.html'
-
-    def affected_itsystems(self, obj):
-        # Exclude decommissioned systems from the count.
-        count = obj.itsystem_set.count()
-        url = reverse('admin:registers_itsystem_changelist')
-        return mark_safe('<a href="{}?hardwares__in={}">{}</a>'.format(url, obj.pk, count))
-    affected_itsystems.short_description = 'IT Systems'
-
-    def get_urls(self):
-        urls = super(ITSystemHardwareAdmin, self).get_urls()
-        urls = [path('export/', self.admin_site.admin_view(ITSystemHardwareExport.as_view()), name='itsystemhardware_export')] + urls
-        return urls
 
 
 @register(Platform)
@@ -77,7 +55,7 @@ class ITSystemForm(forms.ModelForm):
 
 @register(ITSystem)
 class ITSystemAdmin(VersionAdmin):
-    filter_horizontal = ('platforms', 'hardwares', 'user_groups')
+    filter_horizontal = ('platforms', 'user_groups')
     list_display = (
         'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support')
     list_filter = (
@@ -115,7 +93,6 @@ class ITSystemAdmin(VersionAdmin):
                 'network_storage',
                 'system_reqs',
                 'platforms',
-                'hardwares',
                 'oim_internal_only',
                 ('authentication', 'access'),
                 'biller_code',
@@ -189,7 +166,7 @@ class ITSystemDependencyAdmin(VersionAdmin):
             'IT System', 'System status', 'Dependency', 'Dependency status',
             'Criticality', 'Description']
 
-        # Write data for ITSystemHardware objects to the CSV.
+        # Write data for ITSystemDependency objects to the CSV.
         stream = BytesIO()
         wr = csv.writer(stream, encoding='utf-8')
         wr.writerow(fields)  # CSV header row.
@@ -207,7 +184,7 @@ class ITSystemDependencyAdmin(VersionAdmin):
         # Returns a CSV containing all systems without dependencies recorded.
         fields = ['IT System', 'System status']
 
-        # Write data for ITSystemHardware objects to the CSV.
+        # Write data for ITSystemDependency objects to the CSV.
         stream = BytesIO()
         wr = csv.writer(stream, encoding='utf-8')
         wr.writerow(fields)  # CSV header row.
