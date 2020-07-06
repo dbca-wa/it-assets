@@ -1,15 +1,14 @@
 from django.conf.urls import include, url
 from mptt.templatetags.mptt_tags import cache_tree_children
 from restless.dj import DjangoResource
-from restless.preparers import FieldsPreparer
 from restless.resources import skip_prepare
 
 from assets.api import HardwareAssetResource, HardwareAssetCSV
 from organisation.api import DepartmentUserResource, LocationResource, UserSelectResource, profile
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
-from registers.api import ITSystemResource, ITSystemHardwareResource
+from registers.api import ITSystemResource
 from registers.models import ITSystem
-from tracking.api import EC2InstanceResource, FreshdeskTicketResource
+# from tracking.api import EC2InstanceResource, FreshdeskTicketResource
 
 
 def recursive_node_to_dict(node):
@@ -86,11 +85,11 @@ class OptionResource(DjangoResource):
 api_urlpatterns = [
     url(r'^hardware-assets/csv/', HardwareAssetCSV.as_view()),
     url(r'^hardware-assets/', include(HardwareAssetResource.urls())),
-    url(r'^ec2_instances/', include(EC2InstanceResource.urls())),
-    url(r'^freshdesk_tickets/', include(FreshdeskTicketResource.urls())),
+    # url(r'^ec2_instances/', include(EC2InstanceResource.urls())),
+    # url(r'^freshdesk_tickets/', include(FreshdeskTicketResource.urls())),
     url(r'^itsystems/', include(ITSystemResource.urls())),
     url(r'^itsystems.csv', ITSystemResource.as_csv),
-    url(r'^itsystem-hardware/', include(ITSystemHardwareResource.urls())),
+    # url(r'^itsystem-hardware/', include(ITSystemHardwareResource.urls())),
     url(r'^locations/', include(LocationResource.urls())),
     url(r'^locations.csv', LocationResource.as_csv),
     url(r'^users/', include(DepartmentUserResource.urls())),
