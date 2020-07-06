@@ -14,7 +14,8 @@ class Command(BaseCommand):
             status=3, planned_end__lte=datetime.now().astimezone(timezone(settings.TIME_ZONE)), completed__isnull=True)
 
         for rfc in rfcs:
-            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
-            rfc.email_implementer()
-            log = ChangeLog(change_request=rfc, log=msg)
-            log.save()
+            if rfc.implementer:
+                msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
+                rfc.email_implementer()
+                log = ChangeLog(change_request=rfc, log=msg)
+                log.save()

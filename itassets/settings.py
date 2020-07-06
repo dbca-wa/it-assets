@@ -1,7 +1,6 @@
 from dbca_utils.utils import env
 import dj_database_url
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -48,11 +47,8 @@ INSTALLED_APPS = (
     'assets',
     'webconfig',
     'knowledge',
-    'recoup',
+    # 'recoup',
     'status',
-    #'helpdesk',
-    #'markdown_deux',
-    #'bootstrapform',
     'nginx',
     'rancher'
 )
@@ -98,32 +94,32 @@ AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
 
 # alesco binding information
-FOREIGN_DB_HOST = env('FOREIGN_DB_HOST',required=False if DEBUG else True)
-FOREIGN_DB_PORT = env('FOREIGN_DB_PORT',default=5432)
-FOREIGN_DB_NAME = env('FOREIGN_DB_NAME',required=False if DEBUG else True)
-FOREIGN_DB_USERNAME = env('FOREIGN_DB_USERNAME',required=False if DEBUG else True)
-FOREIGN_DB_PASSWORD = env('FOREIGN_DB_PASSWORD',required=False if DEBUG else True)
-FOREIGN_SERVER = env('FOREIGN_SERVER',required=False if DEBUG else True)
-FOREIGN_SCHEMA = env('FOREIGN_SCHEMA',default='public')
-FOREIGN_TABLE = env('FOREIGN_TABLE',required=False if DEBUG else True)
+FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', required=False if DEBUG else True)
+FOREIGN_DB_PORT = env('FOREIGN_DB_PORT', default=5432)
+FOREIGN_DB_NAME = env('FOREIGN_DB_NAME', required=False if DEBUG else True)
+FOREIGN_DB_USERNAME = env('FOREIGN_DB_USERNAME', required=False if DEBUG else True)
+FOREIGN_DB_PASSWORD = env('FOREIGN_DB_PASSWORD', required=False if DEBUG else True)
+FOREIGN_SERVER = env('FOREIGN_SERVER', required=False if DEBUG else True)
+FOREIGN_SCHEMA = env('FOREIGN_SCHEMA', default='public')
+FOREIGN_TABLE = env('FOREIGN_TABLE', required=False if DEBUG else True)
 
-ALESCO_DB_SERVER=env('ALESCO_DB_SERVER',required=False if DEBUG else True)
-ALESCO_DB_USER=env('ALESCO_DB_USER',required=False if DEBUG else True)
-ALESCO_DB_PASSWORD=env('ALESCO_DB_PASSWORD',required=False if DEBUG else True)
-ALESCO_DB_TABLE=env('ALESCO_DB_TABLE',required=False if DEBUG else True)
-ALESCO_DB_SCHEMA=env('ALESCO_DB_SCHEMA',required=False if DEBUG else True)
+ALESCO_DB_SERVER = env('ALESCO_DB_SERVER', required=False if DEBUG else True)
+ALESCO_DB_USER = env('ALESCO_DB_USER', required=False if DEBUG else True)
+ALESCO_DB_PASSWORD = env('ALESCO_DB_PASSWORD', required=False if DEBUG else True)
+ALESCO_DB_TABLE = env('ALESCO_DB_TABLE', required=False if DEBUG else True)
+ALESCO_DB_SCHEMA = env('ALESCO_DB_SCHEMA', required=False if DEBUG else True)
 
 
-NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING",required=False if DEBUG else True)
-NGINX_CONTAINER = env("NGINX_CONTAINER",required=False if DEBUG else True)
-NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME",required=False if DEBUG else True)
-NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID",required=False if DEBUG else True)
+NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING", required=False if DEBUG else True)
+NGINX_CONTAINER = env("NGINX_CONTAINER", required=False if DEBUG else True)
+NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME", required=False if DEBUG else True)
+NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID", required=False if DEBUG else True)
 
-RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING",required=False if DEBUG else True)
-RANCHER_CONTAINER = env("RANCHER_CONTAINER",required=False if DEBUG else True)
-RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME",required=False if DEBUG else True)
-RANCHER_RESOURCE_CLIENTID = env("RANCHER_RESOURCE_CLIENTID",required=False if DEBUG else True)
-RANCHER_MANAGEMENT_URL = env("RANCHER_MANAGEMENT_URL",default="https://rks.dbca.wa.gov.au")
+RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING", required=False if DEBUG else True)
+RANCHER_CONTAINER = env("RANCHER_CONTAINER", required=False if DEBUG else True)
+RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME", required=False if DEBUG else True)
+RANCHER_RESOURCE_CLIENTID = env("RANCHER_RESOURCE_CLIENTID", required=False if DEBUG else True)
+RANCHER_MANAGEMENT_URL = env("RANCHER_MANAGEMENT_URL", default="https://rks.dbca.wa.gov.au")
 
 # Database configuration
 DATABASES = {
@@ -190,12 +186,12 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console'],
-			'propagate': True,
+            'propagate': True,
         },
         'django.request': {
             'handlers': ['console'],
             'level': 'WARNING',
-			'propagate': False,
+            'propagate': False,
         },
         'itassets': {
             'handlers': ['console'],
@@ -250,7 +246,7 @@ Q_CLUSTER = {
 
 
 # Sentry configuration
-if env('SENTRY_DSN', False):
+if env('SENTRY_DSN', ''):
     SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
 
 

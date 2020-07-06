@@ -129,7 +129,7 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
         rfc = self.get_object()
         context['may_complete'] = (
             rfc.is_ready and
-            self.request.user.email in [rfc.requester.email, rfc.implementer.email] and
+            self.request.user.email.lower() in [rfc.requester.email.lower(), rfc.implementer.email.lower()] and
             rfc.planned_end <= datetime.now().astimezone(TZ)
         )
         # Context variables that determines if determine is certain template elements are displayed.
@@ -174,9 +174,9 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         rfc = form.save(commit=False)
-        # Set the requester as the request user.
-        if DepartmentUser.objects.filter(email=self.request.user.email).exists():
-            rfc.requester = DepartmentUser.objects.get(email=self.request.user.email)
+        # Set the requester as the request user (email match case-insensitive).
+        if DepartmentUser.objects.filter(email__iexact=self.request.user.email).exists():
+            rfc.requester = DepartmentUser.objects.get(email__iexact=self.request.user.email)
         # Set the endorser and implementer (if required).
         if self.request.POST.get('endorser_choice'):
             rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
@@ -508,7 +508,7 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
             messages.warning(self.request, 'Change request {} is not ready for completion.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         # Business rule: only the implementer or requester may complete the change.
-        if self.request.user.email not in [rfc.requester.email, rfc.implementer.email]:
+        if self.request.user.email.lower() not in [rfc.requester.email.lower(), rfc.implementer.email.lower()]:
             messages.warning(self.request, 'You are not authorised to complete change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
         return super(ChangeRequestComplete, self).get(request, *args, **kwargs)

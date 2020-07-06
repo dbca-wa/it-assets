@@ -6,8 +6,7 @@ from django.urls import reverse
 from mixer.backend.django import mixer
 from pytz import timezone
 
-from registers.models import ITSystem, Incident, ChangeRequest, ChangeLog
-
+from registers.models import ITSystem, ChangeRequest, ChangeLog
 from itassets.test_api import ApiTestCase
 
 User = get_user_model()
@@ -24,21 +23,9 @@ class RegistersViewsTestCase(TestCase):
         self.n_user.save()
         self.client.login(username='normaluser', password='pass')
         mixer.blend(ITSystem)
-        mixer.blend(Incident)
-        self.incident = Incident.objects.first()
 
     def test_itsystem_export(self):
         url = reverse('itsystem_export')
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
-
-    def test_incident_list(self):
-        url = reverse('incident_list')
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
-
-    def test_incident_detail(self):
-        url = reverse('incident_detail', kwargs={'pk': self.incident.pk})
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
 
