@@ -347,7 +347,8 @@ class WebAppLocationServer(models.Model):
                     workloadlistening = listening
                     path = listening.path
 
-        if not workloadlistening:
+        if not workloadlistening and self.port >= 10000:
+            #try to locate the workload if port is larger than 10000
             workloadlistening = qs.filter(listen_port=self.port).first()
 
         return workloadlistening.workload if workloadlistening else None
