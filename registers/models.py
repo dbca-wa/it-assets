@@ -329,6 +329,7 @@ class ITSystemDependency(models.Model):
 
 class Incident(models.Model):
     """Represents an ITIL incident that affects one or more IT Systems, services or locations.
+    NOTE: DEPRECATED.
     """
     PRIORITY_CHOICES = (
         ('L0', 'Low - L0'),
@@ -439,6 +440,7 @@ class Incident(models.Model):
 
 class IncidentLog(models.Model):
     """Represents a log entry related to a single Incident.
+    NOTE: DEPRECATED.
     """
     incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
     created = models.DateTimeField(auto_now_add=True)
