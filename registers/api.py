@@ -88,14 +88,6 @@ class ITSystemResource(CSVDjangoResource):
                 'telephone': data.ah_support.telephone} if data.ah_support else {},
             'availability': data.get_availability_display() if data.availability else '',
             'status': data.get_status_display() if data.status else '',
-            'hardwares': [{
-                'computer': i.computer.hostname,
-                'role': i.get_role_display(),
-                'computer__location': i.computer.location.name if i.computer.location else '',
-                'operating_system': i.computer.os_name if i.computer.os_name else '',
-                'description': i.description,
-                'patch_group': i.patch_group
-            } for i in data.hardwares.filter(decommissioned=False)],
             'dependencies': [{
                 'dependency__system_id': i.dependency.system_id,
                 'dependency__name': i.dependency.name,
