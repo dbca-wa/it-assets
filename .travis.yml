@@ -1,4 +1,4 @@
-dist: xenial
+dist: bionic
 sudo: required
 language: python
 cache: pip
@@ -11,6 +11,7 @@ addons:
     postgresql: "10"
     apt:
         packages:
+            - gdal-bin
             - postgresql-10-postgis-2.4
 branches:
     only:
@@ -21,20 +22,13 @@ env:
         - DATABASE_URL="postgis://postgres@localhost:5432/travis_ci_test"
 before_install:
     - docker build -t dbcawa/it-assets .
-install:
     - pip install --upgrade pip
-    - pip install --upgrade setuptools
-    - pip install six
-    - pip install -r requirements.txt
+    - pip install poetry
+install:
+    - poetry install --verbose --no-interaction --no-ansi
 before_script:
-    - psql -c 'create extension postgis' -U postgres
-    - psql -c 'create database travis_ci_test;' -U postgres
+    - psql -U postgres -c "create database travis_ci_test;"
+    - psql -U postgres -d travis_ci_test -c "create extension postgis;"
     - python manage.py migrate --noinput
 script:
     - python manage.py test
-deploy:
-    provider: script
-    script: bash .travis_build.sh
-    on:
-        branch: master
-        condition: $TRAVIS_PULL_REQUEST = false

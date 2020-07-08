@@ -9,4 +9,3 @@ steps:
     command: 'buildAndPush'
     Dockerfile: '**/Dockerfile'
     tags: 'azure-pipeline-$(Build.BuildId)'
-
