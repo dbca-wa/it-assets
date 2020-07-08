@@ -15,7 +15,7 @@ from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, Platform, ITSystem, ITSystemDependency,
+    UserGroup, ITSystem, ITSystemDependency,
     StandardChange, ChangeRequest, ChangeLog)
 from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
 
@@ -24,20 +24,6 @@ from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExpor
 class UserGroupAdmin(VersionAdmin):
     list_display = ('name', 'user_count')
     search_fields = ('name',)
-
-
-@register(Platform)
-class PlatformAdmin(VersionAdmin):
-    list_display = ('name', 'category', 'affected_itsystems')
-    list_filter = ('category',)
-    search_fields = ('name',)
-
-    def affected_itsystems(self, obj):
-        # Exclude decommissioned systems from the count.
-        count = obj.itsystem_set.all().exclude(status=3).count()
-        url = reverse('admin:registers_itsystem_changelist')
-        return mark_safe('<a href="{}?platforms__in={}">{}</a>'.format(url, obj.pk, count))
-    affected_itsystems.short_description = 'IT Systems'
 
 
 class ITSystemForm(forms.ModelForm):
@@ -55,7 +41,7 @@ class ITSystemForm(forms.ModelForm):
 
 @register(ITSystem)
 class ITSystemAdmin(VersionAdmin):
-    filter_horizontal = ('platforms', 'user_groups')
+    filter_horizontal = ('user_groups',)
     list_display = (
         'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support')
     list_filter = (
@@ -92,7 +78,6 @@ class ITSystemAdmin(VersionAdmin):
                 'database_server',
                 'network_storage',
                 'system_reqs',
-                'platforms',
                 'oim_internal_only',
                 ('authentication', 'access'),
                 'biller_code',
