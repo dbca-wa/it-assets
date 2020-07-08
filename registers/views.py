@@ -13,13 +13,13 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import re
 
-from .models import ITSystem, ITSystemHardware, Incident, ChangeRequest, ChangeLog, StandardChange
+from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm, ChangeRequestApprovalForm
 )
-from .reports import it_system_export, itsr_staff_discrepancies, it_system_hardware_export, incident_export, change_request_export
+from .reports import it_system_export, itsr_staff_discrepancies, incident_export, change_request_export
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -49,18 +49,6 @@ class ITSystemDiscrepancyReport(LoginRequiredMixin, View):
         response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
         response = itsr_staff_discrepancies(response, it_systems)
-        return response
-
-
-class ITSystemHardwareExport(LoginRequiredMixin, View):
-    """A custom view to export IT ystem hardware to an Excel spreadsheet.
-    NOTE: report output excludes objects that are marked as decommissioned.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_system_hardware_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-        hardware = ITSystemHardware.objects.filter(decommissioned=False)
-        response = it_system_hardware_export(response, hardware)
         return response
 
 

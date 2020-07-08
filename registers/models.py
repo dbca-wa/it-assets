@@ -11,7 +11,6 @@ from os import path
 from pytz import timezone
 
 from organisation.models import CommonFields, DepartmentUser, Location
-from tracking.models import Computer
 from .utils import smart_truncate
 
 TZ = timezone(settings.TIME_ZONE)
@@ -55,53 +54,6 @@ class UserGroup(models.Model):
 
     def __str__(self):
         return '{} ({})'.format(self.name, self.user_count)
-
-
-class ITSystemHardware(models.Model):
-    """A model to represent the relationship between IT Systems and Computers,
-    i.e. what role each Computer serves and which IT System(s) make use of them.
-    """
-    ROLE_CHOICES = (
-        (1, 'Application server'),
-        (2, 'Database server'),
-        (3, 'Network file storage'),
-        (4, 'Reverse proxy'),
-        (5, 'Shared workstation'),
-    )
-    computer = models.ForeignKey(Computer, on_delete=models.PROTECT)
-    role = models.PositiveSmallIntegerField(choices=ROLE_CHOICES)
-    production = models.BooleanField(
-        default=False, help_text='Hardware is used by production IT system.')
-    decommissioned = models.BooleanField(
-        default=False, help_text='Hardware has been decommissioned?')
-    description = models.TextField(blank=True)
-    patch_group = models.CharField(
-        max_length=256, null=True, blank=True, help_text='Patch group that this host has been placed in.')
-    host = models.CharField(
-        max_length=256, null=True, blank=True, help_text='Host, or hosting environment.')
-
-    class Meta:
-        verbose_name_plural = 'IT System hardware'
-        unique_together = ('computer', 'role')
-        ordering = ('computer__hostname',)
-
-    def __str__(self):
-        if self.production:
-            return '{} (prod {})'.format(self.computer.hostname, self.get_role_display().lower())
-        else:
-            return '{} (non-prod {})'.format(self.computer.hostname, self.get_role_display().lower())
-
-    def set_patch_group(self):
-        """Follow relationships (self -> computer -> ec2_instance) to see if
-        the patch_group value for this object can be automatically set.
-        """
-        if self.computer and self.computer.ec2_instance:
-            ec2 = self.computer.ec2_instance
-            if 'Patch Group' in ec2.tags:
-                self.patch_group = ec2.tags['Patch Group']
-                self.save()
-
-        return self.patch_group
 
 
 class Platform(models.Model):
@@ -273,9 +225,6 @@ class ITSystem(CommonFields):
         choices=ACCESS_CHOICES, default=3, null=True, blank=True,
         help_text='The network upon which this system is accessible.')
     platforms = models.ManyToManyField(Platform, blank=True)
-    hardwares = models.ManyToManyField(
-        ITSystemHardware, blank=True, verbose_name='hardware',
-        help_text='[DEPRECATED] Hardware that is used to provide this system')
     application_type = models.PositiveSmallIntegerField(
         choices=APPLICATION_TYPE_CHOICES, null=True, blank=True)
     system_type = models.PositiveSmallIntegerField(
@@ -380,6 +329,7 @@ class ITSystemDependency(models.Model):
 
 class Incident(models.Model):
     """Represents an ITIL incident that affects one or more IT Systems, services or locations.
+    NOTE: DEPRECATED.
     """
     PRIORITY_CHOICES = (
         ('L0', 'Low - L0'),
@@ -490,6 +440,7 @@ class Incident(models.Model):
 
 class IncidentLog(models.Model):
     """Represents a log entry related to a single Incident.
+    NOTE: DEPRECATED.
     """
     incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
     created = models.DateTimeField(auto_now_add=True)

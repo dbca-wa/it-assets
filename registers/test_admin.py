@@ -4,7 +4,6 @@ from django.test import Client
 from mixer.backend.django import mixer
 from itassets.test_api import ApiTestCase
 
-from registers.models import ITSystemHardware
 from tracking.models import Computer
 User = get_user_model()
 
@@ -21,24 +20,8 @@ class RegistersAdminTestCase(ApiTestCase):
         # Create some Computers
         self.com1 = mixer.blend(Computer)
         self.com2 = mixer.blend(Computer)
-        # Create some ITSystemHardware objects
-        self.itsys1 = mixer.blend(ITSystemHardware, computer=self.com1, production=True)
-        self.itsys2 = mixer.blend(ITSystemHardware, computer=self.com2)
-        # Attach ITSystemHardware to ITSystem objects.
-        self.it1.hardwares.add(self.itsys1)
-        self.it2.hardwares.add(self.itsys2)
         # Log in as admin user by default
         self.client.login(username='admin', password='pass')
-
-    def test_itsystemhardware_export(self):
-        """Test the ITSystemHardwareAdmin export view
-        """
-        url = reverse('admin:itsystemhardware_export')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.has_header("Content-Disposition"))
-        self.assertEqual(response['Content-Type'],
-                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     def test_itsystem_export(self):
         """Test the ITSystemAdmin export view

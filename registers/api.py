@@ -10,7 +10,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 
 from itassets.utils import CSVDjangoResource
-from .models import ITSystem, ITSystemHardware, ChangeRequest, StandardChange
+from .models import ITSystem, ChangeRequest, StandardChange
 from .serializers import ChangeRequestSerializer, StandardChangeSerializer
 
 
@@ -88,14 +88,6 @@ class ITSystemResource(CSVDjangoResource):
                 'telephone': data.ah_support.telephone} if data.ah_support else {},
             'availability': data.get_availability_display() if data.availability else '',
             'status': data.get_status_display() if data.status else '',
-            'hardwares': [{
-                'computer': i.computer.hostname,
-                'role': i.get_role_display(),
-                'computer__location': i.computer.location.name if i.computer.location else '',
-                'operating_system': i.computer.os_name if i.computer.os_name else '',
-                'description': i.description,
-                'patch_group': i.patch_group
-            } for i in data.hardwares.filter(decommissioned=False)],
             'dependencies': [{
                 'dependency__system_id': i.dependency.system_id,
                 'dependency__name': i.dependency.name,
@@ -145,21 +137,3 @@ class ITSystemResource(CSVDjangoResource):
 
     def list(self):
         return list(self.list_qs())
-
-
-class ITSystemHardwareResource(CSVDjangoResource):
-    VALUES_ARGS = ()
-
-    def prepare(self, data):
-        # Exclude decommissioned systems from the list of systems returned.
-        it_systems = data.itsystem_set.all().exclude(status=3)
-        return {
-            'hostname': data.computer.hostname,
-            'role': data.get_role_display(),
-            'it_systems': [i.name for i in it_systems],
-        }
-
-    def list(self):
-        return ITSystemHardware.objects.all()
-
-

@@ -41,7 +41,7 @@ class HardwareAssetAdmin(VersionAdmin):
         ('Hardware asset details', {
             'fields': (
                 'asset_tag', 'finance_asset_tag', 'serial', 'vendor', 'hardware_model',
-                'status', 'notes', 'service_request_url', 'tracked_computer')
+                'status', 'notes', 'service_request_url')
         }),
         ('Location & ownership details', {
             'fields': (

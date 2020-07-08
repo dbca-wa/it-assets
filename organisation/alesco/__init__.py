@@ -13,7 +13,10 @@ def _import_synctask():
     return importlib.import_module("organisation.alesco.{}".format(table_name))
 
 
-synctask = _import_synctask()
+if settings.FOREIGN_TABLE:
+    synctask = _import_synctask()
+else:
+    synctask = None
 
 
 def aleso_db_init():

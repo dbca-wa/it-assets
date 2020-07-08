@@ -2,11 +2,9 @@ from rest_framework import routers
 from assets.api_v2 import HardwareAssetViewSet
 from organisation.api_v2 import DepartmentUserViewSet, DepartmentTreeViewSet, LocationViewSet, OrgUnitViewSet, OrgTreeViewSet, CostCentreViewSet
 from registers.api_v2 import StandardChangeViewSet, ChangeRequestViewSet
-from webconfig.api_v2 import SiteViewSet
 
 
 api_v2_router = routers.DefaultRouter()
-api_v2_router.register(r'webconfig', SiteViewSet)
 api_v2_router.register(r'departmenttree', DepartmentTreeViewSet)
 api_v2_router.register(r'departmentuser', DepartmentUserViewSet)
 api_v2_router.register(r'location', LocationViewSet)

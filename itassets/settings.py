@@ -45,7 +45,7 @@ INSTALLED_APPS = (
     'registers',
     'tracking',
     'assets',
-    'webconfig',
+    # 'webconfig',
     'knowledge',
     # 'recoup',
     'status',
@@ -93,33 +93,33 @@ FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
 AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
 
-# alesco binding information
-FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', required=False if DEBUG else True)
+# Alesco binding information
+FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
 FOREIGN_DB_PORT = env('FOREIGN_DB_PORT', default=5432)
-FOREIGN_DB_NAME = env('FOREIGN_DB_NAME', required=False if DEBUG else True)
-FOREIGN_DB_USERNAME = env('FOREIGN_DB_USERNAME', required=False if DEBUG else True)
-FOREIGN_DB_PASSWORD = env('FOREIGN_DB_PASSWORD', required=False if DEBUG else True)
-FOREIGN_SERVER = env('FOREIGN_SERVER', required=False if DEBUG else True)
+FOREIGN_DB_NAME = env('FOREIGN_DB_NAME', None)
+FOREIGN_DB_USERNAME = env('FOREIGN_DB_USERNAME', None)
+FOREIGN_DB_PASSWORD = env('FOREIGN_DB_PASSWORD', None)
+FOREIGN_SERVER = env('FOREIGN_SERVER', None)
 FOREIGN_SCHEMA = env('FOREIGN_SCHEMA', default='public')
-FOREIGN_TABLE = env('FOREIGN_TABLE', required=False if DEBUG else True)
+FOREIGN_TABLE = env('FOREIGN_TABLE', None)
 
-ALESCO_DB_SERVER = env('ALESCO_DB_SERVER', required=False if DEBUG else True)
-ALESCO_DB_USER = env('ALESCO_DB_USER', required=False if DEBUG else True)
-ALESCO_DB_PASSWORD = env('ALESCO_DB_PASSWORD', required=False if DEBUG else True)
-ALESCO_DB_TABLE = env('ALESCO_DB_TABLE', required=False if DEBUG else True)
-ALESCO_DB_SCHEMA = env('ALESCO_DB_SCHEMA', required=False if DEBUG else True)
+ALESCO_DB_SERVER = env('ALESCO_DB_SERVER', None)
+ALESCO_DB_USER = env('ALESCO_DB_USER', None)
+ALESCO_DB_PASSWORD = env('ALESCO_DB_PASSWORD', None)
+ALESCO_DB_TABLE = env('ALESCO_DB_TABLE', None)
+ALESCO_DB_SCHEMA = env('ALESCO_DB_SCHEMA', None)
 
+NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING", None)
+NGINX_CONTAINER = env("NGINX_CONTAINER", None)
+NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME", None)
+NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID", None)
 
-NGINX_STORAGE_CONNECTION_STRING = env("NGINX_STORAGE_CONNECTION_STRING", required=False if DEBUG else True)
-NGINX_CONTAINER = env("NGINX_CONTAINER", required=False if DEBUG else True)
-NGINX_RESOURCE_NAME = env("NGINX_RESOURCE_NAME", required=False if DEBUG else True)
-NGINX_RESOURCE_CLIENTID = env("NGINX_RESOURCE_CLIENTID", required=False if DEBUG else True)
-
-RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING", required=False if DEBUG else True)
-RANCHER_CONTAINER = env("RANCHER_CONTAINER", required=False if DEBUG else True)
-RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME", required=False if DEBUG else True)
-RANCHER_RESOURCE_CLIENTID = env("RANCHER_RESOURCE_CLIENTID", required=False if DEBUG else True)
+RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING", None)
+RANCHER_CONTAINER = env("RANCHER_CONTAINER", None)
+RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME", None)
+RANCHER_RESOURCE_CLIENTID = env("RANCHER_RESOURCE_CLIENTID", None)
 RANCHER_MANAGEMENT_URL = env("RANCHER_MANAGEMENT_URL", default="https://rks.dbca.wa.gov.au")
+
 
 # Database configuration
 DATABASES = {
