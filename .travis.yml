@@ -8,11 +8,11 @@ services:
     - postgresql
     - docker
 addons:
-    postgresql: "10"
+    postgresql: "11"
     apt:
         packages:
             - gdal-bin
-            - postgresql-10-postgis-2.4
+            - postgresql-11-postgis-2.5
 branches:
     only:
         - master
@@ -25,7 +25,8 @@ before_install:
     - pip install --upgrade pip
     - pip install poetry
 install:
-    - poetry install --verbose --no-interaction --no-ansi
+    - poetry config virtualenvs.create false
+    - poetry install --no-interaction --no-ansi
 before_script:
     - psql -U postgres -c "create database travis_ci_test;"
     - psql -U postgres -d travis_ci_test -c "create extension postgis;"
