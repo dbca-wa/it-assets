@@ -41,11 +41,32 @@ class ITSystemForm(forms.ModelForm):
 
 @register(ITSystem)
 class ITSystemAdmin(VersionAdmin):
+
+    class PlatformFilter(SimpleListFilter):
+        """SimpleListFilter to filter on True/False if an object has a value for platform.
+        """
+        title = 'platform'
+        parameter_name = 'platform_boolean'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('true', 'Present'),
+                ('false', 'Absent'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'true':
+                return queryset.filter(platform__isnull=False)
+            if self.value() == 'false':
+                return queryset.filter(platform__isnull=True)
+
     filter_horizontal = ('user_groups',)
     list_display = (
-        'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support')
+        'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support',
+        'platform',
+    )
     list_filter = (
-        'status', 'system_type', 'availability', 'seasonality', 'recovery_category')
+        'status', 'system_type', 'availability', 'seasonality', 'recovery_category', PlatformFilter)
     search_fields = (
         'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
         'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation', 'cost_centre__code')
