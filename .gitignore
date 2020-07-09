@@ -19,3 +19,4 @@ start_server
 *.sqlite3
 .coverage
 *.swp
+.python-version
