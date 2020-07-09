@@ -68,7 +68,10 @@ class Dependency(models.Model):
         verbose_name_plural = "dependencies"
 
     def __str__(self):
-        return "{} - {} ({})".format(self.content_object, self.type, self.health)
+        s = "{} - {}".format(self.content_object, self.type)
+        if self.health:
+            s += " ({})".format(self.health)
+        return s
 
 
 PLATFORM_TIER_CHOICES = (

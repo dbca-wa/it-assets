@@ -83,6 +83,9 @@ class ITSystemAdmin(VersionAdmin):
                 'biller_code',
             )
         }),
+        ('System dependencies', {
+            'fields': ('platform', 'dependencies')
+        }),
         ('Retention and disposal', {
             'fields': (
                 'defunct_date',
