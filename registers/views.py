@@ -13,13 +13,14 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import re
 
+from bigpicture.models import Platform
 from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm, ChangeRequestApprovalForm
 )
-from .reports import it_system_export, itsr_staff_discrepancies, incident_export, change_request_export
+from .reports import it_system_export, itsr_staff_discrepancies, incident_export, change_request_export, it_system_platform_export
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -30,7 +31,9 @@ class ITSystemExport(LoginRequiredMixin, View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_systems_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+        response['Content-Disposition'] = 'attachment; filename=it_systems_{}_{}.xlsx'.format(
+            date.today().isoformat(), datetime.now().strftime('%H%M')
+        )
 
         if 'all' in request.GET:  # Return all IT systems.
             it_systems = ITSystem.objects.all().order_by('system_id')
@@ -46,9 +49,30 @@ class ITSystemDiscrepancyReport(LoginRequiredMixin, View):
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+        response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(
+            date.today().isoformat(), datetime.now().strftime('%H%M')
+        )
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
         response = itsr_staff_discrepancies(response, it_systems)
+        return response
+
+
+class ITSystemPlatformExport(LoginRequiredMixin, View):
+    """A custom view to export IT System & their platform to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=it_systems_platforms_{}_{}.xlsx'.format(
+            date.today().isoformat(), datetime.now().strftime('%H%M')
+        )
+
+        if 'all' in request.GET:  # Return all IT systems.
+            it_systems = ITSystem.objects.all().order_by('system_id')
+        else:  # Default to prod/prod-legacy IT systems only.
+            it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+
+        platforms = Platform.objects.all()
+        response = it_system_platform_export(response, it_systems, platforms)
         return response
 
 
