@@ -29,6 +29,11 @@ class RegistersViewsTestCase(TestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
 
+    def test_itsystem_platform_export(self):
+        url = reverse('itsystem_platform_export')
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
 
 class ChangeRequestViewsTestCase(TestCase):
     client = Client()

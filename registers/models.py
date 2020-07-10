@@ -11,6 +11,7 @@ from os import path
 from pytz import timezone
 
 from organisation.models import CommonFields, DepartmentUser, Location
+from bigpicture.models import Dependency, Platform
 from .utils import smart_truncate
 
 TZ = timezone(settings.TIME_ZONE)
@@ -54,34 +55,6 @@ class UserGroup(models.Model):
 
     def __str__(self):
         return '{} ({})'.format(self.name, self.user_count)
-
-
-class Platform(models.Model):
-    """A model to represent an IT System Platform Service, as defined in the
-    Department IT Strategy.
-    """
-    PLATFORM_CATEGORY_CHOICES = (
-        ('db', 'Database'),
-        ('dns', 'DNS'),
-        ('email', 'Email'),
-        ('idam', 'Identity & access management'),
-        ('middle', 'Middleware'),
-        ('phone', 'Phone system'),
-        ('proxy', 'Reverse proxy'),
-        ('storage', 'Storage'),
-        ('vpn', 'VPN'),
-        ('vm', 'Virtualisation'),
-        ('web', 'Web server'),
-    )
-    category = models.CharField(max_length=64, choices=PLATFORM_CATEGORY_CHOICES, db_index=True)
-    name = models.CharField(max_length=512)
-
-    class Meta:
-        ordering = ('category', 'name')
-        unique_together = ('category', 'name')
-
-    def __str__(self):
-        return '{} - {}'.format(self.get_category_display(), self.name)
 
 
 class ITSystem(CommonFields):
@@ -224,7 +197,6 @@ class ITSystem(CommonFields):
     access = models.PositiveSmallIntegerField(
         choices=ACCESS_CHOICES, default=3, null=True, blank=True,
         help_text='The network upon which this system is accessible.')
-    platforms = models.ManyToManyField(Platform, blank=True)
     application_type = models.PositiveSmallIntegerField(
         choices=APPLICATION_TYPE_CHOICES, null=True, blank=True)
     system_type = models.PositiveSmallIntegerField(
@@ -249,6 +221,11 @@ class ITSystem(CommonFields):
     retention_comments = models.TextField(
         null=True, blank=True, verbose_name='comments',
         help_text='Comments/notes related to retention and disposal')
+    platform = models.ForeignKey(
+        Platform, on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="The primary platform used to provide this IT system")
+    dependencies = models.ManyToManyField(
+        Dependency, blank=True, help_text="Dependencies used by this IT system")
 
     class Meta:
         verbose_name = 'IT System'

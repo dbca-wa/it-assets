@@ -22,6 +22,7 @@ else:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'itassets.urls'
 WSGI_APPLICATION = 'itassets.wsgi.application'
+
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,8 +51,10 @@ INSTALLED_APPS = (
     # 'recoup',
     'status',
     'nginx',
-    'rancher'
+    'rancher',
+    'bigpicture',
 )
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -62,9 +65,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'dbca_utils.middleware.SSOLoginMiddleware',
 ]
+
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -86,6 +91,7 @@ TEMPLATES = [
         },
     }
 ]
+
 ADMINS = ('asi@dbca.wa.gov.au',)
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)

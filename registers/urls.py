@@ -3,6 +3,7 @@ from registers import views
 
 urlpatterns = [
     path('itsystem/export/', views.ITSystemExport.as_view(), name='itsystem_export'),
+    path('itsystem/platform/export/', views.ITSystemPlatformExport.as_view(), name='itsystem_platform_export'),
     path('itsystem/discrepancy-report/', views.ITSystemDiscrepancyReport.as_view(), name='itsystem_discrepancy_report'),
     path('changerequest/', views.ChangeRequestList.as_view(), name='change_request_list'),
     path('changerequest/<int:pk>/', views.ChangeRequestDetail.as_view(), name='change_request_detail'),

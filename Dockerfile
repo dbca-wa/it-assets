@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM python_libs_itassets
 COPY gunicorn.py manage.py ./
 COPY assets ./assets
+COPY bigpicture ./bigpicture
 COPY itassets ./itassets
 COPY knowledge ./knowledge
 COPY organisation ./organisation
