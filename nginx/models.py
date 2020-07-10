@@ -46,14 +46,14 @@ class Domain(models.Model):
                 last_sibling = Domain.objects.filter(level=self.level).order_by("-score").first()
             else:
                 last_sibling = Domain.objects.filter(parent=self.parent,level=self.level).order_by("-score").first()
-    
+
             if last_sibling:
                 self.score = last_sibling.score + pow(100,9 - self.level)
             elif self.parent:
                 self.score = self.parent.score + pow(100,9 - self.level)
             else:
                 self.score = pow(100,9 - self.level)
-        
+
         result = super().save(*args,**kwargs)
         logger.debug("Create domain(name={},level={},score={},parent={})".format(self.name,self.level,self.score,self.parent))
         return result
@@ -122,12 +122,12 @@ class SystemAlias(models.Model):
                 logger.debug("Create the alias name({2}) of the system({0},link={1})".format(system.name,url,name))
                 SystemAlias(system=system,name=name,desc="System's default name").save()
 
-
     def __str__(self):
         if self.system:
-            return "{1}({0})".format(self.system.name,self.name)
+            return "{} ({})".format(self.name, self.system.name)
         else:
             return self.name
+
 
 class SystemEnv(models.Model):
     name = models.CharField(max_length=64,unique=True)
@@ -181,6 +181,7 @@ class WebApp(OriginalConfigMixin,models.Model):
     class Meta:
         ordering = ["name"]
 
+
 class WebAppListen(models.Model):
     app = models.ForeignKey(WebApp, on_delete=models.CASCADE, related_name='listens',editable=False)
     listen_host = models.CharField(max_length=128,editable=False)
@@ -218,7 +219,7 @@ class WebServer(models.Model):
     desc = models.TextField(null=True,blank=True)
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    
+
     @property
     def hostname(self):
         return self.get_hostname(self.name)
@@ -233,9 +234,11 @@ class WebServer(models.Model):
                     return name[:-1 * len(domain)]
             return name
 
-
     def __str__(self):
-        return "{}({})".format(self.name,self.get_category_display())
+        if self.category:
+            return "{} ({})".format(self.name,self.get_category_display())
+        else:
+            return self.name
 
 
 class ClusterEventListener(object):
@@ -308,7 +311,7 @@ class WebAppLocation(OriginalConfigMixin,models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return "{}({})".format(self.location,self.get_location_type_display())
+        return "{} ({})".format(self.location,self.get_location_type_display())
 
     class Meta:
         unique_together = [["app","location_type","location"]]
@@ -366,4 +369,3 @@ class WebAppLocationServer(models.Model):
 
     class Meta:
         unique_together = [["location","server","port"]]
-
