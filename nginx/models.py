@@ -1,9 +1,8 @@
 import re
 import logging
 
-
 from django.db import models
-from django.contrib.postgres.fields import JSONField,ArrayField
+from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save,post_delete
 from django.dispatch import receiver
 
@@ -13,7 +12,7 @@ from rancher.models import Cluster,Workload,WorkloadListening
 
 logger = logging.getLogger(__name__)
 
-# Create your models here.
+
 class Domain(models.Model):
     name = models.CharField(max_length=64,unique=True)
     level = models.PositiveSmallIntegerField(editable=False)
@@ -102,7 +101,6 @@ class SystemAlias(models.Model):
             elif not name:
                 name,domain = domain.split(".",1)
 
-
             #remove the env from name if have
             for e in ("-uat","-dev","-prod"):
                 if name.endswith(e):
@@ -138,7 +136,8 @@ class SystemEnv(models.Model):
     def __str__(self):
         return self.name
 
-class WebApp(OriginalConfigMixin,models.Model):
+
+class WebApp(OriginalConfigMixin, models.Model):
     SSO_AUTH_NOT_REQUIRED = 0
     SSO_AUTH_TO_DBCA = 11
     SSO_AUTH_TO_DPAW = 12
@@ -198,6 +197,7 @@ class WebAppListen(models.Model):
 
     class Meta:
         unique_together = [["app","listen_host","listen_port"]]
+
 
 class WebServer(models.Model):
     AWS_SERVER = 1
@@ -293,7 +293,6 @@ class WebAppLocation(OriginalConfigMixin,models.Model):
         (UWSGI,"Uwsgi")
     )
 
-
     app = models.ForeignKey(WebApp, on_delete=models.CASCADE, related_name='locations',editable=False)
     location = models.CharField(max_length=256,editable=False)
     location_type = models.PositiveSmallIntegerField(editable=False,choices=LOCATION_TYPES)
@@ -315,6 +314,7 @@ class WebAppLocation(OriginalConfigMixin,models.Model):
 
     class Meta:
         unique_together = [["app","location_type","location"]]
+
 
 class WebAppLocationServer(models.Model):
     location = models.ForeignKey(WebAppLocation, on_delete=models.CASCADE, related_name='servers',editable=False)
