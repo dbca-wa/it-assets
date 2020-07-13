@@ -287,6 +287,14 @@ bcrypt = ["bcrypt"]
 
 [[package]]
 category = "main"
+description = "Render Django Page objects as Bootstrap 3.x/4.x Pagination compatible HTML"
+name = "django-bootstrap-pagination"
+optional = false
+python-versions = "*"
+version = "1.7.1"
+
+[[package]]
+category = "main"
 description = "django-cors-headers is a Django application for handling the server headers required for Cross-Origin Resource Sharing (CORS)."
 name = "django-cors-headers"
 optional = false
@@ -1018,6 +1026,17 @@ version = "0.2.5"
 
 [[package]]
 category = "main"
+description = "Base HTML templates for DBCA Django projects"
+name = "webtemplate-dbca"
+optional = false
+python-versions = "*"
+version = "1.2.1"
+
+[package.dependencies]
+Django = ">=2.1"
+
+[[package]]
+category = "main"
 description = "A Python module for creating Excel XLSX files."
 name = "xlsxwriter"
 optional = false
@@ -1025,7 +1044,7 @@ python-versions = "*"
 version = "1.1.1"
 
 [metadata]
-content-hash = "bfc642f23c6635f48e63028eff05548ed1fbc547d4fb84d26367dfd38811b6da"
+content-hash = "3e6ec0476ee726eabdc1336e07755d15b83807e772df24296862adfb919098ea"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1162,6 +1181,10 @@ dj-static = [
 django = [
     {file = "Django-2.2.14-py3-none-any.whl", hash = "sha256:f2250bd35d0f6c23e930c544629934144e5dd39a4c06092e1050c731c1712ba8"},
     {file = "Django-2.2.14.tar.gz", hash = "sha256:edf0ecf6657713b0435b6757e6069466925cae70d634a3283c96b80c01e06191"},
+]
+django-bootstrap-pagination = [
+    {file = "django-bootstrap-pagination-1.7.1.tar.gz", hash = "sha256:69d826d92217325611cb86e49944d8261e3c92eaa4deafea5a605d79fd363883"},
+    {file = "django_bootstrap_pagination-1.7.1-py3-none-any.whl", hash = "sha256:47e742679cf109e12f10ae09d5263433f94440818cf7b023e90a3f5252849639"},
 ]
 django-cors-headers = [
     {file = "django-cors-headers-2.4.0.tar.gz", hash = "sha256:c4c2ee97139d18541a1be7d96fe337d1694623816d83f53cb7c00da9b94acae1"},
@@ -1475,6 +1498,9 @@ urllib3 = [
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
+]
+webtemplate-dbca = [
+    {file = "webtemplate-dbca-1.2.1.tar.gz", hash = "sha256:ff6f9e56fc96f8f50d1baa4b5e77cebb789a7e753dee8628892e3eb8513d8d54"},
 ]
 xlsxwriter = [
     {file = "XlsxWriter-1.1.1-py2.py3-none-any.whl", hash = "sha256:9db09ab93f462aa8b7559073ac58dcb4c18dc4321f8c04fb9eed0941c81ca0b5"},

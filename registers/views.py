@@ -555,3 +555,20 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         log.save()
 
         return super(ChangeRequestComplete, self).form_valid(form)
+
+
+class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
+    model = ITSystem
+    paginate_by = 20
+    template_name = 'registers/riskassessment_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'IT System Risk Assessments'
+        return context
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Default to prod/prod-legacy IT systems only.
+        qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+        return qs
