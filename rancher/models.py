@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
 
 
 class Cluster(models.Model):
@@ -155,23 +155,25 @@ class IngressRule(models.Model):
 
 
 class Workload(models.Model):
-    cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads',editable=False)
-    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads',editable=False)
-    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads',editable=False,null=True)
-    name = models.CharField(max_length=128,editable=False)
-    kind = models.CharField(max_length=64,editable=False)
+    cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads', editable=False)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads', editable=False)
+    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads', editable=False, null=True)
+    name = models.CharField(max_length=128, editable=False)
+    kind = models.CharField(max_length=64, editable=False)
 
-    replicas = models.PositiveSmallIntegerField(editable=False,null=True)
-    image = models.CharField(max_length=128,editable=False)
-    image_pullpolicy = models.CharField(max_length=64,editable=False,null=True)
-    cmd = models.CharField(max_length=512,editable=False,null=True)
-    schedule = models.CharField(max_length=32,editable=False,null=True)
+    replicas = models.PositiveSmallIntegerField(editable=False, null=True)
+    image = models.CharField(max_length=128, editable=False)
+    image_pullpolicy = models.CharField(max_length=64, editable=False, null=True)
+    image_scan_json = JSONField(default=dict, editable=False, blank=True)
+    image_scan_timestamp = models.DateTimeField(editable=False, null=True, blank=True)
+    cmd = models.CharField(max_length=512, editable=False, null=True)
+    schedule = models.CharField(max_length=32, editable=False, null=True)
     suspend = models.NullBooleanField(editable=False)
-    failedjobshistorylimit = models.PositiveSmallIntegerField(null=True,editable=False)
-    successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True,editable=False)
-    concurrency_policy = models.CharField(max_length=128,editable=False,null=True)
+    failedjobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
+    successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
+    concurrency_policy = models.CharField(max_length=128, editable=False, null=True)
 
-    api_version = models.CharField(max_length=64,editable=False)
+    api_version = models.CharField(max_length=64, editable=False)
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
@@ -195,7 +197,7 @@ class Workload(models.Model):
         return apps
 
     def __str__(self):
-        return "{}.{}.{}".format(self.cluster.name,self.namespace.name,self.name)
+        return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
 
     class Meta:
         unique_together = [["cluster","namespace","name"]]
