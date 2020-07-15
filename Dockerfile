@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.7-slim-buster as builder_base_itassets
+FROM python:3.7.8-slim-buster as builder_base_itassets
 MAINTAINER asi@dbca.wa.gov.au
 RUN apt-get update -y \
   && apt-get upgrade -y \
@@ -7,8 +7,18 @@ RUN apt-get update -y \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --upgrade pip
 
+# Install trivy into the base environment.
+FROM builder_base_itassets as builder_trivy_itassets
+RUN apt-get update -y \
+  && apt-get install --no-install-recommends -y apt-transport-https gnupg lsb-release \
+  && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add - \
+  && echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | tee -a /etc/apt/sources.list.d/trivy.list \
+  && apt-get update -y \
+  && apt-get install -y trivy \
+  && rm -rf /var/lib/apt/lists/*
+
 # Install Python libs from requirements.txt.
-FROM builder_base_itassets as python_libs_itassets
+FROM builder_trivy_itassets as python_libs_itassets
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

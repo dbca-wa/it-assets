@@ -5,6 +5,7 @@ urlpatterns = [
     path('itsystem/export/', views.ITSystemExport.as_view(), name='itsystem_export'),
     path('itsystem/platform/export/', views.ITSystemPlatformExport.as_view(), name='itsystem_platform_export'),
     path('itsystem/discrepancy-report/', views.ITSystemDiscrepancyReport.as_view(), name='itsystem_discrepancy_report'),
+    path('itsystem/risk-assessment/', views.ITSystemRiskAssessmentList.as_view(), name='itsystem_risk_assessment_list'),
     path('changerequest/', views.ChangeRequestList.as_view(), name='change_request_list'),
     path('changerequest/<int:pk>/', views.ChangeRequestDetail.as_view(), name='change_request_detail'),
     path('changerequest/<int:pk>/change/', views.ChangeRequestChange.as_view(), name='change_request_change'),

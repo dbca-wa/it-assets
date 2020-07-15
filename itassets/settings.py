@@ -33,6 +33,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'django_extensions',
+    # Third-party applications:
     'corsheaders',
     'reversion',
     'crispy_forms',
@@ -42,6 +43,9 @@ INSTALLED_APPS = (
     'django_q',
     'rest_framework',
     'rest_framework_gis',
+    'webtemplate_dbca',
+    'bootstrap_pagination',
+    # Project applications:
     'organisation',
     'registers',
     'tracking',
