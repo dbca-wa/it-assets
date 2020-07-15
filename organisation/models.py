@@ -177,18 +177,6 @@ class DepartmentUser(MPTTModel):
     class MPTTMeta:
         order_insertion_by = ['name']
 
-    def __init__(self, *args, **kwargs):
-        super(DepartmentUser, self).__init__(*args, **kwargs)
-        # Store the pre-save values of some fields on object init.
-        self.__original_given_name = self.given_name
-        self.__original_surname = self.surname
-        self.__original_employee_id = self.employee_id
-        self.__original_cost_centre_id = self.cost_centre_id
-        self.__original_name = self.name
-        self.__original_org_unit_id = self.org_unit_id
-        self.__original_expiry_date = self.expiry_date
-        self.__original_photo = self.photo
-
     def __str__(self):
         return self.email
 
