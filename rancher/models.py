@@ -1,6 +1,9 @@
+import subprocess
+import json
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
+from django.utils import timezone
 
 
 class Cluster(models.Model):
@@ -199,9 +202,40 @@ class Workload(models.Model):
     def __str__(self):
         return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
 
+    def image_scan(self):
+        """Runs trivy locally and saves the scan result.
+        """
+        if not self.image:
+            return None
+
+        try:
+            cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.image)
+            out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        except subprocess.CalledProcessError:
+            return False
+
+        # tricy should return JSON, being a single-element list containing a dict of the scan results.
+        self.image_scan_json = json.loads(out)[0]
+        self.image_scan_timestamp = timezone.now()
+        self.save()
+        return True
+
+    def image_scan_vulns(self):
+        if not self.image_scan_json:
+            return None
+        vulns = {}
+
+        for v in self.image_scan_json['Vulnerabilities']:
+            if 'Severity' not in vulns:
+                vulns[v['Severity']] = 1
+            else:
+                vulns[v['Severity']] += 1
+
+        return vulns
+
     class Meta:
-        unique_together = [["cluster","namespace","name"]]
-        ordering = ["cluster__name",'namespace','name']
+        unique_together = [["cluster", "namespace", "name"]]
+        ordering = ["cluster__name", 'namespace', 'name']
 
 
 class WorkloadListening(models.Model):
