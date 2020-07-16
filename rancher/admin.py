@@ -3,7 +3,7 @@ import logging
 
 from django.contrib import admin
 from django.contrib import messages
-from django.utils.html import format_html,mark_safe
+from django.utils.html import format_html, mark_safe
 from django.urls import reverse
 
 # Register your models here.
@@ -13,9 +13,11 @@ from nginx.models import WebApp
 
 logger = logging.getLogger(__name__)
 
+
 class ClusterLinkMixin(object):
     cluster_change_url_name = 'admin:{}_{}_change'.format(models.Cluster._meta.app_label,models.Cluster._meta.model_name)
     get_cluster = staticmethod(lambda obj:obj.cluster)
+
     def _cluster(self,obj):
         if not obj :
             return ""
@@ -25,9 +27,11 @@ class ClusterLinkMixin(object):
             return mark_safe("<A href='{}'>{}</A>".format(url,cluster.name))
     _cluster.short_description = "Cluster"
 
+
 class ProjectLinkMixin(object):
     project_change_url_name = 'admin:{}_{}_change'.format(models.Project._meta.app_label,models.Project._meta.model_name)
     get_project = staticmethod(lambda obj:obj.project)
+
     def _project(self,obj):
         if not obj :
             return ""
@@ -36,6 +40,7 @@ class ProjectLinkMixin(object):
             url = reverse(self.project_change_url_name, args=(project.id,))
             return mark_safe("<A href='{}'>{}</A>".format(url,project.name or project.projectid))
     _project.short_description = "Project"
+
 
 class NamespaceLinkMixin(object):
     namespace_change_url_name = 'admin:{}_{}_change'.format(models.Namespace._meta.app_label,models.Namespace._meta.model_name)
@@ -49,6 +54,7 @@ class NamespaceLinkMixin(object):
             return mark_safe("<A href='{}'>{}</A>".format(url,namespace.name))
     _namespace.short_description = "Namespace"
 
+
 class VolumeLinkMixin(object):
     volume_change_url_name = 'admin:{}_{}_change'.format(models.PersistentVolume._meta.app_label,models.PersistentVolume._meta.model_name)
     get_volume = staticmethod(lambda obj:obj.volume)
@@ -61,6 +67,7 @@ class VolumeLinkMixin(object):
             return mark_safe("<A href='{}'>volume</A>".format(url))
     _volume.short_description = "Volume"
 
+
 class DatabaseLinkMixin(object):
     database_change_url_name = 'admin:{}_{}_change'.format(models.Database._meta.app_label,models.Database._meta.model_name)
     get_database = staticmethod(lambda obj:obj.database)
@@ -72,6 +79,7 @@ class DatabaseLinkMixin(object):
             url = reverse(self.database_change_url_name, args=(database.id,))
             return mark_safe("<A href='{}'>{}</A>".format(url,database.name))
     _database.short_description = "Database"
+
 
 class WorkloadLinkMixin(object):
     workload_change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
@@ -107,6 +115,7 @@ class WorkloadLinkMixin(object):
         return self._workload(obj)
     _name_with_link.short_description = "Name"
 
+
 class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin):
     readonly_fields = ('_workload','_cluster','_project','_namespace','user',"password",'config_items')
     fields = readonly_fields
@@ -120,6 +129,7 @@ class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,W
 
     def has_delete_permission(self, request, obj=None):
         return False
+
 
 @admin.register(models.Cluster)
 class ClusterAdmin(admin.ModelAdmin):
@@ -144,9 +154,9 @@ class ClusterAdmin(admin.ModelAdmin):
                 consume_result = rancher_harvester.harvest(cluster,reconsume=reconsume)
                 if consume_result[1]:
                     if consume_result[0]:
-                        self.message_user(request, mark_safe("""<pre>Failed to refresh cluster({}), 
+                        self.message_user(request, mark_safe("""<pre>Failed to refresh cluster({}),
     {} configuration files were consumed successfully.
-        {} 
+        {}
     {} configuration files were consumed failed
         {}</pre>""".format(cluster.name,len(consume_result[0]),"\n        ".join(consume_result[0]),len(consume_result[1]),"\n        ".join(consume_result[1]))),level=messages.ERROR)
                     else:
@@ -162,6 +172,7 @@ class ClusterAdmin(admin.ModelAdmin):
                 logger.error("Failed to refresg cluster({}).{}".format(cluster.name,traceback.format_exc()))
 
     refresh.short_description = 'Refresh'
+
 
 @admin.register(models.Project)
 class ProjectAdmin(ClusterLinkMixin,admin.ModelAdmin):
@@ -214,6 +225,7 @@ class NamespaceAdmin(ClusterLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
+
 class WorkloadVolumeInline(WorkloadInlineMixin,admin.TabularInline):
     model = models.WorkloadVolume
     readonly_fields = ('_workload','_cluster','_project','_namespace')
@@ -222,6 +234,7 @@ class WorkloadVolumeInline(WorkloadInlineMixin,admin.TabularInline):
     get_cluster = staticmethod(lambda obj:obj.workload.cluster)
     get_project = staticmethod(lambda obj:obj.workload.project)
     get_namespace = staticmethod(lambda obj:obj.workload.namespace)
+
 
 @admin.register(models.PersistentVolume)
 class PersistentVolumeAdmin(ClusterLinkMixin,admin.ModelAdmin):
@@ -254,6 +267,7 @@ class PersistentVolumeAdmin(ClusterLinkMixin,admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 class WorkloadEnvInline(admin.TabularInline):
     readonly_fields = ('name','value','modified','created')
     fields = ('name','value','modified')
@@ -268,6 +282,7 @@ class WorkloadEnvInline(admin.TabularInline):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
 
 class WorkloadListeningInline(admin.TabularInline):
     readonly_fields = ('_listen','protocol','container_port','modified')
@@ -290,6 +305,7 @@ class WorkloadListeningInline(admin.TabularInline):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
 
 class WorkloadVolumeInline(VolumeLinkMixin,admin.TabularInline):
     readonly_fields = ('name','mountpath','subpath','writable','volumepath','_capacity','_volume','_other_config')
@@ -322,6 +338,7 @@ class WorkloadVolumeInline(VolumeLinkMixin,admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 class WorkloadDatabaseInline1(DatabaseLinkMixin,admin.TabularInline):
     model = models.WorkloadDatabase
     readonly_fields = ('_server','_port','_database','schema','user',"password",'config_items')
@@ -353,21 +370,21 @@ class WorkloadDatabaseInline1(DatabaseLinkMixin,admin.TabularInline):
 
 
 @admin.register(models.Workload)
-class WorkloadAdmin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,admin.ModelAdmin):
-    list_display = ('_manage','name','_cluster','_project','_namespace', 'kind','image',"modified")
-    list_display_links=('name',)
-    readonly_fields = ('_name','_cluster','_project','_namespace', 'kind','image',"_webapps","modified")
-    fields = ('_name','_cluster','_project','_namespace', 'kind','image',"_webapps","modified")
-    ordering = ('cluster__name','project__name','namespace__name','name',)
-    list_filter = ('cluster','namespace','kind')
-    search_fields = ['name','namespace__name']
-    get_workload = staticmethod(lambda obj:obj)
+class WorkloadAdmin(ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin, admin.ModelAdmin):
+    list_display = ('_manage', 'name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns', 'modified')
+    list_display_links = ('name',)
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_webapps', 'modified')
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns', 'image_scan_timestamp', '_webapps', 'modified')
+    ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
+    list_filter = ('cluster', 'namespace', 'kind')
+    search_fields = ['name', 'project__name', 'namespace__name']
+    get_workload = staticmethod(lambda obj: obj)
 
-    inlines = [WorkloadDatabaseInline1,WorkloadListeningInline,WorkloadEnvInline,WorkloadVolumeInline]
+    inlines = [WorkloadDatabaseInline1, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
+    webapp_change_url_name = 'admin:{}_{}_change'.format(WebApp._meta.app_label, WebApp._meta.model_name)
 
-    webapp_change_url_name = 'admin:{}_{}_change'.format(WebApp._meta.app_label,WebApp._meta.model_name)
-    def _webapps(self,obj):
-        if not obj :
+    def _webapps(self, obj):
+        if not obj:
             return ""
         else:
             apps = obj.webapps
@@ -376,13 +393,19 @@ class WorkloadAdmin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,Workloa
                 for app in apps:
                     url = reverse(self.webapp_change_url_name, args=(app.id,))
                     if result:
-                        result = "{}\n<A href='{}'>{}</A>".format(result,url,app.name)
+                        result = "{}\n<A href='{}'>{}</A>".format(result, url, app.name)
                     else:
-                        result = "<A href='{}'>{}</A>".format(url,app.name)
+                        result = "<A href='{}'>{}</A>".format(url, app.name)
                 return mark_safe("<pre>{}</pre>".format(result))
             else:
                 return ""
     _webapps.short_description = "Web Applications"
+
+    def _image_vulns(self, obj):
+        if not obj.image_scan_json:
+            return ''
+        return ', '.join(['{}: {}'.format(k.capitalize(), v) for (k, v) in obj.image_scan_vulns().items()])
+    _image_vulns.short_description = 'Image vulnerabilities'
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -393,6 +416,7 @@ class WorkloadAdmin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,Workloa
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 class WorkloadDatabaseInline2(WorkloadInlineMixin,admin.TabularInline):
     model = models.WorkloadDatabase
     readonly_fields = ('_workload','_cluster','_project','_namespace','user',"password",'config_items')
@@ -401,6 +425,7 @@ class WorkloadDatabaseInline2(WorkloadInlineMixin,admin.TabularInline):
     get_cluster = staticmethod(lambda obj:obj.workload.cluster)
     get_project = staticmethod(lambda obj:obj.workload.project)
     get_namespace = staticmethod(lambda obj:obj.workload.namespace)
+
 
 @admin.register(models.Database)
 class DatabaseAdmin(admin.ModelAdmin):
@@ -470,4 +495,3 @@ class DatabaseAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
-

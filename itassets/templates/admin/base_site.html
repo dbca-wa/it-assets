@@ -1,0 +1,18 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{% if ENVIRONMENT_NAME %}
+<style type="text/css">
+    body:before {
+        display: block;
+        line-height: 35px;
+        text-align: center;
+        text-transform: uppercase;
+        font-weight: bold;
+        color: lightgrey;
+        content: "{{ ENVIRONMENT_NAME }}";
+        background-color: {{ ENVIRONMENT_COLOUR }};
+    }
+</style>
+{% endif %}
+{% endblock %}

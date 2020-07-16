@@ -3,6 +3,7 @@ import json
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
+from django.urls import reverse
 from django.utils import timezone
 
 
@@ -182,6 +183,9 @@ class Workload(models.Model):
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
 
+    def get_absolute_url(self):
+        return reverse('workload_detail', kwargs={'pk': self.pk})
+
     @property
     def viewurl(self):
         return "{0}/p/{1}:{2}/workload/{3}:{4}:{5}".format(settings.RANCHER_MANAGEMENT_URL,self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
@@ -206,31 +210,32 @@ class Workload(models.Model):
         """Runs trivy locally and saves the scan result.
         """
         if not self.image:
-            return None
+            return (False, None)
 
         try:
             cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.image)
             out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError:
-            return False
+        except subprocess.CalledProcessError as e:
+            return (False, e.output)
 
-        # tricy should return JSON, being a single-element list containing a dict of the scan results.
-        self.image_scan_json = json.loads(out)[0]
+        # trivy should return JSON, being a single-element list containing a dict of the scan results.
+        out = json.loads(out)
+
+        if not out:
+            return (False, None)  # If the scan fails, trivy returns 'null'.
+        self.image_scan_json = out[0]
         self.image_scan_timestamp = timezone.now()
         self.save()
-        return True
+        return (True, out)
 
     def image_scan_vulns(self):
-        if not self.image_scan_json:
-            return None
         vulns = {}
-
-        for v in self.image_scan_json['Vulnerabilities']:
-            if 'Severity' not in vulns:
-                vulns[v['Severity']] = 1
-            else:
-                vulns[v['Severity']] += 1
-
+        if self.image_scan_json and 'Vulnerabilities' in self.image_scan_json and self.image_scan_json['Vulnerabilities']:
+            for v in self.image_scan_json['Vulnerabilities']:
+                if v['Severity'] not in vulns:
+                    vulns[v['Severity']] = 1
+                else:
+                    vulns[v['Severity']] += 1
         return vulns
 
     class Meta:

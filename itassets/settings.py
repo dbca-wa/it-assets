@@ -91,6 +91,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.template.context_processors.csrf',
                 'django.contrib.messages.context_processors.messages',
+                'itassets.context_processors.from_settings',
             ],
         },
     }
@@ -100,8 +101,9 @@ ADMINS = ('asi@dbca.wa.gov.au',)
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
 FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
-AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
+ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
+ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
 
 # Alesco binding information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
