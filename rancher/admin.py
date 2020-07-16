@@ -377,7 +377,7 @@ class WorkloadAdmin(ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, Work
     fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns', 'image_scan_timestamp', '_webapps', 'modified')
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster', 'namespace', 'kind')
-    search_fields = ['name', 'namespace__name']
+    search_fields = ['name', 'project__name', 'namespace__name']
     get_workload = staticmethod(lambda obj: obj)
 
     inlines = [WorkloadDatabaseInline1, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
