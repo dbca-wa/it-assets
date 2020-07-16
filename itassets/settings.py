@@ -100,7 +100,6 @@ ADMINS = ('asi@dbca.wa.gov.au',)
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
 FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
-AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
 
 # Alesco binding information
