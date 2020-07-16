@@ -3,6 +3,7 @@ import json
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
+from django.urls import reverse
 from django.utils import timezone
 
 
@@ -181,6 +182,9 @@ class Workload(models.Model):
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
+
+    def get_absolute_url(self):
+        return reverse('workload_detail', kwargs={'pk': self.pk})
 
     @property
     def viewurl(self):
