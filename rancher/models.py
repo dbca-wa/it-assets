@@ -232,7 +232,7 @@ class Workload(models.Model):
         vulns = {}
         if self.image_scan_json and 'Vulnerabilities' in self.image_scan_json and self.image_scan_json['Vulnerabilities']:
             for v in self.image_scan_json['Vulnerabilities']:
-                if 'Severity' not in vulns:
+                if v['Severity'] not in vulns:
                     vulns[v['Severity']] = 1
                 else:
                     vulns[v['Severity']] += 1
