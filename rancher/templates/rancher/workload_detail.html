@@ -22,7 +22,25 @@
                 </tr>
                 <tr>
                     <th>Vulnerabilities</th>
-                    <td><pre>{{ image_scan_json }}</pre></td>
+                    <td>
+                        {% for vuln in  image_vulns %}
+                        <h5>{{ vuln.VulnerabilityID }}:</h5>
+                        <table class="table table-bordered table-condensed">
+                            <tr>
+                                <td>Title</td>
+                                <td>{{ vuln.Title }}</td>
+                            </tr>
+                            <tr>
+                                <td>Severity</td>
+                                <td>{{ vuln.Severity }}</td>
+                            </tr>
+                            <tr>
+                                <td>Description</td>
+                                <td>{{ vuln.Description }}</td>
+                            </tr>
+                        </table>
+                        {% endfor %}
+                    </td>
                 </tr>
             </table>
         </div>

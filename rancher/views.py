@@ -1,6 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
-import json
 from .models import Workload
 
 
@@ -12,7 +11,7 @@ class WorkloadDetail(LoginRequiredMixin, DetailView):
         obj = self.get_object()
         context['page_title'] = 'Workload: {}'.format(obj)
         if obj.image_scan_json:
-            context['image_scan_json'] = json.dumps(obj.image_scan_json, indent=2)
+            context['image_vulns'] = obj.image_scan_json['Vulnerabilities']
         else:
-            context['image_scan_json'] = ''
+            context['image_vulns'] = []
         return context
