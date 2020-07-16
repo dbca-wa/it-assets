@@ -206,31 +206,32 @@ class Workload(models.Model):
         """Runs trivy locally and saves the scan result.
         """
         if not self.image:
-            return None
+            return (False, None)
 
         try:
             cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.image)
             out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError:
-            return False
+        except subprocess.CalledProcessError as e:
+            return (False, e.output)
 
-        # tricy should return JSON, being a single-element list containing a dict of the scan results.
-        self.image_scan_json = json.loads(out)[0]
+        # trivy should return JSON, being a single-element list containing a dict of the scan results.
+        out = json.loads(out)
+
+        if not out:
+            return (False, None)  # If the scan fails, trivy returns 'null'.
+        self.image_scan_json = out[0]
         self.image_scan_timestamp = timezone.now()
         self.save()
-        return True
+        return (True, out)
 
     def image_scan_vulns(self):
-        if not self.image_scan_json:
-            return None
         vulns = {}
-
-        for v in self.image_scan_json['Vulnerabilities']:
-            if 'Severity' not in vulns:
-                vulns[v['Severity']] = 1
-            else:
-                vulns[v['Severity']] += 1
-
+        if self.image_scan_json and 'Vulnerabilities' in self.image_scan_json and self.image_scan_json['Vulnerabilities']:
+            for v in self.image_scan_json['Vulnerabilities']:
+                if 'Severity' not in vulns:
+                    vulns[v['Severity']] = 1
+                else:
+                    vulns[v['Severity']] += 1
         return vulns
 
     class Meta:
