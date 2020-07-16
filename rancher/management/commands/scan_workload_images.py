@@ -16,6 +16,6 @@ class Command(BaseCommand):
                     print('Scan complete')
                 else:
                     print('Scan incomplete'.format(workload.image))
-                    print(result[1].strip())
+                    print(result[1])
         except:
             raise CommandError('Workload image scanning failed')
