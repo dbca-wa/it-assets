@@ -1,0 +1,44 @@
+{% extends "webtemplate_dbca/base_b4.html" %}
+
+{% block navbar_links %}{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col" id="div_page_content">
+            <h1>{{ page_title }}</h1>
+            <p>System status: {{ object.get_status_display }}</p>
+            <h2>Platform</h2>
+            <p>Name: {{ object.platform.name }} ({{ object.platform.tier }})</p>
+            <p>Health: {{ object.platform.health }}</p>
+            <p>Platform dependencies:</p>
+            <ul>
+                {% for dep in object.platform.dependencies.all %}
+                <li>{{ dep }}</li>
+                {% endfor %}
+            </ul>
+            <h2>Other dependencies</h2>
+            <table class="table table-striped table-bordered table-condensed">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>Health</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dep in object.dependencies.all %}
+                    <tr>
+                        <td>{{ dep.content_object }}</td>
+                        <td>{{ dep.content_type }}</td>
+                        <td>{{ dep.category }}</td>
+                        <td>{% firstof dep.health '' %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
