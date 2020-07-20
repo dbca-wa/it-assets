@@ -20,9 +20,9 @@ class ModelDescMixin(object):
 
 @admin.register(Dependency)
 class DependencyAdmin(ModelDescMixin, VersionAdmin):
-    fields = ("content_type", "object_id", "type", "health")
-    list_display = ("content_object", "type", "health", "updated")
-    list_filter = ("type", "health")
+    fields = ("content_type", "object_id", "category", "health")
+    list_display = ("content_object", "category", "health", "updated")
+    list_filter = ("category", "health")
     model_description = Dependency.__doc__
 
 

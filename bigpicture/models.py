@@ -9,7 +9,7 @@ HEALTH_CHOICES = (
     ("Constrained", "Constrained"),
     ("High risk", "High risk"),
 )
-DEPENDENCY_TYPE_CHOICES = (
+DEPENDENCY_CATEGORY_CHOICES = (
     ("Service", "Service"),
     ("Compute", "Compute"),
     ("Storage", "Storage"),
@@ -51,10 +51,10 @@ class Dependency(models.Model):
         help_text="The primary key of the target object."
     )
     content_object = GenericForeignKey("content_type", "object_id")
-    type = models.CharField(
+    category = models.CharField(
         max_length=64,
-        choices=DEPENDENCY_TYPE_CHOICES,
-        help_text="The type/category of this dependency.",
+        choices=DEPENDENCY_CATEGORY_CHOICES,
+        help_text="The category of this dependency.",
     )
     health = models.CharField(
         max_length=64,
@@ -68,7 +68,7 @@ class Dependency(models.Model):
         verbose_name_plural = "dependencies"
 
     def __str__(self):
-        s = "{} - {}".format(self.content_object, self.type)
+        s = "{} - {}".format(self.content_object, self.category)
         if self.health:
             s += " ({})".format(self.health)
         return s
