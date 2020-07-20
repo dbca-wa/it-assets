@@ -354,6 +354,9 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             # Redirect to the object detail view.
             messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
+        if not rfc.endorser:
+            messages.warning(self.request, 'Change request {} has no endorser recorded.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
         if self.request.user.email.lower() != rfc.endorser.email.lower():
             messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
@@ -448,7 +451,7 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
 
 
 class ChangeRequestExport(LoginRequiredMixin, View):
-    """A custom view to export all Incident values to an Excel spreadsheet.
+    """A custom view to export all ChangeRequest objects to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
