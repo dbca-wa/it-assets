@@ -10,8 +10,9 @@
             <p>System status: {{ object.get_status_display }}</p>
 
             <h2>Platform</h2>
-            <p>Name: {{ object.platform.name }} ({{ object.platform.tier }})</p>
-            <p>Health: {{ object.platform.health }}</p>
+            <div class="alert alert-{{ object.platform.health_b4_class }}">
+                {{ object.platform.name }} ({{ object.platform.tier }}), health: {{ object.platform.health }}.
+            </div>
             {% if object.platform.dependencies.exists %}
                 <p>Platform dependencies:</p>
                 <ul>

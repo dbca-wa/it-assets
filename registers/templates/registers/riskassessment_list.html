@@ -25,7 +25,6 @@
                         <th>Authentication</th>
                         <th>Access</th>
                         <th>Platform</th>
-                        <th>Platform health</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,8 +39,7 @@
                         <td>{{ obj.get_seasonality_display }}</td>
                         <td>{{ obj.get_authentication_display }}</td>
                         <td>{{ obj.get_access_display }}</td>
-                        <td>{{ obj.platform.name }}</td>
-                        <td>{{ obj.platform.health }}</td>
+                        <td class="table-{{ obj.platform.health_b4_class }}">{{ obj.platform.name }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
