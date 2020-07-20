@@ -31,7 +31,7 @@
                 <tbody>
                 {% for obj in object_list %}
                     <tr>
-                        <td>{{ obj.system_id }}</td>
+                        <td><a href="{% url 'itsystem_risk_assessment_detail' pk=obj.pk %}">{{ obj.system_id }}</a></td>
                         <td>{{ obj.name }}</td>
                         <td>{{ obj.get_status_display }}</td>
                         <td>{{ obj.division_name }}</td>

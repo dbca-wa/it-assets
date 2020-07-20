@@ -107,7 +107,7 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         from .admin import ChangeRequestAdmin
-        queryset = super(ChangeRequestList, self).get_queryset()
+        queryset = super().get_queryset()
         if 'mine' in self.request.GET:
             email = self.request.user.email
             queryset = queryset.filter(requester__email__iexact=email)
@@ -117,7 +117,7 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestList, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         # Pass in any query string
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
@@ -137,7 +137,7 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     model = ChangeRequest
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         rfc = self.get_object()
         context['may_complete'] = (
             rfc.is_ready and
@@ -175,7 +175,7 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         return ChangeRequestCreateForm
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         if 'std' in self.kwargs and self.kwargs['std']:
             context['title'] = 'Create a draft standard change request'
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
@@ -212,7 +212,7 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         if 'std' in self.kwargs and self.kwargs['std']:
             # Must be carried out after save()
             rfc.it_systems.set(rfc.standard_change.it_systems.all())
-        return super(ChangeRequestCreate, self).form_valid(form)
+        return super().form_valid(form)
 
 
 class ChangeRequestChange(LoginRequiredMixin, UpdateView):
@@ -226,7 +226,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         if not rfc.is_draft:
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestChange, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def get_form_class(self):
         rfc = self.get_object()
@@ -246,7 +246,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         return form
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestChange, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         rfc = self.get_object()
         if rfc.is_standard_change:
             context['title'] = 'Update draft standard change request {}'.format(rfc.pk)
@@ -333,8 +333,8 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                 rfc.save()
 
         if errors:
-            return super(ChangeRequestChange, self).form_invalid(form)
-        return super(ChangeRequestChange, self).form_valid(form)
+            return super().form_invalid(form)
+        return super().form_valid(form)
 
 
 class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
@@ -343,7 +343,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
     template_name = 'registers/changerequest_endorse.html'
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestEndorse, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['title'] = 'Endorse change request {}'.format(self.get_object().pk)
         return context
 
@@ -357,7 +357,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
         if self.request.user.email.lower() != rfc.endorser.email.lower():
             messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestEndorse, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
         rfc = form.save()
@@ -418,7 +418,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
-        return super(ChangeRequestEndorse, self).form_valid(form)
+        return super().form_valid(form)
 
 
 class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
@@ -444,7 +444,7 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
             elif 'cancel' in self.request.POST:
                 return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
             else:
-                return super(ChangeRequestApproval, self).form_valid(form)
+                return super().form_valid(form)
 
 
 class ChangeRequestExport(LoginRequiredMixin, View):
@@ -474,7 +474,7 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
             return ('week', date.today() - timedelta(days=date.today().weekday()))
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         cal, d = self.get_date_param()
         context['start'] = d
         context['today'] = date.today()
@@ -489,7 +489,7 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
         return context
 
     def get_queryset(self):
-        queryset = super(ChangeRequestCalendar, self).get_queryset()
+        queryset = super().get_queryset()
         cal, d = self.get_date_param()
         if cal == 'week':
             # Convert week_start to a TZ-aware datetime object.
@@ -523,10 +523,10 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         if self.request.user.email.lower() not in [rfc.requester.email.lower(), rfc.implementer.email.lower()]:
             messages.warning(self.request, 'You are not authorised to complete change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestComplete, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestComplete, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['title'] = 'Complete/finalise change request {}'.format(self.get_object().pk)
         return context
 
@@ -554,7 +554,7 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         rfc.save()
         log.save()
 
-        return super(ChangeRequestComplete, self).form_valid(form)
+        return super().form_valid(form)
 
 
 class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
@@ -572,3 +572,14 @@ class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
         # Default to prod/prod-legacy IT systems only.
         qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         return qs
+
+
+class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
+    model = ITSystem
+    template_name = 'registers/riskassessment_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context['page_title'] = 'IT System Risk Assessment - {}'.format(obj)
+        return context
