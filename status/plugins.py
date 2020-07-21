@@ -17,196 +17,242 @@ TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 def monitor_prtg(plugin, date):
-    PRTG_BASE = plugin.params.get(name='PRTG_BASE').value
-    PRTG_USERNAME = plugin.params.get(name='PRTG_USERNAME').value
-    PRTG_PASSHASH = plugin.params.get(name='PRTG_PASSHASH').value
-    PRTG_URL = plugin.params.get(name='PRTG_URL').value
-    
-    PRTG_DEVICES = '{}/api/table.json?content=devices&output=json&columns=objid,host,probe,device,active,status,upsens&count=2000&username={}&passhash={}'.format(PRTG_BASE, PRTG_USERNAME, PRTG_PASSHASH)
+    PRTG_BASE = plugin.params.get(name="PRTG_BASE").value
+    PRTG_USERNAME = plugin.params.get(name="PRTG_USERNAME").value
+    PRTG_PASSHASH = plugin.params.get(name="PRTG_PASSHASH").value
+    PRTG_URL = plugin.params.get(name="PRTG_URL").value
+
+    PRTG_DEVICES = "{}/api/table.json?content=devices&output=json&columns=objid,host,probe,device,active,status,upsens&count=2000&username={}&passhash={}".format(
+        PRTG_BASE, PRTG_USERNAME, PRTG_PASSHASH
+    )
     report = requests.get(PRTG_DEVICES, verify=False).json()
 
-    for device in report['devices']:
-        host_status = lookup(device['host'], date)
+    for device in report["devices"]:
+        host_status = lookup(device["host"], date)
         if host_status is None:
             continue
-        
+
         host_status.monitor_info = {
-            'id': device['objid'],
-            'device_name': device['device'],
-            'probe': device['probe'],
-            'active': device['active'],
-            'status': device['status'],
-            'sensors_up': device['upsens_raw'],
+            "id": device["objid"],
+            "device_name": device["device"],
+            "probe": device["probe"],
+            "active": device["active"],
+            "status": device["status"],
+            "sensors_up": device["upsens_raw"],
         }
         host_status.monitor_plugin = plugin
-        if device['active'] and device['upsens_raw']:
+        if device["active"] and device["upsens_raw"]:
             host_status.monitor_status = 3
-            host_status.monitor_output = 'Device is monitored.'
-        elif device['active'] and not device['upsens_raw']:
+            host_status.monitor_output = "Device is monitored."
+        elif device["active"] and not device["upsens_raw"]:
             host_status.monitor_status = 2
-            host_status.monitor_output = 'Device is monitored, but no sensors are up.'
+            host_status.monitor_output = "Device is monitored, but no sensors are up."
         else:
             host_status.monitor_status = 2
-            host_status.monitor_output = 'Device has been added to monitoring, but is deactivated.'
+            host_status.monitor_output = (
+                "Device has been added to monitoring, but is deactivated."
+            )
 
-        host_status.monitor_url = '{}/device.htm?id={}'.format(PRTG_URL, device['objid'])
+        host_status.monitor_url = "{}/device.htm?id={}".format(
+            PRTG_URL, device["objid"]
+        )
         host_status.save()
 
 
 def vulnerability_nessus(plugin, date):
-    NESSUS_BASE = plugin.params.get(name='NESSUS_BASE').value
-    NESSUS_ACCESS_KEY = plugin.params.get(name='NESSUS_ACCESS_KEY').value
-    NESSUS_SECRET_KEY = plugin.params.get(name='NESSUS_SECRET_KEY').value
-    NESSUS_SCAN_FOLDER = plugin.params.get(name='NESSUS_SCAN_FOLDER').value
-    NESSUS_URL = plugin.params.get(name='NESSUS_URL').value
+    NESSUS_BASE = plugin.params.get(name="NESSUS_BASE").value
+    NESSUS_ACCESS_KEY = plugin.params.get(name="NESSUS_ACCESS_KEY").value
+    NESSUS_SECRET_KEY = plugin.params.get(name="NESSUS_SECRET_KEY").value
+    NESSUS_SCAN_FOLDER = plugin.params.get(name="NESSUS_SCAN_FOLDER").value
+    NESSUS_URL = plugin.params.get(name="NESSUS_URL").value
 
-    NESSUS_HEADERS = {'X-ApiKeys': 'accessKey={}; secretKey={}'.format(NESSUS_ACCESS_KEY, NESSUS_SECRET_KEY), 'Content-Type': 'application/json', 'Accept': 'text/plain'}
+    NESSUS_HEADERS = {
+        "X-ApiKeys": "accessKey={}; secretKey={}".format(
+            NESSUS_ACCESS_KEY, NESSUS_SECRET_KEY
+        ),
+        "Content-Type": "application/json",
+        "Accept": "text/plain",
+    }
     NESSUS_SCAN_FOLDER = 3
-    NESSUS_SCANS = '{}/scans?folder_id={}'.format(NESSUS_BASE, NESSUS_SCAN_FOLDER)
-    NESSUS_REPORT = lambda scan_id: '{}/scans/{}'.format(NESSUS_BASE, scan_id)
-    NESSUS_VULNS = lambda scan_id, host_id, history_id: '{}/scans/{}/hosts/{}?history_id={}'.format(NESSUS_BASE, scan_id, host_id, history_id)
-    NESSUS_RESULT_URL = lambda scan_id, host_id, history_id: '{}/#/scans/reports/{}/hosts/{}/vulnerabilities'.format(NESSUS_URL, scan_id, host_id, history_id)
+    NESSUS_SCANS = "{}/scans?folder_id={}".format(NESSUS_BASE, NESSUS_SCAN_FOLDER)
+    NESSUS_REPORT = lambda scan_id: "{}/scans/{}".format(NESSUS_BASE, scan_id)
+    NESSUS_VULNS = lambda scan_id, host_id, history_id: "{}/scans/{}/hosts/{}?history_id={}".format(
+        NESSUS_BASE, scan_id, host_id, history_id
+    )
+    NESSUS_RESULT_URL = lambda scan_id, host_id, history_id: "{}/#/scans/reports/{}/hosts/{}/vulnerabilities".format(
+        NESSUS_URL, scan_id, host_id, history_id
+    )
     requests.packages.urllib3.disable_warnings()
 
     reports = requests.get(NESSUS_SCANS, headers=NESSUS_HEADERS, verify=False).json()
 
-    for report in reports['scans']:
+    for report in reports["scans"]:
 
-        data = requests.get(NESSUS_REPORT(report['id']), headers=NESSUS_HEADERS, verify=False).json()
-        if len(data['history']) == 0:
+        data = requests.get(
+            NESSUS_REPORT(report["id"]), headers=NESSUS_HEADERS, verify=False
+        ).json()
+        if len(data["history"]) == 0:
             continue
-        history_id = data['history'][-1]['history_id']
+        history_id = data["history"][-1]["history_id"]
 
-        if data['info']['policy'].startswith('Web'):
+        if data["info"]["policy"].startswith("Web"):
             continue
-        name = data['info']['name']
+        name = data["info"]["name"]
 
-        #print('Report {} ({})'.format(name, report['id']))
-        for report_host in data['hosts']:
-            #print('{}: {} {} {} {} {} - {} {}'.format(host['hostname'], host['critical'], host['high'], host['medium'], host['low'], host['info'], host['severity'], host['score']))
-            
-            host_status = lookup(report_host['hostname'], date)
+        # print('Report {} ({})'.format(name, report['id']))
+        for report_host in data["hosts"]:
+            # print('{}: {} {} {} {} {} - {} {}'.format(host['hostname'], host['critical'], host['high'], host['medium'], host['low'], host['info'], host['severity'], host['score']))
+
+            host_status = lookup(report_host["hostname"], date)
             if host_status is None:
                 continue
             os = None
-            detail = requests.get(NESSUS_VULNS(report['id'], report_host['host_id'], history_id), headers=NESSUS_HEADERS, verify=False).json()
-            if 'operating-system' in detail['info']:
-                os = detail['info']['operating-system']
-            #print((report_host['hostname'], os))
+            detail = requests.get(
+                NESSUS_VULNS(report["id"], report_host["host_id"], history_id),
+                headers=NESSUS_HEADERS,
+                verify=False,
+            ).json()
+            if "operating-system" in detail["info"]:
+                os = detail["info"]["operating-system"]
+            # print((report_host['hostname'], os))
             host_status.vulnerability_info = {
-                'report_id': report['id'],
-                'history_id': history_id,
-                'host_id': report_host['host_id'],
-                'scan_name': data['info']['name'],
-                'scan_start': datetime.datetime.fromtimestamp(data['info']['scan_start'], datetime.timezone.utc).isoformat(),
-                'scan_end': datetime.datetime.fromtimestamp(data['info']['scan_end'], datetime.timezone.utc).isoformat(),
-                'severity': report_host['severity'],
-                'score': report_host['score'],
-                'num_critical': report_host['critical'],
-                'num_high': report_host['high'],
-                'num_medium': report_host['medium'],
-                'num_low': report_host['low'],
-                'num_info': report_host['info'],
-                'os': os
+                "report_id": report["id"],
+                "history_id": history_id,
+                "host_id": report_host["host_id"],
+                "scan_name": data["info"]["name"],
+                "scan_start": datetime.datetime.fromtimestamp(
+                    data["info"]["scan_start"], datetime.timezone.utc
+                ).isoformat(),
+                "scan_end": datetime.datetime.fromtimestamp(
+                    data["info"]["scan_end"], datetime.timezone.utc
+                ).isoformat(),
+                "severity": report_host["severity"],
+                "score": report_host["score"],
+                "num_critical": report_host["critical"],
+                "num_high": report_host["high"],
+                "num_medium": report_host["medium"],
+                "num_low": report_host["low"],
+                "num_info": report_host["info"],
+                "os": os,
             }
             host_status.vulnerability_plugin = plugin
-            host_status.vulnerability_output = 'Device has been scanned, vulnerabilities were found'
+            host_status.vulnerability_output = (
+                "Device has been scanned, vulnerabilities were found"
+            )
             host_status.vulnerability_status = 2
 
-
-            if (int(report_host['critical']) == 0) and (int(report_host['high']) == 0):
-                name_check = [x['plugin_name'] for x in detail['vulnerabilities']]
-                if 'Authentication Failure - Local Checks Not Run' in name_check:
-                    host_status.vulnerability_output = 'Device is being scanned, but does not have correct credentials.'
+            if (int(report_host["critical"]) == 0) and (int(report_host["high"]) == 0):
+                name_check = [x["plugin_name"] for x in detail["vulnerabilities"]]
+                if "Authentication Failure - Local Checks Not Run" in name_check:
+                    host_status.vulnerability_output = "Device is being scanned, but does not have correct credentials."
                 else:
-                    host_status.vulnerability_output = 'Device has been scanned, no critical or high vulnerabilities were found.'
+                    host_status.vulnerability_output = "Device has been scanned, no critical or high vulnerabilities were found."
                     host_status.vulnerability_status = 3
-            host_status.vulnerability_url = NESSUS_RESULT_URL(report['id'], report_host['host_id'], history_id)
+            host_status.vulnerability_url = NESSUS_RESULT_URL(
+                report["id"], report_host["host_id"], history_id
+            )
             host_status.save()
 
 
 def backup_phoenix(plugin, date):
-    PHOENIX_USERNAME = plugin.params.get(name='PHOENIX_USERNAME').value
-    PHOENIX_PASSWORD = plugin.params.get(name='PHOENIX_PASSWORD').value
-    PHOENIX_SITE_ID = plugin.params.get(name='PHOENIX_SITE_ID').value
-    
-    PHOENIX_BASE = 'https://phoenix.druva.com'
-    PHOENIX_LOGIN_ADMIN = 'https://login.druva.com/api/commonlogin/admin'
-    PHOENIX_LOGIN_SESSION = 'https://login.druva.com/api/commonlogin/session'
-    PHOENIX_LOGIN = 'https://login.druva.com/api/commonlogin/login'
-    PHOENIX_ADMIN = '{}/admin/'.format( PHOENIX_BASE )
-    PHOENIX_DATA = '{}/server/loadpage'.format( PHOENIX_BASE )
-    PHOENIX_URL = PHOENIX_ADMIN + '#op=server-details/id={}/siteid={}'
-    backup_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
+    PHOENIX_USERNAME = plugin.params.get(name="PHOENIX_USERNAME").value
+    PHOENIX_PASSWORD = plugin.params.get(name="PHOENIX_PASSWORD").value
+    PHOENIX_SITE_ID = plugin.params.get(name="PHOENIX_SITE_ID").value
+
+    PHOENIX_BASE = "https://phoenix.druva.com"
+    PHOENIX_LOGIN_ADMIN = "https://login.druva.com/api/commonlogin/admin"
+    PHOENIX_LOGIN_SESSION = "https://login.druva.com/api/commonlogin/session"
+    PHOENIX_LOGIN = "https://login.druva.com/api/commonlogin/login"
+    PHOENIX_ADMIN = "{}/admin/".format(PHOENIX_BASE)
+    PHOENIX_DATA = "{}/server/loadpage".format(PHOENIX_BASE)
+    PHOENIX_URL = PHOENIX_ADMIN + "#op=server-details/id={}/siteid={}"
+    backup_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(
+        days=1
+    )
 
     sess = requests.session()
 
     # convert email address into admin ID
-    admin = sess.get(PHOENIX_LOGIN_ADMIN, params={'input': json.dumps({
-        'request': {
-            'method': 'GetAuthType',
-            'args': [PHOENIX_USERNAME],
-        }
-    })})
-    admin_id = admin.json()['response']['accounts'][0]['adminIdentifier']
+    admin = sess.get(
+        PHOENIX_LOGIN_ADMIN,
+        params={
+            "input": json.dumps(
+                {"request": {"method": "GetAuthType", "args": [PHOENIX_USERNAME], }}
+            )
+        },
+    )
+    admin_id = admin.json()["response"]["accounts"][0]["adminIdentifier"]
 
     # login with admin ID and password
-    login = sess.post(PHOENIX_LOGIN, json={
-        'request': {
-            'kwargs': {
-                'auth_input': {
-                    'admin_identifier': admin_id,
-                    'password': PHOENIX_PASSWORD
+    login = sess.post(
+        PHOENIX_LOGIN,
+        json={
+            "request": {
+                "kwargs": {
+                    "auth_input": {
+                        "admin_identifier": admin_id,
+                        "password": PHOENIX_PASSWORD,
+                    },
+                    "caller_product_id": 4097,
+                    "redirect_on_success": False,
+                    "source_url": "{}/admin".format(PHOENIX_BASE),
                 },
-                'caller_product_id': 4097,
-                'redirect_on_success': False,
-                'source_url': '{}/admin'.format( PHOENIX_BASE ),
-            },
-            'method': 'LoginUsingPassword',
-        }
-    })
+                "method": "LoginUsingPassword",
+            }
+        },
+    )
 
     # get an OTP to activate cross-domain session cookie
-    phoenix_session = sess.get(PHOENIX_LOGIN_SESSION,params={'input': json.dumps({
-        'request': {
-            'method': 'CheckGlobalSession',
-            'kwargs': {
-                'caller_product_id': '12289',
-                'source_url': '{}/'.format( PHOENIX_BASE ),
-                'is_dashboard_url': 'True',
-                'redirect_on_success': False
-            }}
-        })}
+    phoenix_session = sess.get(
+        PHOENIX_LOGIN_SESSION,
+        params={
+            "input": json.dumps(
+                {
+                    "request": {
+                        "method": "CheckGlobalSession",
+                        "kwargs": {
+                            "caller_product_id": "12289",
+                            "source_url": "{}/".format(PHOENIX_BASE),
+                            "is_dashboard_url": "True",
+                            "redirect_on_success": False,
+                        },
+                    }
+                }
+            )
+        },
     )
-    redirect_url = phoenix_session.json()['response']['redirectURL']
+    redirect_url = phoenix_session.json()["response"]["redirectURL"]
     login_phoenix = sess.get(redirect_url)
-    
+
     # rip the CSRF token from the page
     phoenix_page = sess.get(PHOENIX_ADMIN)
-    phoenix_soup = BeautifulSoup(phoenix_page.content, 'html.parser')
-    csrf = phoenix_soup.find_all(id='csrf_token')[0].attrs['value']
+    phoenix_soup = BeautifulSoup(phoenix_page.content, "html.parser")
+    csrf = phoenix_soup.find_all(id="csrf_token")[0].attrs["value"]
 
     # request all of the backup information
-    data = sess.post(PHOENIX_DATA, params={   
-        'csrf_token': csrf,
-        'op': 'server-manage',
-        'tabName': 'file_backupsets',
-        'stype': 'storage',
-        'siteid': PHOENIX_SITE_ID,
-        'pageSize': 300,
-    })
-    backup_sets = data.json()['result']['file_backupsets']
+    data = sess.post(
+        PHOENIX_DATA,
+        params={
+            "csrf_token": csrf,
+            "op": "server-manage",
+            "tabName": "file_backupsets",
+            "stype": "storage",
+            "siteid": PHOENIX_SITE_ID,
+            "pageSize": 300,
+        },
+    )
+    backup_sets = data.json()["result"]["file_backupsets"]
 
     for backup in backup_sets:
         name = None
         is_connected = False
         os_version = None
         device_id = None
-        if 'device_info' in backup:
-            name = backup['device_info'].get('name', None)
-            is_connected = backup['device_info'].get('is_connected', False)
-            os_version = backup['device_info'].get('os_version', None)
-            device_id = backup['device_info'].get('id', None)
+        if "device_info" in backup:
+            name = backup["device_info"].get("name", None)
+            is_connected = backup["device_info"].get("is_connected", False)
+            os_version = backup["device_info"].get("os_version", None)
+            device_id = backup["device_info"].get("id", None)
 
         host_status = lookup(name, date)
         if not host_status:
@@ -215,197 +261,244 @@ def backup_phoenix(plugin, date):
         last_backup_id = None
         last_backup_time = None
         last_backup_status = None
-        if 'last_backup_info' in backup:
-            last_backup = backup['last_backup_info']
-            last_backup_id = last_backup['job_id']
-            last_backup_time = datetime.datetime.fromtimestamp(last_backup['time_stamp'], tz=TZ)
-            last_backup_status = last_backup['status']
+        if "last_backup_info" in backup:
+            last_backup = backup["last_backup_info"]
+            last_backup_id = last_backup["job_id"]
+            last_backup_time = datetime.datetime.fromtimestamp(
+                last_backup["time_stamp"], tz=TZ
+            )
+            last_backup_status = last_backup["status"]
 
         host_status.backup_plugin = plugin
         if device_id:
-            host_status.backup_url = PHOENIX_URL.format( device_id, PHOENIX_SITE_ID )
+            host_status.backup_url = PHOENIX_URL.format(device_id, PHOENIX_SITE_ID)
         host_status.backup_info = {
-            'id': backup['id'],
-            'device_id': device_id,
-            'job_id': last_backup_id,
-            'last_backup': last_backup_time.isoformat(),
-            'os': os_version,
+            "id": backup["id"],
+            "device_id": device_id,
+            "job_id": last_backup_id,
+            "last_backup": last_backup_time.isoformat(),
+            "os": os_version,
         }
 
         if not is_connected:
-            host_status.backup_output = 'Device is present, automatic backups are disabled.'
+            host_status.backup_output = (
+                "Device is present, automatic backups are disabled."
+            )
             host_status.backup_status = 2
         elif last_backup_id is None:
-            host_status.backup_output = 'Device is present, awaiting first backup.'
+            host_status.backup_output = "Device is present, awaiting first backup."
             host_status.backup_status = 2
         elif last_backup_time and last_backup_time < backup_limit:
-            host_status.backup_output = 'Device is present, last backup older than 24 hours.'
+            host_status.backup_output = (
+                "Device is present, last backup older than 24 hours."
+            )
             host_status.backup_status = 2
         elif last_backup_status != 1:
-            host_status.backup_output = 'Device is present, last backup wasn\'t successful.'
+            host_status.backup_output = (
+                "Device is present, last backup wasn't successful."
+            )
             host_status.backup_status = 2
         else:
-            host_status.backup_output = 'Device is present, last backup was successful.'
+            host_status.backup_output = "Device is present, last backup was successful."
             host_status.backup_status = 3
 
         host_status.save()
 
 
 def backup_acronis(plugin, date):
-    ACRONIS_BASE = plugin.params.get(name='ACRONIS_BASE').value
-    ACRONIS_USERNAME = plugin.params.get(name='ACRONIS_USERNAME').value
-    ACRONIS_PASSWORD = plugin.params.get(name='ACRONIS_PASSWORD').value
-    ACRONIS_URL = plugin.params.get(name='ACRONIS_URL').value
+    ACRONIS_BASE = plugin.params.get(name="ACRONIS_BASE").value
+    ACRONIS_USERNAME = plugin.params.get(name="ACRONIS_USERNAME").value
+    ACRONIS_PASSWORD = plugin.params.get(name="ACRONIS_PASSWORD").value
+    ACRONIS_URL = plugin.params.get(name="ACRONIS_URL").value
 
-    ACRONIS_AUTH = '{}/idp/authorize/local'.format(ACRONIS_BASE)
-    ACRONIS_RESOURCES = '{}/api/resource_manager/v1/resources?filter=all&limit=2000&embed=details&embed=agent'.format(ACRONIS_BASE)
+    ACRONIS_AUTH = "{}/idp/authorize/local".format(ACRONIS_BASE)
+    ACRONIS_RESOURCES = "{}/api/resource_manager/v1/resources?filter=all&limit=2000&embed=details&embed=agent".format(
+        ACRONIS_BASE
+    )
 
-    backup_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
-
+    backup_limit = (
+        datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
+    ).isoformat()
 
     sess = requests.session()
     base = sess.get(ACRONIS_BASE)
     req_qs = urllib.parse.urlparse(base.url).query
-    #req_id = urllib.parse.parse_qs(req_qs)['req'][0]
+    # req_id = urllib.parse.parse_qs(req_qs)['req'][0]
 
-    req_id = re.search('/idp/authorize/sspi\?req=([a-z0-9]+)', base.content.decode('utf8')).group(1)
+    req_id = re.search(
+        "/idp/authorize/sspi\?req=([a-z0-9]+)", base.content.decode("utf8")
+    ).group(1)
 
-    auth = sess.post(ACRONIS_AUTH+'?req_id={}'.format(req_id), {'req': req_id, 'login': ACRONIS_USERNAME, 'password': ACRONIS_PASSWORD})
+    auth = sess.post(
+        ACRONIS_AUTH + "?req_id={}".format(req_id),
+        {"req": req_id, "login": ACRONIS_USERNAME, "password": ACRONIS_PASSWORD},
+    )
     resources = sess.get(ACRONIS_RESOURCES).json()
 
-    for agent in resources['items']:
+    for agent in resources["items"]:
         host_status = None
-        if 'details' not in agent or 'parameters' not in agent['details']:
+        if "details" not in agent or "parameters" not in agent["details"]:
             continue
-        if 'IP' not in agent['details']['parameters']:
+        if "IP" not in agent["details"]["parameters"]:
             continue
-        for ip in agent['details']['parameters']['IP']:
+        for ip in agent["details"]["parameters"]["IP"]:
             host_status = lookup(ip, date)
             if host_status:
                 break
-        if 'status' not in agent:
+        if "status" not in agent:
             continue
-        if not host_status or agent['status'].get('lastBackup') is None:
+        if not host_status or agent["status"].get("lastBackup") is None:
             continue
 
         os_name = None
-        if 'OperatingSystem' in agent['details']['parameters']:
-            os_name = agent['details']['parameters']['OperatingSystem'][0]
+        if "OperatingSystem" in agent["details"]["parameters"]:
+            os_name = agent["details"]["parameters"]["OperatingSystem"][0]
         next_backup = None
-        if 'nextBackup' in agent['status'] and agent['status']['nextBackup'] is not None:
-            next_backup = datetime.datetime.fromisoformat(agent['status']['nextBackup'].split('Z', 1)[0])
+        if (
+            "nextBackup" in agent["status"]
+            and agent["status"]["nextBackup"] is not None
+        ):
+            next_backup = datetime.datetime.fromisoformat(
+                agent["status"]["nextBackup"].split("Z", 1)[0]
+            )
         last_backup = None
-        if 'lastBackup' in agent['status'] and agent['status']['lastBackup'] is not None:
-            last_backup = datetime.datetime.fromisoformat(agent['status']['lastBackup'].split('Z', 1)[0])
+        if (
+            "lastBackup" in agent["status"]
+            and agent["status"]["lastBackup"] is not None
+        ):
+            last_backup = datetime.datetime.fromisoformat(
+                agent["status"]["lastBackup"].split("Z", 1)[0]
+            )
 
-        state = agent['status'].get('state')
+        state = agent["status"].get("state")
 
-        if 'last_backup' in host_status.backup_info and last_backup < datetime.datetime.fromisoformat(host_status.backup_info['last_backup']):
+        if (
+            "last_backup" in host_status.backup_info
+            and last_backup
+            < datetime.datetime.fromisoformat(host_status.backup_info["last_backup"])
+        ):
             continue
         host_status.backup_info = {
-            'id': agent.get('id'),
-            'next_backup': next_backup.isoformat() if next_backup else None,
-            'last_backup': last_backup.isoformat() if last_backup else None,
-            'os': os_name,
-            'status': state,
+            "id": agent.get("id"),
+            "next_backup": next_backup.isoformat() if next_backup else None,
+            "last_backup": last_backup.isoformat() if last_backup else None,
+            "os": os_name,
+            "status": state,
         }
-        host_status.backup_url = '{}/#m=Resources&key=All devices'.format(ACRONIS_URL, )
+        host_status.backup_url = "{}/#m=Resources&key=All devices".format(ACRONIS_URL,)
         host_status.backup_plugin = plugin
-        if state == 'notProtected' and last_backup is not None:
-            host_status.backup_output = 'Device is present, automatic backups are disabled'
+        if state == "notProtected" and last_backup is not None:
+            host_status.backup_output = (
+                "Device is present, automatic backups are disabled"
+            )
             host_status.backup_status = 2
-        elif not (host_status.backup_info['last_backup'] is not None and host_status.backup_info['last_backup'] > backup_limit): 
-            host_status.backup_output = 'Device is present, last backup older than 24 hours.'
+        elif not (
+            host_status.backup_info["last_backup"] is not None
+            and host_status.backup_info["last_backup"] > backup_limit
+        ):
+            host_status.backup_output = (
+                "Device is present, last backup older than 24 hours."
+            )
             host_status.backup_status = 2
         else:
-            host_status.backup_output = 'Device is present, last backup was successful.'
+            host_status.backup_output = "Device is present, last backup was successful."
             host_status.backup_status = 3
-         
+
         host_status.save()
 
 
 def backup_aws(plugin, date):
-    AWS_ACCESS_KEY_ID = plugin.params.get(name='AWS_ACCESS_KEY_ID').value
-    AWS_SECRET_ACCESS_KEY = plugin.params.get(name='AWS_SECRET_ACCESS_KEY').value
-    AWS_REGION = plugin.params.get(name='AWS_REGION').value
-    AWS_URL = 'https://{0}.console.aws.amazon.com/ec2/v2/home?region={0}#Instances:search='.format(AWS_REGION)
+    AWS_ACCESS_KEY_ID = plugin.params.get(name="AWS_ACCESS_KEY_ID").value
+    AWS_SECRET_ACCESS_KEY = plugin.params.get(name="AWS_SECRET_ACCESS_KEY").value
+    AWS_REGION = plugin.params.get(name="AWS_REGION").value
+    AWS_URL = "https://{0}.console.aws.amazon.com/ec2/v2/home?region={0}#Instances:search=".format(
+        AWS_REGION
+    )
 
-    client = boto3.client('ec2', 
-        aws_access_key_id=AWS_ACCESS_KEY_ID, 
+    client = boto3.client(
+        "ec2",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         region_name=AWS_REGION,
     )
 
-    snapshot_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+    snapshot_limit = (
+        datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
+    ).isoformat()
 
     instance_map = {}
     volume_map = {}
     # scrape information from EC2 instances list
     instances = client.describe_instances()
-    for resv in instances['Reservations']:
-        for inst in resv['Instances']:
-            key = inst['InstanceId']
+    for resv in instances["Reservations"]:
+        for inst in resv["Instances"]:
+            key = inst["InstanceId"]
             instance_map[key] = {
-                'id': key,
-                'ips': [x['PrivateIpAddress'] for x in inst['NetworkInterfaces']],
-                'volumes': [],
-                'snapshots': {},
+                "id": key,
+                "ips": [x["PrivateIpAddress"] for x in inst["NetworkInterfaces"]],
+                "volumes": [],
+                "snapshots": {},
             }
             # find name
-            for tag in inst['Tags']:
-                if tag['Key'].lower() == 'name':
-                    instance_map[key]['name'] = tag['Value']
+            for tag in inst["Tags"]:
+                if tag["Key"].lower() == "name":
+                    instance_map[key]["name"] = tag["Value"]
                     break
             # find all volumes
-            for volume in inst['BlockDeviceMappings']:
-                if 'Ebs' in volume:
-                    instance_map[key]['volumes'].append(volume['Ebs']['VolumeId'])
-                    volume_map[volume['Ebs']['VolumeId']] = key
+            for volume in inst["BlockDeviceMappings"]:
+                if "Ebs" in volume:
+                    instance_map[key]["volumes"].append(volume["Ebs"]["VolumeId"])
+                    volume_map[volume["Ebs"]["VolumeId"]] = key
 
     # scrape information from snapshots list
     snapshots = client.describe_snapshots()
-    for snap in snapshots['Snapshots']:
-        if snap['State'] != 'completed':
+    for snap in snapshots["Snapshots"]:
+        if snap["State"] != "completed":
             continue
-        volume = snap['VolumeId']
-        if not volume in volume_map:
+        volume = snap["VolumeId"]
+        if volume not in volume_map:
             continue
         key = volume_map[volume]
-        if not volume in instance_map[key]['snapshots']:
-            instance_map[key]['snapshots'][volume] = []
-        instance_map[key]['snapshots'][volume].append(snap['StartTime'])
+        if volume not in instance_map[key]["snapshots"]:
+            instance_map[key]["snapshots"][volume] = []
+        instance_map[key]["snapshots"][volume].append(snap["StartTime"])
 
     for instance in instance_map.values():
-        for ip in instance['ips']:
+        for ip in instance["ips"]:
             host_status = lookup(ip, date)
             if host_status:
                 break
         if not host_status:
             continue
         host_status.backup_plugin = plugin
-        host_status.backup_url = AWS_URL+instance['id']
+        host_status.backup_url = AWS_URL + instance["id"]
         host_status.backup_info = {
-            'id': instance['id'],
-            'name': instance['name'],
-            'volumes': []
+            "id": instance["id"],
+            "name": instance["name"],
+            "volumes": [],
         }
-        for v in instance['volumes']:
-            snaps = sorted(instance['snapshots'].get(v, []), reverse=True)
+        for v in instance["volumes"]:
+            snaps = sorted(instance["snapshots"].get(v, []), reverse=True)
             last_backup = snaps[0].isoformat() if snaps else None
-            host_status.backup_info['volumes'].append({
-                'id': v,
-                'snap_count': len(snaps),
-                'last_backup': last_backup,
-            })
-        
-        if not all([v['snap_count'] for v in host_status.backup_info['volumes']]):
-            host_status.backup_output = 'A volume has not been snapshotted.'
+            host_status.backup_info["volumes"].append(
+                {"id": v, "snap_count": len(snaps), "last_backup": last_backup, }
+            )
+
+        if not all([v["snap_count"] for v in host_status.backup_info["volumes"]]):
+            host_status.backup_output = "A volume has not been snapshotted."
             host_status.backup_status = 2
-        elif not all ([(v['last_backup'] is not None and v['last_backup'] > snapshot_limit) for v in host_status.backup_info['volumes']]):
-            host_status.backup_output = 'A volume does not have a snapshot from the last 24 hours.'
+        elif not all(
+            [
+                (v["last_backup"] is not None and v["last_backup"] > snapshot_limit)
+                for v in host_status.backup_info["volumes"]
+            ]
+        ):
+            host_status.backup_output = (
+                "A volume does not have a snapshot from the last 24 hours."
+            )
             host_status.backup_status = 2
         else:
-            host_status.backup_output = 'Daily snapshotting was successful.'
+            host_status.backup_output = "Daily snapshotting was successful."
             host_status.backup_status = 3
         host_status.save()
 
@@ -413,153 +506,199 @@ def backup_aws(plugin, date):
 def _ms_api(verb, url, previous=None, **kwargs):
     req = requests.request(verb, url, **kwargs)
     data = req.json()
-    
+
     result = []
     if previous is not None:
         result = previous
 
-    if 'value' not in data:
+    if "value" not in data:
         return result
-    result.extend(data['value'])
-    if '@nextLink' in data:
-        return _ms_api(verb, data['@nextLink'], previous=result, **kwargs)
+    result.extend(data["value"])
+    if "@nextLink" in data:
+        return _ms_api(verb, data["@nextLink"], previous=result, **kwargs)
     return result
 
 
 def backup_azure(plugin, date):
-    AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
-    AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
-    AZURE_APP_KEY = plugin.params.get(name='AZURE_APP_KEY').value
-    AZURE_SUBSCRIPTION_ID = plugin.params.get(name='AZURE_SUBSCRIPTION_ID').value
-    AZURE_VAULT_NAME = plugin.params.get(name='AZURE_VAULT_NAME').value
+    AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
+    AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
+    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_SUBSCRIPTION_ID = plugin.params.get(name="AZURE_SUBSCRIPTION_ID").value
+    AZURE_VAULT_NAME = plugin.params.get(name="AZURE_VAULT_NAME").value
 
-    AZURE_URL = 'https://portal.azure.com/#resource{}/backupSetting'
+    AZURE_URL = "https://portal.azure.com/#resource{}/backupSetting"
 
-    MANAGEMENT_BASE = 'https://management.azure.com'
-    MANAGEMENT_SUB = '{}/subscriptions/{}'.format(MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID)
+    MANAGEMENT_BASE = "https://management.azure.com"
+    MANAGEMENT_SUB = "{}/subscriptions/{}".format(
+        MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID
+    )
 
     ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY)
-    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
+    token = ctx.acquire_token_with_client_credentials(
+        MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY
+    )
+    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
 
-    MANAGEMENT_LIST_VMS = '{}/providers/Microsoft.Compute/virtualMachines?api-version=2018-06-01'.format(MANAGEMENT_SUB)
-    vms = _ms_api('GET', MANAGEMENT_LIST_VMS, headers=headers)
+    MANAGEMENT_LIST_VMS = "{}/providers/Microsoft.Compute/virtualMachines?api-version=2018-06-01".format(
+        MANAGEMENT_SUB
+    )
+    vms = _ms_api("GET", MANAGEMENT_LIST_VMS, headers=headers)
 
     # Get the ID of the specified vault.
-    MANAGEMENT_LIST_VAULTS = '{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01'.format(MANAGEMENT_SUB)
-    vaults = _ms_api('GET', MANAGEMENT_LIST_VAULTS, headers=headers)
+    MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(
+        MANAGEMENT_SUB
+    )
+    vaults = _ms_api("GET", MANAGEMENT_LIST_VAULTS, headers=headers)
 
     vault = None
     for v in vaults:
-        if v['name'] == AZURE_VAULT_NAME:
-            vault = v['id']
+        if v["name"] == AZURE_VAULT_NAME:
+            vault = v["id"]
             break
     if vault is None:
         return
 
     # Get backup protection container list.
-    MANAGEMENT_LIST_CONTAINERS = '{}{}/backupProtectionContainers?api-version=2016-12-01&$filter=backupManagementType%20eq%20%27AzureIaasVM%27%20and%20status%20eq%20%27Registered%27'.format(MANAGEMENT_BASE, vault)
-    containers = _ms_api('GET', MANAGEMENT_LIST_CONTAINERS, headers=headers)
+    MANAGEMENT_LIST_CONTAINERS = "{}{}/backupProtectionContainers?api-version=2016-12-01&$filter=backupManagementType%20eq%20%27AzureIaasVM%27%20and%20status%20eq%20%27Registered%27".format(
+        MANAGEMENT_BASE, vault
+    )
+    containers = _ms_api("GET", MANAGEMENT_LIST_CONTAINERS, headers=headers)
 
     vm_mapping = {}
     for container in containers:
-        vm_id = container['properties']['virtualMachineId']
+        vm_id = container["properties"]["virtualMachineId"]
         if vm_id not in vm_mapping:
             vm_mapping[vm_id] = {}
-        vm_mapping[vm_id]['id'] = vm_id
-        vm_mapping[vm_id]['container_name'] = container['name']
-        vm_mapping[vm_id]['container_id'] = container['id']
-        vm_mapping[vm_id]['container_health'] = container['properties']['healthStatus']
-        vm_mapping[vm_id]['ips'] = []
+        vm_mapping[vm_id]["id"] = vm_id
+        vm_mapping[vm_id]["container_name"] = container["name"]
+        vm_mapping[vm_id]["container_id"] = container["id"]
+        vm_mapping[vm_id]["container_health"] = container["properties"]["healthStatus"]
+        vm_mapping[vm_id]["ips"] = []
 
     # Get private IP addresses of each VM
-    MANAGEMENT_LIST_NICS = '{}/providers/Microsoft.Network/networkInterfaces?api-version=2018-10-01'.format(MANAGEMENT_SUB)
-    nics = _ms_api('GET', MANAGEMENT_LIST_NICS, headers=headers)
+    MANAGEMENT_LIST_NICS = "{}/providers/Microsoft.Network/networkInterfaces?api-version=2018-10-01".format(
+        MANAGEMENT_SUB
+    )
+    nics = _ms_api("GET", MANAGEMENT_LIST_NICS, headers=headers)
 
     for nic in nics:
-        if 'virtualMachine' not in nic['properties']:
+        if "virtualMachine" not in nic["properties"]:
             continue
-        vm_id = nic['properties']['virtualMachine']['id']
+        vm_id = nic["properties"]["virtualMachine"]["id"]
         if vm_id in vm_mapping:
-            vm_mapping[vm_id]['ips'] = [x['properties']['privateIPAddress'] for x in nic['properties']['ipConfigurations']]
+            vm_mapping[vm_id]["ips"] = [
+                x["properties"]["privateIPAddress"]
+                for x in nic["properties"]["ipConfigurations"]
+            ]
 
     for vm in vm_mapping.values():
         host_status = None
-        for ip in vm['ips']:
+        for ip in vm["ips"]:
             host_status = lookup(ip, date)
             if host_status:
                 break
         if not host_status:
             continue
         host_status.backup_plugin = plugin
-        host_status.backup_url = AZURE_URL.format(vm['id'])
+        host_status.backup_url = AZURE_URL.format(vm["id"])
         host_status.backup_info = {
-            'id': vm['id'],
-            'container_name': vm['container_name'],
-            'container_id': vm['container_id'],
-            'container_health': vm['container_health'],
+            "id": vm["id"],
+            "container_name": vm["container_name"],
+            "container_id": vm["container_id"],
+            "container_health": vm["container_health"],
         }
-        if vm['container_health'] == 'Healthy':
-            host_status.backup_output = 'VM is enrolled for backups and is healthy.'
+        if vm["container_health"] == "Healthy":
+            host_status.backup_output = "VM is enrolled for backups and is healthy."
             host_status.backup_status = 3
         else:
-            host_status.backup_output = 'VM is enrolled for backups, but is not healthy.'
+            host_status.backup_output = (
+                "VM is enrolled for backups, but is not healthy."
+            )
             host_status.backup_status = 2
         host_status.save()
 
 
 def backup_storagesync(plugin, date):
-    AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
-    AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
-    AZURE_APP_KEY = plugin.params.get(name='AZURE_APP_KEY').value
-    AZURE_SUBSCRIPTION_ID = plugin.params.get(name='AZURE_SUBSCRIPTION_ID').value
-    AZURE_RESOURCE_GROUP = plugin.params.get(name='AZURE_RESOURCE_GROUP').value
-    AZURE_STORAGE_SYNC_NAME = plugin.params.get(name='AZURE_STORAGE_SYNC_NAME').value
+    AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
+    AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
+    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_SUBSCRIPTION_ID = plugin.params.get(name="AZURE_SUBSCRIPTION_ID").value
+    AZURE_RESOURCE_GROUP = plugin.params.get(name="AZURE_RESOURCE_GROUP").value
+    AZURE_STORAGE_SYNC_NAME = plugin.params.get(name="AZURE_STORAGE_SYNC_NAME").value
 
-    AZURE_URL = 'https://portal.azure.com/#resource/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}/syncGroups'.format( AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME )
-    MANAGEMENT_BASE = 'https://management.azure.com'
+    AZURE_URL = "https://portal.azure.com/#resource/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}/syncGroups".format(
+        AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME
+    )
+    MANAGEMENT_BASE = "https://management.azure.com"
 
-    backup_limit = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)).isoformat()
+    backup_limit = (
+        datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
+    ).isoformat()
 
     ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY)
-    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
+    token = ctx.acquire_token_with_client_credentials(
+        MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY
+    )
+    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
 
     # Get list of sync groups
-    MANAGEMENT_SYNC_BASE = '{}/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}'.format( MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME )
+    MANAGEMENT_SYNC_BASE = "{}/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}".format(
+        MANAGEMENT_BASE,
+        AZURE_SUBSCRIPTION_ID,
+        AZURE_RESOURCE_GROUP,
+        AZURE_STORAGE_SYNC_NAME,
+    )
 
-    MANAGEMENT_SYNC_GROUPS = '{}/syncGroups?api-version=2019-03-01'.format( MANAGEMENT_SYNC_BASE )
+    MANAGEMENT_SYNC_GROUPS = "{}/syncGroups?api-version=2019-03-01".format(
+        MANAGEMENT_SYNC_BASE
+    )
 
     sync_groups = {}
 
-    group_list = _ms_api('GET', MANAGEMENT_SYNC_GROUPS, headers=headers)
-    
+    group_list = _ms_api("GET", MANAGEMENT_SYNC_GROUPS, headers=headers)
+
     for group in group_list:
-        sync_groups[group['name']] = _ms_api('GET', '{}/syncGroups/{}/serverEndpoints?api-version=2019-03-01'.format( MANAGEMENT_SYNC_BASE, group['name'] ), headers=headers)
+        sync_groups[group["name"]] = _ms_api(
+            "GET",
+            "{}/syncGroups/{}/serverEndpoints?api-version=2019-03-01".format(
+                MANAGEMENT_SYNC_BASE, group["name"]
+            ),
+            headers=headers,
+        )
 
     server_map = {}
     for name, servers in sync_groups.items():
         for server in servers:
-            key = server['properties']['friendlyName']
+            key = server["properties"]["friendlyName"]
             if key not in server_map:
                 server_map[key] = []
-            server_map[key].append({
-                'name': name,
-                'path': server['properties']['serverLocalPath'],
-                'upload_health': server['properties']['syncStatus']['uploadHealth'],
-                'download_health': server['properties']['syncStatus']['downloadHealth'],
-                'files_not_syncing': server['properties']['syncStatus']['totalPersistentFilesNotSyncingCount'],
-                'last_upload': server['properties']['syncStatus']['uploadStatus']['lastSyncTimestamp'],
-                'last_upload_success': server['properties']['syncStatus']['uploadStatus']['lastSyncSuccessTimestamp'],
+            server_map[key].append(
+                {
+                    "name": name,
+                    "path": server["properties"]["serverLocalPath"],
+                    "upload_health": server["properties"]["syncStatus"]["uploadHealth"],
+                    "download_health": server["properties"]["syncStatus"][
+                        "downloadHealth"
+                    ],
+                    "files_not_syncing": server["properties"]["syncStatus"][
+                        "totalPersistentFilesNotSyncingCount"
+                    ],
+                    "last_upload": server["properties"]["syncStatus"]["uploadStatus"][
+                        "lastSyncTimestamp"
+                    ],
+                    "last_upload_success": server["properties"]["syncStatus"][
+                        "uploadStatus"
+                    ]["lastSyncSuccessTimestamp"],
+                    "last_download": server["properties"]["syncStatus"][
+                        "downloadStatus"
+                    ]["lastSyncTimestamp"],
+                    "last_download_success": server["properties"]["syncStatus"][
+                        "downloadStatus"
+                    ]["lastSyncSuccessTimestamp"],
+                    "id": server["id"],
+                }
+            )
 
-                'last_download': server['properties']['syncStatus']['downloadStatus']['lastSyncTimestamp'],
-
-                'last_download_success': server['properties']['syncStatus']['downloadStatus']['lastSyncSuccessTimestamp'],
-
-
-                'id': server['id'],
-            })
-    
     for name, servers in server_map.items():
         host_status = lookup(name, date)
         if not host_status or host_status.backup_plugin:
@@ -570,53 +709,65 @@ def backup_storagesync(plugin, date):
         host_status.backup_info = servers
 
         for server in servers:
-            if server['last_upload_success'] < backup_limit:
-                host_status.backup_output = 'File shares are being backed up, last backup older than 24 hours.'
+            if server["last_upload_success"] < backup_limit:
+                host_status.backup_output = (
+                    "File shares are being backed up, last backup older than 24 hours."
+                )
                 host_status.backup_status = 2
                 host_status.save()
                 return
 
-            if server['upload_health'] != 'Healthy':
-                host_status.backup_output = 'File shares are being backed up, uploads not marked as healthy.'
+            if server["upload_health"] != "Healthy":
+                host_status.backup_output = (
+                    "File shares are being backed up, uploads not marked as healthy."
+                )
                 host_status.backup_status = 2
                 host_status.save()
                 return
-            
-        host_status.backup_output = 'File shares are being backed up, last backup was successful.'
+
+        host_status.backup_output = (
+            "File shares are being backed up, last backup was successful."
+        )
         host_status.backup_status = 3
         host_status.save()
 
 
 def patching_oms(plugin, date):
-    AZURE_TENANT = plugin.params.get(name='AZURE_TENANT').value
-    AZURE_APP_ID = plugin.params.get(name='AZURE_APP_ID').value
-    AZURE_APP_KEY = plugin.params.get(name='AZURE_APP_KEY').value
-    AZURE_LOG_WORKSPACE = plugin.params.get(name='AZURE_LOG_WORKSPACE').value
-    
-    LOG_ANALYTICS_BASE = 'https://api.loganalytics.io'
-    LOG_ANALYTICS_QUERY = '{}/v1/workspaces/{}/query'.format(LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE)
+    AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
+    AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
+    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_LOG_WORKSPACE = plugin.params.get(name="AZURE_LOG_WORKSPACE").value
+
+    LOG_ANALYTICS_BASE = "https://api.loganalytics.io"
+    LOG_ANALYTICS_QUERY = "{}/v1/workspaces/{}/query".format(
+        LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE
+    )
     ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(LOG_ANALYTICS_BASE, AZURE_APP_ID, AZURE_APP_KEY)
-    headers = {'Authorization': 'Bearer {}'.format(token['accessToken'])}
-    patching = requests.get(LOG_ANALYTICS_QUERY, params={
-        'query': "(ConfigurationData | project Computer, TimeGenerated, VMUUID | distinct Computer) | join kind=inner ( Heartbeat | project Computer, OSType, OSName, OSMajorVersion, OSMinorVersion, ComputerEnvironment, TimeGenerated, TenantId, ComputerIP | summarize arg_max (TimeGenerated, *) by Computer ) on Computer"
-    }, headers=headers)
+    token = ctx.acquire_token_with_client_credentials(
+        LOG_ANALYTICS_BASE, AZURE_APP_ID, AZURE_APP_KEY
+    )
+    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
+    patching = requests.get(
+        LOG_ANALYTICS_QUERY,
+        params={
+            "query": "(ConfigurationData | project Computer, TimeGenerated, VMUUID | distinct Computer) | join kind=inner ( Heartbeat | project Computer, OSType, OSName, OSMajorVersion, OSMinorVersion, ComputerEnvironment, TimeGenerated, TenantId, ComputerIP | summarize arg_max (TimeGenerated, *) by Computer ) on Computer"
+        },
+        headers=headers,
+    )
     results = patching.json()
 
-    for computer in results['tables'][0]['rows']:
+    for computer in results["tables"][0]["rows"]:
         host_status = lookup(computer[0], date)
         if host_status is None:
             continue
         host_status.patching_info = {
-            'id': computer[8],
-            'os_type': computer[3],
-            'os_name': computer[4],
-            'os_major_version': computer[5],
-            'os_minor_version': computer[6],
+            "id": computer[8],
+            "os_type": computer[3],
+            "os_name": computer[4],
+            "os_major_version": computer[5],
+            "os_minor_version": computer[6],
         }
         host_status.patching_plugin = plugin
-        host_status.patching_output = 'Server has been enrolled in OMS.'
+        host_status.patching_output = "Server has been enrolled in OMS."
         host_status.patching_status = 3
         host_status.save()
-
-
