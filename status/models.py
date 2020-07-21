@@ -119,7 +119,7 @@ class Host(models.Model):
         (0, "Server"),
         (1, "Embedded device"),
     )
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=256, unique=True)
     type = models.SmallIntegerField(choices=TYPE_CHOICES, default=0)
 
     active = models.BooleanField(default=True)
