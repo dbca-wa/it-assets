@@ -47,7 +47,7 @@ class SystemEnvAdmin(admin.ModelAdmin):
 
 @admin.register(models.WebServer)
 class WebServerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'other_names')
+    list_display = ('name', 'category', 'other_names', 'host')
     readonly_fields = ('other_names', '_apps')
     ordering = ('name',)
     list_filter = ('category',)
