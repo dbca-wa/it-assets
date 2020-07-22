@@ -29,7 +29,7 @@ def limit_risk_assessment_content_type_choices():
 
 RISK_RATING_MAPPING = {
     0: ("information only", "success"),
-    1: ("standard practice / managed", "info"),
+    1: ("managed", "info"),
     2: ("constrained", "warning"),
     3: ("high risk", "danger"),
 }

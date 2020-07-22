@@ -45,7 +45,7 @@
                 {% if dep.risks.exists %}
                     {% for risk in dep.risks.all %}
                     <div class="alert alert-{{ risk.rating_b4_class }}">
-                        {{ risk.category }}, {{ risk.rating_desc }}<br>
+                        {{ risk.category }} ({{ risk.rating_desc }})<br>
                         {{ risk.notes }}
                     </div>
                     {% endfor %}
