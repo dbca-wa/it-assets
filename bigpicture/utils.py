@@ -62,7 +62,7 @@ def create_webserver_dependencies():
                         dep, created = Dependency.objects.get_or_create(
                             content_type=webserver_ct,
                             object_id=webserver.pk,
-                            type='Compute',
+                            category='Compute',
                         )
                         itsystem.dependencies.add(dep)
 
@@ -85,7 +85,6 @@ def link_webservers_to_hosts():
     for i in WebServer.objects.all():
         if Host.objects.filter(name__istartswith=i.name):
             host = Host.objects.filter(name__istartswith=i.name).first()
-            # print('{} -> {}'.format(i.name, host))
             i.host = host
             i.save()
 
