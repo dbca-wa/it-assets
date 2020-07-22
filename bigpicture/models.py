@@ -1,6 +1,94 @@
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+
+
+RISK_CATEGORY_CHOICES = (
+    ("Traffic", "Traffic"),
+    ("Access", "Access"),
+    ("Backups", "Backups"),
+    ("Support", "Support"),
+    ("Operating System", "Operating System"),
+    ("Vulnerability", "Vulnerability"),
+    ("Patching", "Patching"),
+    ("Contingency plan", "Contingency plan"),
+)
+
+
+def limit_risk_assessment_content_type_choices():
+    """Returns a Django Q object that is used to limit the choices of the RiskAssessment
+    content_type ForeignKey field.
+    Reference: https://docs.djangoproject.com/en/3.0/ref/models/fields/#django.db.models.ForeignKey.limit_choices_to
+    """
+    return (
+        models.Q(app_label="bigpicture", model="dependency")
+        | models.Q(app_label="bigpicture", model="platform")
+        | models.Q(app_label="registers", model="itsystem")
+    )
+
+
+RISK_RATING_MAPPING = {
+    0: ("information only", "success"),
+    1: ("standard practice / managed", "info"),
+    2: ("constrained", "warning"),
+    3: ("high risk", "danger"),
+}
+
+class RiskAssessment(models.Model):
+    """This represents risk of a defined category that has been estimated for an object.
+    'Risk' in this context is just an arbitrary number rating (higher equals greater risk).
+    """
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    # Business rule: a RiskAssessment object will only be associated with a Dependency, Platform or ITSystem.
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        limit_choices_to=limit_risk_assessment_content_type_choices,
+        help_text="The type of the target object.",
+    )
+    object_id = models.PositiveIntegerField(
+        help_text="The primary key of the target object."
+    )
+    content_object = GenericForeignKey("content_type", "object_id")
+    category = models.CharField(
+        max_length=64,
+        choices=RISK_CATEGORY_CHOICES,
+        help_text="The category which this risk falls into.",
+    )
+    rating = models.PositiveIntegerField(
+        help_text="An arbitrary number rating for the risk (higher equals greater risk)."
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Supporting evidence and/or context for this risk assessment.",
+    )
+
+    class Meta:
+        # Business rule: a given content object may only have a single risk assessment for a given category.
+        # Risk assessments may change over time, but revisions will be saved using django-reversion.
+        unique_together = ("category", "content_type", "object_id")
+
+    def __str__(self):
+        return "{} - {} ({})".format(self.content_object, self.category, self.rating)
+
+    @property
+    def rating_desc(self):
+        # Returns a generic description of the risk rating.
+        if self.rating and self.rating in RISK_RATING_MAPPING:
+            return RISK_RATING_MAPPING[self.rating][0]
+        else:
+            return ''
+
+    @property
+    def rating_b4_class(self):
+        # Returns a Bootstrap 4 class to be injected into a HTML template.
+        if self.rating and self.rating in RISK_RATING_MAPPING:
+            return RISK_RATING_MAPPING[self.rating][1]
+        else:
+            return ''
+
 
 
 HEALTH_CHOICES = (
@@ -70,6 +158,7 @@ class Dependency(models.Model):
         null=True,
         help_text="A point-in-time assessment of the health of this dependency.",
     )
+    risks = GenericRelation(RiskAssessment)
 
     class Meta:
         verbose_name_plural = "dependencies"
@@ -120,6 +209,7 @@ class Platform(models.Model):
         choices=HEALTH_CHOICES,
         help_text="A point-in-time assessment of the health of this platform dependency.",
     )
+    risks = GenericRelation(RiskAssessment)
 
     def __str__(self):
         return "{} - {} ({})".format(self.name, self.tier, self.health)
@@ -129,67 +219,3 @@ class Platform(models.Model):
         # Returns a Bootstrap 4 class to be injected into a HTML template.
         # Return value is mapped to one of the options in HEALTH_CHOICES.
         return HEALTH_CHOICES_MAPPING[self.health]
-
-
-RISK_CATEGORY_CHOICES = (
-    ("Traffic", "Traffic"),
-    ("Access", "Access"),
-    ("Backups", "Backups"),
-    ("Support", "Support"),
-    ("Operating System", "Operating System"),
-    ("Vulnerability", "Vulnerability"),
-    ("Patching", "Patching"),
-    ("Contingency plan", "Contingency plan"),
-)
-
-
-def limit_risk_assessment_content_type_choices():
-    """Returns a Django Q object that is used to limit the choices of the RiskAssessment
-    content_type ForeignKey field.
-    Reference: https://docs.djangoproject.com/en/3.0/ref/models/fields/#django.db.models.ForeignKey.limit_choices_to
-    """
-    return (
-        models.Q(app_label="bigpicture", model="dependency")
-        | models.Q(app_label="bigpicture", model="platform")
-        | models.Q(app_label="registers", model="itsystem")
-    )
-
-
-class RiskAssessment(models.Model):
-    """This represents risk of a defined category that has been estimated for an object.
-    'Risk' in this context is just an arbitrary number rating (higher equals greater risk).
-    """
-
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-    # Business rule: a RiskAssessment object will only be associated with a Dependency, Platform or ITSystem.
-    content_type = models.ForeignKey(
-        ContentType,
-        on_delete=models.CASCADE,
-        limit_choices_to=limit_risk_assessment_content_type_choices,
-        help_text="The type of the target object.",
-    )
-    object_id = models.PositiveIntegerField(
-        help_text="The primary key of the target object."
-    )
-    content_object = GenericForeignKey("content_type", "object_id")
-    category = models.CharField(
-        max_length=64,
-        choices=RISK_CATEGORY_CHOICES,
-        help_text="The category which this risk falls into.",
-    )
-    rating = models.PositiveIntegerField(
-        help_text="An arbitrary number rating for the risk (higher equals greater risk)."
-    )
-    notes = models.TextField(
-        blank=True,
-        help_text="Supporting evidence and/or context for this risk assessment.",
-    )
-
-    class Meta:
-        # Business rule: a given content object may only have a single risk assessment for a given category.
-        # Risk assessments may change over time, but revisions will be saved using django-reversion.
-        unique_together = ("category", "content_type", "object_id")
-
-    def __str__(self):
-        return "{} - {} ({})".format(self.content_object, self.category, self.rating)
