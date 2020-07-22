@@ -7,4 +7,5 @@ def from_settings(request):
     return {
         'ENVIRONMENT_NAME': settings.ENVIRONMENT_NAME,
         'ENVIRONMENT_COLOUR': settings.ENVIRONMENT_COLOUR,
+        'VERSION_NO': settings.VERSION_NO,
     }
