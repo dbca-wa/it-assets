@@ -228,7 +228,7 @@ class Workload(models.Model):
         self.save()
         return (True, out)
 
-    def image_scan_vulns(self):
+    def get_image_scan_vulns(self):
         vulns = {}
         if self.image_scan_json and 'Vulnerabilities' in self.image_scan_json and self.image_scan_json['Vulnerabilities']:
             for v in self.image_scan_json['Vulnerabilities']:
@@ -237,6 +237,12 @@ class Workload(models.Model):
                 else:
                     vulns[v['Severity']] += 1
         return vulns
+
+    def _image_vulns_str(self):
+        if not self.image_scan_json:
+            return ''
+        return ', '.join(['{}: {}'.format(k.capitalize(), v) for (k, v) in self.get_image_scan_vulns().items()])
+    _image_vulns_str.short_description = 'Image vulnerabilities'
 
     class Meta:
         unique_together = [["cluster", "namespace", "name"]]
