@@ -1,61 +1,213 @@
 {% extends "base_b4.html" %}
 
 {% block page_content_inner %}
-<h1>{{ page_title }}</h1>
+<h1>
+    {{ page_title }}
+    {% if user.is_superuser %}
+        <a href="{% url 'admin:registers_itsystem_change' object_id=object.pk %}"><i class="far fa-edit"></i></a>
+    {% endif %}
+</h1>
+
 <p>System status: {{ object.get_status_display }}</p>
+
 <h2>Risk category assessments</h2>
 
 <table class="table table-bordered table-condensed">
+
     <thead>
         <tr>
-            <th>Category</th>
-            <th>Assessment</th>
-            <th>Description</th>
+            <th>Risk category</th>
+            <th>Risk assessment</th>
+            <th>Assessment context</th>
         </tr>
     </thead>
+
     <tbody>
+
+        {% if top_function_risk %}
+        <tr class="table-{{ top_function_risk.rating_b4_class }}">
+            <td>Critical function</td>
+            <td>
+                {{ top_function_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_function_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_function_risk.notes }}</td>
+        {% else %}
         <tr>
-            <td>Internet traffic</td>
-            <td>Not assessed</td>
+            <td>Critical function</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Critical function"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
             <td></td>
+        {% endif %}
         </tr>
+
+        {% if top_traffic_risk %}
+        <tr class="table-{{ top_traffic_risk.rating_b4_class }}">
+            <td>Traffic</td>
+            <td>
+                {{ top_traffic_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_traffic_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_traffic_risk.notes }}</td>
+        {% else %}
         <tr>
-            <td>Internet access</td>
-            <td>Not assessed</td>
+            <td>Traffic</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Traffic"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
             <td></td>
+        {% endif %}
         </tr>
+
+        {% if top_access_risk %}
+        <tr class="table-{{ top_access_risk.rating_b4_class }}">
+            <td>Access</td>
+            <td>
+                {{ top_access_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_access_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_access_risk.notes }}</td>
+        {% else %}
+        <tr>
+            <td>Access</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Access"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
+            <td></td>
+        {% endif %}
+        </tr>
+
+        {% if top_vuln_risk %}
+        <tr class="table-{{ top_vuln_risk.rating_b4_class }}">
+            <td>Vulnerabilities</td>
+            <td>
+                {{ top_vuln_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_vuln_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_vuln_risk.notes }}</td>
+        {% else %}
         <tr>
             <td>Vulnerabilities</td>
-            {% if top_vuln_risk %}
-                <td class="table-{{ top_vuln_risk.rating_b4_class }}">
-                    {{ top_vuln_risk.rating_desc|capfirst }}
-                </td>
-                <td>{{ top_vuln_risk.notes }}</td>
-                {% else %}
-                <td>Not assessed</td>
-                <td></td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Vulnerability"><i class="fas fa-plus"></i></a>
                 {% endif %}
+            </td>
+            <td></td>
+        {% endif %}
         </tr>
+
+        {% if top_backup_risk %}
+        <tr class="table-{{ top_backup_risk.rating_b4_class }}">
+            <td>Backups</td>
+            <td>
+                {{ top_backup_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_backup_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_backup_risk.notes }}</td>
+        {% else %}
         <tr>
             <td>Backups</td>
-            <td>Not assessed</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Backups"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
             <td></td>
+        {% endif %}
         </tr>
+
+        {% if top_support_risk %}
+        <tr class="table-{{ top_support_risk.rating_b4_class }}">
+            <td>Support</td>
+            <td class="table-{{ top_support_risk.rating_b4_class }}">
+                {{ top_support_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_support_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_support_risk.notes }}</td>
+        {% else %}
         <tr>
             <td>Support</td>
-            <td>Not assessed</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Support"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
             <td></td>
+        {% endif %}
         </tr>
+
+        {% if top_os_risk %}
+        <tr class="table-{{ top_os_risk.rating_b4_class }}">
+            <td>Operating System</td>
+            <td class="table-{{ top_os_risk.rating_b4_class }}">
+                {{ top_os_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_os_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_os_risk.notes }}</td>
+        {% else %}
         <tr>
-            <td>Operating system</td>
-            <td>Not assessed</td>
+            <td>Operating System</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Operating System"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
             <td></td>
+        {% endif %}
         </tr>
+
+        {% if top_plan_risk %}
+        <tr class="table-{{ top_plan_risk.rating_b4_class }}">
+            <td>Contingency plan</td>
+            <td class="table-{{ top_plan_risk.rating_b4_class }}">
+                {{ top_plan_risk.rating_desc|capfirst }}
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=top_plan_risk.pk %}"><i class="far fa-edit"></i></a>
+                {% endif %}
+            </td>
+            <td>{{ top_plan_risk.notes }}</td>
+        {% else %}
         <tr>
             <td>Contingency plan</td>
-            <td>Not assessed</td>
+            <td>
+                Not assessed
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category=Contingency plan"><i class="fas fa-plus"></i></a>
+                {% endif %}
+            </td>
             <td></td>
+        {% endif %}
         </tr>
+
     </tbody>
 </table>
 
@@ -84,27 +236,25 @@
                 <th>Category</th>
                 <th>Type</th>
                 <th>Name</th>
-                <th>Health</th>
                 <th>Risk assessments</th>
             </tr>
             {% for dep in obj_dependencies %}
             <tr>
                 <td>{{ dep.category }}</td>
                 <td>{{ dep.content_type|capfirst }}</td>
+                <td>{{ dep.content_object }}</td>
                 <td>
-                {% if user.is_superuser %}
-                    <a href="{% url 'admin:bigpicture_dependency_change' object_id=dep.pk %}"><i class="far fa-edit"></i></a>
-                {% endif %}
-                {{ dep.content_object }}
-                </td>
-                <td{% if dep.health_b4_class %} class="table-{{ dep.health_b4_class }}"{% endif %}>{% firstof dep.health 'Not recorded' %}</td>
-                <td>
-                {% for risk in dep.risks.all %}
-                    <div class="alert alert-{{ risk.rating_b4_class }}">
-                    {{ risk.category }} ({{ risk.rating_desc }})<br>
-                    {{ risk.notes }}
-                    </div>
-                {% endfor %}
+                    {% for risk in dep.risks.all %}
+                        <div class="alert alert-{{ risk.rating_b4_class }}">
+                        {{ risk.category }} ({{ risk.rating_desc }})<br>
+                        {{ risk.notes }}
+                        </div>
+                    {% endfor %}
+                    {% if user.is_superuser %}
+                        <div>
+                            <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ dependency_ct.pk}}&object_id={{ dep.pk}}"><i class="fas fa-plus"></i></a>
+                        </div>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
