@@ -4,13 +4,13 @@ from django.db import models
 
 
 RISK_CATEGORY_CHOICES = (
+    ("Critical function", "Critical function"),
     ("Traffic", "Traffic"),
     ("Access", "Access"),
     ("Backups", "Backups"),
     ("Support", "Support"),
     ("Operating System", "Operating System"),
     ("Vulnerability", "Vulnerability"),
-    ("Patching", "Patching"),
     ("Contingency plan", "Contingency plan"),
 )
 
@@ -28,11 +28,12 @@ def limit_risk_assessment_content_type_choices():
 
 
 RISK_RATING_MAPPING = {
-    0: ("information only", "success"),
+    0: ("recommended", "success"),
     1: ("managed", "info"),
     2: ("constrained", "warning"),
     3: ("high risk", "danger"),
 }
+
 
 class RiskAssessment(models.Model):
     """This represents risk of a defined category that has been estimated for an object.
@@ -76,7 +77,7 @@ class RiskAssessment(models.Model):
     @property
     def rating_desc(self):
         # Returns a generic description of the risk rating.
-        if self.rating and self.rating in RISK_RATING_MAPPING:
+        if self.rating in RISK_RATING_MAPPING:
             return RISK_RATING_MAPPING[self.rating][0]
         else:
             return ''
@@ -84,11 +85,10 @@ class RiskAssessment(models.Model):
     @property
     def rating_b4_class(self):
         # Returns a Bootstrap 4 class to be injected into a HTML template.
-        if self.rating and self.rating in RISK_RATING_MAPPING:
+        if self.rating in RISK_RATING_MAPPING:
             return RISK_RATING_MAPPING[self.rating][1]
         else:
             return ''
-
 
 
 HEALTH_CHOICES = (
