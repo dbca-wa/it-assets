@@ -60,7 +60,7 @@ class ITSystemAdmin(VersionAdmin):
             if self.value() == 'false':
                 return queryset.filter(platform__isnull=True)
 
-    filter_horizontal = ('user_groups',)
+    filter_horizontal = ('user_groups', 'dependencies')
     list_display = (
         'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support',
         'platform',
