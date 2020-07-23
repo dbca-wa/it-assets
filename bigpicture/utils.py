@@ -31,9 +31,10 @@ def load_itsystem_platforms():
 """
 Dependency graph update process:
     - Audit existing dependencies.
-    - Generate / update WebServer deps ("Compute").
+    - Generate / update WebServer deps ("Proxy target").
     - Generate / update WorkLoad deps ("Service").
     - Link WebServers to Hosts.
+    - Generate / update Host deps ("Compute").
     - Create RiskAssessments from Host vuln scans (TODO: confirm business rule).
     - Create RiskAssessments for Workload image vuln scans (TODO: confirm business rule).
 """
@@ -62,7 +63,7 @@ def create_webserver_dependencies():
                         dep, created = Dependency.objects.get_or_create(
                             content_type=webserver_ct,
                             object_id=webserver.pk,
-                            category='Compute',
+                            category='Proxy target',
                         )
                         itsystem.dependencies.add(dep)
 

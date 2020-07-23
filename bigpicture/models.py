@@ -108,7 +108,7 @@ DEPENDENCY_CATEGORY_CHOICES = (
     ("Service", "Service"),
     ("Compute", "Compute"),
     ("Storage", "Storage"),
-    ("Proxy", "Proxy"),
+    ("Proxy target", "Proxy target"),
 )
 
 
