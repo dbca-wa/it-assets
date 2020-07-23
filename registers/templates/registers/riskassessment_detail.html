@@ -25,6 +25,18 @@
             <td></td>
         </tr>
         <tr>
+            <td>Vulnerabilities</td>
+            {% if top_vuln_risk %}
+                <td class="table-{{ top_vuln_risk.rating_b4_class }}">
+                    {{ top_vuln_risk.rating_desc|capfirst }}
+                </td>
+                <td>{{ top_vuln_risk.notes }}</td>
+                {% else %}
+                <td>Not assessed</td>
+                <td></td>
+                {% endif %}
+        </tr>
+        <tr>
             <td>Backups</td>
             <td>Not assessed</td>
             <td></td>
@@ -36,11 +48,6 @@
         </tr>
         <tr>
             <td>Operating system</td>
-            <td>Not assessed</td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>Vulnerabilities</td>
             <td>Not assessed</td>
             <td></td>
         </tr>

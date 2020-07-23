@@ -586,4 +586,20 @@ class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
         obj = self.get_object()
         context['page_title'] = 'IT System Risk Assessment - {}'.format(obj)
         context['obj_dependencies'] = obj.dependencies.order_by('category')
+
+        # Get a list of all unique risks associated with the IT System.
+        risks = []
+        for d in obj.dependencies.all():
+            risks = risks + list(d.risks.all())
+        risks = set(risks)
+
+        top_vuln_risk = None
+        for risk in risks:
+            if risk.category == 'Vulnerability':
+                if top_vuln_risk and top_vuln_risk.rating < risk.rating:
+                    top_vuln_risk = risk
+                else:
+                    top_vuln_risk = risk
+        context['top_vuln_risk'] = top_vuln_risk
+
         return context
