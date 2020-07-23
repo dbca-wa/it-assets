@@ -585,4 +585,5 @@ class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
         context['page_title'] = 'IT System Risk Assessment - {}'.format(obj)
+        context['obj_dependencies'] = obj.dependencies.order_by('category')
         return context

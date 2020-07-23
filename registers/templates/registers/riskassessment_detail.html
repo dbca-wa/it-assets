@@ -3,59 +3,108 @@
 {% block page_content_inner %}
 <h1>{{ page_title }}</h1>
 <p>System status: {{ object.get_status_display }}</p>
+<h2>Risk category assessments</h2>
+
+<table class="table table-bordered table-condensed">
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Assessment</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Internet traffic</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Internet access</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Backups</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Support</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Operating system</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Vulnerabilities</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>Contingency plan</td>
+            <td>Not assessed</td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
 
 <h2>Platform</h2>
+
 <div class="alert alert-{{ object.platform.health_b4_class }}">
-    {{ object.platform.name }} ({{ object.platform.tier }}), health: {{ object.platform.health }}.
+{{ object.platform.name }} ({{ object.platform.tier }}), health: {{ object.platform.health }}.
 </div>
+
 {% if object.platform.dependencies.exists %}
-    <p>Platform dependencies:</p>
     <ul>
         {% for dep in object.platform.dependencies.all %}
         <li>{{ dep }}</li>
         {% endfor %}
     </ul>
 {% else %}
-    <p>No platform dependencies recorded.</p>
+    <p>No platform dependencies currently recorded.</p>
 {% endif %}
 
 <h2>Other dependencies</h2>
 
-{% for dep in object.dependencies.all %}
-<table class="table table-bordered table-condensed">
-    <tbody>
-        <tr>
-            <td colspan="3">
-                <h4>
-                    {{ dep.content_object }}
-                    {% if user.is_superuser %}
-                        <a href="{% url 'admin:bigpicture_dependency_change' object_id=dep.pk %}"><i class="far fa-edit"></i></a>
-                    {% endif %}
-                </h4>
-            </td>
-        </tr>
-        <tr>
-            <td>Type: {{ dep.content_type|capfirst }}</td>
-            <td>Category: {{ dep.category }}</td>
-            <td class="table-{{ dep.health_b4_class }}">Health: {% firstof dep.health 'Not recorded' %}</td>
-        </tr>
-        <tr>
-            <td colspan="3">
-                <div>Risks:</div>
-                {% if dep.risks.exists %}
-                    {% for risk in dep.risks.all %}
-                    <div class="alert alert-{{ risk.rating_b4_class }}">
-                        {{ risk.category }} ({{ risk.rating_desc }})<br>
-                        {{ risk.notes }}
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div>Not recorded</div>
+{% if obj_dependencies.exists %}
+    <table class="table table-bordered table-condensed">
+        <tbody>
+            <tr>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Name</th>
+                <th>Health</th>
+                <th>Risk assessments</th>
+            </tr>
+            {% for dep in obj_dependencies %}
+            <tr>
+                <td>{{ dep.category }}</td>
+                <td>{{ dep.content_type|capfirst }}</td>
+                <td>
+                {% if user.is_superuser %}
+                    <a href="{% url 'admin:bigpicture_dependency_change' object_id=dep.pk %}"><i class="far fa-edit"></i></a>
                 {% endif %}
-            </td>
-        </tr>
-    </tbody>
-</table>
-{% endfor %}
+                {{ dep.content_object }}
+                </td>
+                <td{% if dep.health_b4_class %} class="table-{{ dep.health_b4_class }}"{% endif %}>{% firstof dep.health 'Not recorded' %}</td>
+                <td>
+                {% for risk in dep.risks.all %}
+                    <div class="alert alert-{{ risk.rating_b4_class }}">
+                    {{ risk.category }} ({{ risk.rating_desc }})<br>
+                    {{ risk.notes }}
+                    </div>
+                {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No other dependencies currently recorded.</p>
+{% endif %}
 
 {% endblock page_content_inner %}
