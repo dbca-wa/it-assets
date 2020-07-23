@@ -1,6 +1,7 @@
 from datetime import date
 from django import forms
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
@@ -11,7 +12,7 @@ from os import path
 from pytz import timezone
 
 from organisation.models import CommonFields, DepartmentUser, Location
-from bigpicture.models import Dependency, Platform
+from bigpicture.models import RiskAssessment, Dependency, Platform
 from .utils import smart_truncate
 
 TZ = timezone(settings.TIME_ZONE)
@@ -226,6 +227,7 @@ class ITSystem(CommonFields):
         help_text="The primary platform used to provide this IT system")
     dependencies = models.ManyToManyField(
         Dependency, blank=True, help_text="Dependencies used by this IT system")
+    risks = GenericRelation(RiskAssessment)
 
     class Meta:
         verbose_name = 'IT System'
