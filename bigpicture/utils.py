@@ -209,3 +209,29 @@ def set_workload_risk_assessment_vulns():
                     )
                     ra.notes = 'Workload image {} has been scanned (trivy)'.format(workload.image)
                     ra.save()
+
+
+def set_itsystem_risks():
+    itsystem_ct = ContentType.objects.get_for_model(ITSystem.objects.first())
+
+    for it in ITSystem.objects.all():
+        if it.system_type:
+            # Create/update a RiskAssessment object for the IT System.
+            risk, created = RiskAssessment.objects.get_or_create(
+                content_type=itsystem_ct,
+                object_id=it.pk,
+                category='Critical function',
+                rating=2,
+            )
+            risk.notes = it.get_system_type_display()
+            risk.save()
+
+        if it.backups:
+            risk, created = RiskAssessment.objects.get_or_create(
+                content_type=itsystem_ct,
+                object_id=it.pk,
+                category='Backups',
+                rating=it.backups - 1,
+            )
+            risk.notes = it.get_backups_display()
+            risk.save()
