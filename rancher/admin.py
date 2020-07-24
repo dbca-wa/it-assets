@@ -371,10 +371,10 @@ class WorkloadDatabaseInline1(DatabaseLinkMixin,admin.TabularInline):
 
 @admin.register(models.Workload)
 class WorkloadAdmin(ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin, admin.ModelAdmin):
-    list_display = ('_manage', 'name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns', 'modified')
+    list_display = ('_manage', 'name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'modified')
     list_display_links = ('name',)
     readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_webapps', 'modified')
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns', 'image_scan_timestamp', '_webapps', 'modified')
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'image_scan_timestamp', '_webapps', 'modified')
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster', 'namespace', 'kind')
     search_fields = ['name', 'project__name', 'namespace__name']
@@ -400,12 +400,6 @@ class WorkloadAdmin(ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, Work
             else:
                 return ""
     _webapps.short_description = "Web Applications"
-
-    def _image_vulns(self, obj):
-        if not obj.image_scan_json:
-            return ''
-        return ', '.join(['{}: {}'.format(k.capitalize(), v) for (k, v) in obj.image_scan_vulns().items()])
-    _image_vulns.short_description = 'Image vulnerabilities'
 
     def has_change_permission(self, request, obj=None):
         return False

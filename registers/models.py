@@ -1,6 +1,7 @@
 from datetime import date
 from django import forms
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
@@ -11,7 +12,7 @@ from os import path
 from pytz import timezone
 
 from organisation.models import CommonFields, DepartmentUser, Location
-from bigpicture.models import Dependency, Platform
+from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
 TZ = timezone(settings.TIME_ZONE)
@@ -226,6 +227,7 @@ class ITSystem(CommonFields):
         help_text="The primary platform used to provide this IT system")
     dependencies = models.ManyToManyField(
         Dependency, blank=True, help_text="Dependencies used by this IT system")
+    risks = GenericRelation(RiskAssessment)
 
     class Meta:
         verbose_name = 'IT System'
@@ -276,6 +278,37 @@ class ITSystem(CommonFields):
             d['bh_support_telephone'] = self.bh_support.telephone
             d['bh_support_email'] = self.bh_support.email
         return render_to_string(template, d)
+
+    def get_risks(self, category=None):
+        # Return a set of unique risks associated with the IT System.
+        # RiskAssessments can be associated with IT System dependencies, platform, or directly
+        # with the IT System itself.
+        if category:
+            risks = self.risks.filter(category=category)
+            for dep in self.dependencies.all():
+                risks = risks | dep.risks.filter(category=category)
+            if self.platform:
+                for dep in self.platform.dependencies.all():
+                    risks = risks | dep.risks.filter(category=category)
+        else:
+            risks = self.risks.all()
+            for dep in self.dependencies.all():
+                risks = risks | dep.risks.all()
+            if self.platform:
+                for dep in self.platform.dependencies.all():
+                    risks = risks | dep.risks.all()
+        return risks.distinct().order_by('category', '-rating')
+
+    def get_risk_category_maxes(self):
+        # Returns a dictionary of risk categories for this system, containing the 'maximum' risk
+        # for each category (or None). Relies on get_risks() returning sorted results.
+        risks = self.get_risks()
+        return {c[0]: risks.filter(category=c[0]).first() for c in RISK_CATEGORY_CHOICES}
+
+    def get_risk(self, category):
+        # Return a single RiskAssessment object associated with this IT System, having the highest
+        # rating, or else return None.
+        return self.get_risks(category).first()
 
 
 class ITSystemDependency(models.Model):

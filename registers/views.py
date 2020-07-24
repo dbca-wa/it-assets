@@ -3,8 +3,10 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.admin import site
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
@@ -13,7 +15,8 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import re
 
-from bigpicture.models import Platform
+from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
+from itassets.utils import get_query
 from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
@@ -107,7 +110,7 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         from .admin import ChangeRequestAdmin
-        queryset = super(ChangeRequestList, self).get_queryset()
+        queryset = super().get_queryset()
         if 'mine' in self.request.GET:
             email = self.request.user.email
             queryset = queryset.filter(requester__email__iexact=email)
@@ -117,7 +120,7 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestList, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         # Pass in any query string
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
@@ -137,7 +140,7 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     model = ChangeRequest
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestDetail, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         rfc = self.get_object()
         context['may_complete'] = (
             rfc.is_ready and
@@ -175,7 +178,7 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         return ChangeRequestCreateForm
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestCreate, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         if 'std' in self.kwargs and self.kwargs['std']:
             context['title'] = 'Create a draft standard change request'
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
@@ -212,7 +215,7 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         if 'std' in self.kwargs and self.kwargs['std']:
             # Must be carried out after save()
             rfc.it_systems.set(rfc.standard_change.it_systems.all())
-        return super(ChangeRequestCreate, self).form_valid(form)
+        return super().form_valid(form)
 
 
 class ChangeRequestChange(LoginRequiredMixin, UpdateView):
@@ -226,7 +229,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         if not rfc.is_draft:
             # Redirect to the object detail view.
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestChange, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def get_form_class(self):
         rfc = self.get_object()
@@ -246,7 +249,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
         return form
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestChange, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         rfc = self.get_object()
         if rfc.is_standard_change:
             context['title'] = 'Update draft standard change request {}'.format(rfc.pk)
@@ -333,8 +336,8 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                 rfc.save()
 
         if errors:
-            return super(ChangeRequestChange, self).form_invalid(form)
-        return super(ChangeRequestChange, self).form_valid(form)
+            return super().form_invalid(form)
+        return super().form_valid(form)
 
 
 class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
@@ -343,7 +346,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
     template_name = 'registers/changerequest_endorse.html'
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestEndorse, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['title'] = 'Endorse change request {}'.format(self.get_object().pk)
         return context
 
@@ -354,10 +357,13 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             # Redirect to the object detail view.
             messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
+        if not rfc.endorser:
+            messages.warning(self.request, 'Change request {} has no endorser recorded.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
         if self.request.user.email.lower() != rfc.endorser.email.lower():
             messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestEndorse, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
         rfc = form.save()
@@ -418,7 +424,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
-        return super(ChangeRequestEndorse, self).form_valid(form)
+        return super().form_valid(form)
 
 
 class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
@@ -444,11 +450,11 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
             elif 'cancel' in self.request.POST:
                 return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
             else:
-                return super(ChangeRequestApproval, self).form_valid(form)
+                return super().form_valid(form)
 
 
 class ChangeRequestExport(LoginRequiredMixin, View):
-    """A custom view to export all Incident values to an Excel spreadsheet.
+    """A custom view to export all ChangeRequest objects to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -474,7 +480,7 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
             return ('week', date.today() - timedelta(days=date.today().weekday()))
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestCalendar, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         cal, d = self.get_date_param()
         context['start'] = d
         context['today'] = date.today()
@@ -489,7 +495,7 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
         return context
 
     def get_queryset(self):
-        queryset = super(ChangeRequestCalendar, self).get_queryset()
+        queryset = super().get_queryset()
         cal, d = self.get_date_param()
         if cal == 'week':
             # Convert week_start to a TZ-aware datetime object.
@@ -523,10 +529,10 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         if self.request.user.email.lower() not in [rfc.requester.email.lower(), rfc.implementer.email.lower()]:
             messages.warning(self.request, 'You are not authorised to complete change request {}.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        return super(ChangeRequestComplete, self).get(request, *args, **kwargs)
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        context = super(ChangeRequestComplete, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['title'] = 'Complete/finalise change request {}'.format(self.get_object().pk)
         return context
 
@@ -554,7 +560,7 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         rfc.save()
         log.save()
 
-        return super(ChangeRequestComplete, self).form_valid(form)
+        return super().form_valid(form)
 
 
 class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
@@ -565,10 +571,38 @@ class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'IT System Risk Assessments'
+        if 'q' in self.request.GET:
+            context['query_string'] = self.request.GET['q']
+        context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
         return context
 
     def get_queryset(self):
         qs = super().get_queryset()
         # Default to prod/prod-legacy IT systems only.
         qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+        # Did we pass in a search string? If so, filter the queryset and return it.
+        if 'q' in self.request.GET and self.request.GET['q']:
+            query_str = self.request.GET['q']
+            # Replace single-quotes with double-quotes
+            query_str = query_str.replace("'", '"')
+            # If the model is registered with in admin.py, filter it using registered search_fields.
+            if site._registry[self.model].search_fields:
+                search_fields = site._registry[self.model].search_fields
+                entry_query = get_query(query_str, search_fields)
+                qs = qs.filter(entry_query)
         return qs
+
+
+class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
+    model = ITSystem
+    template_name = 'registers/riskassessment_detail.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context['page_title'] = 'IT System Risk Assessment - {}'.format(obj)
+        context['obj_dependencies'] = obj.dependencies.order_by('category')
+        context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
+        context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
+        context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
+        return context

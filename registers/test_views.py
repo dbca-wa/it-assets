@@ -7,7 +7,7 @@ from mixer.backend.django import mixer
 from pytz import timezone
 
 from registers.models import ITSystem, ChangeRequest, ChangeLog
-from itassets.test_api import ApiTestCase
+from organisation.models import DepartmentUser
 
 User = get_user_model()
 TZ = timezone(settings.TIME_ZONE)
@@ -23,27 +23,7 @@ class RegistersViewsTestCase(TestCase):
         self.n_user.save()
         self.client.login(username='normaluser', password='pass')
         mixer.blend(ITSystem)
-
-    def test_itsystem_export(self):
-        url = reverse('itsystem_export')
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
-
-    def test_itsystem_platform_export(self):
-        url = reverse('itsystem_platform_export')
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
-
-
-class ChangeRequestViewsTestCase(TestCase):
-    client = Client()
-
-    def setUp(self):
-        # Create/log in a normal user.
-        self.n_user = mixer.blend(User, username='normaluser', is_superuser=False, is_staff=False)
-        self.n_user.set_password('pass')
-        self.n_user.save()
-        self.client.login(username='normaluser', password='pass')
+        mixer.blend(DepartmentUser)
         mixer.blend(ChangeRequest)
         mixer.blend(ChangeLog)
         self.rfc = ChangeRequest.objects.first()
@@ -78,25 +58,48 @@ class ChangeRequestViewsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(ChangeRequest.objects.filter(title='A new test RFC'))
 
-#commented due to differeing http codes from changeRequestChange and ChangeRequestApproval
-#    def test_changerequest_change(self):
-#        url = reverse('change_request_change', kwargs={'pk': self.rfc.pk})
-#        resp = self.client.get(url)
-#        self.assertEqual(resp.status_code, 200)
+    def test_changerequest_change(self):
+        url = reverse('change_request_change', kwargs={'pk': self.rfc.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        # Change the RFC status to something other than 'draft'; the view should redirect instead.
+        self.rfc.status = 6
+        self.rfc.save()
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 302)
+
+    # TODO: test the business logic around 'Save and submit for endorsement'.
 
     def test_changerequest_endorse(self):
         url = reverse('change_request_endorse', kwargs={'pk': self.rfc.pk})
-        resp = self.client.get(url, follow=True)
+        resp = self.client.get(url)
+        # A draft RFC should redirect instead of returning.
+        self.assertEqual(resp.status_code, 302)
+        # Change the status to 'submitted'; it should still redirect because we have no endorser recorded.
+        self.rfc.status = 1
+        self.rfc.save()
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 302)
+        # To properly test the endorse view, we need both a User and a DepartmentUser with
+        # matching email addresses. The User needs to be the one making the HTTP request.
+        # Create & login our new User.
+        user = mixer.blend(User, username='endorser', email='endorser@email.wow', is_superuser=False, is_staff=False)
+        user.set_password('pass')
+        user.save()
+        self.client.logout()
+        self.client.login(username='endorser', password='pass')
+        # Set the matching DepartmentUser as the RFC endorser; the view should now return.
+        self.rfc.endorser = mixer.blend(DepartmentUser, email=user.email)
+        self.rfc.save()
+        resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
 
-    # def test_changerequest_export(self):
-    #     url = reverse('admin:changerequest_export')
-    #     resp = self.client.get(url, follow=True)
-    #
-    #     self.assertEqual(resp.status_code, 200)
-    #     # self.assertTrue(resp.has_header("Content-Disposition"))
-    #     # self.assertEqual(resp['Content-Type'],
-    #     #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    def test_changerequest_export(self):
+        url = reverse('change_request_export')
+        resp = self.client.get(url, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.has_header("Content-Disposition"))
+        self.assertEqual(resp['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     def test_changerequest_calendar(self):
         url = reverse('change_request_calendar')
@@ -129,30 +132,3 @@ class ChangeRequestViewsTestCase(TestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.rfc.title)
-
-
-class ChangeRequestExportTestCase(ApiTestCase):
-    client = Client()
-
-    def setUp(self):
-        # Create/log in a normal user.
-        self.a_user = mixer.blend(User, username='adminuser', is_superuser=True, is_staff=True)
-        self.a_user.set_password('pass')
-        self.a_user.save()
-        self.client.login(username='adminuser', password='pass')
-        mixer.blend(ChangeRequest)
-        mixer.cycle(2).blend(ChangeLog)
-        self.rfc = ChangeRequest.objects.first()
-
-    def test_changerequest_export(self):
-        url = reverse('admin:changerequest_export')
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
-        # self.assertTrue(resp.has_header("Content-Disposition"))
-        # self.assertEqual(resp['Content-Type'],
-        #                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-    def test_change_request_export(self):
-        url = reverse('change_request_export')
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
