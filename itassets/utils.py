@@ -1,6 +1,34 @@
+from django.db.models import Q
 from django.http import HttpResponse
 from djqscsv import render_to_csv_response
+import re
 from restless.dj import DjangoResource
+
+
+def get_query(query_string, search_fields):
+    """Returns a query which is a combination of Q objects. That combination
+    aims to search keywords within a model by testing the given search fields.
+
+    Splits the query string into individual keywords, getting rid of unecessary
+    spaces and grouping quoted words together.
+    """
+    findterms = re.compile(r'"([^"]+)"|(\S+)').findall
+    normspace = re.compile(r"\s{2,}").sub
+    query = None  # Query to search for every search term
+    terms = [normspace(" ", (t[0] or t[1]).strip()) for t in findterms(query_string)]
+    for term in terms:
+        or_query = None  # Query to search for a given term in each field
+        for field_name in search_fields:
+            q = Q(**{"%s__icontains" % field_name: term})
+            if or_query is None:
+                or_query = q
+            else:
+                or_query = or_query | q
+        if query is None:
+            query = or_query
+        else:
+            query = query & or_query
+    return query
 
 
 class CSVDjangoResource(DjangoResource):
