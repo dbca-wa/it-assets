@@ -604,16 +604,5 @@ class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
         context['obj_dependencies'] = obj.dependencies.order_by('category')
         context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
         context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
-
-        # Get 'maximum' risks in each category for the IT system.
-        max_risks = obj.get_risk_category_maxes()
-        context['top_function_risk'] = max_risks['Critical function']
-        context['top_traffic_risk'] = max_risks['Traffic']
-        context['top_access_risk'] = max_risks['Access']
-        context['top_vuln_risk'] = max_risks['Vulnerability']
-        context['top_backup_risk'] = max_risks['Backups']
-        context['top_support_risk'] = max_risks['Support']
-        context['top_os_risk'] = max_risks['Operating System']
-        context['top_plan_risk'] = max_risks['Contingency plan']
-
+        context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
         return context

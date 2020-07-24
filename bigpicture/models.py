@@ -3,6 +3,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 
+# Note that the list below has a couple of uses: it sets the options for the RiskAssessment.category
+# field, and is also used to generate the tables of risk assessments in the list and detail views.
 RISK_CATEGORY_CHOICES = (
     ("Critical function", "Critical function"),
     ("Traffic", "Traffic"),
