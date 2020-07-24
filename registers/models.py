@@ -295,7 +295,7 @@ class ITSystem(CommonFields):
         # for each category (or None).
         risks = self.get_all_risks()
         return {
-            c[0]: risks.filter(category=c[0])[0] if risks.filter(category=c[0]).exists() else None for c in RISK_CATEGORY_CHOICES
+            c[0]: risks.filter(category=c[0]).first() for c in RISK_CATEGORY_CHOICES
         }
 
 
