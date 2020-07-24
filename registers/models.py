@@ -12,7 +12,7 @@ from os import path
 from pytz import timezone
 
 from organisation.models import CommonFields, DepartmentUser, Location
-from bigpicture.models import RiskAssessment, Dependency, Platform
+from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
 TZ = timezone(settings.TIME_ZONE)
@@ -278,6 +278,25 @@ class ITSystem(CommonFields):
             d['bh_support_telephone'] = self.bh_support.telephone
             d['bh_support_email'] = self.bh_support.email
         return render_to_string(template, d)
+
+    def get_all_risks(self):
+        # Return a set of unique risks associated with the IT System.
+        # RiskAssessments can be associated with IT System dependencies, platform, or directly
+        # with the IT System itself.
+        risks = self.risks.all()
+        for dep in self.dependencies.all():
+            risks = risks | dep.risks.all()
+        for dep in self.platform.dependencies.all():
+            risks = risks | dep.risks.all()
+        return risks.distinct().order_by('category', '-rating')
+
+    def get_risk_category_maxes(self):
+        # Returns a dictionary of risk categories for this system, containing the 'maximum' risk
+        # for each category (or None).
+        risks = self.get_all_risks()
+        return {
+            c[0]: risks.filter(category=c[0])[0] if risks.filter(category=c[0]).exists() else None for c in RISK_CATEGORY_CHOICES
+        }
 
 
 class ITSystemDependency(models.Model):

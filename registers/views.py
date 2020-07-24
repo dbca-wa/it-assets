@@ -590,60 +590,15 @@ class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
         context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
         context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
 
-        # Get a list of all unique risks associated with the IT System.
-        # RiskAssessments can be associated with IT System dependencies, platform, or directly
-        # with the system itself.
-        risks = []
-        for d in obj.dependencies.all():
-            risks = risks + list(d.risks.all())
-        for d in obj.platform.dependencies.all():
-            risks = risks + list(d.risks.all())
-        risks = risks + list(obj.risks.all())
-        risks = set(risks)
-
-        # For each category of risk, we want the 'worst' (top) RiskAssessment object only.
-        top_function_risk = None
-        top_traffic_risk = None
-        top_access_risk = None
-        top_vuln_risk = None
-        top_backup_risk = None
-        top_support_risk = None
-        top_os_risk = None
-        top_plan_risk = None
-
-        for risk in risks:
-            if risk.category == 'Critical function':
-                if (top_function_risk and top_function_risk.rating < risk.rating) or not top_function_risk:
-                    top_function_risk = risk
-            elif risk.category == 'Traffic':
-                if (top_traffic_risk and top_traffic_risk.rating < risk.rating) or not top_traffic_risk:
-                    top_traffic_risk = risk
-            elif risk.category == 'Access':
-                if (top_access_risk and top_access_risk.rating < risk.rating) or not top_access_risk:
-                    top_access_risk = risk
-            elif risk.category == 'Vulnerability':
-                if (top_vuln_risk and top_vuln_risk.rating < risk.rating) or not top_vuln_risk:
-                    top_vuln_risk = risk
-            elif risk.category == 'Backups':
-                if (top_backup_risk and top_backup_risk.rating < risk.rating) or not top_backup_risk:
-                    top_backup_risk = risk
-            elif risk.category == 'Support':
-                if (top_support_risk and top_support_risk.rating < risk.rating) or not top_support_risk:
-                    top_support_risk = risk
-            elif risk.category == 'Operating System':
-                if (top_os_risk and top_os_risk.rating < risk.rating) or not top_os_risk:
-                    top_os_risk = risk
-            elif risk.category == 'Contingency plan':
-                if (top_plan_risk and top_plan_risk.rating < risk.rating) or not top_plan_risk:
-                    top_plan_risk = risk
-
-        context['top_function_risk'] = top_function_risk
-        context['top_traffic_risk'] = top_traffic_risk
-        context['top_access_risk'] = top_access_risk
-        context['top_vuln_risk'] = top_vuln_risk
-        context['top_backup_risk'] = top_backup_risk
-        context['top_support_risk'] = top_support_risk
-        context['top_os_risk'] = top_os_risk
-        context['top_plan_risk'] = top_plan_risk
+        # Get 'maximum' risks in each category for the IT system.
+        max_risks = obj.get_risk_category_maxes()
+        context['top_function_risk'] = max_risks['Critical function']
+        context['top_traffic_risk'] = max_risks['Traffic']
+        context['top_access_risk'] = max_risks['Access']
+        context['top_vuln_risk'] = max_risks['Vulnerability']
+        context['top_backup_risk'] = max_risks['Backups']
+        context['top_support_risk'] = max_risks['Support']
+        context['top_os_risk'] = max_risks['Operating System']
+        context['top_plan_risk'] = max_risks['Contingency plan']
 
         return context
