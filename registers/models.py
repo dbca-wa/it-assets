@@ -308,29 +308,6 @@ class ITSystem(CommonFields):
         # rating, or else return None.
         return self.get_risks(category).first()
 
-    # TODO: work out how to factor out the next eight methods.
-
-    def get_function_risk(self):
-        return self.get_risk('Critical function')
-
-    def get_traffic_risk(self):
-        return self.get_risk('Traffic')
-
-    def get_access_risk(self):
-        return self.get_risk('Access')
-
-    def get_vuln_risk(self):
-        return self.get_risk('Vulnerability')
-
-    def get_backups_risk(self):
-        return self.get_risk('Backups')
-
-    def get_support_risk(self):
-        return self.get_risk('Support')
-
-    def get_plan_risk(self):
-        return self.get_risk('Contingency plan')
-
 
 class ITSystemDependency(models.Model):
     """A model to represent a dependency that an ITSystem has on another, plus

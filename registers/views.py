@@ -15,7 +15,7 @@ from organisation.models import DepartmentUser
 from pytz import timezone
 import re
 
-from bigpicture.models import Platform
+from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
 from itassets.utils import get_query
 from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
@@ -573,6 +573,7 @@ class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
         context['page_title'] = 'IT System Risk Assessments'
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
+        context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
         return context
 
     def get_queryset(self):

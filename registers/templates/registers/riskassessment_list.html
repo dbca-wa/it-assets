@@ -1,5 +1,6 @@
 {% extends "base_b4.html" %}
 {% load bootstrap_pagination %}
+{% load itsystem_risks %}
 
 {% block page_content_inner %}
 <h1>{{ page_title }}</h1>
@@ -21,13 +22,9 @@
             <th>Status</th>
             <th>Division</th>
             <th>Platform</th>
-            <th>Critical function</th>
-            <th>Traffic</th>
-            <th>Access</th>
-            <th>Vulnerabilities</th>
-            <th>Backups</th>
-            <th>Support</th>
-            <th>Contingency plan</th>
+            {% for category in risk_categories %}
+                <th>{{ category}}</th>
+            {% endfor %}
         </tr>
     </thead>
     <tbody>
@@ -38,55 +35,15 @@
             <td>{{ obj.get_status_display }}</td>
             <td>{{ obj.division_name }}</td>
             <td class="table-{{ obj.platform.health_b4_class }}">{{ obj.platform.name }}</td>
-            {% if obj.get_function_risk %}
-                {% with obj.get_function_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+            {% for category in risk_categories %}
+                {% with obj|get_category_risk:category as risk %}
+                    {% if risk %}
+                        <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                    {% else %}
+                        <td></td>
+                    {% endif %}
                 {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
-            {% if obj.get_traffic_risk %}
-                {% with obj.get_traffic_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
-                {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
-            {% if obj.get_access_risk %}
-                {% with obj.get_access_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
-                {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
-            {% if obj.get_vuln_risk %}
-                {% with obj.get_vuln_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
-                {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
-            {% if obj.get_backups_risk %}
-                {% with obj.get_backups_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
-                {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
-            {% if obj.get_support_risk %}
-                {% with obj.get_support_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
-                {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
-            {% if obj.get_support_risk %}
-                {% with obj.get_support_risk as risk %}
-                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
-                {% endwith %}
-            {% else %}
-                <td></td>
-            {% endif %}
+            {% endfor %}
         </tr>
     {% endfor %}
     </tbody>
