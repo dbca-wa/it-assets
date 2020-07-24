@@ -287,14 +287,16 @@ class ITSystem(CommonFields):
             risks = self.risks.filter(category=category)
             for dep in self.dependencies.all():
                 risks = risks | dep.risks.filter(category=category)
-            for dep in self.platform.dependencies.all():
-                risks = risks | dep.risks.filter(category=category)
+            if self.platform:
+                for dep in self.platform.dependencies.all():
+                    risks = risks | dep.risks.filter(category=category)
         else:
             risks = self.risks.all()
             for dep in self.dependencies.all():
                 risks = risks | dep.risks.all()
-            for dep in self.platform.dependencies.all():
-                risks = risks | dep.risks.all()
+            if self.platform:
+                for dep in self.platform.dependencies.all():
+                    risks = risks | dep.risks.all()
         return risks.distinct().order_by('category', '-rating')
 
     def get_risk_category_maxes(self):
