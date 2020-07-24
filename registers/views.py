@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.admin import site
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -15,6 +16,7 @@ from pytz import timezone
 import re
 
 from bigpicture.models import Platform
+from itassets.utils import get_query
 from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
@@ -569,12 +571,24 @@ class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'IT System Risk Assessments'
+        if 'q' in self.request.GET:
+            context['query_string'] = self.request.GET['q']
         return context
 
     def get_queryset(self):
         qs = super().get_queryset()
         # Default to prod/prod-legacy IT systems only.
         qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+        # Did we pass in a search string? If so, filter the queryset and return it.
+        if 'q' in self.request.GET and self.request.GET['q']:
+            query_str = self.request.GET['q']
+            # Replace single-quotes with double-quotes
+            query_str = query_str.replace("'", '"')
+            # If the model is registered with in admin.py, filter it using registered search_fields.
+            if site._registry[self.model].search_fields:
+                search_fields = site._registry[self.model].search_fields
+                entry_query = get_query(query_str, search_fields)
+                qs = qs.filter(entry_query)
         return qs
 
 

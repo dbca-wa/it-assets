@@ -3,9 +3,15 @@
 
 {% block page_content_inner %}
 <h1>{{ page_title }}</h1>
-<div>
-    {% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
-</div>
+
+{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
+
+<!-- Search bar -->
+<form action="" method="get">
+    <input id="search_field" type="text" class="form-control" name="q" placeholder="Search IT Systems" value="{{ query_string }}">
+</form>
+<br>
+
 {% if object_list %}
 <table class="table table-striped table-bordered table-condensed">
     <thead>
@@ -14,12 +20,14 @@
             <th>Name</th>
             <th>Status</th>
             <th>Division</th>
-            <th>System type</th>
-            <th>Availability</th>
-            <th>Seasonality</th>
-            <th>Authentication</th>
-            <th>Access</th>
             <th>Platform</th>
+            <th>Critical function</th>
+            <th>Traffic</th>
+            <th>Access</th>
+            <th>Vulnerabilities</th>
+            <th>Backups</th>
+            <th>Support</th>
+            <th>Contingency plan</th>
         </tr>
     </thead>
     <tbody>
@@ -29,12 +37,56 @@
             <td>{{ obj.name }}</td>
             <td>{{ obj.get_status_display }}</td>
             <td>{{ obj.division_name }}</td>
-            <td>{% if obj.system_type %}{{ obj.get_system_type_display }}{% endif %}</td>
-            <td>{{ obj.get_availability_display }}</td>
-            <td>{{ obj.get_seasonality_display }}</td>
-            <td>{{ obj.get_authentication_display }}</td>
-            <td>{{ obj.get_access_display }}</td>
             <td class="table-{{ obj.platform.health_b4_class }}">{{ obj.platform.name }}</td>
+            {% if obj.get_function_risk %}
+                {% with obj.get_function_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
+            {% if obj.get_traffic_risk %}
+                {% with obj.get_traffic_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
+            {% if obj.get_access_risk %}
+                {% with obj.get_access_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
+            {% if obj.get_vuln_risk %}
+                {% with obj.get_vuln_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
+            {% if obj.get_backups_risk %}
+                {% with obj.get_backups_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
+            {% if obj.get_support_risk %}
+                {% with obj.get_support_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
+            {% if obj.get_support_risk %}
+                {% with obj.get_support_risk as risk %}
+                <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                {% endwith %}
+            {% else %}
+                <td></td>
+            {% endif %}
         </tr>
     {% endfor %}
     </tbody>

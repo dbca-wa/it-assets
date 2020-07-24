@@ -279,24 +279,57 @@ class ITSystem(CommonFields):
             d['bh_support_email'] = self.bh_support.email
         return render_to_string(template, d)
 
-    def get_all_risks(self):
+    def get_risks(self, category=None):
         # Return a set of unique risks associated with the IT System.
         # RiskAssessments can be associated with IT System dependencies, platform, or directly
         # with the IT System itself.
-        risks = self.risks.all()
-        for dep in self.dependencies.all():
-            risks = risks | dep.risks.all()
-        for dep in self.platform.dependencies.all():
-            risks = risks | dep.risks.all()
+        if category:
+            risks = self.risks.filter(category=category)
+            for dep in self.dependencies.all():
+                risks = risks | dep.risks.filter(category=category)
+            for dep in self.platform.dependencies.all():
+                risks = risks | dep.risks.filter(category=category)
+        else:
+            risks = self.risks.all()
+            for dep in self.dependencies.all():
+                risks = risks | dep.risks.all()
+            for dep in self.platform.dependencies.all():
+                risks = risks | dep.risks.all()
         return risks.distinct().order_by('category', '-rating')
 
     def get_risk_category_maxes(self):
         # Returns a dictionary of risk categories for this system, containing the 'maximum' risk
-        # for each category (or None).
-        risks = self.get_all_risks()
-        return {
-            c[0]: risks.filter(category=c[0]).first() for c in RISK_CATEGORY_CHOICES
-        }
+        # for each category (or None). Relies on get_risks() returning sorted results.
+        risks = self.get_risks()
+        return {c[0]: risks.filter(category=c[0]).first() for c in RISK_CATEGORY_CHOICES}
+
+    def get_risk(self, category):
+        # Return a single RiskAssessment object associated with this IT System, having the highest
+        # rating, or else return None.
+        return self.get_risks(category).first()
+
+    # TODO: work out how to factor out the next eight methods.
+
+    def get_function_risk(self):
+        return self.get_risk('Critical function')
+
+    def get_traffic_risk(self):
+        return self.get_risk('Traffic')
+
+    def get_access_risk(self):
+        return self.get_risk('Access')
+
+    def get_vuln_risk(self):
+        return self.get_risk('Vulnerability')
+
+    def get_backups_risk(self):
+        return self.get_risk('Backups')
+
+    def get_support_risk(self):
+        return self.get_risk('Support')
+
+    def get_plan_risk(self):
+        return self.get_risk('Contingency plan')
 
 
 class ITSystemDependency(models.Model):
