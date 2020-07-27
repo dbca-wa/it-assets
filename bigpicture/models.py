@@ -93,19 +93,6 @@ class RiskAssessment(models.Model):
             return ''
 
 
-HEALTH_CHOICES = (
-    # NOTE: each value here should map to an item in HEALTH_CHOICES_MAPPING.
-    ("Recommended", "Recommended"),
-    ("Supported", "Supported"),
-    ("Constrained", "Constrained"),
-    ("High risk", "High risk"),
-)
-HEALTH_CHOICES_MAPPING = {
-    "Recommended": "success",
-    "Supported": "info",
-    "Constrained": "warning",
-    "High risk": "danger",
-}
 DEPENDENCY_CATEGORY_CHOICES = (
     ("Service", "Service"),
     ("Compute", "Compute"),
@@ -153,34 +140,28 @@ class Dependency(models.Model):
         choices=DEPENDENCY_CATEGORY_CHOICES,
         help_text="The category of this dependency.",
     )
-    health = models.CharField(
-        max_length=64,
-        choices=HEALTH_CHOICES,
-        blank=True,
-        null=True,
-        help_text="A point-in-time assessment of the health of this dependency.",
-    )
     risks = GenericRelation(RiskAssessment)
 
     class Meta:
         verbose_name_plural = "dependencies"
 
     def __str__(self):
-        s = "{} - {}".format(self.content_object, self.category)
-        if self.health:
-            s += " ({})".format(self.health)
-        return s
-
-    @property
-    def health_b4_class(self):
-        # Returns a Bootstrap 4 class to be injected into a HTML template.
-        # Return value is mapped to one of the options in HEALTH_CHOICES.
-        if self.health:
-            return HEALTH_CHOICES_MAPPING[self.health]
-        else:
-            return None
+        return "{} - {}".format(self.content_object, self.category)
 
 
+HEALTH_CHOICES = (
+    # NOTE: each value here should map to an item in HEALTH_CHOICES_MAPPING.
+    ("Recommended", "Recommended"),
+    ("Supported", "Supported"),
+    ("Constrained", "Constrained"),
+    ("High risk", "High risk"),
+)
+HEALTH_CHOICES_MAPPING = {
+    "Recommended": "success",
+    "Supported": "info",
+    "Constrained": "warning",
+    "High risk": "danger",
+}
 PLATFORM_TIER_CHOICES = (
     ("IaaS", "IaaS"),
     ("PaaS", "PaaS"),
