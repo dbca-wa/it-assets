@@ -16,7 +16,7 @@ from pytz import timezone
 import re
 
 from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
-from itassets.utils import get_query
+from itassets.utils import breadcrumbs_list, get_query
 from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
@@ -574,6 +574,9 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
         context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
+        # Breadcrumb links:
+        links = [(None, 'Risk assessments')]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
         return context
 
     def get_queryset(self):
@@ -605,4 +608,7 @@ class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
         context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
         context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
         context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
+        # Breadcrumb links:
+        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, obj.system_id)]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
         return context

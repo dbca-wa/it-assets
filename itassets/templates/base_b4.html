@@ -15,6 +15,17 @@
 {% block navbar_links %}{% endblock %}
 
 {% block page_content %}
+    <!-- Breadcrumbs -->
+    {% block breadcrumb_nav %}
+        {% if breadcrumb_trail %}
+        <nav aria-label="breadcrumb">
+            <ul class="breadcrumb">
+                {{ breadcrumb_trail|safe }}
+            </ul>
+        </nav>
+        {% endif %}
+    {% endblock breadcrumb_nav %}
+
     <div class="container-fluid">
         <!-- Messages  -->
         {% if messages %}
