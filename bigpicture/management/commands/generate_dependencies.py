@@ -8,6 +8,7 @@ from bigpicture.utils import (
     host_risk_assessment_vulns,
     workload_risk_assessment_vulns,
     itsystem_risks,
+    host_os_risks,
 )
 
 
@@ -43,6 +44,8 @@ class Command(BaseCommand):
             workload_risk_assessment_vulns()
             print('Creating/updating risk assessments for IT systems')
             itsystem_risks()
+            print('Creating/updating risk assessments for host operating systems')
+            host_os_risks()
             print('Complete')
         except:
             raise CommandError('Error during generation of dependencies & risk assessments')

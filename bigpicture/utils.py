@@ -58,8 +58,8 @@ def host_dependencies():
     host_ct = ContentType.objects.get_for_model(Host.objects.first())
     webserver_ct = ContentType.objects.get_for_model(WebServer.objects.first())
 
-    # First, match webservers to hosts based on their name.
-    for i in WebServer.objects.all():
+    # First, try to match webservers to hosts based on their name.
+    for i in WebServer.objects.filter(host__isnull=True):
         if Host.objects.filter(name__istartswith=i.name):
             host = Host.objects.filter(name__istartswith=i.name).first()
             i.host = host
@@ -208,3 +208,41 @@ def itsystem_risks():
             )
             risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
             risk.save()
+
+
+OS_EOL = [
+    'Microsoft Windows 7',
+    'Microsoft Windows Server 2003',
+    'Microsoft Windows Server 2008',
+    'Microsoft Windows Server 2012',
+    'Ubuntu 14.04',
+]
+
+
+def host_os_risks():
+    # Set auto risk assessment for Host risk based on the host OS.
+    host_ct = ContentType.objects.get_for_model(Host.objects.first())
+
+    for host in Host.objects.all():
+        if host.statuses.latest():
+            status = host.statuses.latest()
+            if 'os' in status.vulnerability_info and status.vulnerability_info['os']:
+                for os in OS_EOL:
+                    if os in status.vulnerability_info['os']:
+                        if Dependency.objects.filter(content_type=host_ct, object_id=host.pk).exists():
+                            host_dep = Dependency.objects.get(content_type=host_ct, object_id=host.pk)
+                        else:
+                            host_dep = Dependency.objects.create(
+                                content_type=host_ct,
+                                object_id=host.pk,
+                                category='Compute',
+                            )
+                        dep_ct = ContentType.objects.get_for_model(host_dep)
+                        risk, created = RiskAssessment.objects.get_or_create(
+                            content_type=dep_ct,
+                            object_id=host_dep.pk,
+                            category='Operating System',
+                            rating=3,
+                        )
+                        risk.notes = '[AUTOMATED ASSESSMENT] Host operating system ({}) is past end-of-life'.format(os)
+                        risk.save()
