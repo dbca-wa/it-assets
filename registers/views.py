@@ -563,14 +563,14 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
+class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
     model = ITSystem
     paginate_by = 20
     template_name = 'registers/riskassessment_list.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = 'IT System Risk Assessments'
+        context['page_title'] = 'Risk Assessment - IT Systems'
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
         context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
@@ -593,14 +593,14 @@ class ITSystemRiskAssessmentList(LoginRequiredMixin, ListView):
         return qs
 
 
-class ITSystemRiskAssessmentDetail(LoginRequiredMixin, DetailView):
+class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
     model = ITSystem
     template_name = 'registers/riskassessment_detail.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
-        context['page_title'] = 'IT System Risk Assessment - {}'.format(obj)
+        context['page_title'] = 'Risk Assessment - {}'.format(obj)
         context['obj_dependencies'] = obj.dependencies.order_by('category')
         context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
         context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
