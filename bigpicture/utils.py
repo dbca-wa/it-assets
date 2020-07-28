@@ -6,6 +6,12 @@ from status.models import Host
 from .models import Dependency, RiskAssessment
 
 
+def audit_risks():
+    for risk in RiskAssessment.objects.all():
+        if not risk.content_object:  # Content object doesn't exist (usually an old/invalid PK).
+            risk.delete()
+
+
 def audit_dependencies():
     for dep in Dependency.objects.all():
         if not dep.content_object:  # Content object doesn't exist (usually an old/invalid PK).
@@ -89,14 +95,11 @@ def host_risk_assessment_vulns():
         if status and status.vulnerability_info:
             # Our Host has been scanned by Nessus, so find that Host's matching Dependency
             # object, and create/update a RiskAssessment on it.
-            if Dependency.objects.filter(content_type=host_ct, object_id=host.pk).exists():
-                host_dep = Dependency.objects.get(content_type=host_ct, object_id=host.pk)
-            else:
-                host_dep = Dependency.objects.create(
-                    content_type=host_ct,
-                    object_id=host.pk,
-                    category='Compute',
-                )
+            host_dep, created = Dependency.objects.get_or_create(
+                content_type=host_ct,
+                object_id=host.pk,
+                category='Compute'
+            )
             dep_ct = ContentType.objects.get_for_model(host_dep)
             if status.vulnerability_info['num_critical'] > 0:
                 ra, created = RiskAssessment.objects.get_or_create(
@@ -210,6 +213,7 @@ def itsystem_risks():
             risk.save()
 
 
+# List of EoL OS name fragments, as output by Nessus.
 OS_EOL = [
     'Microsoft Windows 7',
     'Microsoft Windows Server 2003',
@@ -229,14 +233,11 @@ def host_os_risks():
             if 'os' in status.vulnerability_info and status.vulnerability_info['os']:
                 for os in OS_EOL:
                     if os in status.vulnerability_info['os']:
-                        if Dependency.objects.filter(content_type=host_ct, object_id=host.pk).exists():
-                            host_dep = Dependency.objects.get(content_type=host_ct, object_id=host.pk)
-                        else:
-                            host_dep = Dependency.objects.create(
-                                content_type=host_ct,
-                                object_id=host.pk,
-                                category='Compute',
-                            )
+                        host_dep, created = Dependency.objects.get_or_create(
+                            content_type=host_ct,
+                            object_id=host.pk,
+                            category='Compute'
+                        )
                         dep_ct = ContentType.objects.get_for_model(host_dep)
                         risk, created = RiskAssessment.objects.get_or_create(
                             content_type=dep_ct,
