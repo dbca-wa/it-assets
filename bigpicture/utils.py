@@ -95,6 +95,7 @@ def host_risk_assessment_vulns():
         if status and status.vulnerability_info:
             # Our Host has been scanned by Nessus, so find that Host's matching Dependency
             # object, and create/update a RiskAssessment on it.
+            # TODO: delete this risk if applicable.
             host_dep, created = Dependency.objects.get_or_create(
                 content_type=host_ct,
                 object_id=host.pk,
@@ -201,16 +202,30 @@ def itsystem_risks():
             )
             risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
             risk.save()
+        elif RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').exists():
+            # If there is a risk of this type, delete it.
+            risk = RiskAssessment.objects.get(
+                content_type=itsystem_ct,
+                object_id=it.pk,
+                category='Critical function',
+            )
+            risk.delete()
 
         if it.backups:
             risk, created = RiskAssessment.objects.get_or_create(
                 content_type=itsystem_ct,
                 object_id=it.pk,
                 category='Backups',
-                rating=it.backups - 1,
             )
             risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
             risk.save()
+        elif RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').exists():
+            risk = RiskAssessment.objects.get(
+                content_type=itsystem_ct,
+                object_id=it.pk,
+                category='Backups',
+            )
+            risk.delete()
 
 
 # List of EoL OS name fragments, as output by Nessus.
@@ -231,19 +246,34 @@ def host_os_risks():
         if host.statuses.latest():
             status = host.statuses.latest()
             if 'os' in status.vulnerability_info and status.vulnerability_info['os']:
+                host_dep, created = Dependency.objects.get_or_create(
+                    content_type=host_ct,
+                    object_id=host.pk,
+                    category='Compute'
+                )
+                dep_ct = ContentType.objects.get_for_model(host_dep)
+                risky_os = None
+
                 for os in OS_EOL:
                     if os in status.vulnerability_info['os']:
-                        host_dep, created = Dependency.objects.get_or_create(
-                            content_type=host_ct,
-                            object_id=host.pk,
-                            category='Compute'
-                        )
-                        dep_ct = ContentType.objects.get_for_model(host_dep)
-                        risk, created = RiskAssessment.objects.get_or_create(
-                            content_type=dep_ct,
-                            object_id=host_dep.pk,
-                            category='Operating System',
-                            rating=3,
-                        )
-                        risk.notes = '[AUTOMATED ASSESSMENT] Host operating system ({}) is past end-of-life'.format(os)
-                        risk.save()
+                        risky_os = status.vulnerability_info['os']
+                        break
+
+                # NOTE: we can't use get_or_create here, because we may need to update the rating
+                # value of a RiskAssessment, and the field is non-nullable.
+                if RiskAssessment.objects.filter(content_type=dep_ct, object_id=host_dep.pk, category='Operating System').exists():
+                    risk = RiskAssessment.objects.get(content_type=dep_ct, object_id=host_dep.pk, category='Operating System')
+                else:
+                    risk = RiskAssessment(
+                        content_type=dep_ct,
+                        object_id=host_dep.pk,
+                        category='Operating System',
+                        rating=0,
+                    )
+                if risky_os:
+                    risk.notes = '[AUTOMATED ASSESSMENT] Host operating system ({}) is past end-of-life'.format(risky_os)
+                    risk.rating = 3
+                else:
+                    risk.notes = '[AUTOMATED ASSESSMENT] Host operating system ({}) supported'.format(status.vulnerability_info['os'])
+                    risk.rating = 0
+                risk.save()
