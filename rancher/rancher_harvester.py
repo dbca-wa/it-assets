@@ -11,7 +11,7 @@ from django.db import models
 from django.utils import timezone
 from django.db import transaction
 
-from data_storage import AzureBlobResourceClient
+from data_storage import AzureBlobStorage
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
         Workload,WorkloadEnv,Ingress,IngressRule,WorkloadListening,WorkloadVolume,
