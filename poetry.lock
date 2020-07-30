@@ -217,8 +217,7 @@ pytz = "*"
 [package.source]
 reference = "fd3b8e2fc9dc89b1e5ca0eb30988c710a050c647"
 type = "git"
-url = "https://github.com/dbca-wa/data-storage.git"
-
+url = "https://github.com/dbca-wa/data-storage"
 [[package]]
 category = "main"
 description = "Utilities for Django/Python apps"
@@ -1044,7 +1043,7 @@ python-versions = "*"
 version = "1.1.1"
 
 [metadata]
-content-hash = "3e6ec0476ee726eabdc1336e07755d15b83807e772df24296862adfb919098ea"
+content-hash = "5c92113bcd38823556e5d7d2f35a80727ba10fa725c2846827edaeb694b9e44c"
 python-versions = "^3.7"
 
 [metadata.files]
