@@ -1,9 +1,31 @@
+from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
+from dbca_utils.utils import env
 from django.conf import settings
 from django.core.files.base import ContentFile
+import json
 import logging
 import os
 import subprocess
+
+
+def get_azure_users_json(container, azure_json_path):
+    """Pass in the container name and path to a JSON dump of Azure AD users, return parsed JSON.
+    """
+    connect_string = env('AZURE_CONNECTION_STRING', '')
+    if not connect_string:
+        return None
+    store = AzureBlobStorage(connect_string, container)
+    return json.loads(store.get_content(azure_json_path))
+
+
+def find_user_in_list(user_list, email):
+    """For a list of dicts (Azure AD users), find the first one matching email (or None).
+    """
+    for user in user_list:
+        if user['Mail'] and user['Mail'].lower() == email.lower():
+            return user
+    return None
 
 
 # Python 2 can't serialize unbound functions, so here's some dumb glue
