@@ -29,57 +29,78 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
+def disable_enable_acount(modeladmin, request, queryset):
+    pass
+disable_enable_acount.short_description = "Disable or enable selected department user's Active Directory account"
+
+
+def change_email(modeladmin, request, queryset):
+    pass
+change_email.short_description = "Change select department user's primary email address in Active Directory"
+
+
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
+    actions = (disable_enable_acount, change_email)
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
-    list_display = [
-        'email', 'title', 'employee_id', 'username', 'active', 'vip', 'executive',
-        'cost_centre', 'account_type', 'o365_licence']
-    list_filter = [
-        'account_type', 'active', 'vip', 'executive', 'shared_account',
-        'o365_licence']
-    search_fields = ['name', 'email', 'username', 'employee_id', 'preferred_name']
-    raw_id_fields = ['parent', 'cost_centre', 'org_unit']
-    filter_horizontal = ['secondary_locations']
-    readonly_fields = [
-        'username', 'org_data_pretty', 'ad_data_pretty',
-        'active', 'in_sync', 'ad_deleted', 'date_ad_updated',
-        'alesco_data_pretty', 'o365_licence', 'shared_account', 'date_hr_term']
+    list_display = (
+        'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
+    )
+    list_filter = ('account_type', 'active', 'vip', 'executive', 'shared_account')
+    search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
+    raw_id_fields = ('manager',)
+    filter_horizontal = ('secondary_locations',)
+    readonly_fields = ('active', 'email')
     fieldsets = (
-        ('Email/username', {
-            'fields': ('email', 'username'),
-        }),
-        ('Name and organisational fields', {
-            'description': '''<p class="errornote">Do not edit information in this section
-            without written permission from People Services or the cost centre manager
-            (forms are required).</p>''',
+        ('Active Directory account fields', {
+            'description': '<p class="errornote">These fields can be changed using commands in the department user list view.</p>',
             'fields': (
-                'given_name', 'surname', 'name', 'employee_id', 'cost_centre',
-                'org_unit', 'location', 'parent', 'security_clearance', 'name_update_reference'),
+                'active',
+                'email',
+            ),
         }),
-        ('Account fields', {
-            'fields': ('account_type', 'expiry_date', 'date_hr_term', 'hr_auto_expiry', 'contractor', 'notes'),
-        }),
-        ('Other details', {
+        ('User information fields', {
+            'description': '''<p class="errornote">Data in these fields is synchronised with Active Directory.<br>
+                Do not edit information in this section without written permission from People Services
+                or the cost centre manager (forms are required).</p>''',
             'fields': (
-                'vip', 'executive', 'populate_primary_group',
-                'preferred_name', 'photo', 'title', 'position_type',
-                'telephone', 'mobile_phone', 'extension', 'other_phone',
-                'secondary_locations', 'working_hours', 'extra_data',
-            )
+                'name',
+                'given_name',
+                'surname',
+                'title',
+                'telephone',
+                'mobile_phone',
+                'manager',
+                'cost_centre',
+                'location',
+            ),
         }),
-        ('AD sync and HR data', {
+        ('Other user metadata fields', {
+            'description': '''<p>Data in these fields are not synchronised with Active Directory.</p>''',
             'fields': (
-                'ad_guid',
-                'ad_dn',
-                'azure_guid',
-                'active', 'in_sync', 'ad_deleted', 'date_ad_updated',
-                'o365_licence', 'shared_account',
-                'org_data_pretty', 'ad_data_pretty', 'alesco_data_pretty',
-            )
-        })
+                'preferred_name',
+                'extension',
+                'home_phone',
+                'other_phone',
+                'position_type',
+                'employee_id',
+                'name_update_reference',
+                'vip',
+                'executive',
+                'contractor',
+                'notes',
+                'working_hours',
+                'account_type',
+                'security_clearance',
+                #'org_unit',
+                #'expiry_date',
+                #'date_hr_term',
+                #'hr_auto_expiry',
+                #'secondary_locations',
+            ),
+        }),
     )
 
     def get_urls(self):
@@ -141,17 +162,15 @@ class OrgUnitAdmin(DjangoMpttAdmin):
 @register(CostCentre)
 class CostCentreAdmin(ModelAdmin):
     list_display = (
-        'name', 'code', 'chart_acct_name', 'org_position', 'division', 'users', 'manager',
-        'business_manager', 'admin', 'tech_contact', 'active')
-    search_fields = (
-        'name', 'code', 'chart_acct_name', 'org_position__name', 'division__name',
-        'org_position__acronym', 'division__acronym')
-    list_filter = ('active', 'chart_acct_name')
-    raw_id_fields = (
-        'org_position', 'manager', 'business_manager', 'admin', 'tech_contact')
+        'code', 'chart_acct_name', 'division_name', 'users', 'manager', 'business_manager', 'active'
+    )
+    search_fields = ('code', 'chart_acct_name', 'org_position__name', 'division_name')
+    list_filter = ('active', 'chart_acct_name', 'division_name')
+    raw_id_fields = ('org_position', 'manager', 'business_manager', 'admin', 'tech_contact')
 
     def users(self, obj):
         return format_html(
             '<a href="{}?cost_centre={}">{}</a>',
             reverse('admin:organisation_departmentuser_changelist'),
-            obj.pk, obj.departmentuser_set.count())
+            obj.pk, obj.departmentuser_set.count()
+        )

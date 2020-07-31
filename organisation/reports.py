@@ -19,7 +19,7 @@ def department_user_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE','CC MANAGER','CC MANAGER EMAIL','CC BMANAGER','CC BMANAGER EMAIL', 'ACTIVE', 'O365 LICENCE',
+            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'CC MANAGER', 'CC MANAGER EMAIL', 'CC BMANAGER', 'CC BMANAGER EMAIL', 'ACTIVE', 'O365 LICENCE',
         ))
         row = 1
         for i in users:
@@ -92,10 +92,10 @@ def departmentuser_csv_report():
         'name_update_reference', 'employee_id', 'active', 'telephone', 'home_phone',
         'mobile_phone', 'other_phone', 'extension', 'expiry_date', 'org_unit',
         'cost_centre', 'parent', 'executive', 'vip', 'security_clearance',
-        'in_sync', 'contractor', 'ad_deleted', 'o365_licence', 'shared_account',
-        'populate_primary_group', 'notes', 'working_hours', 'sso_roles', 'org_data', 'alesco_data',
-        'ad_data', 'extra_data', 'date_created', 'date_ad_updated', 'date_updated', 'ad_dn',
-        'ad_guid']
+        'contractor', 'o365_licence', 'shared_account',
+        'notes', 'working_hours', 'org_data', 'alesco_data',
+        'extra_data', 'date_created', 'date_updated', 'ad_guid',
+    ]
 
     # Get any DepartmentUser with non-null alesco_data field.
     # alesco_data structure should be consistent to all (or null).
@@ -124,14 +124,6 @@ def departmentuser_csv_report():
         location_keys = du.org_data['location'].keys()
         header += ['location_{}'.format(k) for k in location_keys]
         header.append('secondary_location')
-
-    # Get any DepartmentUser with non-null ad_data field for the keys.
-    if DepartmentUser.objects.filter(ad_data__isnull=False).exists():
-        du = DepartmentUser.objects.filter(ad_data__isnull=False)[0]
-        ad_keys = du.ad_data.keys()
-        if 'mailbox' in ad_keys:
-            ad_keys.remove('mailbox')  # Remove the nested object.
-        header += ['ad_{}'.format(k) for k in ad_keys]
 
     # Write data for all DepartmentUser objects to the CSV
     stream = BytesIO()
@@ -177,11 +169,6 @@ def departmentuser_csv_report():
             record.append(u.org_data['secondary_location'])
         else:
             record.append('')
-        for i in ad_keys:
-            try:
-                record.append(u.ad_data[i])
-            except:
-                record.append('')
 
         # Write the row to the CSV stream.
         wr.writerow(record)

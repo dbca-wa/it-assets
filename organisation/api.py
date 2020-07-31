@@ -64,15 +64,15 @@ class DepartmentUserResource(DjangoResource):
     """
     COMPACT_ARGS = (
         'pk', 'name', 'title', 'email', 'telephone',
-        'mobile_phone', 'extension', 'photo', 'photo_ad', 'org_data', 'parent__email',
+        'mobile_phone', 'extension', 'org_data', 'parent__email',
         'parent__name', 'username', 'org_unit__location__id',
         'org_unit__location__name', 'org_unit__location__address',
         'org_unit__location__pobox', 'org_unit__location__phone',
         'org_unit__location__fax', 'ad_guid', 'employee_id',
         'location', 'preferred_name', 'expiry_date', 'o365_licence')
     VALUES_ARGS = COMPACT_ARGS + (
-        'ad_dn', 'ad_data', 'date_updated', 'date_ad_updated', 'active',
-        'ad_deleted', 'in_sync', 'given_name', 'surname', 'home_phone',
+        'ad_data', 'date_updated', 'active',
+        'given_name', 'surname', 'home_phone',
         'other_phone', 'notes', 'working_hours', 'position_type',
         'account_type', 'shared_account')
     MINIMAL_ARGS = (
@@ -80,8 +80,6 @@ class DepartmentUserResource(DjangoResource):
     PROPERTY_ARGS = ('password_age_days',)
 
     formatters = FieldsFormatter(formatters={
-        'photo': format_fileField,
-        'photo_ad': format_fileField,
         'position_type': format_position_type,
         'account_type': format_account_type,
         'location': format_location,
@@ -102,8 +100,6 @@ class DepartmentUserResource(DjangoResource):
             prepped['gal_department'] = DepartmentUser.objects.get(pk=data['pk']).get_gal_department()
         if 'date_updated' in data and data['date_updated']:
             prepped['date_updated'] = data['date_updated'].astimezone(TIMEZONE)
-        if 'date_ad_updated' in data and data['date_ad_updated']:
-            prepped['date_ad_updated'] = data['date_ad_updated'].astimezone(TIMEZONE)
         if 'expiry_date' in data and data['expiry_date']:
             prepped['expiry_date'] = data['expiry_date'].astimezone(TIMEZONE)
             if data['expiry_date'] < timezone.now():
@@ -193,8 +189,6 @@ class DepartmentUserResource(DjangoResource):
         """Pass query params to modify the API output.
         Include `org_structure=true` and `sync_o365=true` to output only
         OrgUnits with sync_o365 == True.
-        Include `populate_groups=true` to output only DepartmentUsers
-        with populate_primary_group == True.
         """
         FILTERS = {}
         sync_o365 = True
@@ -202,13 +196,9 @@ class DepartmentUserResource(DjangoResource):
             sync_o365 = False
         else:
             sync_o365 = True
-        if 'populate_groups' in self.request.GET and self.request.GET['populate_groups'] == 'true':
-            exclude_populate_groups = True  # Will exclude populate_primary_group == False
-        else:
-            exclude_populate_groups = False  # Will ignore populate_primary_group
         # org_structure response.
         if 'org_structure' in self.request.GET:
-            resp = self.org_structure(sync_o365=sync_o365, exclude_populate_groups=exclude_populate_groups)
+            resp = self.org_structure(sync_o365=sync_o365)
             cache.set(self.request.get_full_path(), resp, timeout=300)
             return resp
         # DepartmentUser object response.
@@ -216,13 +206,6 @@ class DepartmentUserResource(DjangoResource):
         if 'all' in self.request.GET:
             # Return all objects, including those deleted in AD.
             users = DepartmentUser.objects.all()
-        elif 'ad_deleted' in self.request.GET:
-            if self.request.GET['ad_deleted'] == 'false':
-                # Return all objects that are not deleted in AD.
-                users = DepartmentUser.objects.filter(ad_deleted=False)
-            elif self.request.GET['ad_deleted'] == 'true':
-                # Return all objects that are deleted in AD.
-                users = DepartmentUser.objects.filter(ad_deleted=True)
         elif 'email' in self.request.GET:
             # Always return an object by email.
             users = DepartmentUser.objects.filter(email__iexact=self.request.GET['email'])
@@ -330,10 +313,6 @@ class DepartmentUserResource(DjangoResource):
             user.ad_guid = self.data['ad_guid']
         if 'azure_guid' in self.data:  # Exception to the if/elif rule.
             user.azure_guid = self.data['azure_guid']
-        if 'Distinguishedname' in self.data:
-            user.ad_dn = self.data['DistinguishedName']
-        elif 'ad_dn' in self.data:
-            user.ad_dn = self.data['ad_dn']
         if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
             user.expiry_date = TIMEZONE.localize(parse(self.data['AccountExpirationDate']))
         elif 'expiry_date' in self.data and self.data['expiry_date']:
@@ -350,10 +329,6 @@ class DepartmentUserResource(DjangoResource):
             user.surname = self.data['Surname']
         elif 'surname' in self.data:
             user.surname = self.data['surname']
-        if 'Modified' in self.data and self.data['Modified']:
-            user.date_ad_updated = TIMEZONE.localize(parse(self.data['Modified']))
-        elif 'date_ad_updated' in self.data and self.data['date_ad_updated']:
-            user.date_ad_updated = TIMEZONE.localize(parse(self.data['date_ad_updated']))
 
         try:
             user.save()
@@ -397,10 +372,6 @@ class DepartmentUserResource(DjangoResource):
                 user.ad_guid = self.data['ObjectGUID']
             elif 'ad_guid' in self.data and self.data['ad_guid']:
                 user.ad_guid = self.data['ad_guid']
-            if 'DistinguishedName' in self.data and self.data['DistinguishedName']:
-                user.ad_dn = self.data['DistinguishedName']
-            elif 'ad_dn' in self.data and self.data['ad_dn']:
-                user.ad_dn = self.data['ad_dn']
             if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
                 user.expiry_date = TIMEZONE.localize(parse(self.data['AccountExpirationDate']))
             elif 'expiry_date' in self.data and self.data['expiry_date']:
@@ -417,10 +388,6 @@ class DepartmentUserResource(DjangoResource):
                 user.surname = self.data['Surname']
             elif 'surname' in self.data and self.data['surname']:
                 user.surname = self.data['surname']
-            if 'Modified' in self.data and self.data['Modified']:
-                user.date_ad_updated = self.data['Modified']
-            elif 'date_ad_updated' in self.data and self.data['date_ad_updated']:
-                user.date_ad_updated = self.data['date_ad_updated']
             if 'o365_licence' in self.data:  # Boolean; don't only work on True!
                 user.o365_licence = self.data['o365_licence']
             if 'azure_guid' in self.data and self.data['azure_guid']:
@@ -431,12 +398,9 @@ class DepartmentUserResource(DjangoResource):
                 user.active = self.data['active']
             if 'Deleted' in self.data and self.data['Deleted']:
                 user.active = False
-                user.ad_deleted = True
                 user.ad_guid, user.azure_guid = None, None
                 data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
                 LOGGER.info('Set user {} as deleted in AD'.format(user.name))
-            else:
-                user.ad_deleted = False
             user.ad_data = self.data  # Store the raw request data.
             user.ad_updated = True
             user.save()
@@ -447,7 +411,7 @@ class DepartmentUserResource(DjangoResource):
         data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
         return self.formatters.format(self.request, data)
 
-    def org_structure(self, sync_o365=False, exclude_populate_groups=False):
+    def org_structure(self, sync_o365=False):
         """A custom API endpoint to return the organisation structure: a list
         of each organisational unit's metadata (name, manager, members).
         Includes OrgUnits, cost centres, locations and secondary locations.
@@ -455,8 +419,6 @@ class DepartmentUserResource(DjangoResource):
         qs = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
         # Exclude predefined account types:
         qs = qs.exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-        if exclude_populate_groups:  # Exclude objects where populate_primary_group == False
-            qs = qs.exclude(populate_primary_group=False)
         structure = []
         if sync_o365:  # Exclude certain things from populating O365/AD
             orgunits = OrgUnit.objects.filter(active=True, unit_type__in=[0, 1], sync_o365=True)
@@ -564,13 +526,6 @@ def profile(request):
         # Add the password_age_days property to the API response.
         data['password_age_days'] = user.password_age_days
     elif request.method == 'POST':
-        if 'photo' in request.POST and request.POST['photo'] == 'delete':
-            user.photo.delete()
-        elif 'photo' in request.FILES:
-            user.photo.save(
-                request.FILES['photo'].name,
-                request.FILES['photo'],
-                save=False)
         if 'telephone' in request.POST:
             user.telephone = request.POST['telephone']
         if 'mobile_phone' in request.POST:

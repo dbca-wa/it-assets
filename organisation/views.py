@@ -45,6 +45,6 @@ class UserAccountExport(View):
         response['Content-Disposition'] = 'attachment; filename=user_accounts_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         # TODO: filtering via request params.
-        users = DepartmentUser.objects.filter(active=True, ad_deleted=False, o365_licence=True).order_by('username')
+        users = DepartmentUser.objects.filter(active=True, o365_licence=True).order_by('username')
         response = user_account_export(response, users)
         return response
