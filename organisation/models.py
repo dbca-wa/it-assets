@@ -48,11 +48,11 @@ class DepartmentUser(MPTTModel):
 
     # Fields directly related to the employee, which map to a field in Azure Active Directory.
     # The Azure AD field name is listed after each field.
-    active = models.BooleanField(
-        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name='Azure GUID',
         editable=False, help_text='Azure AD ObjectId')  # ObjectId
+    active = models.BooleanField(
+        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
     email = models.EmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')  # DisplayName
@@ -74,14 +74,16 @@ class DepartmentUser(MPTTModel):
         related_name='manages', help_text='Staff member who manages this employee')  # Manager
     cost_centre = models.ForeignKey(
         'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
-        help_text='Cost centre to which the employee currently belongs')  # CompanyName, Department
+        help_text='Cost centre to which the employee currently belongs')  # CompanyName
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
-        help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, PostalCode, State, StreetAddress
+        help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
     proxy_addresses = ArrayField(base_field=models.CharField(
-        max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
+        max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')  # ProxyAddresses
+    assigned_licences = ArrayField(base_field=models.CharField(
+        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')  # AssignedLicenses
     mail_nickname = models.CharField(max_length=128, null=True, blank=True)  # MailNickName
-    dir_syn_enabled = models.NullBooleanField(default=None)  # DirSyncEnabled
+    dir_sync_enabled = models.NullBooleanField(default=None)  # DirSyncEnabled
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the address book.
@@ -272,6 +274,32 @@ class DepartmentUser(MPTTModel):
         # Return given_name and surname, with a space in between.
         full_name = '{} {}'.format(self.given_name, self.surname)
         return full_name.strip()
+
+
+'''
+ACTION_TYPE_CHOICES = (
+    ('Change account field', 'Change account field'),
+    ('Disable account', 'Disable account'),
+    ('Enable account', 'Enable account'),
+)
+
+
+class ADAction(models.Model):
+    """Represents a single "action" or change that needs to be carried out to the Active Directory
+    object which matches a DepartmentUser object.
+    """
+    created = models.DateTimeField(auto_now_add=True)
+    department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
+    action_type = models.CharField(max_length=128, choices=ACTION_TYPE_CHOICES)
+    automated = models.BooleanField(default=False, help_text='Will this action be completed by automated processes?')
+    metadata = JSONField(default=dict)
+    completed = models.DateTimeField(null=True, blank=True)
+    # log = models.TextField()
+    # ad_field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in Active Directory')
+    # ad_field_value = models.TextField(blank=True, null=True, help_text='Value of the field in Active Directory')
+    # field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in IT Assets')
+    # field_value = models.TextField(blank=True, null=True, help_text='Value of the field in IT Assets')
+'''
 
 
 class Location(models.Model):
