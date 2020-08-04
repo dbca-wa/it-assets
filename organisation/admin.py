@@ -134,8 +134,10 @@ class AdActionAdmin(ModelAdmin):
                 return queryset.filter(completed__isnull=True)
 
     date_hierarchy = 'created'
+    fields =('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
     list_display = ('created', 'department_user', '__str__', 'completed', 'completed_by')
     list_filter = (CompletedFilter, 'action_type')
+    readonly_fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
     search_fields = ('department_user__name',)
 
 
