@@ -6,6 +6,7 @@ from django.core.files.base import ContentFile
 import json
 import logging
 import os
+import re
 import subprocess
 
 
@@ -19,13 +20,32 @@ def get_azure_users_json(container, azure_json_path):
     return json.loads(store.get_content(azure_json_path))
 
 
-def find_user_in_list(user_list, email):
-    """For a list of dicts (Azure AD users), find the first one matching email (or None).
+def find_user_in_list(user_list, email=None, objectid=None):
+    """For a list of dicts (Azure AD users), find the first one matching email/objectid (or None).
     """
-    for user in user_list:
-        if user['Mail'] and user['Mail'].lower() == email.lower():
-            return user
+    if email:
+        for user in user_list:
+            if user['Mail'] and user['Mail'].lower() == email.lower():
+                return user
+    if objectid:
+        for user in user_list:
+            if user['ObjectId'] and user['ObjectId'] == objectid:
+                return user
     return None
+
+
+def update_deptuser_from_azure(azure_user, dept_user):
+    """For given Azure AD user and DepartmentUser objects, update the DepartmentUser object fields
+    with values from Azure (the source of truth for these values).
+    """
+    dept_user.azure_guid = azure_user['ObjectId']
+    # dept_user.active = azure_user['AccountEnabled']
+    dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
+    licence_pattern = 'SkuId:\s[a-z0-9-]+'
+    dept_user.assigned_licences = [re.search(licence_pattern, i)[0] for i in azure_user['AssignedLicenses'] if re.search(licence_pattern, i)]
+    # dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in azure_user['ProxyAddresses'] if i.lower().startswith('smtp')]
+    dept_user.mail_nickname = azure_user['MailNickName']
+    dept_user.save()
 
 
 # Python 2 can't serialize unbound functions, so here's some dumb glue
