@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.gis.db import models
 from django.utils import timezone
@@ -275,9 +276,52 @@ class DepartmentUser(MPTTModel):
         full_name = '{} {}'.format(self.given_name, self.surname)
         return full_name.strip()
 
+    def generate_ad_actions(self, azure_user):
+        """For given Azure AD user and DepartmentUser objects, generate ADAction objects
+        that specify the changes which need to be carried out in order to synchronise AD
+        with IT Assets.
+        ``azure_user`` will be a dict object derived from current Azure AD JSON output.
+        """
+        if not self.azure_guid:
+            return []
 
-'''
+        actions = []
+
+        for field in [
+            # ('AccountEnabled', 'active'),
+            # ('Mail', 'email'),
+            ('DisplayName', 'name'),
+            ('GivenName', 'given_name'),
+            ('Surname', 'surname'),
+            ('JobTitle', 'title'),
+            ('TelephoneNumber', 'telephone'),
+            ('Mobile', 'mobile_phone'),
+            #'Manager',
+            #CompanyName, Department
+            #PhysicalDeliveryOfficeName, PostalCode, State, StreetAddress
+            # ('ProxyAddresses', 'proxy_addresses'),
+        ]:
+            if azure_user[field[0]] != getattr(self, field[1]):
+                # Get/create a non-completed ADAction for this dept user, for these fields.
+                # This should mean that only one ADAction object is generated for a given field,
+                # even if the value it IT Assets changes more than once before being synced in AD.
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field=field[0],
+                    field=field[1],
+                    completed=None,
+                )
+                action.ad_field_value = azure_user[field[0]]
+                action.field_value = getattr(self, field[1])
+                action.save()
+                actions.append(action)
+
+        return actions
+
+
 ACTION_TYPE_CHOICES = (
+    ('Change email', 'Change email'),  # Separate from 'change field' because this is a significant operation.
     ('Change account field', 'Change account field'),
     ('Disable account', 'Disable account'),
     ('Enable account', 'Enable account'),
@@ -291,15 +335,23 @@ class ADAction(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
     action_type = models.CharField(max_length=128, choices=ACTION_TYPE_CHOICES)
-    automated = models.BooleanField(default=False, help_text='Will this action be completed by automated processes?')
-    metadata = JSONField(default=dict)
-    completed = models.DateTimeField(null=True, blank=True)
+    ad_field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in Active Directory')
+    ad_field_value = models.TextField(blank=True, null=True, help_text='Value of the field in Active Directory')
+    field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in IT Assets')
+    field_value = models.TextField(blank=True, null=True, help_text='Value of the field in IT Assets')
+    completed = models.DateTimeField(null=True, blank=True, editable=False)
+    completed_by = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True, editable=False)
     # log = models.TextField()
-    # ad_field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in Active Directory')
-    # ad_field_value = models.TextField(blank=True, null=True, help_text='Value of the field in Active Directory')
-    # field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in IT Assets')
-    # field_value = models.TextField(blank=True, null=True, help_text='Value of the field in IT Assets')
-'''
+    # automated = models.BooleanField(default=False, help_text='Will this action be completed by automated processes?')
+
+    class Meta:
+        verbose_name = 'AD action'
+        verbose_name_plural = 'AD actions'
+
+    def __str__(self):
+        return '{}: {} ({} -> {})'.format(
+            self.department_user.azure_guid, self.action_type, self.ad_field, self.field_value
+        )
 
 
 class Location(models.Model):

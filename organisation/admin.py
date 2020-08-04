@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.admin import register, ModelAdmin
+from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
@@ -7,7 +7,7 @@ from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
 
-from .models import DepartmentUser, Location, OrgUnit, CostCentre
+from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
 from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
 
 LOGGER = logging.getLogger('sync_tasks')
@@ -110,6 +110,33 @@ class DepartmentUserAdmin(VersionAdmin):
             path('departmentuser-discrepancy-report/', DepartmentUserDiscrepancyReport.as_view(), name='departmentuser_discrepancy_report'),
         ] + urls
         return urls
+
+
+@register(ADAction)
+class AdActionAdmin(ModelAdmin):
+
+    class CompletedFilter(SimpleListFilter):
+        """SimpleListFilter to filter on True/False if an object has a value for completed.
+        """
+        title = 'completed'
+        parameter_name = 'completed_boolean'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('true', 'Complete'),
+                ('false', 'Incomplete'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'true':
+                return queryset.filter(completed__isnull=False)
+            if self.value() == 'false':
+                return queryset.filter(completed__isnull=True)
+
+    date_hierarchy = 'created'
+    list_display = ('created', 'department_user', '__str__', 'completed', 'completed_by')
+    list_filter = (CompletedFilter, 'action_type')
+    search_fields = ('department_user__name',)
 
 
 @register(Location)
