@@ -38,5 +38,5 @@ beautifulsoup4==4.8.0
 #django-markdown-deux==1.0.5
 
 
-git+git://github.com/dbca-wa/data-storage@v2.7.1#egg=data-storage==2.7.1
+git+git://github.com/dbca-wa/data-storage@v3.3.1#egg=data-storage==3.3.1
 pyyaml==5.3.1

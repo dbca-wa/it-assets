@@ -13,7 +13,7 @@ from django.db import models
 from django.utils import timezone
 from django.db import transaction
 
-from data_storage import AzureBlobResourceClient
+from data_storage import ResourceConsumeClient,AzureBlobStorage
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
         Workload,WorkloadEnv,Ingress,IngressRule,WorkloadListening,WorkloadVolume,
@@ -55,10 +55,9 @@ def get_blob_resource_client(cluster):
     Return the blob resource client
     """
     if cluster not in _blob_resource_clients:
-        _blob_resource_clients[cluster] = AzureBlobResourceClient(
+        _blob_resource_clients[cluster] = ResourceConsumeClient(
+            AzureBlobStorage(settings.RANCHER_STORAGE_CONNECTION_STRING,settings.RANCHER_CONTAINER),
             settings.RANCHER_RESOURCE_NAME,
-            settings.RANCHER_STORAGE_CONNECTION_STRING,
-            settings.RANCHER_CONTAINER,
             settings.RANCHER_RESOURCE_CLIENTID,
             resource_base_path="{}/{}".format(settings.RANCHER_RESOURCE_NAME,cluster)
 
@@ -1236,33 +1235,33 @@ process_func_map = {
 }
 
 def resource_type(status,resource_id):
-    if status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and NAMESPACE_RE.search(resource_id):
+    if status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and NAMESPACE_RE.search(resource_id):
         return 10
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and VOLUMN_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_RE.search(resource_id):
         return 20
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and VOLUMN_CLAIM_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_CLAIM_RE.search(resource_id):
         return 30
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and INGRESS_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and INGRESS_RE.search(resource_id):
         return 40
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and STATEFULSET_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and STATEFULSET_RE.search(resource_id):
         return 50
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and DEPLOYMENT_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and DEPLOYMENT_RE.search(resource_id):
         return 60
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
         return 70
-    elif status==AzureBlobResourceClient.DELETED and CRONJOB_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and CRONJOB_RE.search(resource_id):
         return 80
-    elif status==AzureBlobResourceClient.DELETED and DEPLOYMENT_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and DEPLOYMENT_RE.search(resource_id):
         return 90
-    elif status==AzureBlobResourceClient.DELETED and STATEFULSET_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and STATEFULSET_RE.search(resource_id):
         return 100
-    elif status==AzureBlobResourceClient.DELETED and INGRESS_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and INGRESS_RE.search(resource_id):
         return 110
-    elif status==AzureBlobResourceClient.DELETED and VOLUMN_CLAIM_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and VOLUMN_CLAIM_RE.search(resource_id):
         return 120
-    elif status==AzureBlobResourceClient.DELETED and VOLUMN_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and VOLUMN_RE.search(resource_id):
         return 130
-    elif status==AzureBlobResourceClient.DELETED and NAMESPACE_RE.search(resource_id):
+    elif status==ResourceConsumeClient.DELETED and NAMESPACE_RE.search(resource_id):
         return 140
     else:
         raise Exception("Not Support. status={}, resource_id={}".format(status,resource_id))
