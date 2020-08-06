@@ -10,7 +10,7 @@ from django.db import models,transaction
 from django.utils import timezone
 from django.http import QueryDict
 
-from data_storage import HistoryDataConsumeClient,LocalStorage
+from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
 from data_storage.utils import acquire_runlock,release_runlock
 from .models import WebAppAccessLog,WebApp,WebAppLocation,RequestParameterFilter,WebAppAccessDailyLog,RequestPathNormalizer,apply_rules,WebAppAccessDailyReport
 
@@ -154,7 +154,13 @@ def process_log(context):
 def harvest(reconsume=False):
     lock_file = os.path.join(settings.NGINXLOG_REPOSITORY_DIR,settings.NGINXLOG_RESOURCE_NAME,"{}.lock".format(settings.NGINXLOG_RESOURCE_CLIENTID))
 
-    acquire_runlock(lock_file)
+    try:
+        acquire_runlock(lock_file)
+    except exceptions.ProcessIsRunning as ex: 
+        msg = "The previous harvest process is still running, no need to run the harvest process this time.{}".format(str(ex))
+        logger.info(msg)
+        return ([],[(None,None,None,msg)])
+        
     try:
         if reconsume and get_consume_client().is_client_exist(clientid=settings.NGINXLOG_RESOURCE_CLIENTID):
             get_consume_client().delete_clients(clientid=settings.NGINXLOG_RESOURCE_CLIENTID)
