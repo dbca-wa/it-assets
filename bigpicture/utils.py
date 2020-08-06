@@ -216,16 +216,19 @@ def itsystem_risks():
                 content_type=itsystem_ct,
                 object_id=it.pk,
                 category='Backups',
+                rating=0,  # TODO: risk rating base of backup type.
             )
             risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
             risk.save()
-        elif RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').exists():
-            risk = RiskAssessment.objects.get(
+        else:
+            risk, created = RiskAssessment.objects.get_or_create(
                 content_type=itsystem_ct,
                 object_id=it.pk,
                 category='Backups',
+                rating=2,
             )
-            risk.delete()
+            risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
+            risk.save()
 
 
 # List of EoL OS name fragments, as output by Nessus.
