@@ -58,6 +58,7 @@ def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.jso
     if azure_user:
         update_deptuser_from_azure(azure_user, dept_user)
         dept_user.generate_ad_actions(azure_user)
+        dept_user.audit_ad_actions(azure_user)
 
 
 # Python 2 can't serialize unbound functions, so here's some dumb glue

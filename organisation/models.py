@@ -319,6 +319,18 @@ class DepartmentUser(MPTTModel):
 
         return actions
 
+    def audit_ad_actions(self, azure_user):
+        """For given Azure AD user and DepartmentUser objects, check any incomplete ADAction
+        objects that specify changes to be made for the AD user. If the ADAction is no longer
+        required (e.g. changes have been completed/reverted), delete the ADAction object.
+        ``azure_user`` will be a dict object derived from current Azure AD JSON output.
+        """
+        actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
+
+        for action in actions:
+            if getattr(self, action.field) == azure_user[action.ad_field]:
+                action.delete()
+
 
 ACTION_TYPE_CHOICES = (
     ('Change email', 'Change email'),  # Separate from 'change field' because this is a significant operation.
