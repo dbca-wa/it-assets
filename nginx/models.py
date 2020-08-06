@@ -1203,13 +1203,13 @@ class WebAppAccessDailyReport(models.Model):
                 if key in daily_reports:
                     daily_report = daily_reports[key]
                     daily_report.requests += record.requests
-                    if record.http_status < 400:
+                    if record.http_status > 0 and record.http_status < 400:
                         daily_report.success_requests += record.requests
                     elif record.http_status in (401,403):
                         daily_report.unauthorized_requests += record.requests
                     elif record.http_status == 408:
                         daily_report.timeout_requests += record.requests
-                    elif record.http_status >= 400:
+                    elif record.http_status == 0 or record.http_status >= 400:
                         daily_report.error_requests += record.requests
                 else:
                     daily_report = WebAppAccessDailyReport(
@@ -1217,8 +1217,8 @@ class WebAppAccessDailyReport(models.Model):
                         webserver = record.webserver,
                         webapp = record.webapp,
                         requests = record.requests,
-                        success_requests = record.requests if record.http_status < 400  else 0,
-                        error_requests = record.requests if record.http_status >= 400 and record.http_status not in (401,403,408) else 0,
+                        success_requests = record.requests if record.http_status > 0 and record.http_status < 400  else 0,
+                        error_requests = record.requests if record.http_status == 0 or (record.http_status >= 400 and record.http_status not in (401,403,408)) else 0,
                         unauthorized_requests = record.requests if record.http_status in (401,403) else 0,
                         timeout_requests = record.requests if record.http_status == 408 else 0,
                     )
