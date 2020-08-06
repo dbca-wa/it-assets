@@ -107,7 +107,6 @@ class ITSystemResource(CSVDjangoResource):
             'seasonality': data.get_seasonality_display() if data.seasonality else '',
             'user_notification': data.user_notification,
             'biller_code': data.biller_code,
-            'platforms': [{'name': i.name, 'category': i.get_category_display()} for i in data.platforms.all()],
             'oim_internal': data.oim_internal_only,
         }
         return prepped

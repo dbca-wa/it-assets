@@ -1,0 +1,55 @@
+{% extends "base_b4.html" %}
+{% load bootstrap_pagination %}
+{% load itsystem_risks %}
+
+{% block page_content_inner %}
+<h1>{{ page_title }}</h1>
+
+{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
+
+<!-- Search bar -->
+<form action="" method="get">
+    <input id="search_field" type="text" class="form-control" name="q" placeholder="Search IT Systems" value="{{ query_string }}">
+</form>
+<br>
+
+{% if object_list %}
+<table class="table table-striped table-bordered table-condensed">
+    <thead>
+        <tr>
+            <th>System ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Division</th>
+            <th>Platform</th>
+            {% for category in risk_categories %}
+                <th>{{ category}}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for obj in object_list %}
+        <tr>
+            <td><a href="{% url 'itsystem_risk_assessment_detail' pk=obj.pk %}">{{ obj.system_id }}</a></td>
+            <td>{{ obj.name }}</td>
+            <td>{{ obj.get_status_display }}</td>
+            <td>{{ obj.division_name }}</td>
+            <td class="table-{{ obj.platform.health_b4_class }}">{{ obj.platform.name }}</td>
+            {% for category in risk_categories %}
+                {% with obj|get_category_risk:category as risk %}
+                    {% if risk %}
+                        <td class="table-{{ risk.rating_b4_class }}">{{ risk.rating_desc|capfirst }}</td>
+                    {% else %}
+                        <td></td>
+                    {% endif %}
+                {% endwith %}
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+<div>
+    {% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
+</div>
+{% endblock %}

@@ -15,7 +15,7 @@ from reversion.admin import VersionAdmin
 import unicodecsv as csv
 
 from .models import (
-    UserGroup, Platform, ITSystem, ITSystemDependency,
+    UserGroup, ITSystem, ITSystemDependency,
     StandardChange, ChangeRequest, ChangeLog)
 from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
 
@@ -24,20 +24,6 @@ from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExpor
 class UserGroupAdmin(VersionAdmin):
     list_display = ('name', 'user_count')
     search_fields = ('name',)
-
-
-@register(Platform)
-class PlatformAdmin(VersionAdmin):
-    list_display = ('name', 'category', 'affected_itsystems')
-    list_filter = ('category',)
-    search_fields = ('name',)
-
-    def affected_itsystems(self, obj):
-        # Exclude decommissioned systems from the count.
-        count = obj.itsystem_set.all().exclude(status=3).count()
-        url = reverse('admin:registers_itsystem_changelist')
-        return mark_safe('<a href="{}?platforms__in={}">{}</a>'.format(url, obj.pk, count))
-    affected_itsystems.short_description = 'IT Systems'
 
 
 class ITSystemForm(forms.ModelForm):
@@ -55,11 +41,32 @@ class ITSystemForm(forms.ModelForm):
 
 @register(ITSystem)
 class ITSystemAdmin(VersionAdmin):
-    filter_horizontal = ('platforms', 'user_groups')
+
+    class PlatformFilter(SimpleListFilter):
+        """SimpleListFilter to filter on True/False if an object has a value for platform.
+        """
+        title = 'platform'
+        parameter_name = 'platform_boolean'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('true', 'Present'),
+                ('false', 'Absent'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'true':
+                return queryset.filter(platform__isnull=False)
+            if self.value() == 'false':
+                return queryset.filter(platform__isnull=True)
+
+    filter_horizontal = ('user_groups', 'dependencies')
     list_display = (
-        'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support')
+        'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support',
+        'platform',
+    )
     list_filter = (
-        'status', 'system_type', 'availability', 'seasonality', 'recovery_category')
+        'status', 'system_type', 'availability', 'seasonality', 'recovery_category', PlatformFilter)
     search_fields = (
         'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
         'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation', 'cost_centre__code')
@@ -92,11 +99,13 @@ class ITSystemAdmin(VersionAdmin):
                 'database_server',
                 'network_storage',
                 'system_reqs',
-                'platforms',
                 'oim_internal_only',
                 ('authentication', 'access'),
                 'biller_code',
             )
+        }),
+        ('System dependencies', {
+            'fields': ('platform', 'dependencies')
         }),
         ('Retention and disposal', {
             'fields': (

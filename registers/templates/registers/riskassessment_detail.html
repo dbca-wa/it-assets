@@ -1,0 +1,113 @@
+{% extends "base_b4.html" %}
+{% load itsystem_risks %}
+
+{% block page_content_inner %}
+<h1>
+    {{ page_title }}
+    {% if user.is_superuser %}
+        <a href="{% url 'admin:registers_itsystem_change' object_id=object.pk %}"><i class="far fa-edit"></i></a>
+    {% endif %}
+</h1>
+
+<p>System status: {{ object.get_status_display }}</p>
+
+<h2>Risk assessments</h2>
+
+<table class="table table-bordered table-condensed">
+
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Assessment</th>
+            <th>Context</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for category in risk_categories %}
+        {% with object|get_category_risk:category as risk %}
+            {% if risk %}
+            <tr class="table-{{ risk.rating_b4_class }}">
+                <td>{{ category }}</td>
+                <td>
+                    {{ risk.rating_desc|capfirst }}
+                    {% if user.is_superuser %}
+                        <a href="{% url 'admin:bigpicture_riskassessment_change' object_id=risk.pk %}"><i class="far fa-edit"></i></a>
+                    {% endif %}
+                </td>
+                <td>{{ risk.notes }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td>{{ category }}</td>
+                <td>
+                    Not assessed
+                    {% if user.is_superuser %}
+                        <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ itsystem_ct.pk}}&object_id={{ object.pk}}&category={{ category }}"><i class="fas fa-plus"></i></a>
+                    {% endif %}
+                </td>
+                <td></td>
+            </tr>
+            {% endif %}
+        {% endwith %}
+    {% endfor %}
+    </tbody>
+</table>
+
+<h2>Platform</h2>
+
+{% if object.platform %}
+    <div class="alert alert-{{ object.platform.health_b4_class }}">
+    {{ object.platform.name }} ({{ object.platform.tier }})
+    </div>
+    {% if object.platform.dependencies.exists %}
+        <ul>
+            {% for dep in object.platform.dependencies.all %}
+            <li>{{ dep }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No platform dependencies currently recorded.</p>
+    {% endif %}
+{% else %}
+    <p>No platform currently recorded.</p>
+{% endif %}
+
+<h2>Other dependencies</h2>
+
+{% if obj_dependencies.exists %}
+    <table class="table table-bordered table-condensed">
+        <tbody>
+            <tr>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Name</th>
+                <th>Risk assessments</th>
+            </tr>
+            {% for dep in obj_dependencies %}
+            <tr>
+                <td>{{ dep.category }}</td>
+                <td>{{ dep.content_type|capfirst }}</td>
+                <td>{{ dep.content_object }}</td>
+                <td>
+                    {% for risk in dep.risks.all %}
+                        <div class="alert alert-{{ risk.rating_b4_class }}">
+                        {{ risk.category }} ({{ risk.rating_desc }})<br>
+                        {{ risk.notes }}
+                        </div>
+                    {% endfor %}
+                    {% if user.is_superuser %}
+                        <div>
+                            <a href="{% url 'admin:bigpicture_riskassessment_add' %}?content_type={{ dependency_ct.pk}}&object_id={{ dep.pk}}"><i class="fas fa-plus"></i></a>
+                        </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No other dependencies currently recorded.</p>
+{% endif %}
+
+{% endblock page_content_inner %}

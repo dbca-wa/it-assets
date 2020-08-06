@@ -12,6 +12,7 @@ import pytz
 from restless.constants import OK
 from restless.dj import DjangoResource
 from restless.exceptions import BadRequest
+from restless.preparers import FieldsPreparer
 from restless.resources import skip_prepare
 from restless.utils import MoreTypesJSONEncoder
 
@@ -21,6 +22,7 @@ from .models import DepartmentUser, Location, OrgUnit, CostCentre
 
 ACCOUNT_TYPE_DICT = dict(DepartmentUser.ACCOUNT_TYPE_CHOICES)
 LOGGER = logging.getLogger('sync_tasks')
+TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 
 def format_fileField(request, value):
@@ -94,17 +96,16 @@ class DepartmentUserResource(DjangoResource):
     def prepare(self, data):
         """Modify the returned object to append the GAL Department value.
         """
-
         prepped = super(DepartmentUserResource, self).prepare(data)
-        tz = pytz.timezone(settings.TIME_ZONE)
+
         if 'pk' in data:
             prepped['gal_department'] = DepartmentUser.objects.get(pk=data['pk']).get_gal_department()
         if 'date_updated' in data and data['date_updated']:
-            prepped['date_updated'] = data['date_updated'].astimezone(tz)
+            prepped['date_updated'] = data['date_updated'].astimezone(TIMEZONE)
         if 'date_ad_updated' in data and data['date_ad_updated']:
-            prepped['date_ad_updated'] = data['date_ad_updated'].astimezone(tz)
+            prepped['date_ad_updated'] = data['date_ad_updated'].astimezone(TIMEZONE)
         if 'expiry_date' in data and data['expiry_date']:
-            prepped['expiry_date'] = data['expiry_date'].astimezone(tz)
+            prepped['expiry_date'] = data['expiry_date'].astimezone(TIMEZONE)
             if data['expiry_date'] < timezone.now():
                 data['ad_expired'] = True
             else:
@@ -185,10 +186,9 @@ class DepartmentUserResource(DjangoResource):
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
-
     # NOTE: skip_prepare provides a huge performance improvement to this method, but at present we
     # cannot use it because we need to modify the serialised object.
-    #@skip_prepare
+    # @skip_prepare
     def list(self):
         """Pass query params to modify the API output.
         Include `org_structure=true` and `sync_o365=true` to output only
@@ -279,8 +279,19 @@ class DepartmentUserResource(DjangoResource):
         """Call this endpoint from on-prem AD or from Azure AD.
         Match either AD-object key values or Departmentuser field names.
         """
-        user = DepartmentUser()
-        tz = pytz.timezone(settings.TIME_ZONE)
+        # Short-circuit: check if the POST request has been made with `azure_guid` as a param.
+        # If so, check if that value matches an existing object and use it instead of
+        # creating a new object. All the "new" object values should be passed in and updated
+        # anyway.
+        # Rationale: we seem to have trouble getting the sync script to check for existing
+        # objects by Azure AD GUID.
+        if 'azure_guid' in self.data:
+            if DepartmentUser.objects.filter(azure_guid=self.data['azure_guid']):
+                user = DepartmentUser.objects.get(azure_guid=self.data['azure_guid'])
+                LOGGER.warning('POST request sent but existing user {} matched by Azure AD GUID'.format(user.email))
+        else:
+            user = DepartmentUser()
+
         # Check for essential request params.
         if 'EmailAddress' not in self.data and 'email' not in self.data:
             raise BadRequest('Missing email parameter value')
@@ -324,9 +335,9 @@ class DepartmentUserResource(DjangoResource):
         elif 'ad_dn' in self.data:
             user.ad_dn = self.data['ad_dn']
         if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
-            user.expiry_date = tz.localize(parse(self.data['AccountExpirationDate']))
+            user.expiry_date = TIMEZONE.localize(parse(self.data['AccountExpirationDate']))
         elif 'expiry_date' in self.data and self.data['expiry_date']:
-            user.expiry_date = tz.localize(parse(self.data['expiry_date']))
+            user.expiry_date = TIMEZONE.localize(parse(self.data['expiry_date']))
         if 'Title' in self.data:
             user.title = self.data['Title']
         elif 'title' in self.data:
@@ -340,9 +351,9 @@ class DepartmentUserResource(DjangoResource):
         elif 'surname' in self.data:
             user.surname = self.data['surname']
         if 'Modified' in self.data and self.data['Modified']:
-            user.date_ad_updated = tz.localize(parse(self.data['Modified']))
+            user.date_ad_updated = TIMEZONE.localize(parse(self.data['Modified']))
         elif 'date_ad_updated' in self.data and self.data['date_ad_updated']:
-            user.date_ad_updated = tz.localize(parse(self.data['date_ad_updated']))
+            user.date_ad_updated = TIMEZONE.localize(parse(self.data['date_ad_updated']))
 
         try:
             user.save()
@@ -391,9 +402,9 @@ class DepartmentUserResource(DjangoResource):
             elif 'ad_dn' in self.data and self.data['ad_dn']:
                 user.ad_dn = self.data['ad_dn']
             if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
-                user.expiry_date = self.data['AccountExpirationDate']
+                user.expiry_date = TIMEZONE.localize(parse(self.data['AccountExpirationDate']))
             elif 'expiry_date' in self.data and self.data['expiry_date']:
-                user.expiry_date = self.data['expiry_date']
+                user.expiry_date = TIMEZONE.localize(parse(self.data['expiry_date']))
             if 'Title' in self.data and self.data['Title']:
                 user.title = self.data['Title']
             elif 'title' in self.data and self.data['title']:
@@ -514,8 +525,6 @@ class LocationResource(CSVDjangoResource):
                 row['point'] = row['point'].wkt
         return data
 
-
-from restless.preparers import FieldsPreparer
 
 class UserSelectResource(DjangoResource):
     """A small API resource to provide DepartmentUsers for select lists.

@@ -1,6 +1,10 @@
+import subprocess
+import json
 from django.db import models
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
+from django.urls import reverse
+from django.utils import timezone
 
 
 class Cluster(models.Model):
@@ -155,27 +159,32 @@ class IngressRule(models.Model):
 
 
 class Workload(models.Model):
-    cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads',editable=False)
-    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads',editable=False)
-    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads',editable=False,null=True)
-    name = models.CharField(max_length=128,editable=False)
-    kind = models.CharField(max_length=64,editable=False)
+    cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads', editable=False)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads', editable=False)
+    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads', editable=False, null=True)
+    name = models.CharField(max_length=128, editable=False)
+    kind = models.CharField(max_length=64, editable=False)
 
-    replicas = models.PositiveSmallIntegerField(editable=False,null=True)
-    image = models.CharField(max_length=128,editable=False)
-    image_pullpolicy = models.CharField(max_length=64,editable=False,null=True)
-    cmd = models.CharField(max_length=512,editable=False,null=True)
-    schedule = models.CharField(max_length=32,editable=False,null=True)
+    replicas = models.PositiveSmallIntegerField(editable=False, null=True)
+    image = models.CharField(max_length=128, editable=False)
+    image_pullpolicy = models.CharField(max_length=64, editable=False, null=True)
+    image_scan_json = JSONField(default=dict, editable=False, blank=True)
+    image_scan_timestamp = models.DateTimeField(editable=False, null=True, blank=True)
+    cmd = models.CharField(max_length=512, editable=False, null=True)
+    schedule = models.CharField(max_length=32, editable=False, null=True)
     suspend = models.NullBooleanField(editable=False)
-    failedjobshistorylimit = models.PositiveSmallIntegerField(null=True,editable=False)
-    successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True,editable=False)
-    concurrency_policy = models.CharField(max_length=128,editable=False,null=True)
+    failedjobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
+    successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
+    concurrency_policy = models.CharField(max_length=128, editable=False, null=True)
 
-    api_version = models.CharField(max_length=64,editable=False)
+    api_version = models.CharField(max_length=64, editable=False)
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
+
+    def get_absolute_url(self):
+        return reverse('workload_detail', kwargs={'pk': self.pk})
 
     @property
     def viewurl(self):
@@ -195,11 +204,49 @@ class Workload(models.Model):
         return apps
 
     def __str__(self):
-        return "{}.{}.{}".format(self.cluster.name,self.namespace.name,self.name)
+        return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
+
+    def image_scan(self):
+        """Runs trivy locally and saves the scan result.
+        """
+        if not self.image:
+            return (False, None)
+
+        try:
+            cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.image)
+            out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        except subprocess.CalledProcessError as e:
+            return (False, e.output)
+
+        # trivy should return JSON, being a single-element list containing a dict of the scan results.
+        out = json.loads(out)
+
+        if not out:
+            return (False, None)  # If the scan fails, trivy returns 'null'.
+        self.image_scan_json = out[0]
+        self.image_scan_timestamp = timezone.now()
+        self.save()
+        return (True, out)
+
+    def get_image_scan_vulns(self):
+        vulns = {}
+        if self.image_scan_json and 'Vulnerabilities' in self.image_scan_json and self.image_scan_json['Vulnerabilities']:
+            for v in self.image_scan_json['Vulnerabilities']:
+                if v['Severity'] not in vulns:
+                    vulns[v['Severity']] = 1
+                else:
+                    vulns[v['Severity']] += 1
+        return vulns
+
+    def _image_vulns_str(self):
+        if not self.image_scan_json:
+            return ''
+        return ', '.join(['{}: {}'.format(k.capitalize(), v) for (k, v) in self.get_image_scan_vulns().items()])
+    _image_vulns_str.short_description = 'Image vulnerabilities'
 
     class Meta:
-        unique_together = [["cluster","namespace","name"]]
-        ordering = ["cluster__name",'namespace','name']
+        unique_together = [["cluster", "namespace", "name"]]
+        ordering = ["cluster__name", 'namespace', 'name']
 
 
 class WorkloadListening(models.Model):

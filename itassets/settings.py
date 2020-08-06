@@ -22,6 +22,7 @@ else:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'itassets.urls'
 WSGI_APPLICATION = 'itassets.wsgi.application'
+
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
@@ -32,6 +33,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'django_extensions',
+    # Third-party applications:
     'corsheaders',
     'reversion',
     'crispy_forms',
@@ -41,6 +43,9 @@ INSTALLED_APPS = (
     'django_q',
     'rest_framework',
     'rest_framework_gis',
+    'webtemplate_dbca',
+    'bootstrap_pagination',
+    # Project applications:
     'organisation',
     'registers',
     'tracking',
@@ -50,8 +55,10 @@ INSTALLED_APPS = (
     # 'recoup',
     'status',
     'nginx',
-    'rancher'
+    'rancher',
+    'bigpicture',
 )
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -62,9 +69,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'dbca_utils.middleware.SSOLoginMiddleware',
 ]
+
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -82,16 +91,20 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.template.context_processors.csrf',
                 'django.contrib.messages.context_processors.messages',
+                'itassets.context_processors.from_settings',
             ],
         },
     }
 ]
+
 ADMINS = ('asi@dbca.wa.gov.au',)
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
 FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
-AWS_JSON_PATH = env('AWS_JSON_PATH', None)
 SITE_ID = 1
+ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
+ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
+VERSION_NO = '2.1.0'
 
 # Alesco binding information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)

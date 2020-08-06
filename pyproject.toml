@@ -45,6 +45,8 @@ sentry-sdk = "0.13.5"
 beautifulsoup4 = "4.8.0"
 pyyaml = "5.3.1"
 data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v2.7.1"}
+webtemplate-dbca = "^1.2.1"
+django-bootstrap-pagination = "^1.7.1"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.16.1"

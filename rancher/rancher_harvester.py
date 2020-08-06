@@ -1,10 +1,8 @@
 import yaml
 import itertools
 import re
-import os
 import logging
 import json
-import shutil
 from datetime import date,datetime,timedelta
 
 from django.conf import settings
@@ -93,7 +91,7 @@ def update_namespace(cluster,status,metadata,config):
         obj = Namespace.objects.get(cluster=cluster,name=name)
     except ObjectDoesNotExist as ex:
         obj = Namespace(cluster=cluster,name=name)
-    
+
     update_fields = set_fields(obj,config,[
         ("api_version","apiVersion",None),
         ("project",("metadata","labels","field.cattle.io/projectId"),lambda val:Project.objects.get_or_create(cluster=cluster,projectid=val)[0]),
@@ -119,7 +117,7 @@ def update_namespace(cluster,status,metadata,config):
             if cluster.clusterid != cluster_id:
                 cluster.clusterid = cluster_id
                 cluster.save(update_fields=["clusterid"])
-        
+
 def delete_namespace(cluster,status,metadata,config):
     name = config["metadata"]["name"]
     del_objs = Namespace.objects.filter(cluster=cluster,name=name).delete()
@@ -155,7 +153,7 @@ def update_ingress_rules(ingress,configs):
                 ("servicename",("backend","serviceName"),lambda val: "{}:{}".format(ingress.namespace.name,val)),
                 ("serviceport",("backend","servicePort"),lambda val:int(val))
             ])
-        
+
             if obj.pk is None:
                 obj.modified = ingress.modified
                 obj.created = ingress.modified
@@ -226,7 +224,7 @@ def _get_volume_capacity(val):
     Return the capacith with unit 'G'
     """
     if val.lower().endswith("gi"):
-        return int(val[:-2]) 
+        return int(val[:-2])
     else:
         raise Exception("Parse storage capacity({}) failed".format(val))
 
@@ -280,7 +278,7 @@ def update_volume(cluster,status,metadata,config):
         logger.debug("Update PersistentVolume({}),update_fields={}".format(obj,update_fields))
     else:
         logger.debug("The PersistentVolume({}) is not changed".format(obj))
-        
+
 
 def delete_volume(cluster,status,metadata,config):
     name = config["metadata"]["name"]
@@ -313,7 +311,7 @@ def update_volume_claim(cluster,status,metadata,config):
         logger.debug("Update PersistentVolumeClaim({}),update_fields={}".format(obj,update_fields))
     else:
         logger.debug("The PersistentVolumeClaim({}) is not changed".format(obj))
-        
+
 def delete_volume_claim(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = Namespace.objects.filter(cluster=cluster,name=namespace).first()
@@ -365,7 +363,7 @@ def update_workload_envs(workload,config,env_configs):
         update_fields = set_fields(obj,env_config,[
             ("value",None,_get_env_value)
         ])
-        
+
         if obj.pk is None:
             obj.modified = workload.modified
             obj.created = workload.modified
@@ -631,7 +629,7 @@ def update_cronjob(cluster,status,metadata,config):
         ("suspend", ("spec","suspend"),lambda val:True if val else False),
         ("concurrency_policy", ("spec","concurrencyPolicy"),None)
     ])
-    
+
     created = False
     if obj.pk is None:
         obj.created = obj.modified
@@ -809,7 +807,7 @@ def update_database(server,name,modified):
         database.save()
 
     return database
-            
+
 def update_databaseuser(server,user,password,modified):
     try:
         database_user = DatabaseUser.objects.get(server=server,user=user)
@@ -921,7 +919,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
 
         #get or create the database
         database = update_database(server,dbname,env_obj.modified)
-            
+
         #get or create the database user
         database_user = update_databaseuser(server,user,password,env_obj.modified)
 
@@ -951,7 +949,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                         config_values[4] = user_config[0].value
                         config_items[4] = user_config[0].name
                         config_values[6] = user_config[0].modified
-    
+
                         config_values[0] = config_values[1] = config_values[2] = config_values[3] = config_values[5] = None
                         config_items[0]  = config_items[1]  = config_items[2]  = config_items[3]  = config_items[5]  = None
                         #try to find the host
@@ -966,7 +964,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                 if server_config[3]:
                                     continue
                                 #check whether name pattern is matched or not
-                                if ( 
+                                if (
                                     (user_config[1] and server_config[1] and (user_config[1].startswith(server_config[1]) or server_config[1].startswith(user_config[1])))
                                     or (user_config[2] and server_config[2] and (user_config[2].startswith(server_config[2]) or server_config[2].startswith(user_config[2])))
                                 ):
@@ -999,7 +997,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                                 continue
                                             matched = False
                                             if oracle_connection_re.search(server_config[0].value):
-                                                #is a oracle connection 
+                                                #is a oracle connection
                                                 matched = True
                                             if not matched:
                                                 hostname,ip = parse_host(server_config[0].value)
@@ -1046,7 +1044,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                 if schema_config[3]:
                                     continue
                                 #check whether name pattern is matched or not
-                                if ( 
+                                if (
                                     (user_config[1] and schema_config[1] and (user_config[1].startswith(schema_config[1]) or schema_config[1].startswith(user_config[1])))
                                     or (user_config[2] and schema_config[2] and (user_config[2].startswith(schema_config[2]) or schema_config[2].startswith(user_config[2])))
                                 ):
@@ -1056,7 +1054,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                         config_values[6] = schema_config[0].modified
                                     schema_config[3] = True
                                     break
-    
+
                         #try to find the password
                         if config_values[5]:
                             pass
@@ -1071,7 +1069,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                 if pass_config[3]:
                                     continue
                                 #check whether name pattern is matched or not
-                                if ( 
+                                if (
                                     (user_config[1] and pass_config[1] and (user_config[1].startswith(pass_config[1]) or pass_config[1].startswith(user_config[1])))
                                     or (user_config[2] and pass_config[2] and (user_config[2].startswith(pass_config[2]) or pass_config[2].startswith(user_config[2])))
                                 ):
@@ -1095,7 +1093,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                 if dbname_config[3]:
                                     continue
                                 #check whether name pattern is matched or not
-                                if ( 
+                                if (
                                     (user_config[1] and dbname_config[1] and (user_config[1].startswith(dbname_config[1]) or dbname_config[1].startswith(user_config[1])))
                                     or (user_config[2] and dbname_config[2] and (user_config[2].startswith(dbname_config[2]) or dbname_config[2].startswith(user_config[2])))
                                 ):
@@ -1105,11 +1103,11 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                         config_values[6] = dbname_config[0].modified
                                     dbname_config[3] = True
                                     break
-    
+
                             if not config_values[2]:
                                 logger.warning("Can't find the dbname for dbuser({}={})".format(user_config[0].name,user_config[0].value))
-                                continue   
-                            
+                                continue
+
                         #try to find the port
                         if config_values[1]:
                             pass
@@ -1124,7 +1122,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                 if port_config[3]:
                                     continue
                                 #check whether name pattern is matched or not
-                                if ( 
+                                if (
                                     (user_config[1] and port_config[1] and (user_config[1].startswith(port_config[1]) or port_config[1].startswith(user_config[1])))
                                     or (user_config[2] and port_config[2] and (user_config[2].startswith(port_config[2]) or port_config[2].startswith(user_config[2])))
                                 ):
@@ -1163,7 +1161,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                         if not config_values[2]:
                             logger.warning("Can't find the dbname ,workload({})={} ,related envs = {}".format( previous_workload.id,previous_workload.name,[i for i in config_items if i]))
                             config_values[2] = "_default_"
-                            
+
                         server = DatabaseServer.objects.filter(internal_name="{}/{}".format(previous_workload.namespace.name,hostname)).first()
                         if not server:
                             #not a internal database
@@ -1171,7 +1169,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
 
                         #get or create the database
                         database = update_database(server,config_values[2],config_values[6])
-            
+
                         #get or create the database user
                         database_user = update_databaseuser(server,config_values[4],config_values[5],config_values[6])
 
@@ -1186,7 +1184,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
 
             #clean the existing workload databases
             existing_workload_databases.clear()
-            
+
             #clean previous data
             for field_list in databases:
                 field_list.clear()
@@ -1272,13 +1270,13 @@ def sort_key(val):
 
 def process_rancher(cluster):
     def _func(status,metadata,config_file):
-        process_func = process_func_map[resource_type(status,metadata["resource_id"])] 
+        process_func = process_func_map[resource_type(status,metadata["resource_id"])]
         if config_file:
             with open(config_file) as f:
                 config = yaml.load(f.read())
             with transaction.atomic():
                 process_func(cluster,status,metadata,config)
-                        
+
     return _func
 
 def resource_filter(resource_id):
@@ -1298,7 +1296,6 @@ def harvest(cluster,reconsume=False):
     finally:
         WebAppLocationServer.refresh_rancher_workload(cluster)
 
-#harvest('az-k3s-oim01',True)
 
 def harvest_all(reconsume=False):
     consume_results = []
@@ -1306,8 +1303,3 @@ def harvest_all(reconsume=False):
         consume_results.append((cluster,harvest(cluster,reconsume=reconsume)))
 
     return consume_results
-
-
-
-
-#raise Exception('test')

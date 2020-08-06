@@ -6,20 +6,11 @@ from django_mptt_admin.admin import DjangoMpttAdmin
 from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
-from threading import Thread
-import time
 
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
 from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
 
 LOGGER = logging.getLogger('sync_tasks')
-
-
-def delayed_save(obj):
-    """Wait one second, then call save() for the passed-in object.
-    """
-    time.sleep(1)
-    obj.save()
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -90,62 +81,6 @@ class DepartmentUserAdmin(VersionAdmin):
             )
         })
     )
-
-    def save_model(self, request, obj, form, change):
-        """Override save_model in order to log any changes to some fields:
-        'given_name', 'surname', 'employee_id', 'cost_centre', 'name', 'org_unit', 'photo'
-        """
-        l = 'DepartmentUser: {}, field: {}, original_value: {} new_value: {}, changed_by: {}, reference: {}'
-        if obj._DepartmentUser__original_given_name != obj.given_name:
-            LOGGER.info(l.format(
-                obj.email, 'given_name', obj._DepartmentUser__original_given_name, obj.given_name,
-                request.user.username, obj.name_update_reference
-            ))
-        if obj._DepartmentUser__original_surname != obj.surname:
-            LOGGER.info(l.format(
-                obj.email, 'surname', obj._DepartmentUser__original_surname, obj.surname,
-                request.user.username, obj.name_update_reference
-            ))
-        if obj._DepartmentUser__original_employee_id != obj.employee_id:
-            LOGGER.info(l.format(
-                obj.email, 'employee_id', obj._DepartmentUser__original_employee_id,
-                obj.employee_id, request.user.username, obj.name_update_reference
-            ))
-        if obj._DepartmentUser__original_cost_centre_id != obj.cost_centre_id:
-            LOGGER.info(l.format(
-                obj.email, 'cost_centre', CostCentre.objects.filter(id=obj._DepartmentUser__original_cost_centre_id).first(),
-                obj.cost_centre, request.user.username, obj.name_update_reference
-            ))
-        if obj._DepartmentUser__original_name != obj.name:
-            LOGGER.info(l.format(
-                obj.email, 'name', obj._DepartmentUser__original_name, obj.name,
-                request.user.username, obj.name_update_reference
-            ))
-        if obj._DepartmentUser__original_org_unit_id != obj.org_unit_id:
-            LOGGER.info(l.format(
-                obj.email, 'org_unit', OrgUnit.objects.filter(id=obj._DepartmentUser__original_org_unit_id).first(), obj.org_unit,
-                request.user.username, obj.name_update_reference
-            ))
-        if obj._DepartmentUser__original_expiry_date != obj.expiry_date:
-            LOGGER.info(l.format(
-                obj.email, 'expiry_date', obj._DepartmentUser__original_expiry_date, obj.expiry_date,
-                request.user.username, obj.name_update_reference
-            ))
-        # Shrink photo for AD, if it changed.
-        if obj._DepartmentUser__original_photo != obj.photo:
-            LOGGER.info(l.format(
-                obj.email, 'photo', obj._DepartmentUser__original_photo, obj.photo,
-                request.user.username, obj.name_update_reference
-            ))
-            obj.update_photo_ad()
-
-        obj.save()
-
-        # NOTE: following a change to a DepartmentUser object, we need to call
-        # save a second time so that the org_data field is correct. The lines
-        # below will do so in a separate thread.
-        t = Thread(target=delayed_save, args=(obj,))
-        t.start()
 
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()

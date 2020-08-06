@@ -1,0 +1,55 @@
+{% extends "webtemplate_dbca/base_b4.html" %}
+{% load static %}
+
+{% block extra_style %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/fontawesome.min.css" integrity="sha256-CaAu1oJhcLBPo4TnfEZ8fdP+O4mpoVBQ6zyZCs2x7+o=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-2/css/all.min.css" integrity="sha256-46r060N2LrChLLb5zowXQ72/iKKNiw/lAmygmHExk/o=" crossorigin="anonymous" />
+<style>
+    .footer {
+        background-color: #f5f5f5;
+    }
+</style>
+{% endblock %}
+
+{% block navbar_links %}{% endblock %}
+
+{% block page_content %}
+    <div class="container-fluid">
+        <!-- Messages  -->
+        {% if messages %}
+        <div class="row">
+            <div class="col">
+                {% for message in messages %}
+                <div class="alert{% if message.tags %} alert-{{ message.tags }}{% endif %}">
+                    {{ message|safe }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col">
+                {% block page_content_inner %}{% endblock %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block page_footer %}
+<footer class="footer mt-auto py-3">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm">
+                <small>
+                Version: {{ VERSION_NO }}
+                </small>
+            </div>
+            <div class="col-sm">
+                <small class="float-right">&copy; Department of Biodiversity, Conservation and Attractions</small>
+            </div>
+        </div>
+    </div>
+</footer>
+{% endblock page_footer %}

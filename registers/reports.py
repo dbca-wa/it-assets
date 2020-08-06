@@ -272,3 +272,71 @@ def change_request_export(fileobj, rfcs):
         changes.set_column('O:O', 17)
 
     return fileobj
+
+
+def it_system_platform_export(fileobj, it_systems, platforms):
+    with xlsxwriter.Workbook(
+        fileobj,
+        {
+            'in_memory': True,
+            'default_date_format': 'dd-mmm-yyyy HH:MM',
+            'remove_timezone': True,
+        },
+    ) as workbook:
+        systems = workbook.add_worksheet('IT Systems Register')
+        systems.write_row('A1', (
+            'System ID', 'Name', 'Status', 'Division', 'Business Service Owner',
+            'System Owner', 'Technical Custodian', 'Information Custodian',
+            'Seasonality', 'Availability', 'Link', 'Description',
+            'Platform', 'Contingency Plan', 'Supportability',
+            'General Purpose', 'Maintenance Lifecycle', 'Information Classification',
+        ))
+        row = 1
+        for i in it_systems:
+            systems.write_row(row, 0, [
+                i.system_id,
+                i.name,
+                i.get_status_display(),
+                i.division_name,
+                i.cost_centre.division.manager.get_full_name() if i.division_name else '',
+                i.owner.get_full_name() if i.owner else '',
+                i.technology_custodian.get_full_name() if i.technology_custodian else '',
+                i.information_custodian.get_full_name() if i.information_custodian else '',
+                i.get_seasonality_display() if i.seasonality else '',
+                i.get_availability_display() if i.availability else '',
+                i.link,
+                i.description,
+                i.platform.name if i.platform else '',
+                '',
+                '',
+                i.get_system_type_display() if i.system_type else '',
+                '', '',
+            ])
+            row += 1
+
+        systems.set_column('A:A', 9)
+        systems.set_column('B:B', 45)
+        systems.set_column('C:C', 18)
+        systems.set_column('D:D', 37)
+        systems.set_column('E:J', 20)
+        systems.set_column('K:L', 65)
+        systems.set_column('M:R', 37)
+
+        p_sheet = workbook.add_worksheet('Platforms')
+        p_sheet.write_row('A1', (
+            'Platform', 'Patching cycle', 'Health', 'Tier', 'Annual cost',
+        ))
+        row = 1
+        for i in platforms:
+            p_sheet.write_row(row, 0, [
+                i.name,
+                '',
+                i.health,
+                i.tier,
+                '',
+            ])
+            row += 1
+
+        p_sheet.set_column('A:E', 18)
+
+    return fileobj

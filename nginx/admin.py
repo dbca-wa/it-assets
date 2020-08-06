@@ -4,14 +4,14 @@ from datetime import datetime,timedelta
 
 
 from django.contrib import admin
-from django.utils.html import format_html,mark_safe
+from django.utils.html import format_html, mark_safe
 from django.urls import reverse
 from django.utils import timezone
 
 from . import models
 from rancher.models import Workload
 
-# Register your models here.
+
 @admin.register(models.Domain)
 class DomainAdmin(admin.ModelAdmin):
     list_display = ('name', 'parent')
@@ -22,6 +22,7 @@ class DomainAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
 
 @admin.register(models.SystemAlias)
 class SystemAliasAdmin(admin.ModelAdmin):
@@ -47,23 +48,25 @@ class SystemEnvAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 @admin.register(models.WebServer)
 class WebServerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category','other_names')
-    readonly_fields = ('other_names','_apps')
+    list_display = ('name', 'category', 'other_names', 'host')
+    readonly_fields = ('other_names', '_apps')
     ordering = ('name',)
-    list_filter = ( 'category',)
+    list_filter = ('category',)
 
-    app_change_url_name = 'admin:{}_{}_change'.format(models.WebApp._meta.app_label,models.WebApp._meta.model_name)
-    def _apps(self,obj):
-        if not obj :
+    app_change_url_name = 'admin:{}_{}_change'.format(models.WebApp._meta.app_label, models.WebApp._meta.model_name)
+
+    def _apps(self, obj):
+        if not obj:
             return ""
         else:
             apps = set()
             for location_server in models.WebAppLocationServer.objects.filter(server=obj):
                 apps.add(location_server.location.app)
 
-            return mark_safe("<pre>{}</pre>".format("\n".join("<A href='{}'>{}</A>".format(reverse(self.app_change_url_name,args=(app.id,)),app.name) for app in apps)))
+            return mark_safe("<pre>{}</pre>".format("\n".join("<A href='{}'>{}</A>".format(reverse(self.app_change_url_name, args=(app.id,)), app.name) for app in apps)))
     _apps.short_description = "Webapps"
 
     def has_add_permission(self, request, obj=None):
@@ -72,21 +75,23 @@ class WebServerAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return True
 
+
 class ConfigureTxtMixin(object):
-    def _configure_txt(self,obj):
+    def _configure_txt(self, obj):
         if not obj or not obj.configure_txt:
             return ""
         else:
             return format_html("""<A href="javascript:void" onclick="django.jQuery('#id_{0}_{1}').toggle();django.jQuery(this).html((django.jQuery(this).html() == 'Show')?'Hide':'Show')">Show</A>
 <pre id="id_{0}_{1}" style="display:none">
 {2}
-</pre>""",obj.__class__.__name__,obj.pk,obj.configure_txt)
+</pre>""", obj.__class__.__name__, obj.pk, obj.configure_txt)
     _configure_txt.short_description = "Raw Configure"
 
 
 class WebAppLocationMixin(object):
-    workload_change_url_name = 'admin:{}_{}_change'.format(Workload._meta.app_label,Workload._meta.model_name)
-    def _process_handler(self,obj):
+    workload_change_url_name = 'admin:{}_{}_change'.format(Workload._meta.app_label, Workload._meta.model_name)
+
+    def _process_handler(self, obj):
         if not obj:
             return ""
         elif obj.forward_protocol:
@@ -114,6 +119,7 @@ class WebAppLocationMixin(object):
             return ""
     _process_handler.short_description = "Process Handler"
 
+
 class WebAppListenInline(ConfigureTxtMixin,admin.TabularInline):
     readonly_fields = ('app','listen_host','listen_port','https',"config_modified","config_changed_columns",'_configure_txt')
     fields = ('app','listen_host','listen_port','https',"config_modified","config_changed_columns",'_configure_txt')
@@ -128,6 +134,7 @@ class WebAppListenInline(ConfigureTxtMixin,admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 class WebAppLocationInline(ConfigureTxtMixin,WebAppLocationMixin,admin.TabularInline):
     readonly_fields = ('app','location','location_type','auth_type','_configure_txt','cors_enabled',"_process_handler","config_modified","config_changed_columns")
     fields = ('app','location','location_type','auth_type','cors_enabled',"_process_handler","config_modified","config_changed_columns",'_configure_txt')
@@ -139,22 +146,43 @@ class WebAppLocationInline(ConfigureTxtMixin,WebAppLocationMixin,admin.TabularIn
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 @admin.register(models.WebApp)
-class WebAppAdmin(ConfigureTxtMixin,admin.ModelAdmin):
+class WebAppAdmin(ConfigureTxtMixin, admin.ModelAdmin):
+
+    class RedirectToFilter(admin.SimpleListFilter):
+        """Filter on True/False if an object has a value for redirect_to.
+        """
+        title = 'redirect to'
+        parameter_name = 'redirect_to_boolean'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('true', 'True'),
+                ('false', 'False'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'true':
+                return queryset.filter(redirect_to__isnull=False)
+            if self.value() == 'false':
+                return queryset.filter(redirect_to__isnull=True)
+
     list_display = ('name', 'system_alias','system_env','domain','auth_domain','_redirect','config_modified','_daily_access_report')
     ordering = ('name',)
-    list_filter = ( 'system_env',("system_alias__system",admin.RelatedOnlyFieldListFilter))
+    list_filter = ('system_env', RedirectToFilter, ("system_alias__system", admin.RelatedOnlyFieldListFilter))
     readonly_fields = ('name','auth_domain','_configure_txt','_redirect',"config_modified","config_changed_columns","_daily_access_report")
-    fields = ("name","domain","system_alias","system_env","auth_domain","_redirect",'config_modified','config_changed_columns',"_configure_txt")
-    search_fields = ['name']
-    inlines = [WebAppListenInline,WebAppLocationInline]
+    fields = ("name", "domain", "system_alias", "system_env", "auth_domain", "_redirect", 'config_modified', 'config_changed_columns', "_configure_txt","_daily_access_report")
 
-    def _listens(self,obj):
-        if not obj :
+    search_fields = ['name']
+    inlines = [WebAppListenInline, WebAppLocationInline]
+
+    def _listens(self, obj):
+        if not obj:
             return ""
         else:
             listens = [str(l) for l in obj.listens.all()]
-            return format_html("<pre>{}</pre>",os.linesep.join(listens))
+            return format_html("<pre>{}</pre>", os.linesep.join(listens))
     _listens.short_description = "Listen"
 
     dailyreport_list_url_name = 'admin:{}_{}_changelist'.format(models.WebAppAccessDailyReport._meta.app_label,models.WebAppAccessDailyReport._meta.model_name)
@@ -168,17 +196,15 @@ class WebAppAdmin(ConfigureTxtMixin,admin.ModelAdmin):
     def _redirect(self,obj):
         if not obj :
             return ""
-
         if obj.redirect_to:
-            return mark_safe("<A href='/admin/nginx/webapp/{0}/change/'>{1}{2}</A>".format(obj.redirect_to.id,obj.redirect_to ,obj.redirect_path or ""))
+            return mark_safe("<A href='/admin/nginx/webapp/{0}/change/'>{1}{2}</A>".format(obj.redirect_to.id, obj.redirect_to, obj.redirect_path or ""))
         elif obj.redirect_to_other:
             if obj.redirect_path:
-                return "{}{}".format(obj.redirect_to_other,obj.redirect_path)
+                return "{}{}".format(obj.redirect_to_other, obj.redirect_path)
             else:
                 return obj.redirect_to_other
         else:
             return ""
-
     _redirect.short_description = "Redirect To"
 
     def has_add_permission(self, request, obj=None):
@@ -187,8 +213,10 @@ class WebAppAdmin(ConfigureTxtMixin,admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 class LocationAppListFitler(admin.RelatedOnlyFieldListFilter):
     pass
+
 
 class WebAppLocationServerInline(admin.TabularInline):
     readonly_fields = ("user_added",)
@@ -215,7 +243,6 @@ class WebAppLocationAdmin(ConfigureTxtMixin,WebAppLocationMixin,admin.ModelAdmin
 
     list_filter = (("app",LocationAppListFitler),)
     inlines = [WebAppLocationServerInline]
-
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -471,23 +498,3 @@ class WebAppAccessLogAdmin(ResponseTimeMixin,WebServerMixin,RequestPathMixin,adm
 
     def has_add_permission(self, request, obj=None):
         return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
