@@ -49,6 +49,12 @@ def process_log_file(context,metadata,config_file):
                 request_path = record["request_path"]
                 path_parameters = None
                 all_path_parameters = None
+
+            try:
+                http_status = int(record["http_status"])
+            except:
+                http_status = 0
+
     
             parameters_changed,path_parameters = RequestParameterFilter.filter_parameters(
                 record["webserver"],
@@ -68,7 +74,7 @@ def process_log_file(context,metadata,config_file):
                 log_starttime = metadata["archive_starttime"],
                 webserver = record["webserver"],
                 request_path = request_path,
-                http_status = int(record["http_status"]),
+                http_status = http_status,
                 path_parameters = path_parameters
             ).first()
 
@@ -99,7 +105,7 @@ def process_log_file(context,metadata,config_file):
                     log_endtime = metadata["archive_endtime"],
                     webserver = record["webserver"],
                     request_path = request_path,
-                    http_status = int(record["http_status"]),
+                    http_status = http_status,
                     path_parameters = path_parameters,
                     all_path_parameters = all_path_parameters,
                     requests = int(record["requests"]),
@@ -120,7 +126,7 @@ def process_log_file(context,metadata,config_file):
                         context["webapplocations"] = {}
                     context["webapplocations"][accesslog.webapp] = list(WebAppLocation.objects.filter(app=accesslog.webapp).order_by("-score"))
                 accesslog.webapplocation = accesslog.webapp.get_matched_location(accesslog.request_path,context["webapplocations"][accesslog.webapp])
-                if not accesslog.webapplocation and accesslog.http_status < 400:
+                if not accesslog.webapplocation and accesslog.http_status < 400 and accesslog.http_status > 0:
                     raise Exception("Can't find the app location for request path({1}) in web application({0})".format(accesslog.webapp,accesslog.request_path))
             accesslog.save()
         except Exception as ex:

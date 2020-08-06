@@ -432,10 +432,22 @@ class RequestPathMixin(object):
             return mark_safe("<A href='{}'>{}</A>".format(reverse(self.location_change_url_name,args=(obj.webapplocation.id,)),obj.request_path))
     _request_path.short_description = "Request path"
 
+class HttpStatusMixin(object):
+    def _http_status(self,obj):
+        if not obj:
+            return ""
+        elif obj.http_status == 0:
+            return "Unknown"
+        else:
+            return obj.http_status
+    _http_status.short_description = "Http Status"
+
+
+
 @admin.register(models.WebAppAccessDailyLog)
-class WebAppAccessDailyLogAdmin(ResponseTimeMixin,WebServerMixin,RequestPathMixin,admin.ModelAdmin):
-    list_display = ('log_day','_webserver','_request_path','path_parameters','http_status','_requests','_max_response_time','_min_response_time','_avg_response_time')
-    readonly_fields = ('log_day','_webserver','_request_path','path_parameters','http_status','_requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
+class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,RequestPathMixin,admin.ModelAdmin):
+    list_display = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time')
+    readonly_fields = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_day','webserver','request_path',)
 
     list_filter = (DailyLogDayFilter,)
@@ -466,9 +478,9 @@ class WebAppAccessDailyLogAdmin(ResponseTimeMixin,WebServerMixin,RequestPathMixi
 
 
 @admin.register(models.WebAppAccessLog)
-class WebAppAccessLogAdmin(ResponseTimeMixin,WebServerMixin,RequestPathMixin,admin.ModelAdmin):
-    list_display = ('_log_starttime','_webserver','_request_path','path_parameters','http_status','requests','_max_response_time','_min_response_time','_avg_response_time')
-    readonly_fields = ('_log_starttime','_log_endtime','_webserver','_request_path','path_parameters','http_status','requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
+class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,RequestPathMixin,admin.ModelAdmin):
+    list_display = ('_log_starttime','_webserver','_request_path','path_parameters','_http_status','requests','_max_response_time','_min_response_time','_avg_response_time')
+    readonly_fields = ('_log_starttime','_log_endtime','_webserver','_request_path','path_parameters','_http_status','requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_starttime','webserver','request_path',)
 
     search_fields = ['webserver']
