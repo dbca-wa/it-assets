@@ -3,11 +3,14 @@ from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
+from django_q.brokers import get_broker
+from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
+from .utils import deptuser_azure_sync
 from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
 
 LOGGER = logging.getLogger('sync_tasks')
@@ -31,11 +34,15 @@ class DepartmentUserForm(forms.ModelForm):
 
 def disable_enable_acount(modeladmin, request, queryset):
     pass
+
+
 disable_enable_acount.short_description = "Disable or enable selected department user's Active Directory account"
 
 
 def change_email(modeladmin, request, queryset):
     pass
+
+
 change_email.short_description = "Change select department user's primary email address in Active Directory"
 
 
@@ -94,11 +101,6 @@ class DepartmentUserAdmin(VersionAdmin):
                 'working_hours',
                 'account_type',
                 'security_clearance',
-                #'org_unit',
-                #'expiry_date',
-                #'date_hr_term',
-                #'hr_auto_expiry',
-                #'secondary_locations',
             ),
         }),
     )
@@ -111,9 +113,25 @@ class DepartmentUserAdmin(VersionAdmin):
         ] + urls
         return urls
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Run the Azure AD sync actions function, async if a django_q broker is available or synchronously if not.
+        broker_available = False
+        try:
+            broker = get_broker()
+            if broker.ping():
+                broker_available = True
+        except Exception:
+            pass
+
+        if broker_available:
+            async_task(deptuser_azure_sync, obj)
+        else:
+            deptuser_azure_sync(obj)
+
 
 @register(ADAction)
-class AdActionAdmin(ModelAdmin):
+class ADActionAdmin(ModelAdmin):
 
     class CompletedFilter(SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for completed.
@@ -134,11 +152,16 @@ class AdActionAdmin(ModelAdmin):
                 return queryset.filter(completed__isnull=True)
 
     date_hierarchy = 'created'
-    fields =('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
+    fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
     list_display = ('created', 'department_user', '__str__', 'completed', 'completed_by')
     list_filter = (CompletedFilter, 'action_type')
     readonly_fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
     search_fields = ('department_user__name',)
+
+    def has_add_permission(self, request):
+        """AD actions should not be created manually in the admin site.
+        """
+        return False
 
 
 @register(Location)

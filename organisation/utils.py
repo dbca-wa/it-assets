@@ -48,6 +48,18 @@ def update_deptuser_from_azure(azure_user, dept_user):
     dept_user.save()
 
 
+def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.json'):
+    """Utility function to perform all of the steps to sync up a DepartmentUser and Azure AD.
+    Function may be run as-is, or queued as an asynchronous task.
+    """
+    azure_users = get_azure_users_json(container, azure_json)
+    azure_user = find_user_in_list(azure_users, objectid=dept_user.azure_guid)
+
+    if azure_user:
+        update_deptuser_from_azure(azure_user, dept_user)
+        dept_user.generate_ad_actions(azure_user)
+
+
 # Python 2 can't serialize unbound functions, so here's some dumb glue
 def get_photo_path(instance, filename='photo.jpg'):
     return os.path.join('user_photo', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
