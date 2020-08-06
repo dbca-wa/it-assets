@@ -55,6 +55,8 @@ def process_log_file(context,metadata,config_file):
             except:
                 http_status = 0
 
+            request_path = request_path or "/"
+
     
             parameters_changed,path_parameters = RequestParameterFilter.filter_parameters(
                 record["webserver"],
