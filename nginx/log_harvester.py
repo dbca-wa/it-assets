@@ -188,9 +188,8 @@ def harvest(reconsume=False):
         #consume nginx config file
         result = get_consume_client().consume(process_log(context))
 
-        WebAppAccessDailyLog.populate_data()
-        context["renew_time"] = renew_runlock(lock_file,context["renew_time"])
-        WebAppAccessDailyReport.populate_data()
+        renew_time = WebAppAccessDailyLog.populate_data(lock_file,context["renew_time"])
+        WebAppAccessDailyReport.populate_data(lock_file,renew_time)
 
         return result
 

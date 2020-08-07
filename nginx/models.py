@@ -10,6 +10,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
+from django.conf import settings
 
 from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
@@ -1076,7 +1077,15 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
     total_response_time = models.FloatField(null=False,editable=False)
 
     @classmethod
-    def populate_data(cls):
+    def populate_data(cls,lock_file=None,renew_time=None):
+        if lock_file and not renew_time:
+            try:
+                renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+            except exceptions.ProcessIsRunning as ex: 
+                msg = "The previous data populating process is still running, no need to run the process this time.{}".format(str(ex))
+                logger.info(msg)
+                return 
+        
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1151,7 +1160,10 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
             with transaction.atomic():
                 for daily_record in daily_records.values():
                     daily_record.save()
+            if lock_file:
+                renew_time = renew_runlock(lock_file,renew_time)
             populate_log_day = next_populate_log_day
+        return renew_time
 
     class Meta:
         unique_together = [["log_day","webserver","request_path","http_status","path_parameters"]]
@@ -1171,7 +1183,15 @@ class WebAppAccessDailyReport(models.Model):
     timeout_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
 
     @classmethod
-    def populate_data(cls):
+    def populate_data(cls,lock_file=None,renew_time=None):
+        if lock_file and not renew_time:
+            try:
+                renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+            except exceptions.ProcessIsRunning as ex: 
+                msg = "The previous data populating process is still running, no need to run the process this time.{}".format(str(ex))
+                logger.info(msg)
+                return 
+        
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1226,7 +1246,11 @@ class WebAppAccessDailyReport(models.Model):
             with transaction.atomic():
                 for daily_report in daily_reports.values():
                     daily_report.save()
+
+            if lock_file:
+                renew_time = renew_runlock(lock_file,renew_time)
             populate_log_day += timedelta(days=1)
+        return renew_time
 
     class Meta:
         unique_together = [["log_day","webserver"]]
