@@ -82,7 +82,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
 
 
 def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.json'):
-    """Utility function to perform all of the steps to sync up a DepartmentUser and Azure AD.
+    """Utility function to perform all of the steps to sync up a single DepartmentUser and Azure AD.
     Function may be run as-is, or queued as an asynchronous task.
     """
     azure_users = get_azure_users_json(container, azure_json)
