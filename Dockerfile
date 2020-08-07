@@ -27,10 +27,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM python_libs_itassets
 COPY gunicorn.py manage.py ./
 COPY assets ./assets
-COPY bigpicture ./bigpicture
 COPY itassets ./itassets
 COPY knowledge ./knowledge
-COPY organisation ./organisation
 COPY recoup ./recoup
 COPY registers ./registers
 COPY status ./status
@@ -38,6 +36,8 @@ COPY tracking ./tracking
 COPY webconfig ./webconfig
 COPY nginx ./nginx
 COPY rancher ./rancher
+COPY bigpicture ./bigpicture
+COPY organisation ./organisation
 
 RUN python manage.py collectstatic --noinput
 

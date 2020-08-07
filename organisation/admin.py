@@ -1,13 +1,16 @@
 from django import forms
-from django.contrib.admin import register, ModelAdmin
+from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django_mptt_admin.admin import DjangoMpttAdmin
+from django_q.brokers import get_broker
+from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
 import logging
 from reversion.admin import VersionAdmin
 
-from .models import DepartmentUser, Location, OrgUnit, CostCentre
+from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
+from .utils import deptuser_azure_sync
 from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
 
 LOGGER = logging.getLogger('sync_tasks')
@@ -29,57 +32,84 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
+def disable_enable_acount(modeladmin, request, queryset):
+    pass
+
+
+disable_enable_acount.short_description = "Disable or enable selected department user's Active Directory account"
+
+
+def change_email(modeladmin, request, queryset):
+    pass
+
+
+change_email.short_description = "Change select department user's primary email address in Active Directory"
+
+
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
+    actions = (disable_enable_acount, change_email)
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
-    list_display = [
-        'email', 'title', 'employee_id', 'username', 'active', 'vip', 'executive',
-        'cost_centre', 'account_type', 'o365_licence']
-    list_filter = [
-        'account_type', 'active', 'vip', 'executive', 'shared_account',
-        'o365_licence']
-    search_fields = ['name', 'email', 'username', 'employee_id', 'preferred_name']
-    raw_id_fields = ['parent', 'cost_centre', 'org_unit']
-    filter_horizontal = ['secondary_locations']
-    readonly_fields = [
-        'username', 'org_data_pretty', 'ad_data_pretty',
-        'active', 'in_sync', 'ad_deleted', 'date_ad_updated',
-        'alesco_data_pretty', 'o365_licence', 'shared_account', 'date_hr_term']
+    list_display = (
+        'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
+    )
+    list_filter = ('account_type', 'active', 'vip', 'executive', 'shared_account')
+    search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
+    raw_id_fields = ('manager',)
+    filter_horizontal = ('secondary_locations',)
+    readonly_fields = ('active', 'email', 'assigned_licences', 'proxy_addresses')
     fieldsets = (
-        ('Email/username', {
-            'fields': ('email', 'username'),
-        }),
-        ('Name and organisational fields', {
-            'description': '''<p class="errornote">Do not edit information in this section
-            without written permission from People Services or the cost centre manager
-            (forms are required).</p>''',
+        ('Active Directory account fields', {
+            'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
             'fields': (
-                'given_name', 'surname', 'name', 'employee_id', 'cost_centre',
-                'org_unit', 'location', 'parent', 'security_clearance', 'name_update_reference'),
+                'active',
+                'email',
+            ),
         }),
-        ('Account fields', {
-            'fields': ('account_type', 'expiry_date', 'date_hr_term', 'hr_auto_expiry', 'contractor', 'notes'),
-        }),
-        ('Other details', {
+        ('User information fields', {
+            'description': '''<span class="errornote">Data in these fields is synchronised with Active Directory.<br>
+                Do not edit information in this section without written permission from People Services
+                or the cost centre manager (forms are required).</span>''',
             'fields': (
-                'vip', 'executive', 'populate_primary_group',
-                'preferred_name', 'photo', 'title', 'position_type',
-                'telephone', 'mobile_phone', 'extension', 'other_phone',
-                'secondary_locations', 'working_hours', 'extra_data',
-            )
+                'name',
+                'given_name',
+                'surname',
+                'title',
+                'telephone',
+                'mobile_phone',
+                'manager',
+                'cost_centre',
+                'location',
+            ),
         }),
-        ('AD sync and HR data', {
+        ('Other user metadata fields', {
+            'description': '''Data in these fields are not synchronised with Active Directory.''',
             'fields': (
-                'ad_guid',
-                'ad_dn',
-                'azure_guid',
-                'active', 'in_sync', 'ad_deleted', 'date_ad_updated',
-                'o365_licence', 'shared_account',
-                'org_data_pretty', 'ad_data_pretty', 'alesco_data_pretty',
-            )
-        })
+                'preferred_name',
+                'extension',
+                'home_phone',
+                'other_phone',
+                'position_type',
+                'employee_id',
+                'name_update_reference',
+                'vip',
+                'executive',
+                'contractor',
+                'notes',
+                'working_hours',
+                'account_type',
+                'security_clearance',
+            ),
+        }),
+        ('Azure AD information', {
+            'description': '''These data are specific to Azure Active Directory only.''',
+            'fields': (
+                'assigned_licences',
+                'proxy_addresses',
+            ),
+        }),
     )
 
     def get_urls(self):
@@ -89,6 +119,56 @@ class DepartmentUserAdmin(VersionAdmin):
             path('departmentuser-discrepancy-report/', DepartmentUserDiscrepancyReport.as_view(), name='departmentuser_discrepancy_report'),
         ] + urls
         return urls
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Run the Azure AD sync actions function, async if a django_q broker is available or synchronously if not.
+        broker_available = False
+        try:
+            broker = get_broker()
+            if broker.ping():
+                broker_available = True
+        except Exception:
+            pass
+
+        if broker_available:
+            async_task(deptuser_azure_sync, obj)
+        else:
+            deptuser_azure_sync(obj)
+
+
+@register(ADAction)
+class ADActionAdmin(ModelAdmin):
+
+    class CompletedFilter(SimpleListFilter):
+        """SimpleListFilter to filter on True/False if an object has a value for completed.
+        """
+        title = 'completed'
+        parameter_name = 'completed_boolean'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('true', 'Complete'),
+                ('false', 'Incomplete'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'true':
+                return queryset.filter(completed__isnull=False)
+            if self.value() == 'false':
+                return queryset.filter(completed__isnull=True)
+
+    date_hierarchy = 'created'
+    fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
+    list_display = ('created', 'department_user', '__str__', 'completed', 'completed_by')
+    list_filter = (CompletedFilter, 'action_type')
+    readonly_fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
+    search_fields = ('department_user__name',)
+
+    def has_add_permission(self, request):
+        """AD actions should not be created manually in the admin site.
+        """
+        return False
 
 
 @register(Location)
@@ -141,17 +221,15 @@ class OrgUnitAdmin(DjangoMpttAdmin):
 @register(CostCentre)
 class CostCentreAdmin(ModelAdmin):
     list_display = (
-        'name', 'code', 'chart_acct_name', 'org_position', 'division', 'users', 'manager',
-        'business_manager', 'admin', 'tech_contact', 'active')
-    search_fields = (
-        'name', 'code', 'chart_acct_name', 'org_position__name', 'division__name',
-        'org_position__acronym', 'division__acronym')
-    list_filter = ('active', 'chart_acct_name')
-    raw_id_fields = (
-        'org_position', 'manager', 'business_manager', 'admin', 'tech_contact')
+        'code', 'chart_acct_name', 'division_name', 'users', 'manager', 'business_manager', 'active'
+    )
+    search_fields = ('code', 'chart_acct_name', 'org_position__name', 'division_name')
+    list_filter = ('active', 'chart_acct_name', 'division_name')
+    raw_id_fields = ('org_position', 'manager', 'business_manager', 'admin', 'tech_contact')
 
     def users(self, obj):
         return format_html(
             '<a href="{}?cost_centre={}">{}</a>',
             reverse('admin:organisation_departmentuser_changelist'),
-            obj.pk, obj.departmentuser_set.count())
+            obj.pk, obj.departmentuser_set.count()
+        )
