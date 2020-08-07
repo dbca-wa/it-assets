@@ -157,17 +157,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertContains(response, self.contract_user.email)
         self.assertContains(response, self.del_user.email)
         self.assertContains(response, self.shared.email)
-        # Test filtering by ad_deleted.
-        url = '/api/users/?ad_deleted=true'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.del_user.email)
-        self.assertNotContains(response, self.user1.email)
-        url = '/api/users/?ad_deleted=false'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, self.del_user.email)
-        self.assertContains(response, self.user1.email)
         # Test filtering by email (should return only one object).
         url = '/api/users/?email={}'.format(self.user1.email)
         response = self.client.get(url)
@@ -236,19 +225,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         # Division 1 won't be present in the response.
         self.assertNotContains(response, self.div1.name)
 
-    def test_org_structure_populate_groups_members(self):
-        """Test populate_groups=true request parameter
-        """
-        self.user3.populate_primary_group = False
-        self.user3.save()
-        url = '/api/users/?org_structure=true&populate_groups=true'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        # User 2 will be present in the response.
-        self.assertContains(response, self.user2.email)
-        # User 3 won't be present in the response.
-        self.assertNotContains(response, self.user3.email)
-
     def test_create_invalid(self):
         """Test the DepartmentUserResource create response with missing data
         """
@@ -262,9 +238,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         response = self.client.post(url, json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 400)
         data['DisplayName'] = 'Doe, John'
-        response = self.client.post(url, json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-        data['SamAccountName'] = username
         response = self.client.post(url, json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 201)  # Now valid.
 
@@ -339,15 +312,12 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertEqual(user.expiry_date, tz.localize(parse(data['expiry_date'])))
         self.assertEqual(user.given_name, data['given_name'])
         self.assertEqual(user.active, data['active'])
-        self.assertEqual(user.ad_deleted, data['deleted'])
         self.assertTrue(user.o365_licence)
-        self.assertTrue(user.in_sync)
 
     def test_disable(self):
         """Test the DepartmentUserResource update response (set user as inactive)
         """
         self.assertTrue(self.user1.active)
-        self.assertFalse(self.user1.ad_deleted)
         url = '/api/users/{}/'.format(self.user1.ad_guid)
         data = {
             'Enabled': False,
@@ -355,27 +325,7 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         response = self.client.put(url, json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 202)
         user = DepartmentUser.objects.get(pk=self.user1.pk)  # Refresh from db
-        self.assertFalse(user.ad_deleted)
         self.assertFalse(user.active)
-        self.assertTrue(user.in_sync)
-
-    def test_delete(self):
-        """Test the DepartmentUserResource update response (set user as 'AD deleted')
-        """
-        self.assertFalse(self.user1.ad_deleted)
-        self.assertTrue(self.user1.active)
-        url = '/api/users/{}/'.format(self.user1.ad_guid)
-        data = {'Deleted': True}
-        response = self.client.put(url, json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 202)
-        user = DepartmentUser.objects.get(pk=self.user1.pk)  # Refresh from db
-        self.assertTrue(user.ad_deleted)
-        self.assertFalse(user.active)
-        self.assertTrue(user.in_sync)
-        # Also delete a second object, to check for silly 'empty string' collisions.
-        url = '/api/users/{}/'.format(self.user2.ad_guid)
-        response = self.client.put(url, json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 202)
 
 
 class LocationResourceTestCase(ApiTestCase):

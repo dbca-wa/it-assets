@@ -71,7 +71,7 @@ class DepartmentUserResource(DjangoResource):
         'org_unit__location__fax', 'ad_guid', 'employee_id',
         'location', 'preferred_name', 'expiry_date', 'o365_licence')
     VALUES_ARGS = COMPACT_ARGS + (
-        'ad_data', 'date_updated', 'active',
+        'date_updated', 'active',
         'given_name', 'surname', 'home_phone',
         'other_phone', 'notes', 'working_hours', 'position_type',
         'account_type', 'shared_account')
@@ -280,8 +280,6 @@ class DepartmentUserResource(DjangoResource):
             raise BadRequest('Missing email parameter value')
         if 'DisplayName' not in self.data and 'name' not in self.data:
             raise BadRequest('Missing name parameter value')
-        if 'SamAccountName' not in self.data and 'username' not in self.data:
-            raise BadRequest('Missing account name parameter value')
 
         # Make an assumption that EmailAddress or email is passed in.
         if 'EmailAddress' in self.data:
@@ -289,7 +287,6 @@ class DepartmentUserResource(DjangoResource):
         else:
             LOGGER.info('Creating user {}'.format(self.data['email'].lower()))
 
-        # Required: email, name and sAMAccountName.
         if 'EmailAddress' in self.data:
             user.email = self.data['EmailAddress'].lower()
         elif 'email' in self.data:
@@ -401,8 +398,6 @@ class DepartmentUserResource(DjangoResource):
                 user.ad_guid, user.azure_guid = None, None
                 data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
                 LOGGER.info('Set user {} as deleted in AD'.format(user.name))
-            user.ad_data = self.data  # Store the raw request data.
-            user.ad_updated = True
             user.save()
         except Exception as e:
             LOGGER.exception('Error updating user {}'.format(user.email))
