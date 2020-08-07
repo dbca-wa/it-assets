@@ -314,8 +314,7 @@ class DailyLogDayFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        
-        obj = models.WebAppAccessDailyReport.objects.all().order_by("-log_day").first()
+        obj = model_admin.model.objects.all().order_by("-log_day").first()
         if not obj:
             return []
 
@@ -339,7 +338,7 @@ class DailyLogDayFilter(admin.SimpleListFilter):
         if not val:
             return queryset
         elif val in ("7d","4w"):
-            obj = models.WebAppAccessDailyReport.objects.all().order_by("-log_day").first()
+            obj = queryset.model.objects.all().order_by("-log_day").first()
             if not obj:
                 return queryset
 
