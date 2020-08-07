@@ -59,19 +59,19 @@ class DepartmentUserAdmin(VersionAdmin):
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
     filter_horizontal = ('secondary_locations',)
-    readonly_fields = ('active', 'email')
+    readonly_fields = ('active', 'email', 'assigned_licences', 'proxy_addresses')
     fieldsets = (
         ('Active Directory account fields', {
-            'description': '<p class="errornote">These fields can be changed using commands in the department user list view.</p>',
+            'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
             'fields': (
                 'active',
                 'email',
             ),
         }),
         ('User information fields', {
-            'description': '''<p class="errornote">Data in these fields is synchronised with Active Directory.<br>
+            'description': '''<span class="errornote">Data in these fields is synchronised with Active Directory.<br>
                 Do not edit information in this section without written permission from People Services
-                or the cost centre manager (forms are required).</p>''',
+                or the cost centre manager (forms are required).</span>''',
             'fields': (
                 'name',
                 'given_name',
@@ -85,7 +85,7 @@ class DepartmentUserAdmin(VersionAdmin):
             ),
         }),
         ('Other user metadata fields', {
-            'description': '''<p>Data in these fields are not synchronised with Active Directory.</p>''',
+            'description': '''Data in these fields are not synchronised with Active Directory.''',
             'fields': (
                 'preferred_name',
                 'extension',
@@ -101,6 +101,13 @@ class DepartmentUserAdmin(VersionAdmin):
                 'working_hours',
                 'account_type',
                 'security_clearance',
+            ),
+        }),
+        ('Azure AD information', {
+            'description': '''These data are specific to Azure Active Directory only.''',
+            'fields': (
+                'assigned_licences',
+                'proxy_addresses',
             ),
         }),
     )
