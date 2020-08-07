@@ -44,6 +44,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
     dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
     licence_pattern = 'SkuId:\s[a-z0-9-]+'
     dept_user.mail_nickname = azure_user['MailNickName']
+    dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in azure_user['ProxyAddresses'] if i.lower().startswith('smtp')]
 
     skus = [re.search(licence_pattern, i)[0].replace('SkuId: ', '') for i in azure_user['AssignedLicenses'] if re.search(licence_pattern, i)]
     dept_user.assigned_licences = []
