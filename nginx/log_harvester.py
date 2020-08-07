@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.http import QueryDict
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
-from data_storage.utils import acquire_runlock,release_runlock
+from data_storage.utils import acquire_runlock,release_runlock,renew_runlock
 from .models import WebAppAccessLog,WebApp,WebAppLocation,RequestParameterFilter,WebAppAccessDailyLog,RequestPathNormalizer,apply_rules,WebAppAccessDailyReport
 
 logger = logging.getLogger(__name__)
@@ -149,13 +149,15 @@ def process_log(context):
         with transaction.atomic():
             process_log_file(context,metadata,config_file)
 
+        context["renew_time"] = renew_runlock(context["lock_file"],context["renew_time"])
+
     return _func
                         
 def harvest(reconsume=False):
     lock_file = os.path.join(settings.NGINXLOG_REPOSITORY_DIR,settings.NGINXLOG_RESOURCE_NAME,"{}.lock".format(settings.NGINXLOG_RESOURCE_CLIENTID))
 
     try:
-        acquire_runlock(lock_file)
+        renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
     except exceptions.ProcessIsRunning as ex: 
         msg = "The previous harvest process is still running, no need to run the harvest process this time.{}".format(str(ex))
         logger.info(msg)
@@ -171,6 +173,8 @@ def harvest(reconsume=False):
     
         context = {
             "reconsume":reconsume,
+            "renew_time":renew_time,
+            "lock_file":lock_file
         }
         #apply the latest filter change first
         applied = False
@@ -185,6 +189,7 @@ def harvest(reconsume=False):
         result = get_consume_client().consume(process_log(context))
 
         WebAppAccessDailyLog.populate_data()
+        context["renew_time"] = renew_runlock(lock_file,context["renew_time"])
         WebAppAccessDailyReport.populate_data()
 
         return result

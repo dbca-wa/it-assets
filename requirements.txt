@@ -38,5 +38,5 @@ webtemplate-dbca==1.2.1
 django-bootstrap-pagination==1.7.1
 
 
-git+git://github.com/dbca-wa/data-storage@v3.3.1#egg=data-storage==3.3.1
+git+git://github.com/dbca-wa/data-storage@v3.4#egg=data-storage==3.4
 pyyaml==5.3.1
