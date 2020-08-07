@@ -275,9 +275,8 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         username = str(uuid1())[:8]
         data = {
             'EmailAddress': '{}@dbca.wa.gov.au'.format(username),
-            'DisplayName': 'Doe, John',
+            'DisplayName': 'John Doe',
             'SamAccountName': username,
-            'DistinguishedName': 'CN={},OU=Users,DC=domain'.format(username),
             'AccountExpirationDate': datetime.now().isoformat(),
             'Enabled': True,
             'ObjectGUID': str(uuid1()),
@@ -298,16 +297,12 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         username = str(uuid1())[:8]
         data = {
             'email': '{}@dbca.wa.gov.au'.format(username),
-            'name': 'Doe, John',
-            'username': username,
-            'ad_dn': 'CN={},OU=Users,DC=domain'.format(username),
+            'name': 'John Doe',
             'expiry_date': datetime.now().isoformat(),
             'active': True,
-            'ad_guid': str(uuid1()),
             'given_name': 'John',
             'surname': 'Doe',
             'title': 'Content Creator',
-            'date_ad_updated': datetime.now().isoformat(),
         }
         response = self.client.post(url, json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 201)
