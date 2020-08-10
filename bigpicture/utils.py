@@ -102,42 +102,25 @@ def host_risk_assessment_vulns():
                 category='Compute'
             )
             dep_ct = ContentType.objects.get_for_model(host_dep)
-            if status.vulnerability_info['num_critical'] > 0:
-                ra, created = RiskAssessment.objects.get_or_create(
-                    content_type=dep_ct,
-                    object_id=host_dep.pk,
-                    category='Vulnerability',
-                    rating=3,
-                )
-                ra.notes = '[AUTOMATED ASSESSMENT] Critical vulnerabilities present on host (Nessus).'
-                ra.save()
-            elif status.vulnerability_info['num_high'] > 0:
-                ra, created = RiskAssessment.objects.get_or_create(
-                    content_type=dep_ct,
-                    object_id=host_dep.pk,
-                    category='Vulnerability',
-                    rating=2,
-                )
-                ra.notes = '[AUTOMATED ASSESSMENT] High vulnerabilities present on host (Nessus).'
-                ra.save()
-            elif status.vulnerability_info['num_medium'] > 0:
-                ra, created = RiskAssessment.objects.get_or_create(
-                    content_type=dep_ct,
-                    object_id=host_dep.pk,
-                    category='Vulnerability',
-                    rating=1,
-                )
-                ra.notes = '[AUTOMATED ASSESSMENT] Low/medium vulnerabilities present on host (Nessus).'
-                ra.save()
+
+            if RiskAssessment.objects.filter(content_type=dep_ct, object_id=host_dep.pk, category='Vulnerability').exists():
+                ra = RiskAssessment.objects.get(content_type=dep_ct, object_id=host_dep.pk, category='Vulnerability')
             else:
-                ra, created = RiskAssessment.objects.get_or_create(
-                    content_type=dep_ct,
-                    object_id=host_dep.pk,
-                    category='Vulnerability',
-                    rating=0,
-                )
+                ra = RiskAssessment(content_type=dep_ct, object_id=host_dep.pk, category='Vulnerability')
+
+            if status.vulnerability_info['num_critical'] > 0:
+                ra.rating = 3
+                ra.notes = '[AUTOMATED ASSESSMENT] Critical vulnerabilities present on host (Nessus).'
+            elif status.vulnerability_info['num_high'] > 0:
+                ra.rating = 2
+                ra.notes = '[AUTOMATED ASSESSMENT] High vulnerabilities present on host (Nessus).'
+            elif status.vulnerability_info['num_medium'] > 0:
+                ra.rating = 1
+                ra.notes = '[AUTOMATED ASSESSMENT] Low/medium vulnerabilities present on host (Nessus).'
+            else:
+                ra.rating = 0
                 ra.notes = '[AUTOMATED ASSESSMENT] Vulnerabily scanning undertaken on host (Nessus).'
-                ra.save()
+            ra.save()
 
 
 def workload_risk_assessment_vulns():
@@ -149,42 +132,25 @@ def workload_risk_assessment_vulns():
         if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
             for dep in Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk):
                 vulns = workload.get_image_scan_vulns()
-                if 'CRITICAL' in vulns:
-                    ra, created = RiskAssessment.objects.get_or_create(
-                        content_type=dep_ct,
-                        object_id=dep.pk,
-                        category='Vulnerability',
-                        rating=3,
-                    )
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulns (trivy)'.format(workload.image, vulns['CRITICAL'])
-                    ra.save()
-                elif 'HIGH' in vulns:
-                    ra, created = RiskAssessment.objects.get_or_create(
-                        content_type=dep_ct,
-                        object_id=dep.pk,
-                        category='Vulnerability',
-                        rating=2,
-                    )
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulns (trivy)'.format(workload.image, vulns['HIGH'])
-                    ra.save()
-                elif 'MEDIUM' in vulns:
-                    ra, created = RiskAssessment.objects.get_or_create(
-                        content_type=dep_ct,
-                        object_id=dep.pk,
-                        category='Vulnerability',
-                        rating=1,
-                    )
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulns (trivy)'.format(workload.image, vulns['MEDIUM'])
-                    ra.save()
+
+                if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Vulnerability').exists():
+                    ra = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
                 else:
-                    ra, created = RiskAssessment.objects.get_or_create(
-                        content_type=dep_ct,
-                        object_id=dep.pk,
-                        category='Vulnerability',
-                        rating=0,
-                    )
+                    ra = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
+
+                if 'CRITICAL' in vulns:
+                    ra.rating = 3
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulns (trivy)'.format(workload.image, vulns['CRITICAL'])
+                elif 'HIGH' in vulns:
+                    ra.rating = 2
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulns (trivy)'.format(workload.image, vulns['HIGH'])
+                elif 'MEDIUM' in vulns:
+                    ra.rating = 1
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulns (trivy)'.format(workload.image, vulns['MEDIUM'])
+                else:
+                    ra.rating = 0
                     ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
-                    ra.save()
+                ra.save()
 
 
 def itsystem_risks():
