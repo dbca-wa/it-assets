@@ -171,36 +171,23 @@ def itsystem_risks():
             risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
             risk.save()
         elif RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').exists():
-            # If system_type is not recorded for the IT system but there is a risk of this type, delete it.
-            risk = RiskAssessment.objects.get(
-                content_type=itsystem_ct,
-                object_id=it.pk,
-                category='Critical function',
-            )
+            # If system_type is not recorded for the IT system but there is a risk of this type, delete the risk.
+            risk = RiskAssessment.objects.get(content_type=itsystem_ct, object_id=it.pk, category='Critical function')
             risk.delete()
 
         # Backups.
         backup_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').first()
         if it.backups:
             if not backup_risk:
-                backup_risk, created = RiskAssessment.objects.get_or_create(
-                    content_type=itsystem_ct,
-                    object_id=it.pk,
-                    category='Backups',
-                    rating=0,  # TODO: risk rating base of backup type.
-                )
+                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
+            backup_risk.rating = 0  # TODO: risk rating base of backup type.
             backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
-            backup_risk.save()
         else:
             if not backup_risk:
-                backup_risk, created = RiskAssessment.objects.get_or_create(
-                    content_type=itsystem_ct,
-                    object_id=it.pk,
-                    category='Backups',
-                    rating=2,
-                )
+                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
+            backup_risk.rating = 2
             backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
-            backup_risk.save()
+        backup_risk.save()
 
         # Web app root location requires SSO or not.
         if it.alias.exists():
