@@ -17,6 +17,8 @@ from registers.models import ITSystem
 from rancher.models import Cluster, Workload, WorkloadListening
 from status.models import Host
 
+from data_storage.utils import acquire_runlock,release_runlock,renew_runlock
+
 logger = logging.getLogger(__name__)
 
 
@@ -624,10 +626,10 @@ class RequestPathNormalizer(models.Model):
 
         if self.order == 0:
             if self.id is not None:
-                if self.objects.filter(order=0).exclude(id=self.id).exists():
+                if RequestPathNormalizer.objects.filter(order=0).exclude(id=self.id).exists():
                     raise ValidationError("The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None ")
             else:
-                if self.objects.filter(order=0).exists():
+                if RequestPathNormalizer.objects.filter(order=0).exists():
                     raise ValidationError("The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None ")
 
         try:
@@ -945,7 +947,7 @@ def apply_rules(context={}):
                 changed = True
 
             if changed:
-                logger.debug("{0}: {1} log records have been merged into {2} log records,{} log records were removed".format(log_starttime,len(del_records),len(records),len(excluded_records)))
+                logger.debug("{0}: {1} log records have been merged into {2} log records,{3} log records were removed".format(log_starttime,len(del_records),len(records),len(excluded_records)))
                     
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
@@ -967,7 +969,8 @@ def apply_rules(context={}):
                     record.webserver,
                     record.request_path,
                     path_normalizers=path_normalizers,
-                    path_normalizer_map=path_normalizer_map
+                    path_normalizer_map=path_normalizer_map,
+                    path_filter= path_filter
                 )
                 if request_path is None:
                     excluded_records.append(record)
@@ -1028,11 +1031,11 @@ def apply_rules(context={}):
                 changed = True
 
             if changed:
-                logger.debug("{0}: {1} daily log records have been merged into {2} daily log records,{} log records were removed".format(log_day,len(del_records),len(records),len(excluded_records)))
+                logger.debug("{0}: {1} daily log records have been merged into {2} daily log records,{3} log records were removed".format(log_day,len(del_records),len(records),len(excluded_records)))
 
         if excluded_records:
             #some records were removed, change the daily report
-            daily_reposts.clear()
+            daily_reports.clear()
             for record in excluded_records:
                 key = (record.log_day,record.webserver)
                 if key not in daily_reports:
