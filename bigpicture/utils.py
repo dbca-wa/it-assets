@@ -189,6 +189,20 @@ def itsystem_risks():
             backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
         backup_risk.save()
 
+        # Business hours support.
+        support_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support').first()
+        if not it.bh_support:
+            if not support_risk:
+                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
+            support_risk.rating = 2
+            support_risk.notes = '[AUTOMATED ASSESSMENT] No business hours support contact is recorded'
+        else:
+            if not support_risk:
+                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
+            support_risk.rating = 0
+            support_risk.notes = '[AUTOMATED ASSESSMENT] Business hours support contact is recorded'
+        support_risk.save()
+
         # Web app root location requires SSO or not.
         if it.alias.exists():
             alias = it.alias.first()  # Should only ever be one.

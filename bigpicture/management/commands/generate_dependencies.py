@@ -21,6 +21,7 @@ Dependency graph update process:
     - Generate / update Host deps ("Compute").
     - Create RiskAssessments from Host vuln scans (TODO: confirm business rule).
     - Create RiskAssessments for Workload image vuln scans (TODO: confirm business rule).
+    - Create RiskAssessments for IT systems.
 """
 
 
