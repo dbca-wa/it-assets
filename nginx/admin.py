@@ -4,9 +4,13 @@ from datetime import datetime,timedelta
 
 
 from django.contrib import admin
+from django.urls import path,reverse
 from django.utils.html import format_html, mark_safe
-from django.urls import reverse
 from django.utils import timezone
+from django.shortcuts import redirect
+from django.contrib import messages
+
+from django_q.tasks import async_task
 
 from . import models
 from rancher.models import Workload
@@ -449,7 +453,7 @@ class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin
     readonly_fields = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_day','webserver','request_path',)
 
-    list_filter = (DailyLogDayFilter,)
+    list_filter = (DailyLogDayFilter,"http_status")
 
     search_fields = ['webserver']
 
@@ -485,6 +489,22 @@ class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,Requ
     search_fields = ['webserver']
 
     list_filter = (LogDayFilter,)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        urls = [
+            path("run_log_harvesting/", self.run_log_harvesting, name="run_log_harvesting"),
+        ] + urls
+        return urls
+
+    log_list_url_name = 'admin:{}_{}_changelist'.format(models.WebAppAccessLog._meta.app_label,models.WebAppAccessLog._meta.model_name)
+    def run_log_harvesting(self,request):
+        try:
+            async_task("nginx.log_harvester.harvest")
+            self.message_user(request, "A log havesting process has been scheduled.")
+        except Exception as ex:
+            self.message_user(request, "Failed to schedule the log harvesting process.{}".format(str(ex)),level=messages.ERROR)
+        return redirect(self.log_list_url_name)
 
     def _log_starttime(self,obj):
         if not obj:
