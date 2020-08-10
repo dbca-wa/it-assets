@@ -190,8 +190,10 @@ def workload_risk_assessment_vulns():
 def itsystem_risks():
     # Set automatic risk assessment for IT system risk categories based on object field values.
     itsystem_ct = ContentType.objects.get_for_model(ITSystem.objects.first())
+    prod = SystemEnv.objects.get(name='prod')
 
     for it in ITSystem.objects.all():
+        # Risk assessment - critical function.
         if it.system_type:
             # Create/update a RiskAssessment object for the IT System.
             risk, created = RiskAssessment.objects.get_or_create(
@@ -203,7 +205,7 @@ def itsystem_risks():
             risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
             risk.save()
         elif RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').exists():
-            # If there is a risk of this type, delete it.
+            # If system_type is not recorded for the IT system but there is a risk of this type, delete it.
             risk = RiskAssessment.objects.get(
                 content_type=itsystem_ct,
                 object_id=it.pk,
@@ -211,24 +213,52 @@ def itsystem_risks():
             )
             risk.delete()
 
+        # Backups.
+        backup_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').first()
         if it.backups:
-            risk, created = RiskAssessment.objects.get_or_create(
-                content_type=itsystem_ct,
-                object_id=it.pk,
-                category='Backups',
-                rating=0,  # TODO: risk rating base of backup type.
-            )
-            risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
-            risk.save()
+            if not backup_risk:
+                backup_risk, created = RiskAssessment.objects.get_or_create(
+                    content_type=itsystem_ct,
+                    object_id=it.pk,
+                    category='Backups',
+                    rating=0,  # TODO: risk rating base of backup type.
+                )
+            backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
+            backup_risk.save()
         else:
-            risk, created = RiskAssessment.objects.get_or_create(
-                content_type=itsystem_ct,
-                object_id=it.pk,
-                category='Backups',
-                rating=2,
-            )
-            risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
-            risk.save()
+            if not backup_risk:
+                backup_risk, created = RiskAssessment.objects.get_or_create(
+                    content_type=itsystem_ct,
+                    object_id=it.pk,
+                    category='Backups',
+                    rating=2,
+                )
+            backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
+            backup_risk.save()
+
+        # Web app root location requires SSO or not.
+        if it.alias.exists():
+            alias = it.alias.first()  # Should only ever be one.
+            webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+            for webapp in webapps:
+                root_location = webapp.locations.filter(location='/').first()
+                if root_location:
+                    # Create an access risk
+                    risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                    if not risk:
+                        risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
+                    if root_location.auth_type == 0:
+                        risk.rating = 2
+                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
+                    else:
+                        risk.rating = 0
+                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
+                    risk.save()
+                else:
+                    # If any access risk exists, delete it.
+                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                        risk.delete()
 
 
 # List of EoL OS name fragments, as output by Nessus.
