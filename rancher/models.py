@@ -15,6 +15,10 @@ class Cluster(models.Model):
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
     refreshed = models.DateTimeField(null=True,editable=False)
+    succeed_resources = models.PositiveIntegerField(editable=False,default=0)
+    failed_resources = models.PositiveIntegerField(editable=False,default=0)
+    refresh_message = models.TextField(null=True,blank=True,editable=False)
+    
 
     def __str__(self):
         return self.name

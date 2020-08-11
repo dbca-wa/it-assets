@@ -6,6 +6,8 @@ from django.contrib import messages
 from django.utils.html import format_html, mark_safe
 from django.urls import reverse
 
+from django_q.tasks import async_task
+
 # Register your models here.
 from . import models
 from . import rancher_harvester
@@ -133,10 +135,17 @@ class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,W
 
 @admin.register(models.Cluster)
 class ClusterAdmin(admin.ModelAdmin):
-    list_display = ('name','ip', 'clusterid','refreshed','modified')
-    readonly_fields = ('ip','clusterid','refreshed','modified','created')
+    list_display = ('name','ip', 'clusterid','succeed_resources','failed_resources','refreshed','modified')
+    readonly_fields = ('ip','clusterid','succeed_resources','failed_resources','refreshed','modified','created','_refresh_message')
     ordering = ('name',)
     actions = ('refresh','enforce_refresh')
+
+    def _refresh_message(self,obj):
+        if not obj :
+            return ""
+        else:
+            return mark_safe("<pre>{}</pre>".format(obj.refresh_message))
+    _refresh_message.short_description = "Refresh Message"
 
     def has_add_permission(self, request, obj=None):
         return True
@@ -145,45 +154,22 @@ class ClusterAdmin(admin.ModelAdmin):
         return False
 
     def enforce_refresh(self, request, queryset):
-        self.refresh(request,queryset,reconsume=True)
-    enforce_refresh.short_description = 'Enforce refresh'
-
-    def refresh(self, request, queryset,reconsume=False):
         for cluster in queryset:
             try:
-                consume_result = rancher_harvester.harvest(cluster,reconsume=reconsume)
-                if consume_result[1]:
-                    if consume_result[0]:
-                        self.message_user(request, mark_safe("""<pre>Failed to refresh cluster({}),
-    {} configuration files were consumed successfully.
-        {}
-    {} configuration files were consumed failed
-        {}</pre>""".format(
-                            cluster.name,
-                            len(consume_result[0]),
-                            "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in consume_result[0]]),
-                            len(consume_result[1]),
-                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in consume_result[1]]),
-                    )),level=messages.ERROR)
-                    else:
-                        self.message_user(request, mark_safe("""<pre>Failed to refresh cluster({}),{} configuration files were consumed failed
-    {}</pre>""".format(
-                            cluster.name,
-                            len(consume_result[1]),
-                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in consume_result[1]]),
-                        )),level=messages.ERROR)
-                elif consume_result[0]:
-                    self.message_user(request, mark_safe("""<pre>Succeed to refresh cluster({}), {} configuration files were consumed successfully.
-    {}</pre>""".format(
-                        cluster.name,
-                        len(consume_result[0]),
-                        "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in consume_result[0]]),
-                    )))
-                else:
-                    self.message_user(request,"Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name))
+                async_task("rancher.rancher_harvester.harvest",cluster,reconsume=True)
+                self.message_user(request, "The process to harvest all configuration files of the cluster({}) has been scheduled.".format(cluster))
             except Exception as ex:
-                self.message_user(request,"Failed to refresh cluster({}).{}".format(cluster.name,str(ex)),level=messages.ERROR)
-                logger.error("Failed to refresg cluster({}).{}".format(cluster.name,traceback.format_exc()))
+                self.message_user(request, "Failed to schedule the process to harvest all configuration files of the cluster({}).{}".format(cluster,str(ex)),level=messages.ERROR)
+
+    enforce_refresh.short_description = 'Enforce refresh'
+
+    def refresh(self, request, queryset):
+        for cluster in queryset:
+            try:
+                async_task("rancher.rancher_harvester.harvest",cluster)
+                self.message_user(request, "The process to harvest the changed configuration files of the cluster({}) has been scheduled.".format(cluster))
+            except Exception as ex:
+                self.message_user(request, "Failed to schedule the process to harvest the changed configuration files of the cluster({}).{}".format(cluster,str(ex)),level=messages.ERROR)
 
     refresh.short_description = 'Refresh'
 

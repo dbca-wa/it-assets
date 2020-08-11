@@ -1295,7 +1295,43 @@ def harvest(cluster,reconsume=False):
         #analysis the workload env.
         analysis_workloadenv(cluster,None)
         cluster.refreshed = timezone.now()
-        cluster.save(update_fields=["refreshed"])
+        cluster.succeed_resources = len(result[0])
+        cluster.failed_resources = len(result[1])
+        if result[1]:
+            if result[0]:
+                message = """Failed to refresh cluster({}),
+{} configuration files were consumed successfully.
+{}
+{} configuration files were consumed failed
+{}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[0]),
+                    "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                    len(result[1]),
+                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                )
+            else:
+                message = """Failed to refresh cluster({}),{} configuration files were consumed failed
+{}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[1]),
+                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                )
+        elif result[0]:
+            message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
+{}"""
+            message = message.format(
+                cluster.name,
+                len(result[0]),
+                "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
+            )
+        else:
+            message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
+
+        cluster.refresh_message = message
+        cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message"])
 
         return result
     finally:
