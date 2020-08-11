@@ -1,8 +1,10 @@
+from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 from rancher.models import Workload
 from registers.models import ITSystem
-from nginx.models import SystemEnv, WebServer
+from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport
 from status.models import Host
+from statistics import mean, stdev, StatisticsError
 from .models import Dependency, RiskAssessment
 
 
@@ -24,22 +26,23 @@ def webserver_dependencies():
     prod = SystemEnv.objects.get(name='prod')
     webserver_ct = ContentType.objects.get_for_model(WebServer.objects.first())
 
-    for itsystem in ITSystem.objects.all():
-        if itsystem.alias.exists():
-            alias = itsystem.alias.first()  # Should only ever be one.
-            webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-            for webapp in webapps:
-                locations = webapp.locations.all()
-                for loc in locations:
-                    loc_servers = loc.servers.all()
-                    for loc_server in loc_servers:
-                        webserver = loc_server.server
-                        dep, created = Dependency.objects.get_or_create(
-                            content_type=webserver_ct,
-                            object_id=webserver.pk,
-                            category='Proxy target',
-                        )
-                        itsystem.dependencies.add(dep)
+    for it in ITSystem.objects.all():
+        if it.alias.exists():
+            for alias in it.alias.all():
+                alias = it.alias.first()
+                webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+                for webapp in webapps:
+                    locations = webapp.locations.all()
+                    for loc in locations:
+                        loc_servers = loc.servers.all()
+                        for loc_server in loc_servers:
+                            webserver = loc_server.server
+                            dep, created = Dependency.objects.get_or_create(
+                                content_type=webserver_ct,
+                                object_id=webserver.pk,
+                                category='Proxy target',
+                            )
+                            it.dependencies.add(dep)
 
 
 def workload_dependencies():
@@ -276,31 +279,91 @@ def itsystem_risks_support(it_systems=None):
 def itsystem_risks_access(it_systems=None):
     """Set automatic risk assessment for IT system web apps based on whether they require SSO on the root location.
     """
-    prod = SystemEnv.objects.get(name='prod')
     if not it_systems:
         it_systems = ITSystem.objects.all()
     itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+    prod = SystemEnv.objects.get(name='prod')
 
     for it in it_systems:
         if it.alias.exists():
-            alias = it.alias.first()  # Assumption: should only ever be one.
-            webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-            for webapp in webapps:
-                root_location = webapp.locations.filter(location='/').first()
-                if root_location:
-                    # Create an access risk
-                    risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                    if not risk:
-                        risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
-                    if root_location.auth_type == 0:
-                        risk.rating = 2
-                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
-                    else:
-                        risk.rating = 0
-                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
-                    risk.save()
-                else:
-                    # If any access risk exists, delete it.
-                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+            for alias in it.alias.all():
+                webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+                for webapp in webapps:
+                    root_location = webapp.locations.filter(location='/').first()
+                    if root_location:
+                        # Create an access risk
                         risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                        risk.delete()
+                        if not risk:
+                            risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
+                        if root_location.auth_type == 0:
+                            risk.rating = 2
+                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
+                        else:
+                            risk.rating = 0
+                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
+                        risk.save()
+                    else:
+                        # If any access risk exists, delete it.
+                        if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+                            risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                            risk.delete()
+
+
+def itsystem_risks_traffic(it_systems=None):
+    """Set automatic risk assessment for IT system web apps based on the mean of daily HTTP requests.
+    """
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+    prod = SystemEnv.objects.get(name='prod')
+
+    for it in it_systems:
+        if it.alias.exists():
+            requests = []
+            for alias in it.alias.all():
+                webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+                for webapp in webapps:
+                    if not webapp.dailyreports.exists():
+                        continue
+                    report = webapp.dailyreports.latest()
+                    # Statistics mangling alert: due to the number of requests being 'bursty', we take
+                    # the daily count of requests for the last 28 days, calculate the Z-score for each,
+                    # discard any that are greater than 2 or less than -2, then calculate the mean of
+                    # the remaining values.
+                    # This is completely arbitrary and subject to change.
+                    last_log_day = report.log_day
+                    start_date = (last_log_day - timedelta(days=27))
+                    reports = WebAppAccessDailyReport.objects.filter(webapp=webapp, log_day__gte=start_date)
+                    for i in reports:
+                        requests.append(i.requests)
+            if requests:
+                try:
+                    μ = mean(requests)
+                    σ = stdev(requests)
+                    if σ:  # Avoid a ZeroDivisionError.
+                        requests_filter = []
+                        for i in requests:
+                            if -2.0 <= ((i - μ) / σ) <= 2.0:
+                                requests_filter.append(i)
+                        requests_mean = int(mean(requests_filter))
+                    else:
+                        requests_mean = int(mean(requests))
+                except StatisticsError:
+                    requests_mean = int(mean(requests))
+
+                risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
+                if not risk:
+                    risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
+                if requests_mean >= 10000:
+                    risk.rating = 3
+                    risk.notes = '[AUTOMATED ASSESSMENT] High traffic of daily HTTP requests'
+                elif requests_mean >= 1000:
+                    risk.rating = 2
+                    risk.notes = '[AUTOMATED ASSESSMENT] Moderate traffic of daily HTTP requests'
+                elif requests_mean >= 100:
+                    risk.rating = 1
+                    risk.notes = '[AUTOMATED ASSESSMENT] Low traffic of daily HTTP requests'
+                else:
+                    risk.rating = 0
+                    risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
+                risk.save()

@@ -48,4 +48,5 @@ class Command(BaseCommand):
         utils.itsystem_risks_backups(it_systems)
         utils.itsystem_risks_support(it_systems)
         utils.itsystem_risks_access(it_systems)
+        utils.itsystem_risks_traffic(it_systems)
         self.stdout.write('Complete')
