@@ -29,11 +29,9 @@ COPY gunicorn.py manage.py ./
 COPY assets ./assets
 COPY itassets ./itassets
 COPY knowledge ./knowledge
-COPY recoup ./recoup
 COPY registers ./registers
 COPY status ./status
 COPY tracking ./tracking
-COPY webconfig ./webconfig
 COPY nginx ./nginx
 COPY rancher ./rancher
 COPY bigpicture ./bigpicture
