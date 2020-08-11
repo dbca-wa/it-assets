@@ -86,7 +86,7 @@ def host_dependencies():
                 system.dependencies.add(host_dep)
 
 
-def host_risk_assessment_vulns():
+def host_risks_vulns():
     # Set automatic risk assessment for Host objects that have a Nessus vulnerability scan result.
     host_ct = ContentType.objects.get_for_model(Host.objects.first())
 
@@ -121,111 +121,6 @@ def host_risk_assessment_vulns():
                 ra.rating = 0
                 ra.notes = '[AUTOMATED ASSESSMENT] Vulnerabily scanning undertaken on host (Nessus).'
             ra.save()
-
-
-def workload_risk_assessment_vulns():
-    # Set automatic risk assessment for Workload objects that have a trivy vulnerability scan.
-    workload_ct = ContentType.objects.get_for_model(Workload.objects.first())
-    dep_ct = ContentType.objects.get_for_model(Dependency.objects.first())
-
-    for workload in Workload.objects.filter(image_scan_timestamp__isnull=False):
-        if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
-            for dep in Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk):
-                vulns = workload.get_image_scan_vulns()
-
-                if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Vulnerability').exists():
-                    ra = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
-                else:
-                    ra = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
-
-                if 'CRITICAL' in vulns:
-                    ra.rating = 3
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulns (trivy)'.format(workload.image, vulns['CRITICAL'])
-                elif 'HIGH' in vulns:
-                    ra.rating = 2
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulns (trivy)'.format(workload.image, vulns['HIGH'])
-                elif 'MEDIUM' in vulns:
-                    ra.rating = 1
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulns (trivy)'.format(workload.image, vulns['MEDIUM'])
-                else:
-                    ra.rating = 0
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
-                ra.save()
-
-
-def itsystem_risks():
-    # Set automatic risk assessment for IT system risk categories based on object field values.
-    itsystem_ct = ContentType.objects.get_for_model(ITSystem.objects.first())
-    prod = SystemEnv.objects.get(name='prod')
-
-    for it in ITSystem.objects.all():
-        # Risk assessment - critical function.
-        if it.system_type:
-            # Create/update a RiskAssessment object for the IT System.
-            risk, created = RiskAssessment.objects.get_or_create(
-                content_type=itsystem_ct,
-                object_id=it.pk,
-                category='Critical function',
-                rating=2,
-            )
-            risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
-            risk.save()
-        elif RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').exists():
-            # If system_type is not recorded for the IT system but there is a risk of this type, delete the risk.
-            risk = RiskAssessment.objects.get(content_type=itsystem_ct, object_id=it.pk, category='Critical function')
-            risk.delete()
-
-        # Backups.
-        backup_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').first()
-        if it.backups:
-            if not backup_risk:
-                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
-            backup_risk.rating = 0  # TODO: risk rating base of backup type.
-            backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
-        else:
-            if not backup_risk:
-                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
-            backup_risk.rating = 2
-            backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
-        backup_risk.save()
-
-        # Business hours support.
-        support_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support').first()
-        if not it.bh_support:
-            if not support_risk:
-                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
-            support_risk.rating = 2
-            support_risk.notes = '[AUTOMATED ASSESSMENT] No business hours support contact is recorded'
-        else:
-            if not support_risk:
-                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
-            support_risk.rating = 0
-            support_risk.notes = '[AUTOMATED ASSESSMENT] Business hours support contact is recorded'
-        support_risk.save()
-
-        # Web app root location requires SSO or not.
-        if it.alias.exists():
-            alias = it.alias.first()  # Should only ever be one.
-            webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-            for webapp in webapps:
-                root_location = webapp.locations.filter(location='/').first()
-                if root_location:
-                    # Create an access risk
-                    risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                    if not risk:
-                        risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
-                    if root_location.auth_type == 0:
-                        risk.rating = 2
-                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
-                    else:
-                        risk.rating = 0
-                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
-                    risk.save()
-                else:
-                    # If any access risk exists, delete it.
-                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
-                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                        risk.delete()
 
 
 # List of EoL OS name fragments, as output by Nessus.
@@ -277,3 +172,135 @@ def host_os_risks():
                     risk.notes = '[AUTOMATED ASSESSMENT] Host operating system ({}) supported'.format(status.vulnerability_info['os'])
                     risk.rating = 0
                 risk.save()
+
+
+def workload_risks_vulns():
+    # Set automatic risk assessment for Workload objects that have a trivy vulnerability scan.
+    workload_ct = ContentType.objects.get_for_model(Workload.objects.first())
+    dep_ct = ContentType.objects.get_for_model(Dependency.objects.first())
+
+    for workload in Workload.objects.filter(image_scan_timestamp__isnull=False):
+        if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
+            for dep in Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk):
+                vulns = workload.get_image_scan_vulns()
+
+                if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Vulnerability').exists():
+                    ra = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
+                else:
+                    ra = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
+
+                if 'CRITICAL' in vulns:
+                    ra.rating = 3
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulns (trivy)'.format(workload.image, vulns['CRITICAL'])
+                elif 'HIGH' in vulns:
+                    ra.rating = 2
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulns (trivy)'.format(workload.image, vulns['HIGH'])
+                elif 'MEDIUM' in vulns:
+                    ra.rating = 1
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulns (trivy)'.format(workload.image, vulns['MEDIUM'])
+                else:
+                    ra.rating = 0
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
+                ra.save()
+
+
+def itsystem_risks_critical_function(it_systems=None):
+    """Set automatic risk assessment for IT systems based on whether they are noted as used for a critical function.
+    """
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+
+    for it in it_systems:
+        if it.system_type:
+            # Create/update a RiskAssessment object for the IT System.
+            risk, created = RiskAssessment.objects.get_or_create(
+                content_type=itsystem_ct,
+                object_id=it.pk,
+                category='Critical function',
+                rating=2,
+            )
+            risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
+            risk.save()
+        else:
+            # If system_type is not recorded for the IT system but there is a risk of this type, delete the risk.
+            risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').first()
+            if risk:
+                risk.delete()
+
+
+def itsystem_risks_backups(it_systems=None):
+    """Set automatic risk assessment for IT systems based on whether they have a backup method recorded.
+    """
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+
+    for it in it_systems:
+        backup_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').first()
+        if it.backups:
+            if not backup_risk:
+                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
+            backup_risk.rating = 0  # TODO: risk rating base of backup type.
+            backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
+        else:
+            if not backup_risk:
+                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
+            backup_risk.rating = 2
+            backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
+        backup_risk.save()
+
+
+def itsystem_risks_support(it_systems=None):
+    """Set automatic risk assessment for IT systems based on whether they have a BH support contact.
+    """
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+
+    for it in it_systems:
+        support_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support').first()
+        if not it.bh_support:
+            if not support_risk:
+                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
+            support_risk.rating = 2
+            support_risk.notes = '[AUTOMATED ASSESSMENT] No business hours support contact is recorded'
+        else:
+            if not support_risk:
+                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
+            support_risk.rating = 0
+            support_risk.notes = '[AUTOMATED ASSESSMENT] Business hours support contact is recorded'
+        support_risk.save()
+
+
+def itsystem_risks_access(it_systems=None):
+    """Set automatic risk assessment for IT system web apps based on whether they require SSO on the root location.
+    """
+    prod = SystemEnv.objects.get(name='prod')
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+
+    for it in it_systems:
+        if it.alias.exists():
+            alias = it.alias.first()  # Assumption: should only ever be one.
+            webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+            for webapp in webapps:
+                root_location = webapp.locations.filter(location='/').first()
+                if root_location:
+                    # Create an access risk
+                    risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                    if not risk:
+                        risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
+                    if root_location.auth_type == 0:
+                        risk.rating = 2
+                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
+                    else:
+                        risk.rating = 0
+                        risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
+                    risk.save()
+                else:
+                    # If any access risk exists, delete it.
+                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                        risk.delete()
