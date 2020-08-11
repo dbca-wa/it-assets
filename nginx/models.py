@@ -184,6 +184,9 @@ class SystemAlias(models.Model):
         else:
             return self.name
 
+    class Meta:
+        verbose_name_plural = "system aliases"
+
 
 class SystemEnv(models.Model):
     name = models.CharField(max_length=64, unique=True)
