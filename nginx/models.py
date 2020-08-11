@@ -266,7 +266,7 @@ class WebApp(OriginalConfigMixin, models.Model):
         saved_regex_location = None
         saved_regex_matched_path = None
         for location in locations:
-            if location.location_type != WebAppLocation.PREFIX_LOCATION or not saved_location: 
+            if location.location_type != WebAppLocation.PREFIX_LOCATION or not saved_location:
                 matched,matched_path = location.is_match(request_path)
             if matched:
                 if location.location_type in (WebAppLocation.EXACT_LOCATION,WebAppLocation.NON_REGEX_LOCATION):
@@ -664,7 +664,7 @@ class RequestPathNormalizer(models.Model):
         """
         if not request_path:
             return (False,request_path)
-    
+
         path_normalizer = None
         if path_normalizer_map is not None:
             key = (webserver,request_path)
@@ -783,7 +783,7 @@ class RequestParameterFilter(models.Model):
         """
         if not path_parameters:
             return (False,path_parameters)
-    
+
         path_parameter_list = WebAppAccessLog.to_path_parameter_list(path_parameters)
         parameter_filter = None
         if parameter_filter_map is not None:
@@ -893,10 +893,10 @@ def apply_rules(context={}):
                 accesslog.total_response_time += record.total_response_time
                 if accesslog.max_response_time < record.max_response_time:
                     accesslog.max_response_time = record.max_response_time
-    
+
                 if accesslog.min_response_time > record.min_response_time:
                     accesslog.min_response_time = record.min_response_time
-    
+
                 accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
                 del_records.append(record.id)
                 accesslog._changed = True
@@ -915,7 +915,7 @@ def apply_rules(context={}):
 
             if del_records or changed:
                 logger.debug("{0}: {1} log records have been merged into {2} log records".format(log_starttime,len(del_records),len(records)))
-                    
+
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
 
@@ -965,10 +965,10 @@ def apply_rules(context={}):
                 accesslog.total_response_time += record.total_response_time
                 if accesslog.max_response_time < record.max_response_time:
                     accesslog.max_response_time = record.max_response_time
-        
+
                 if accesslog.min_response_time > record.min_response_time:
                     accesslog.min_response_time = record.min_response_time
-        
+
                 accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
                 del_records.append(record.id)
                 accesslog._changed = True
@@ -987,11 +987,11 @@ def apply_rules(context={}):
 
             if del_records or changed:
                 logger.debug("{0}: {1} daily log records have been merged into {2} daily log records".format(log_day,len(del_records),len(records)))
-        
+
         log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
         log_day = log_obj.log_day if log_obj else None
 
-    #already applied the latest filter 
+    #already applied the latest filter
     all_applied = True
     now = timezone.now()
 
@@ -1115,10 +1115,10 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
                     daily_record.total_response_time += record.total_response_time
                     if daily_record.max_response_time < record.max_response_time:
                         daily_record.max_response_time = record.max_response_time
-        
+
                     if daily_record.min_response_time > record.min_response_time:
                         daily_record.min_response_time = record.min_response_time
-        
+
                     daily_record.avg_response_time = daily_record.total_response_time / daily_record.requests
                     if record.all_path_parameters:
                         if daily_record.all_path_parameters:
@@ -1231,4 +1231,4 @@ class WebAppAccessDailyReport(models.Model):
     class Meta:
         unique_together = [["log_day","webserver"]]
         index_together = [["log_day","webapp"],["webapp"]]
-
+        get_latest_by = "log_day"
