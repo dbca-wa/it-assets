@@ -72,8 +72,12 @@ def process_log_file(context,metadata,config_file):
                 record["webserver"],
                 request_path,
                 path_normalizers=context["path_normalizers"],
-                path_normalizer_map=context["path_normalizer_map"]
+                path_normalizer_map=context["path_normalizer_map"],
+                path_filter=context["path_filter"]
             )
+            if request_path is None:
+                continue
+
             accesslog = WebAppAccessLog.objects.filter(
                 log_starttime = metadata["archive_starttime"],
                 webserver = record["webserver"],
@@ -180,6 +184,7 @@ def harvest(reconsume=False):
         applied = False
         while not applied:
             context["path_normalizers"] = list(RequestPathNormalizer.objects.all().order_by("-order"))
+            context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
             context["path_normalizer_map"] = {}
             context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
             context["parameter_filter_map"] = {}
@@ -188,9 +193,8 @@ def harvest(reconsume=False):
         #consume nginx config file
         result = get_consume_client().consume(process_log(context))
 
-        WebAppAccessDailyLog.populate_data()
-        context["renew_time"] = renew_runlock(lock_file,context["renew_time"])
-        WebAppAccessDailyReport.populate_data()
+        renew_time = WebAppAccessDailyLog.populate_data(lock_file,context["renew_time"])
+        WebAppAccessDailyReport.populate_data(lock_file,renew_time)
 
         return result
 

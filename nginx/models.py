@@ -10,11 +10,14 @@ from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
+from django.conf import settings
 
 from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
 from rancher.models import Cluster, Workload, WorkloadListening
 from status.models import Host
+
+from data_storage.utils import acquire_runlock,release_runlock,renew_runlock
 
 logger = logging.getLogger(__name__)
 
@@ -610,7 +613,7 @@ class RequestPathNormalizer(models.Model):
     filter_code = models.CharField(max_length=512,null=False,unique=True,help_text="A lambda function with two parameters 'webserver' and 'request_path'")
     normalize_code = models.TextField(null=False,unique=True,help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path")
 
-    order = models.PositiveSmallIntegerField(null=False,default=0,help_text="The order to find the filter rule, high order means hight priority")
+    order = models.PositiveSmallIntegerField(null=False,default=1,help_text="The order to find the filter rule, high order means hight priority")
     changed = models.DateTimeField(null=False,auto_now=True,help_text="The last time when the filter was changed")
     applied = models.DateTimeField(null=True,editable=False,help_text="The last time when the filter was applied to the existed data")
 
@@ -620,6 +623,14 @@ class RequestPathNormalizer(models.Model):
             self.filter("test.dbca.wa.gov.au","/test")
         except Exception as ex:
             raise ValidationError("Invalid filter code.{}".format(str(ex)))
+
+        if self.order == 0:
+            if self.id is not None:
+                if RequestPathNormalizer.objects.filter(order=0).exclude(id=self.id).exists():
+                    raise ValidationError("The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None ")
+            else:
+                if RequestPathNormalizer.objects.filter(order=0).exists():
+                    raise ValidationError("The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None ")
 
         try:
             self.normalize("/test/2/change")
@@ -658,12 +669,16 @@ class RequestPathNormalizer(models.Model):
 
 
     @classmethod
-    def normalize_path(cls,webserver,request_path,path_normalizers = None,path_normalizer_map = None):
+    def normalize_path(cls,webserver,request_path,path_normalizers = None,path_normalizer_map = None,path_filter=None):
         """
         Return tuple(True, normalized request path) if path parameters is normalized ;otherwise return tuple(False,original request path)
         """
         if not request_path:
             return (False,request_path)
+
+        if path_filter:
+            if path_filter.normalize(request_path) is None:
+                return (True,None)
 
         path_normalizer = None
         if path_normalizer_map is not None:
@@ -816,6 +831,9 @@ def apply_rules(context={}):
         path_normalizers: the normalizers list
         path_normalizer_map: the map between normalizer and webserver,reques path
     """
+    if context["lock_file"] and not context["renew_time"]:
+        context["renew_time"] = acquire_runlock(context["lock_file"],expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+
     parameter_filter_changed  =  RequestParameterFilter.objects.filter(models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))).exists()
     path_normalizer_changed  =  RequestPathNormalizer.objects.filter(models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))).exists()
     if not parameter_filter_changed and not path_normalizer_changed:
@@ -824,8 +842,11 @@ def apply_rules(context={}):
 
     if path_normalizer_changed:
         if "path_normalizers" not in context:
-            context["path_normalizers"] = list(RequestPathNormalizer.objects.all().order_by("-order"))
+            context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
+        if "path_filter" not in context:
+            context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
         path_normalizers = context["path_normalizers"]
+        path_filter = context["path_filter"]
 
         if "path_normalizer_map" not in context:
             context["path_normalizer_map"] = {}
@@ -850,10 +871,13 @@ def apply_rules(context={}):
     log_obj = WebAppAccessLog.objects.order_by("log_starttime").first()
     log_starttime = log_obj.log_starttime if log_obj else None
     records = {}
+    daily_reports = {}
     del_records=[]
+    excluded_records=[]
     while log_starttime:
         records.clear()
         del_records.clear()
+        excluded_records.clear()
         key = None
         for record in WebAppAccessLog.objects.filter(log_starttime = log_starttime):
             if path_normalizer_changed:
@@ -861,8 +885,12 @@ def apply_rules(context={}):
                     record.webserver,
                     record.request_path,
                     path_normalizers=path_normalizers,
-                    path_normalizer_map=path_normalizer_map
+                    path_normalizer_map=path_normalizer_map,
+                    path_filter= path_filter
                 )
+                if request_path is None:
+                    excluded_records.append(record.id)
+                    continue
             else:
                 path_changed = False
                 request_path = record.request_path
@@ -912,12 +940,19 @@ def apply_rules(context={}):
 
             if del_records:
                 WebAppAccessLog.objects.filter(id__in=del_records).delete()
+                changed = True
 
-            if del_records or changed:
-                logger.debug("{0}: {1} log records have been merged into {2} log records".format(log_starttime,len(del_records),len(records)))
+            if excluded_records:
+                WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
+                changed = True
+
+            if changed:
+                logger.debug("{0}: {1} log records have been merged into {2} log records,{3} log records were removed".format(log_starttime,len(del_records),len(records),len(excluded_records)))
 
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
+        if context["lock_file"]:
+            context["renew_time"] = renew_runlock(context["lock_file"],context["renew_time"])
 
     #update WebAppAccessDaiyLog
     log_obj = WebAppAccessDailyLog.objects.order_by("log_day").first()
@@ -926,6 +961,7 @@ def apply_rules(context={}):
         logger.debug("Apply the new rules on daily log records({})".format(log_day))
         records.clear()
         del_records.clear()
+        excluded_records.clear()
         key = None
         for record in WebAppAccessDailyLog.objects.filter(log_day = log_day):
             if path_normalizer_changed:
@@ -933,8 +969,12 @@ def apply_rules(context={}):
                     record.webserver,
                     record.request_path,
                     path_normalizers=path_normalizers,
-                    path_normalizer_map=path_normalizer_map
+                    path_normalizer_map=path_normalizer_map,
+                    path_filter= path_filter
                 )
+                if request_path is None:
+                    excluded_records.append(record)
+                    continue
             else:
                 path_changed = False
                 request_path = record.request_path
@@ -984,12 +1024,49 @@ def apply_rules(context={}):
 
             if del_records:
                 WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
+                changed = True
 
-            if del_records or changed:
-                logger.debug("{0}: {1} daily log records have been merged into {2} daily log records".format(log_day,len(del_records),len(records)))
+            if excluded_records:
+                WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
+                changed = True
+
+            if changed:
+                logger.debug("{0}: {1} daily log records have been merged into {2} daily log records,{3} log records were removed".format(log_day,len(del_records),len(records),len(excluded_records)))
+
+        if excluded_records:
+            #some records were removed, change the daily report
+            daily_reports.clear()
+            for record in excluded_records:
+                key = (record.log_day,record.webserver)
+                if key not in daily_reports:
+                    daily_report  = WebAppAccessDailyReport.objects.filter(log_day=record.log_day,webserver=record.webserver).first()
+                    if daily_report is None:
+                        #daily report is not populated.
+                        continue
+                    daily_reports[key] = daily_report
+                else:
+                    daily_report = daily_reports[key]
+
+                daily_report.requests -= record.requests
+                if record.http_status > 0 and record.http_status < 400:
+                    daily_report.success_requests -= record.requests
+                elif record.http_status in (401,403):
+                    daily_report.unauthorized_requests -= record.requests
+                elif record.http_status == 408:
+                    daily_report.timeout_requests -= record.requests
+                elif record.http_status == 0 or record.http_status >= 400:
+                    daily_report.error_requests -= record.requests
+
+            if daily_reports:
+                for daily_report in daily_reports.values():
+                    daily_report.save(update_fields=["requests","success_requests","unauthorized_requests","timeout_requests","error_requests"])
+
+                logger.debug("{0}: {1} daily access reports have been changed.".format(log_day,len(daily_reports)))
 
         log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
         log_day = log_obj.log_day if log_obj else None
+        if context["lock_file"]:
+            context["renew_time"] = renew_runlock(context["lock_file"],context["renew_time"])
 
     #already applied the latest filter
     all_applied = True
@@ -1076,7 +1153,10 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
     total_response_time = models.FloatField(null=False,editable=False)
 
     @classmethod
-    def populate_data(cls):
+    def populate_data(cls,lock_file=None,renew_time=None):
+        if lock_file and not renew_time:
+            renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1151,7 +1231,10 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
             with transaction.atomic():
                 for daily_record in daily_records.values():
                     daily_record.save()
+            if lock_file:
+                renew_time = renew_runlock(lock_file,renew_time)
             populate_log_day = next_populate_log_day
+        return renew_time
 
     class Meta:
         unique_together = [["log_day","webserver","request_path","http_status","path_parameters"]]
@@ -1171,7 +1254,10 @@ class WebAppAccessDailyReport(models.Model):
     timeout_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
 
     @classmethod
-    def populate_data(cls):
+    def populate_data(cls,lock_file=None,renew_time=None):
+        if lock_file and not renew_time:
+            renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1226,7 +1312,11 @@ class WebAppAccessDailyReport(models.Model):
             with transaction.atomic():
                 for daily_report in daily_reports.values():
                     daily_report.save()
+
+            if lock_file:
+                renew_time = renew_runlock(lock_file,renew_time)
             populate_log_day += timedelta(days=1)
+        return renew_time
 
     class Meta:
         unique_together = [["log_day","webserver"]]

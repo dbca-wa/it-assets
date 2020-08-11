@@ -221,10 +221,12 @@ def _get_volume_uuid(val):
 
 def _get_volume_capacity(val):
     """
-    Return the capacith with unit 'G'
+    Return the capacith with unit 'M'
     """
     if val.lower().endswith("gi"):
-        return int(val[:-2])
+        return int(val[:-2]) * 1024
+    elif val.lower().endswith("mi"):
+        return int(val[:-2]) * 1024
     else:
         raise Exception("Parse storage capacity({}) failed".format(val))
 
@@ -233,6 +235,9 @@ def _get_volume_storage_class_name(val):
     if not storage_class:
         if get_property(val,("spec","nfs")):
             storage_class = "nfs-client"
+    
+        if get_property(val,("spec","volumeMode")) == "Filesystem":
+            storage_class = "local-path"
 
     return storage_class
 
@@ -1247,19 +1252,19 @@ def resource_type(status,resource_id):
         return 60
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
         return 70
-    elif status==ResourceConsumeClient.DELETED and CRONJOB_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and CRONJOB_RE.search(resource_id):
         return 80
-    elif status==ResourceConsumeClient.DELETED and DEPLOYMENT_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DEPLOYMENT_RE.search(resource_id):
         return 90
-    elif status==ResourceConsumeClient.DELETED and STATEFULSET_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and STATEFULSET_RE.search(resource_id):
         return 100
-    elif status==ResourceConsumeClient.DELETED and INGRESS_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and INGRESS_RE.search(resource_id):
         return 110
-    elif status==ResourceConsumeClient.DELETED and VOLUMN_CLAIM_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_CLAIM_RE.search(resource_id):
         return 120
-    elif status==ResourceConsumeClient.DELETED and VOLUMN_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_RE.search(resource_id):
         return 130
-    elif status==ResourceConsumeClient.DELETED and NAMESPACE_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and NAMESPACE_RE.search(resource_id):
         return 140
     else:
         raise Exception("Not Support. status={}, resource_id={}".format(status,resource_id))
@@ -1290,7 +1295,43 @@ def harvest(cluster,reconsume=False):
         #analysis the workload env.
         analysis_workloadenv(cluster,None)
         cluster.refreshed = timezone.now()
-        cluster.save(update_fields=["refreshed"])
+        cluster.succeed_resources = len(result[0])
+        cluster.failed_resources = len(result[1])
+        if result[1]:
+            if result[0]:
+                message = """Failed to refresh cluster({}),
+{} configuration files were consumed successfully.
+{}
+{} configuration files were consumed failed
+{}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[0]),
+                    "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                    len(result[1]),
+                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                )
+            else:
+                message = """Failed to refresh cluster({}),{} configuration files were consumed failed
+{}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[1]),
+                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                )
+        elif result[0]:
+            message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
+{}"""
+            message = message.format(
+                cluster.name,
+                len(result[0]),
+                "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
+            )
+        else:
+            message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
+
+        cluster.refresh_message = message
+        cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message"])
 
         return result
     finally:

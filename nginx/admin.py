@@ -4,9 +4,14 @@ from datetime import datetime,timedelta
 
 
 from django.contrib import admin
+from django.urls import path,reverse
 from django.utils.html import format_html, mark_safe
-from django.urls import reverse
 from django.utils import timezone
+from django.shortcuts import redirect
+from django.contrib import messages
+from django.db.models import Q
+
+from django_q.tasks import async_task
 
 from . import models
 from rancher.models import Workload
@@ -314,8 +319,7 @@ class DailyLogDayFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        
-        obj = models.WebAppAccessDailyReport.objects.all().order_by("-log_day").first()
+        obj = model_admin.model.objects.all().order_by("-log_day").first()
         if not obj:
             return []
 
@@ -339,7 +343,7 @@ class DailyLogDayFilter(admin.SimpleListFilter):
         if not val:
             return queryset
         elif val in ("7d","4w"):
-            obj = models.WebAppAccessDailyReport.objects.all().order_by("-log_day").first()
+            obj = queryset.model.objects.all().order_by("-log_day").first()
             if not obj:
                 return queryset
 
@@ -351,6 +355,51 @@ class DailyLogDayFilter(admin.SimpleListFilter):
             return queryset.filter(log_day__gte=start_day)
         else:
             return queryset.filter(log_day=timezone.make_aware(datetime.strptime(self.value(),"%Y-%m-%d")).date())
+
+class HttpStatusFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = 'Http Status'
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'http_status'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        return [
+            ("succeed","Succeed Requests"),
+            ("unauthorized","Unauthorized Requests"),
+            ("error","Error Requests"),
+            ("timeout","Timeout Requests"),
+        ]
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        val = self.value()
+        if not val:
+            return queryset
+        elif val == "succeed":
+            return queryset.filter(http_status__gt=0,http_status__lt=400)
+        elif val == "unauthorized":
+            return queryset.filter(http_status__in=(401,403))
+        elif val == "timeout":
+            return queryset.filter(http_status=408)
+        elif val == "error":
+            return queryset.filter(Q(http_status=0) | Q(http_status__gte=400)).exclude(http_status__in=(401,403,408))
+        else:
+            return queryset
 
 class WebServerMixin(object):
     app_change_url_name = 'admin:{}_{}_change'.format(models.WebApp._meta.app_label,models.WebApp._meta.model_name)
@@ -366,7 +415,7 @@ class WebServerMixin(object):
 
 @admin.register(models.WebAppAccessDailyReport)
 class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
-    list_display = ('log_day','_webserver','_requests','success_requests','error_requests','unauthorized_requests','timeout_requests')
+    list_display = ('log_day','_webserver','_requests','_success_requests','_error_requests','_unauthorized_requests','_timeout_requests')
     readonly_fields = list_display
     ordering = ('-log_day','-requests',)
 
@@ -381,6 +430,34 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
         else:
             return mark_safe("<A href='{}?log_day={}&q={}'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.requests))
     _requests.short_description = "Requests"
+
+    def _success_requests(self,obj):
+        if not obj:
+            return ""
+        else:
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status=succeed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.success_requests))
+    _success_requests.short_description = "Success Requests"
+
+    def _error_requests(self,obj):
+        if not obj:
+            return ""
+        else:
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status=error'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.error_requests))
+    _error_requests.short_description = "Error Requests"
+
+    def _unauthorized_requests(self,obj):
+        if not obj:
+            return ""
+        else:
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status=unauthorized'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.unauthorized_requests))
+    _unauthorized_requests.short_description = "Unauthorized Requests"
+
+    def _timeout_requests(self,obj):
+        if not obj:
+            return ""
+        else:
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status=timeout'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.timeout_requests))
+    _timeout_requests.short_description = "Timeout Requests"
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -450,7 +527,7 @@ class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin
     readonly_fields = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_day','webserver','request_path',)
 
-    list_filter = (DailyLogDayFilter,)
+    list_filter = (DailyLogDayFilter,HttpStatusFilter)
 
     search_fields = ['webserver']
 
@@ -485,7 +562,23 @@ class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,Requ
 
     search_fields = ['webserver']
 
-    list_filter = (LogDayFilter,)
+    list_filter = (LogDayFilter,HttpStatusFilter)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        urls = [
+            path("run_log_harvesting/", self.run_log_harvesting, name="run_log_harvesting"),
+        ] + urls
+        return urls
+
+    log_list_url_name = 'admin:{}_{}_changelist'.format(models.WebAppAccessLog._meta.app_label,models.WebAppAccessLog._meta.model_name)
+    def run_log_harvesting(self,request):
+        try:
+            async_task("nginx.log_harvester.harvest")
+            self.message_user(request, "A log havesting process has been scheduled.")
+        except Exception as ex:
+            self.message_user(request, "Failed to schedule the log harvesting process.{}".format(str(ex)),level=messages.ERROR)
+        return redirect(self.log_list_url_name)
 
     def _log_starttime(self,obj):
         if not obj:
