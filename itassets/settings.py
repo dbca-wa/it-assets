@@ -50,7 +50,6 @@ INSTALLED_APPS = (
     'registers',
     'tracking',
     'assets',
-    # 'webconfig',
     'knowledge',
     # 'recoup',
     'status',
