@@ -158,13 +158,27 @@ class ClusterAdmin(admin.ModelAdmin):
     {} configuration files were consumed successfully.
         {}
     {} configuration files were consumed failed
-        {}</pre>""".format(cluster.name,len(consume_result[0]),"\n        ".join(consume_result[0]),len(consume_result[1]),"\n        ".join(consume_result[1]))),level=messages.ERROR)
+        {}</pre>""".format(
+                            cluster.name,
+                            len(consume_result[0]),
+                            "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in consume_result[0]]),
+                            len(consume_result[1]),
+                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in consume_result[1]]),
+                    )),level=messages.ERROR)
                     else:
                         self.message_user(request, mark_safe("""<pre>Failed to refresh cluster({}),{} configuration files were consumed failed
-    {}</pre>""".format(cluster.name,len(consume_result[1]),"\n    ".join(consume_result[1]))),level=messages.ERROR)
+    {}</pre>""".format(
+                            cluster.name,
+                            len(consume_result[1]),
+                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in consume_result[1]]),
+                        )),level=messages.ERROR)
                 elif consume_result[0]:
                     self.message_user(request, mark_safe("""<pre>Succeed to refresh cluster({}), {} configuration files were consumed successfully.
-    {}</pre>""".format(cluster.name,len(consume_result[0]),"\n    ".join(consume_result[0]))))
+    {}</pre>""".format(
+                        cluster.name,
+                        len(consume_result[0]),
+                        "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in consume_result[0]]),
+                    )))
                 else:
                     self.message_user(request,"Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name))
             except Exception as ex:
@@ -247,8 +261,13 @@ class PersistentVolumeAdmin(ClusterLinkMixin,admin.ModelAdmin):
     def _capacity(self,obj):
         if not obj :
             return ""
+        if obj.capacity > 1024:
+            if obj.capacity % 1024 == 0:
+                return "{}G".format(int(obj.capacity / 1024))
+            else:
+                return "{}G".format(round(obj.capacity / 1024),2)
         else:
-            return "{}G".format(obj.capacity)
+            return "{}M".format(obj.capacity)
     _capacity.short_description = "Capacity"
 
     def _node_affinity(self,obj):

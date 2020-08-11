@@ -221,10 +221,12 @@ def _get_volume_uuid(val):
 
 def _get_volume_capacity(val):
     """
-    Return the capacith with unit 'G'
+    Return the capacith with unit 'M'
     """
     if val.lower().endswith("gi"):
-        return int(val[:-2])
+        return int(val[:-2]) * 1024
+    elif val.lower().endswith("mi"):
+        return int(val[:-2]) * 1024
     else:
         raise Exception("Parse storage capacity({}) failed".format(val))
 
@@ -233,6 +235,9 @@ def _get_volume_storage_class_name(val):
     if not storage_class:
         if get_property(val,("spec","nfs")):
             storage_class = "nfs-client"
+    
+        if get_property(val,("spec","volumeMode")) == "Filesystem":
+            storage_class = "local-path"
 
     return storage_class
 
