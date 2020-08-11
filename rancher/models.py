@@ -62,7 +62,7 @@ class PersistentVolume(models.Model):
     kind = models.CharField(max_length=64,editable=False)
     storage_class_name = models.CharField(max_length=64,editable=False)
     volume_mode = models.CharField(max_length=64,editable=False)
-    uuid = models.CharField(max_length=128,unique=True,editable=False)
+    uuid = models.CharField(max_length=128,editable=False)
     volumepath = models.CharField(max_length=256,editable=False,null=True)
     capacity = models.PositiveIntegerField(editable=False,null=True)
     writable = models.BooleanField(default=False,editable=False)
@@ -78,7 +78,7 @@ class PersistentVolume(models.Model):
         return "{}:{}".format(self.cluster.name,self.name)
 
     class Meta:
-        unique_together = [["cluster","name"],["cluster","volumepath"]]
+        unique_together = [["cluster","name"],["cluster","volumepath"],["cluster","uuid"]]
         ordering = ["cluster__name",'name']
 
 
