@@ -51,7 +51,6 @@ INSTALLED_APPS = (
     'tracking',
     'assets',
     'knowledge',
-    # 'recoup',
     'status',
     'nginx',
     'rancher',
