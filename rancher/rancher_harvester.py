@@ -1247,19 +1247,19 @@ def resource_type(status,resource_id):
         return 60
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
         return 70
-    elif status==ResourceConsumeClient.DELETED and CRONJOB_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and CRONJOB_RE.search(resource_id):
         return 80
-    elif status==ResourceConsumeClient.DELETED and DEPLOYMENT_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DEPLOYMENT_RE.search(resource_id):
         return 90
-    elif status==ResourceConsumeClient.DELETED and STATEFULSET_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and STATEFULSET_RE.search(resource_id):
         return 100
-    elif status==ResourceConsumeClient.DELETED and INGRESS_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and INGRESS_RE.search(resource_id):
         return 110
-    elif status==ResourceConsumeClient.DELETED and VOLUMN_CLAIM_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_CLAIM_RE.search(resource_id):
         return 120
-    elif status==ResourceConsumeClient.DELETED and VOLUMN_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_RE.search(resource_id):
         return 130
-    elif status==ResourceConsumeClient.DELETED and NAMESPACE_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and NAMESPACE_RE.search(resource_id):
         return 140
     else:
         raise Exception("Not Support. status={}, resource_id={}".format(status,resource_id))
