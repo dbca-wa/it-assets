@@ -50,7 +50,6 @@ INSTALLED_APPS = (
     'registers',
     'tracking',
     'assets',
-    'knowledge',
     'status',
     'nginx',
     'rancher',

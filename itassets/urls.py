@@ -5,7 +5,6 @@ from django.contrib import admin
 from itassets.api import api_urlpatterns
 from itassets.api_v2 import api_v2_router
 from itassets.views import HealthCheckView
-from knowledge import urls as knowledge_urls
 from rancher import urls as rancher_urls
 from registers import urls as registers_urls
 from assets import urls as assets_urls
@@ -23,7 +22,6 @@ urlpatterns = [
     path('api/v1/', include(api_urlpatterns)),
     path('api/', include(api_urlpatterns)),
     path('assets/', include(assets_urls)),
-    path('knowledge/', include(knowledge_urls)),
     path('rancher/', include(rancher_urls)),
     path('registers/', include(registers_urls)),
     path('organisation/', include(organisation_urls)),

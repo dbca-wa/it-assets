@@ -28,7 +28,6 @@ FROM python_libs_itassets
 COPY gunicorn.py manage.py ./
 COPY assets ./assets
 COPY itassets ./itassets
-COPY knowledge ./knowledge
 COPY registers ./registers
 COPY status ./status
 COPY tracking ./tracking
