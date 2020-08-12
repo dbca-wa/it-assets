@@ -365,6 +365,14 @@ class ADAction(models.Model):
             self.department_user.azure_guid, self.action_type, self.ad_field, self.field_value
         )
 
+    @property
+    def azure_guid(self):
+        return self.department_user.azure_guid
+
+    @property
+    def action(self):
+        return '{} {} to {}'.format(self.action_type, self.ad_field, self.field_value)
+
 
 class Location(models.Model):
     """A model to represent a physical location.

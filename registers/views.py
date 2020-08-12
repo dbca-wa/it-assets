@@ -564,6 +564,8 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
 
 
 class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
+    """A list view to display a summary of risk assessments for all IT Systems.
+    """
     model = ITSystem
     paginate_by = 20
     template_name = 'registers/riskassessment_list.html'
@@ -597,6 +599,8 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
 
 
 class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
+    """A detail view to display a risk assessments and dependencies for a single IT System.
+    """
     model = ITSystem
     template_name = 'registers/riskassessment_detail.html'
 
