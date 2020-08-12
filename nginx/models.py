@@ -674,7 +674,7 @@ class RequestPathNormalizer(models.Model):
         if not request_path:
             return (False,request_path)
 
-        if path_filter:
+        if path_filter and path_filter.filter(webserver,request_path):
             if path_filter.normalize(request_path) is None:
                 return (True,None)
     
