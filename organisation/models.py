@@ -301,7 +301,8 @@ class DepartmentUser(MPTTModel):
             #PhysicalDeliveryOfficeName, PostalCode, State, StreetAddress
             # ('ProxyAddresses', 'proxy_addresses'),
         ]:
-            if azure_user[field[0]] != getattr(self, field[1]):
+            # Test if the dept user field value is truthy and the AD field in falsy, OR if the fields are not equal.
+            if (getattr(self, field[1]) and not azure_user[field[0]]) or azure_user[field[0]] != getattr(self, field[1]):
                 # Get/create a non-completed ADAction for this dept user, for these fields.
                 # This should mean that only one ADAction object is generated for a given field,
                 # even if the value it IT Assets changes more than once before being synced in AD.
@@ -317,6 +318,65 @@ class DepartmentUser(MPTTModel):
                 action.save()
                 actions.append(action)
 
+        # Manager
+        if self.manager:
+            if not azure_user['Manager'] or azure_user['Manager']['ObjectId'] != self.manager.azure_guid:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='Manager',
+                    field='manager.email',
+                    completed=None,
+                )
+                action.field_value = self.manager.email.lower()
+                action.save()
+                actions.append(action)
+
+        # Cost Centre
+        if self.cost_centre:
+            if not azure_user['CompanyName'] or azure_user['CompanyName'] != self.cost_centre.code:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='CompanyName',
+                    field='cost_centre.code',
+                    completed=None,
+                )
+                action.field_value = self.cost_centre.code
+                action.ad_field_value = azure_user['CompanyName']
+                action.save()
+                actions.append(action)
+
+        # Location
+        if self.location:
+            if not azure_user['PhysicalDeliveryOfficeName'] or azure_user['PhysicalDeliveryOfficeName'] != self.location.name:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='PhysicalDeliveryOfficeName',
+                    field='location.name',
+                    completed=None,
+                )
+                action.field_value = self.location.name
+                action.ad_field_value = azure_user['PhysicalDeliveryOfficeName']
+                action.save()
+                actions.append(action)
+
+        # StreetAddress
+        if self.location:
+            if not azure_user['StreetAddress'] or azure_user['StreetAddress'] != self.location.address:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='StreetAddress',
+                    field='location.address',
+                    completed=None,
+                )
+                action.field_value = self.location.address
+                action.ad_field_value = azure_user['StreetAddress']
+                action.save()
+                actions.append(action)
+
         return actions
 
     def audit_ad_actions(self, azure_user):
@@ -328,7 +388,15 @@ class DepartmentUser(MPTTModel):
         actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
 
         for action in actions:
-            if getattr(self, action.field) == azure_user[action.ad_field]:
+            if action.field == 'manager.email' and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
+                action.delete()
+            elif action.field == 'cost_centre.code' and azure_user['CompanyName'] == self.cost_centre.code:
+                action.delete()
+            elif action.field == 'location.name' and azure_user['PhysicalDeliveryOfficeName'] == self.location.name:
+                action.delete()
+            elif action.field == 'location.address' and azure_user['StreetAddress'] == self.location.address:
+                action.delete()
+            elif hasattr(self, action.field) and getattr(self, action.field) == azure_user[action.ad_field]:
                 action.delete()
 
 
