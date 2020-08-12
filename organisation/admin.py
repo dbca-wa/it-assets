@@ -166,8 +166,12 @@ class ADActionAdmin(ModelAdmin):
     search_fields = ('department_user__name',)
 
     def has_add_permission(self, request):
-        """AD actions should not be created manually in the admin site.
-        """
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 
