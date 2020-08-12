@@ -11,7 +11,7 @@ from django.db import models
 from django.utils import timezone
 from django.db import transaction
 
-from data_storage import ResourceConsumeClient, AzureBlobStorage
+from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
         Workload,WorkloadEnv,Ingress,IngressRule,WorkloadListening,WorkloadVolume,
