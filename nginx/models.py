@@ -17,8 +17,6 @@ from registers.models import ITSystem
 from rancher.models import Cluster, Workload, WorkloadListening
 from status.models import Host
 
-from data_storage.utils import acquire_runlock,release_runlock,renew_runlock
-
 logger = logging.getLogger(__name__)
 
 
@@ -834,9 +832,6 @@ def apply_rules(context={}):
         path_normalizers: the normalizers list
         path_normalizer_map: the map between normalizer and webserver,reques path
     """
-    if context["lock_file"] and not context["renew_time"]:
-        context["renew_time"] = acquire_runlock(context["lock_file"],expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
-
     parameter_filter_changed  =  RequestParameterFilter.objects.filter(models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))).exists()
     path_normalizer_changed  =  RequestPathNormalizer.objects.filter(models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))).exists()
     if not parameter_filter_changed and not path_normalizer_changed:
@@ -954,8 +949,8 @@ def apply_rules(context={}):
 
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
-        if context["lock_file"]:
-            context["renew_time"] = renew_runlock(context["lock_file"],context["renew_time"])
+        if context["f_renew_lock"] and context["renew_lock_time"]:
+            context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     #update WebAppAccessDaiyLog
     log_obj = WebAppAccessDailyLog.objects.order_by("log_day").first()
@@ -1068,8 +1063,8 @@ def apply_rules(context={}):
 
         log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
         log_day = log_obj.log_day if log_obj else None
-        if context["lock_file"]:
-            context["renew_time"] = renew_runlock(context["lock_file"],context["renew_time"])
+        if context["f_renew_lock"] and context["renew_lock_time"]:
+            context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     #already applied the latest filter
     all_applied = True
@@ -1156,10 +1151,7 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
     total_response_time = models.FloatField(null=False,editable=False)
 
     @classmethod
-    def populate_data(cls,lock_file=None,renew_time=None):
-        if lock_file and not renew_time:
-            renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
-
+    def populate_data(cls,f_renew_lock=None,renew_lock_time=None):
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1234,10 +1226,10 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
             with transaction.atomic():
                 for daily_record in daily_records.values():
                     daily_record.save()
-            if lock_file:
-                renew_time = renew_runlock(lock_file,renew_time)
+            if f_renew_lock and renew_lock_time:
+                renew_lock_time = f_renew_lock(renew_lock_time)
             populate_log_day = next_populate_log_day
-        return renew_time
+        return renew_lock_time
 
     class Meta:
         unique_together = [["log_day","webserver","request_path","http_status","path_parameters"]]
@@ -1257,10 +1249,7 @@ class WebAppAccessDailyReport(models.Model):
     timeout_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
 
     @classmethod
-    def populate_data(cls,lock_file=None,renew_time=None):
-        if lock_file and not renew_time:
-            renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
-
+    def populate_data(cls,f_renew_lock=None,renew_lock_time=None):
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1316,10 +1305,10 @@ class WebAppAccessDailyReport(models.Model):
                 for daily_report in daily_reports.values():
                     daily_report.save()
 
-            if lock_file:
-                renew_time = renew_runlock(lock_file,renew_time)
+            if f_renew_lock and renew_lock_time:
+                renew_lock_time = f_renew_lock(renew_lock_time)
             populate_log_day += timedelta(days=1)
-        return renew_time
+        return renew_lock_time
 
     class Meta:
         unique_together = [["log_day","webserver"]]

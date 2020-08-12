@@ -11,7 +11,6 @@ from django.utils import timezone
 from django.http import QueryDict
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
-from data_storage.utils import acquire_runlock,release_runlock,renew_runlock
 from .models import WebAppAccessLog,WebApp,WebAppLocation,RequestParameterFilter,WebAppAccessDailyLog,RequestPathNormalizer,apply_rules,WebAppAccessDailyReport
 
 logger = logging.getLogger(__name__)
@@ -153,17 +152,15 @@ def process_log(context):
         with transaction.atomic():
             process_log_file(context,metadata,config_file)
 
-        context["renew_time"] = renew_runlock(context["lock_file"],context["renew_time"])
+        context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     return _func
                         
 def harvest(reconsume=False):
-    lock_file = os.path.join(settings.NGINXLOG_REPOSITORY_DIR,settings.NGINXLOG_RESOURCE_NAME,"{}.lock".format(settings.NGINXLOG_RESOURCE_CLIENTID))
-
     try:
-        renew_time = acquire_runlock(lock_file,expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
-    except exceptions.ProcessIsRunning as ex: 
-        msg = "The previous harvest process is still running, no need to run the harvest process this time.{}".format(str(ex))
+        renew_lock_time = get_consume_client().acquire_lock(expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+    except exceptions.AlreadyLocked as ex: 
+        msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
         
@@ -177,8 +174,8 @@ def harvest(reconsume=False):
     
         context = {
             "reconsume":reconsume,
-            "renew_time":renew_time,
-            "lock_file":lock_file
+            "renew_lock_time":renew_lock_time,
+            "f_renew_lock":get_consume_client().renew_lock
         }
         #apply the latest filter change first
         applied = False
@@ -193,13 +190,13 @@ def harvest(reconsume=False):
         #consume nginx config file
         result = get_consume_client().consume(process_log(context))
 
-        renew_time = WebAppAccessDailyLog.populate_data(lock_file,context["renew_time"])
-        WebAppAccessDailyReport.populate_data(lock_file,renew_time)
+        renew_lock_time = WebAppAccessDailyLog.populate_data(context["f_renew_lock"],context["renew_lock_time"])
+        WebAppAccessDailyReport.populate_data(context["f_renew_lock"],renew_lock_time)
 
         return result
 
     finally:
-        release_runlock(lock_file)
+        get_consume_client().release_lock()
         
 
 

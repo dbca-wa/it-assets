@@ -11,7 +11,7 @@ from django.db import models
 from django.utils import timezone
 from django.db import transaction
 
-from data_storage import ResourceConsumeClient, AzureBlobStorage
+from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
         Workload,WorkloadEnv,Ingress,IngressRule,WorkloadListening,WorkloadVolume,
@@ -47,20 +47,20 @@ class JSONEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self,obj)
 
-_blob_resource_clients = {}
-def get_blob_resource_client(cluster):
+_consume_clients = {}
+def get_consume_client(cluster):
     """
     Return the blob resource client
     """
-    if cluster not in _blob_resource_clients:
-        _blob_resource_clients[cluster] = ResourceConsumeClient(
+    if cluster not in _consume_clients:
+        _consume_clients[cluster] = ResourceConsumeClient(
             AzureBlobStorage(settings.RANCHER_STORAGE_CONNECTION_STRING,settings.RANCHER_CONTAINER),
             settings.RANCHER_RESOURCE_NAME,
             settings.RANCHER_RESOURCE_CLIENTID,
             resource_base_path="{}/{}".format(settings.RANCHER_RESOURCE_NAME,cluster)
 
         )
-    return _blob_resource_clients[cluster]
+    return _consume_clients[cluster]
 
 def set_fields(obj,config,fields):
     update_fields = None if obj.pk is None else []
@@ -1288,10 +1288,19 @@ def resource_filter(resource_id):
     return True if RANCHER_FILE_RE.search(resource_id) else False
 
 def harvest(cluster,reconsume=False):
+    renew_lock_time = None
     try:
         cluster = Cluster.objects.get(name=cluster)
+        
+        try:
+            renew_lock_time = get_consume_client(cluster.name).acquire_lock(expired=3000)
+        except exceptions.AlreadyLocked as ex: 
+            msg = "The previous harvest process is still running.{}".format(str(ex))
+            logger.info(msg)
+            return ([],[(None,None,None,msg)])
+        
         now = timezone.now()
-        result = get_blob_resource_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
+        result = get_consume_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
         #analysis the workload env.
         analysis_workloadenv(cluster,None)
         cluster.refreshed = timezone.now()
@@ -1336,7 +1345,8 @@ def harvest(cluster,reconsume=False):
         return result
     finally:
         WebAppLocationServer.refresh_rancher_workload(cluster)
-
+        if renew_lock_time:
+            get_consume_client(cluster.name).release_lock()
 
 def harvest_all(reconsume=False):
     consume_results = []
