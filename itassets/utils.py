@@ -5,6 +5,22 @@ import re
 from restless.dj import DjangoResource
 
 
+def breadcrumbs_list(links):
+    """Returns a list of links to render as breadcrumbs inside a <ul> element in a HTML template.
+    ``links`` should be a iterable of tuples (URL, text).
+    """
+    crumbs = ""
+    li_str = '<li class="breadcrumb-item"><a href="{}">{}</a></li>'
+    li_str_active = '<li class="breadcrumb-item active"><span>{}</span></li>'
+    # Iterate over the list, except for the last item.
+    if len(links) > 1:
+        for i in links[:-1]:
+            crumbs += li_str.format(i[0], i[1])
+    # Add the final "active" item.
+    crumbs += li_str_active.format(links[-1][1])
+    return crumbs
+
+
 def get_query(query_string, search_fields):
     """Returns a query which is a combination of Q objects. That combination
     aims to search keywords within a model by testing the given search fields.

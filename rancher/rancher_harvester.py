@@ -11,7 +11,7 @@ from django.db import models
 from django.utils import timezone
 from django.db import transaction
 
-from data_storage import AzureBlobResourceClient
+from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
         Workload,WorkloadEnv,Ingress,IngressRule,WorkloadListening,WorkloadVolume,
@@ -47,21 +47,20 @@ class JSONEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self,obj)
 
-_blob_resource_clients = {}
-def get_blob_resource_client(cluster):
+_consume_clients = {}
+def get_consume_client(cluster):
     """
     Return the blob resource client
     """
-    if cluster not in _blob_resource_clients:
-        _blob_resource_clients[cluster] = AzureBlobResourceClient(
+    if cluster not in _consume_clients:
+        _consume_clients[cluster] = ResourceConsumeClient(
+            AzureBlobStorage(settings.RANCHER_STORAGE_CONNECTION_STRING,settings.RANCHER_CONTAINER),
             settings.RANCHER_RESOURCE_NAME,
-            settings.RANCHER_STORAGE_CONNECTION_STRING,
-            settings.RANCHER_CONTAINER,
             settings.RANCHER_RESOURCE_CLIENTID,
             resource_base_path="{}/{}".format(settings.RANCHER_RESOURCE_NAME,cluster)
 
         )
-    return _blob_resource_clients[cluster]
+    return _consume_clients[cluster]
 
 def set_fields(obj,config,fields):
     update_fields = None if obj.pk is None else []
@@ -222,10 +221,12 @@ def _get_volume_uuid(val):
 
 def _get_volume_capacity(val):
     """
-    Return the capacith with unit 'G'
+    Return the capacith with unit 'M'
     """
     if val.lower().endswith("gi"):
-        return int(val[:-2])
+        return int(val[:-2]) * 1024
+    elif val.lower().endswith("mi"):
+        return int(val[:-2]) * 1024
     else:
         raise Exception("Parse storage capacity({}) failed".format(val))
 
@@ -234,6 +235,9 @@ def _get_volume_storage_class_name(val):
     if not storage_class:
         if get_property(val,("spec","nfs")):
             storage_class = "nfs-client"
+    
+        if get_property(val,("spec","volumeMode")) == "Filesystem":
+            storage_class = "local-path"
 
     return storage_class
 
@@ -1234,33 +1238,33 @@ process_func_map = {
 }
 
 def resource_type(status,resource_id):
-    if status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and NAMESPACE_RE.search(resource_id):
+    if status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and NAMESPACE_RE.search(resource_id):
         return 10
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and VOLUMN_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_RE.search(resource_id):
         return 20
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and VOLUMN_CLAIM_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_CLAIM_RE.search(resource_id):
         return 30
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and INGRESS_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and INGRESS_RE.search(resource_id):
         return 40
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and STATEFULSET_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and STATEFULSET_RE.search(resource_id):
         return 50
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and DEPLOYMENT_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and DEPLOYMENT_RE.search(resource_id):
         return 60
-    elif status in (AzureBlobResourceClient.NEW,AzureBlobResourceClient.UPDATED,AzureBlobResourceClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
         return 70
-    elif status==AzureBlobResourceClient.DELETED and CRONJOB_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and CRONJOB_RE.search(resource_id):
         return 80
-    elif status==AzureBlobResourceClient.DELETED and DEPLOYMENT_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DEPLOYMENT_RE.search(resource_id):
         return 90
-    elif status==AzureBlobResourceClient.DELETED and STATEFULSET_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and STATEFULSET_RE.search(resource_id):
         return 100
-    elif status==AzureBlobResourceClient.DELETED and INGRESS_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and INGRESS_RE.search(resource_id):
         return 110
-    elif status==AzureBlobResourceClient.DELETED and VOLUMN_CLAIM_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_CLAIM_RE.search(resource_id):
         return 120
-    elif status==AzureBlobResourceClient.DELETED and VOLUMN_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_RE.search(resource_id):
         return 130
-    elif status==AzureBlobResourceClient.DELETED and NAMESPACE_RE.search(resource_id):
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and NAMESPACE_RE.search(resource_id):
         return 140
     else:
         raise Exception("Not Support. status={}, resource_id={}".format(status,resource_id))
@@ -1284,19 +1288,65 @@ def resource_filter(resource_id):
     return True if RANCHER_FILE_RE.search(resource_id) else False
 
 def harvest(cluster,reconsume=False):
+    renew_lock_time = None
     try:
         cluster = Cluster.objects.get(name=cluster)
+        
+        try:
+            renew_lock_time = get_consume_client(cluster.name).acquire_lock(expired=3000)
+        except exceptions.AlreadyLocked as ex: 
+            msg = "The previous harvest process is still running.{}".format(str(ex))
+            logger.info(msg)
+            return ([],[(None,None,None,msg)])
+        
         now = timezone.now()
-        result = get_blob_resource_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
+        result = get_consume_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
         #analysis the workload env.
         analysis_workloadenv(cluster,None)
         cluster.refreshed = timezone.now()
-        cluster.save(update_fields=["refreshed"])
+        cluster.succeed_resources = len(result[0])
+        cluster.failed_resources = len(result[1])
+        if result[1]:
+            if result[0]:
+                message = """Failed to refresh cluster({}),
+{} configuration files were consumed successfully.
+{}
+{} configuration files were consumed failed
+{}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[0]),
+                    "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                    len(result[1]),
+                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                )
+            else:
+                message = """Failed to refresh cluster({}),{} configuration files were consumed failed
+{}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[1]),
+                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                )
+        elif result[0]:
+            message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
+{}"""
+            message = message.format(
+                cluster.name,
+                len(result[0]),
+                "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
+            )
+        else:
+            message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
+
+        cluster.refresh_message = message
+        cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message"])
 
         return result
     finally:
         WebAppLocationServer.refresh_rancher_workload(cluster)
-
+        if renew_lock_time:
+            get_consume_client(cluster.name).release_lock()
 
 def harvest_all(reconsume=False):
     consume_results = []

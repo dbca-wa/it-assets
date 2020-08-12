@@ -207,18 +207,16 @@ description = "The client library for pushing resource to or fetching resource f
 name = "data-storage"
 optional = false
 python-versions = "*"
-version = "2.7.1"
+version = "3.4"
 
 [package.dependencies]
 azure-storage-blob = "12.3.1"
-dill = "0.3.1.1"
 pytz = "*"
 
 [package.source]
-reference = "fd3b8e2fc9dc89b1e5ca0eb30988c710a050c647"
+reference = "0ec278aaf15cde352538b0a7f874045fedb2f55c"
 type = "git"
 url = "https://github.com/dbca-wa/data-storage.git"
-
 [[package]]
 category = "main"
 description = "Utilities for Django/Python apps"
@@ -238,17 +236,6 @@ name = "decorator"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "4.4.2"
-
-[[package]]
-category = "main"
-description = "serialize all of python"
-name = "dill"
-optional = false
-python-versions = ">=2.6, !=3.0.*"
-version = "0.3.1.1"
-
-[package.extras]
-graph = ["objgraph (>=1.7.2)"]
 
 [[package]]
 category = "main"
@@ -1044,7 +1031,7 @@ python-versions = "*"
 version = "1.1.1"
 
 [metadata]
-content-hash = "3e6ec0476ee726eabdc1336e07755d15b83807e772df24296862adfb919098ea"
+content-hash = "7eefbb398dcca9a2ef42b3fadfb1260a9a56f587ac5800d5a012f377115b8356"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1167,9 +1154,6 @@ dbca-utils = [
 decorator = [
     {file = "decorator-4.4.2-py2.py3-none-any.whl", hash = "sha256:41fa54c2a0cc4ba648be4fd43cff00aedf5b9465c9bf18d64325bc225f08f760"},
     {file = "decorator-4.4.2.tar.gz", hash = "sha256:e3a62f0520172440ca0dcc823749319382e377f37f140a0b99ef45fecb84bfe7"},
-]
-dill = [
-    {file = "dill-0.3.1.1.tar.gz", hash = "sha256:42d8ef819367516592a825746a18073ced42ca169ab1f5f4044134703e7a049c"},
 ]
 dj-database-url = [
     {file = "dj-database-url-0.5.0.tar.gz", hash = "sha256:4aeaeb1f573c74835b0686a2b46b85990571159ffc21aa57ecd4d1e1cb334163"},

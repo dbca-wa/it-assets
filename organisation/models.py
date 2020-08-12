@@ -1,17 +1,10 @@
-from datetime import datetime
-from django.contrib.postgres.fields import JSONField
+from django.contrib.auth import get_user_model
+from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.gis.db import models
-from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from io import BytesIO
 from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
-from PIL import Image
-import os
-
-from organisation.utils import get_photo_path, get_photo_ad_path, convert_ad_timestamp
 
 
 class DepartmentUser(MPTTModel):
@@ -53,86 +46,63 @@ class DepartmentUser(MPTTModel):
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
-    cost_centre = models.ForeignKey('organisation.CostCentre', on_delete=models.PROTECT, null=True)
-    cost_centres_secondary = models.ManyToManyField(
-        'organisation.CostCentre', related_name='cost_centres_secondary', editable=False,
-        blank=True, help_text='NOTE: this provides security group access (e.g. T drives).')
-    org_unit = models.ForeignKey(
-        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
-        verbose_name='organisational unit',
-        help_text="""The organisational unit that represents the user's"""
-        """ primary physical location (also set their distribution group).""")
-    org_units_secondary = models.ManyToManyField(
-        'organisation.OrgUnit', related_name='org_units_secondary', blank=True, editable=False,
-        help_text='NOTE: this provides email distribution group access.')
-    extra_data = JSONField(null=True, blank=True)
-    ad_guid = models.CharField(
-        max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
-        help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
+
+    # Fields directly related to the employee, which map to a field in Azure Active Directory.
+    # The Azure AD field name is listed after each field.
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name='Azure GUID',
-        help_text='Azure AD GUID.')
-    ad_dn = models.CharField(
-        max_length=512, unique=True, null=True, blank=True, verbose_name='AD DN',
-        help_text='AD DistinguishedName value.')
-    ad_data = JSONField(null=True, blank=True, editable=False)
-    org_data = JSONField(null=True, blank=True, editable=False)
-    employee_id = models.CharField(
-        max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
-        help_text='HR Employee ID.')
-    email = models.EmailField(unique=True)
-    username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True,
-        help_text='Pre-Windows 2000 login username.')
-    name = models.CharField(max_length=128, db_index=True, help_text='Format: [Given name] [Surname]')
+        editable=False, help_text='Azure AD ObjectId')  # ObjectId
+    active = models.BooleanField(
+        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
+    email = models.EmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
+    name = models.CharField(
+        max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')  # DisplayName
     given_name = models.CharField(
-        max_length=128, null=True,
-        help_text='Legal first name (matches birth certificate/password/etc.)')
+        max_length=128, null=True, blank=True,
+        help_text='Legal first name (matches birth certificate/passport/etc.)')  # GivenName
     surname = models.CharField(
-        max_length=128, null=True,
-        help_text='Legal surname (matches birth certificate/password/etc.)')
-    name_update_reference = models.CharField(
-        max_length=512, null=True, blank=True, verbose_name='update reference',
-        help_text='Reference for name/CC change request')
-    preferred_name = models.CharField(
-        max_length=256, null=True, blank=True, help_text='Employee-editable preferred name.')
+        max_length=128, null=True, blank=True,
+        help_text='Legal surname (matches birth certificate/passport/etc.)')  # Surname
     title = models.CharField(
-        max_length=128, null=True,
-        help_text='Occupation position title (should match Alesco)')
-    position_type = models.PositiveSmallIntegerField(
-        choices=POSITION_TYPE_CHOICES, null=True, blank=True, default=0,
-        help_text='Employee position working arrangement (should match Alesco status)')
-    parent = TreeForeignKey(
+        max_length=128, null=True, blank=True,
+        help_text='Occupation position title (should match Alesco)')  # JobTitle
+    telephone = models.CharField(
+        max_length=128, null=True, blank=True, help_text='Work telephone number')  # TelephoneNumber
+    mobile_phone = models.CharField(
+        max_length=128, null=True, blank=True, help_text='Work mobile number')  # Mobile
+    manager = models.ForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='children', editable=True, verbose_name='Reports to',
-        help_text='Person that this employee reports to')
-    expiry_date = models.DateTimeField(
-        null=True, blank=True, help_text='Date that the AD account will expire.')
-    date_hr_term = models.DateTimeField(
-        null=True, blank=True, editable=False, verbose_name='HR termination date', help_text='Date on file with HR as the job termination date.')
-    hr_auto_expiry = models.BooleanField(
-        default=False, verbose_name='HR auto expiry', help_text='When the HR termination date changes, automatically update the expiry date to match.')
-    date_ad_updated = models.DateTimeField(
-        null=True, editable=False, verbose_name='Date AD updated',
-        help_text='The date when the AD account was last updated.')
+        related_name='manages', help_text='Staff member who manages this employee')  # Manager
+    cost_centre = models.ForeignKey(
+        'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
+        help_text='Cost centre to which the employee currently belongs')  # CompanyName
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
-        help_text='Current place of work.')
-    telephone = models.CharField(max_length=128, null=True, blank=True)
-    mobile_phone = models.CharField(max_length=128, null=True, blank=True)
+        help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
+    proxy_addresses = ArrayField(base_field=models.CharField(
+        max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')  # ProxyAddresses
+    assigned_licences = ArrayField(base_field=models.CharField(
+        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')  # AssignedLicenses
+    mail_nickname = models.CharField(max_length=128, null=True, blank=True)  # MailNickName
+    dir_sync_enabled = models.NullBooleanField(default=None)  # DirSyncEnabled
+
+    # Metadata fields with no direct equivalent in AD.
+    # They are used for internal reporting and the address book.
+    preferred_name = models.CharField(
+        max_length=256, null=True, blank=True, help_text='Employee-editable preferred name.')
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
-    active = models.BooleanField(
-        default=True, editable=False,
-        help_text='Account is active within Active Directory.')
-    ad_deleted = models.BooleanField(
-        default=False, editable=False, verbose_name='AD deleted',
-        help_text='Account has been deleted in Active Directory.')
-    in_sync = models.BooleanField(
-        default=False, editable=False,
-        help_text='CMS data has been synchronised from AD data.')
+    position_type = models.PositiveSmallIntegerField(
+        choices=POSITION_TYPE_CHOICES, null=True, blank=True, default=0,
+        help_text='Employee position working arrangement (should match Alesco status)')
+    employee_id = models.CharField(
+        max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
+        help_text='HR Employee ID.')
+    name_update_reference = models.CharField(
+        max_length=512, null=True, blank=True, verbose_name='update reference',
+        help_text='Reference for name/CC change request')
     vip = models.BooleanField(
         default=False,
         help_text="An individual who carries out a critical role for the department")
@@ -141,38 +111,62 @@ class DepartmentUser(MPTTModel):
     contractor = models.BooleanField(
         default=False,
         help_text="An individual who is an external contractor (does not include agency contract staff)")
-    photo = models.ImageField(blank=True, upload_to=get_photo_path)
-    photo_ad = models.ImageField(
-        blank=True, editable=False, upload_to=get_photo_ad_path)
-    sso_roles = models.TextField(
-        null=True, editable=False, help_text="Groups/roles separated by semicolon")
     notes = models.TextField(
         null=True, blank=True,
         help_text='Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).')
     working_hours = models.TextField(
         default="N/A", null=True, blank=True,
         help_text="Description of normal working hours")
-    secondary_locations = models.ManyToManyField("organisation.Location", blank=True,
-        related_name='departmentuser_secondary',
-        help_text="Only to be used for staff working in additional loactions from their cost centre")
-    populate_primary_group = models.BooleanField(
-        default=True,
-        help_text="If unchecked, user will not be added to primary group email")
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES, null=True, blank=True,
-        help_text='Employee account status (should match Alesco status)')
-    alesco_data = JSONField(
-        null=True, blank=True, help_text='Readonly data from Alesco')
+        help_text='Employee network account status (should match Alesco status)')
     security_clearance = models.BooleanField(
         default=False, verbose_name='security clearance granted',
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
+
+    # Fields below are likely to be deprecated and progressively removed.
+    username = models.CharField(
+        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
+    shared_account = models.BooleanField(
+        default=False, editable=False, help_text='Automatically set from account type.')
+    org_unit = models.ForeignKey(
+        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
+        verbose_name='organisational unit',
+        help_text="""The organisational unit that represents the user's"""
+        """ primary physical location (also set their distribution group).""")
+    ad_guid = models.CharField(
+        max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
+        help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
+    # NOTE: remove parent field after copying data to manager.
+    parent = TreeForeignKey(
+        'self', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='children', editable=True, verbose_name='Reports to',
+        help_text='Person that this employee reports to')
+    cost_centres_secondary = models.ManyToManyField(
+        'organisation.CostCentre', related_name='cost_centres_secondary', editable=False,
+        blank=True, help_text='NOTE: this provides security group access (e.g. T drives).')
+    org_units_secondary = models.ManyToManyField(
+        'organisation.OrgUnit', related_name='org_units_secondary', blank=True, editable=False,
+        help_text='NOTE: this provides email distribution group access.')
+    org_data = JSONField(null=True, blank=True, editable=False)
+    secondary_locations = models.ManyToManyField(
+        "organisation.Location", blank=True, related_name='departmentuser_secondary',
+        help_text="Only to be used for staff working in additional loactions from their cost centre")
+    expiry_date = models.DateTimeField(
+        null=True, blank=True, help_text='Date that the AD account will expire.')
+    date_hr_term = models.DateTimeField(
+        null=True, blank=True, editable=False, verbose_name='HR termination date',
+        help_text='Date on file with HR as the job termination date.')
+    hr_auto_expiry = models.BooleanField(
+        default=False, verbose_name='HR auto expiry',
+        help_text='When the HR termination date changes, automatically update the expiry date to match.')
+    alesco_data = JSONField(
+        null=True, blank=True, help_text='Readonly data from Alesco')
     o365_licence = models.NullBooleanField(
         default=None, editable=False,
         help_text='Account consumes an Office 365 licence.')
-    shared_account = models.BooleanField(
-        default=False, editable=False,
-        help_text='Automatically set from account type.')
+    extra_data = JSONField(null=True, blank=True)
 
     class MPTTMeta:
         order_insertion_by = ['name']
@@ -186,7 +180,7 @@ class DepartmentUser(MPTTModel):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ''):
                 self.employee_id = None
-        self.in_sync = True if self.date_ad_updated else False
+        '''
         # If the CC is set but not the OrgUnit, use the CC's OrgUnit.
         if self.cost_centre and not self.org_unit:
             self.org_unit = self.cost_centre.org_position
@@ -221,69 +215,15 @@ class DepartmentUser(MPTTModel):
                     'acronym': i.name,
                     'unit_type': i.get_unit_type_display(),
                 } for i in self.org_units_secondary.all()]
-
+        '''
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
-
-    def update_photo_ad(self):
-        # If the photo is set to blank, clear any AD thumbnail.
-        if not self.photo:
-            if self.photo_ad:
-                self.photo_ad.delete()
-            return
-        else:
-            # Account for missing media files.
-            try:
-                self.photo.file
-            except FileNotFoundError:
-                return
-
-        # Update self.photo_ad to a 240x240 thumbnail >10 kb in size.
-        if hasattr(self.photo.file, 'content_type'):
-            PHOTO_TYPE = self.photo.file.content_type
-            if PHOTO_TYPE == 'image/jpeg':
-                PIL_TYPE = 'jpeg'
-            elif PHOTO_TYPE == 'image/png':
-                PIL_TYPE = 'png'
-            else:
-                return
-        else:
-            PIL_TYPE = 'jpeg'
-
-        # Good defaults to get ~10kb JPEG images
-        PHOTO_AD_SIZE = (240, 240)
-        PIL_QUALITY = 75
-        # Remote file size limit
-        PHOTO_AD_FILESIZE = 10000
-        image = Image.open(BytesIO(self.photo.read()))
-        image.thumbnail(PHOTO_AD_SIZE, Image.LANCZOS)
-
-        # In case we miss 10kb, drop the quality and recompress
-        for i in range(12):
-            temp_buffer = BytesIO()
-            image.convert('RGB').save(temp_buffer, PIL_TYPE, quality=PIL_QUALITY, optimize=True)
-            length = temp_buffer.tell()
-            if length <= PHOTO_AD_FILESIZE:
-                break
-            if PIL_TYPE == 'png':
-                PIL_TYPE = 'jpeg'
-            else:
-                PIL_QUALITY -= 5
-
-        temp_buffer.seek(0)
-        self.photo_ad.save(os.path.basename(self.photo.name),
-                           ContentFile(temp_buffer.read()), save=False)
 
     def org_data_pretty(self):
         if not self.org_data:
             return self.org_data
         return format_html(json2html.convert(json=self.org_data))
-
-    def ad_data_pretty(self):
-        if not self.ad_data:
-            return self.ad_data
-        return format_html(json2html.convert(json=self.ad_data))
 
     def alesco_data_pretty(self):
         if not self.alesco_data:
@@ -292,12 +232,6 @@ class DepartmentUser(MPTTModel):
 
     @property
     def password_age_days(self):
-        if self.ad_data and 'pwdLastSet' in self.ad_data:
-            try:
-                td = datetime.now() - convert_ad_timestamp(self.ad_data['pwdLastSet'])
-                return td.days
-            except:
-                pass
         return None
 
     @property
@@ -341,6 +275,95 @@ class DepartmentUser(MPTTModel):
         # Return given_name and surname, with a space in between.
         full_name = '{} {}'.format(self.given_name, self.surname)
         return full_name.strip()
+
+    def generate_ad_actions(self, azure_user):
+        """For given Azure AD user and DepartmentUser objects, generate ADAction objects
+        that specify the changes which need to be carried out in order to synchronise AD
+        with IT Assets.
+        ``azure_user`` will be a dict object derived from current Azure AD JSON output.
+        """
+        if not self.azure_guid:
+            return []
+
+        actions = []
+
+        for field in [
+            # ('AccountEnabled', 'active'),
+            # ('Mail', 'email'),
+            ('DisplayName', 'name'),
+            ('GivenName', 'given_name'),
+            ('Surname', 'surname'),
+            ('JobTitle', 'title'),
+            ('TelephoneNumber', 'telephone'),
+            ('Mobile', 'mobile_phone'),
+            #'Manager',
+            #CompanyName, Department
+            #PhysicalDeliveryOfficeName, PostalCode, State, StreetAddress
+            # ('ProxyAddresses', 'proxy_addresses'),
+        ]:
+            if azure_user[field[0]] != getattr(self, field[1]):
+                # Get/create a non-completed ADAction for this dept user, for these fields.
+                # This should mean that only one ADAction object is generated for a given field,
+                # even if the value it IT Assets changes more than once before being synced in AD.
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field=field[0],
+                    field=field[1],
+                    completed=None,
+                )
+                action.ad_field_value = azure_user[field[0]]
+                action.field_value = getattr(self, field[1])
+                action.save()
+                actions.append(action)
+
+        return actions
+
+    def audit_ad_actions(self, azure_user):
+        """For given Azure AD user and DepartmentUser objects, check any incomplete ADAction
+        objects that specify changes to be made for the AD user. If the ADAction is no longer
+        required (e.g. changes have been completed/reverted), delete the ADAction object.
+        ``azure_user`` will be a dict object derived from current Azure AD JSON output.
+        """
+        actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
+
+        for action in actions:
+            if getattr(self, action.field) == azure_user[action.ad_field]:
+                action.delete()
+
+
+ACTION_TYPE_CHOICES = (
+    ('Change email', 'Change email'),  # Separate from 'change field' because this is a significant operation.
+    ('Change account field', 'Change account field'),
+    ('Disable account', 'Disable account'),
+    ('Enable account', 'Enable account'),
+)
+
+
+class ADAction(models.Model):
+    """Represents a single "action" or change that needs to be carried out to the Active Directory
+    object which matches a DepartmentUser object.
+    """
+    created = models.DateTimeField(auto_now_add=True)
+    department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
+    action_type = models.CharField(max_length=128, choices=ACTION_TYPE_CHOICES)
+    ad_field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in Active Directory')
+    ad_field_value = models.TextField(blank=True, null=True, help_text='Value of the field in Active Directory')
+    field = models.CharField(max_length=128, blank=True, null=True, help_text='Name of the field in IT Assets')
+    field_value = models.TextField(blank=True, null=True, help_text='Value of the field in IT Assets')
+    completed = models.DateTimeField(null=True, blank=True, editable=False)
+    completed_by = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True, editable=False)
+    # log = models.TextField()
+    # automated = models.BooleanField(default=False, help_text='Will this action be completed by automated processes?')
+
+    class Meta:
+        verbose_name = 'AD action'
+        verbose_name_plural = 'AD actions'
+
+    def __str__(self):
+        return '{}: {} ({} -> {})'.format(
+            self.department_user.azure_guid, self.action_type, self.ad_field, self.field_value
+        )
 
 
 class Location(models.Model):
@@ -426,26 +449,11 @@ class OrgUnit(MPTTModel):
         return ', '.join([str(x) for x in self.costcentre_set.all()])
 
     def __str__(self):
-        name = self.name
-        if self.acronym:
-            name = '{} - {}'.format(self.acronym, name)
-        #if self.cc():
-        #    return '{} - CC {}'.format(name, self.cc())
-        return name
+        return self.name
 
     def members(self):
         return DepartmentUser.objects.filter(org_unit__in=self.get_descendants(
             include_self=True), **DepartmentUser.ACTIVE_FILTER)
-
-    def save(self, *args, **kwargs):
-        self.details = self.details or {}
-        self.details.update({
-            'type': self.get_unit_type_display(),
-        })
-        super(OrgUnit, self).save(*args, **kwargs)
-        if not getattr(self, 'cheap_save', False):
-            for user in self.members():
-                user.save()
 
     def children_active(self):
         return self.children.filter(active=True)
@@ -458,6 +466,19 @@ class OrgUnit(MPTTModel):
         return descendants
 
 
+DIVISION_CHOICES = (
+    ("BCS", "DBCA Biodiversity and Conservation Science"),
+    ("BGPA", "Botanic Gardens and Parks Authority"),
+    ("CBS", "DBCA Corporate and Business Services"),
+    ("CPC", "Conservation and Parks Commission"),
+    ("ODG", "Office of the Director General"),
+    ("PWS", "Parks and Wildlife Service"),
+    ("RIA", "Rottnest Island Authority"),
+    ("ZPA", "Zoological Parks Authority"),
+)
+#{'BCS', 'BGPA', 'CBS', 'CPC', 'ODG', 'PWS', 'RIA', 'ZPA'}
+
+
 class CostCentre(models.Model):
     """Models the details of a Department cost centre / chart of accounts.
     """
@@ -465,8 +486,10 @@ class CostCentre(models.Model):
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
+    # NOTE: delete division field after copying data to division_name.
     division = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, null=True, editable=False, related_name='costcentres_in_division')
+    division_name = models.CharField(max_length=128, choices=DIVISION_CHOICES, null=True, blank=True)
     org_position = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, blank=True, null=True)
     manager = models.ForeignKey(
@@ -487,23 +510,13 @@ class CostCentre(models.Model):
     class Meta:
         ordering = ('code',)
 
-    def save(self, *args, **kwargs):
-        self.name = str(self)
-        # If the CC is linked to an OrgUnit, link it to that unit's Division.
-        if self.org_position:
-            division = self.org_position.get_ancestors(
-                include_self=True).filter(unit_type=1)
-            self.division = division.first()
-        else:
-            self.division = None
-        # Iterate through each DepartmentUser assigned to this CC to cache
-        # any org stucture/CC changes on that object.
-        for user in self.departmentuser_set.filter(active=True):
-            user.save()
-        super(CostCentre, self).save(*args, **kwargs)
-
     def __str__(self):
         return self.code
+
+    def get_division(self):
+        if not self.org_position:
+            return None
+        return self.org_position.get_ancestors(include_self=True).filter(unit_type=1).first()
 
 
 class CommonFields(models.Model):
@@ -522,13 +535,6 @@ class CommonFields(models.Model):
             return format_html(json2html.convert(json=self.extra_data))
         except Exception as e:
             return repr(e)
-
-    def save(self, *args, **kwargs):
-        if self.cost_centre and not self.org_unit:
-            self.org_unit = self.cost_centre.org_position
-        #elif self.cost_centre and self.cost_centre.org_position and self.org_unit not in self.cost_centre.org_position.get_descendants(include_self=True):
-        #    self.org_unit = self.cost_centre.org_position
-        super(CommonFields, self).save(*args, **kwargs)
 
     class Meta:
         abstract = True

@@ -15,6 +15,10 @@ class Cluster(models.Model):
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
     refreshed = models.DateTimeField(null=True,editable=False)
+    succeed_resources = models.PositiveIntegerField(editable=False,default=0)
+    failed_resources = models.PositiveIntegerField(editable=False,default=0)
+    refresh_message = models.TextField(null=True,blank=True,editable=False)
+    
 
     def __str__(self):
         return self.name
@@ -62,7 +66,7 @@ class PersistentVolume(models.Model):
     kind = models.CharField(max_length=64,editable=False)
     storage_class_name = models.CharField(max_length=64,editable=False)
     volume_mode = models.CharField(max_length=64,editable=False)
-    uuid = models.CharField(max_length=128,unique=True,editable=False)
+    uuid = models.CharField(max_length=128,editable=False)
     volumepath = models.CharField(max_length=256,editable=False,null=True)
     capacity = models.PositiveIntegerField(editable=False,null=True)
     writable = models.BooleanField(default=False,editable=False)
@@ -78,7 +82,7 @@ class PersistentVolume(models.Model):
         return "{}:{}".format(self.cluster.name,self.name)
 
     class Meta:
-        unique_together = [["cluster","name"],["cluster","volumepath"]]
+        unique_together = [["cluster","name"],["cluster","volumepath"],["cluster","uuid"]]
         ordering = ["cluster__name",'name']
 
 

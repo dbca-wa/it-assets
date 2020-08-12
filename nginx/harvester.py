@@ -10,7 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 
-from data_storage import AzureBlobResourceClient
+from data_storage import ResourceConsumeClient,AzureBlobStorage
 from .models import (Domain,SystemAlias,SystemEnv,WebApp,WebAppLocation,WebAppListen,WebServer,WebAppLocationServer)
 
 from rancher.models import Cluster
@@ -32,20 +32,19 @@ class JSONEncoder(json.JSONEncoder):
 
         return json.JSONEncoder.default(self,obj)
 
-_blob_resource_client = None
-def get_blob_resource_client():
+_resource_consume_client = None
+def get_resource_consume_client():
     """
     Return the blob resource client
     """
-    global _blob_resource_client
-    if _blob_resource_client is None:
-        _blob_resource_client = AzureBlobResourceClient(
+    global _resource_consume_client
+    if _resource_consume_client is None:
+        _resource_consume_client = ResourceConsumeClient(
+            AzureBlobStorage(settings.NGINX_STORAGE_CONNECTION_STRING,settings.NGINX_CONTAINER),
             settings.NGINX_RESOURCE_NAME,
-            settings.NGINX_STORAGE_CONNECTION_STRING,
-            settings.NGINX_CONTAINER,
             settings.NGINX_RESOURCE_CLIENTID
         )
-    return _blob_resource_client
+    return _resource_consume_client
 
 upstream_block_re = re.compile("(\s+|^)upstream\s+(?P<name>[a-zA-Z0-9_\-]+)\s*{(?P<body>[^\}]+)}")
 upstream_comments_re = re.compile("#[^\n]+(\n|$)")
@@ -881,12 +880,12 @@ def parse_server_config(server,server_config,upstream_servers):
 def harvest(reconsume=False):
     if not reconsume:
         #check whether some nginx configuration has been changed after last consuming.
-        if get_blob_resource_client().is_behind(resources=["nginx-config.yml","nginx.yml"]):
+        if get_resource_consume_client().is_behind(resources=["nginx-config.yml","nginx.yml"]):
             reconsume = True
         else:
             return 0
 
     #consume nginx config file
-    return get_blob_resource_client().consume(process_nginx,resources=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
+    return get_resource_consume_client().consume(process_nginx,resources=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
 
 
