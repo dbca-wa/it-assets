@@ -94,7 +94,10 @@ def host_risks_vulns():
     host_ct = ContentType.objects.get_for_model(Host.objects.first())
 
     for host in Host.objects.all():
-        status = host.statuses.latest()
+        if host.statuses.exists():
+            status = host.statuses.latest()
+        else:
+            status = None
         if status and status.vulnerability_info:
             # Our Host has been scanned by Nessus, so find that Host's matching Dependency
             # object, and create/update a RiskAssessment on it.
@@ -141,7 +144,7 @@ def host_os_risks():
     host_ct = ContentType.objects.get_for_model(Host.objects.first())
 
     for host in Host.objects.all():
-        if host.statuses.latest():
+        if host.statuses.exists():
             status = host.statuses.latest()
             if 'os' in status.vulnerability_info and status.vulnerability_info['os']:
                 host_dep, created = Dependency.objects.get_or_create(
