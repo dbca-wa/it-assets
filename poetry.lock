@@ -207,16 +207,17 @@ description = "The client library for pushing resource to or fetching resource f
 name = "data-storage"
 optional = false
 python-versions = "*"
-version = "3.4"
+version = "3.5"
 
 [package.dependencies]
 azure-storage-blob = "12.3.1"
 pytz = "*"
 
 [package.source]
-reference = "0ec278aaf15cde352538b0a7f874045fedb2f55c"
+reference = "aa0da573220b56294fa03eae3384fad67883c6d1"
 type = "git"
 url = "https://github.com/dbca-wa/data-storage.git"
+
 [[package]]
 category = "main"
 description = "Utilities for Django/Python apps"
@@ -285,8 +286,11 @@ category = "main"
 description = "django-cors-headers is a Django application for handling the server headers required for Cross-Origin Resource Sharing (CORS)."
 name = "django-cors-headers"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "2.4.0"
+python-versions = ">=3.5"
+version = "3.4.0"
+
+[package.dependencies]
+Django = ">=2.0"
 
 [[package]]
 category = "main"
@@ -1031,7 +1035,7 @@ python-versions = "*"
 version = "1.1.1"
 
 [metadata]
-content-hash = "7eefbb398dcca9a2ef42b3fadfb1260a9a56f587ac5800d5a012f377115b8356"
+content-hash = "ccca9a318ac2bba221c8bab0db6718e1645283313b3e5a3cb50c03cbfaf9ccc4"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1171,8 +1175,8 @@ django-bootstrap-pagination = [
     {file = "django_bootstrap_pagination-1.7.1-py3-none-any.whl", hash = "sha256:47e742679cf109e12f10ae09d5263433f94440818cf7b023e90a3f5252849639"},
 ]
 django-cors-headers = [
-    {file = "django-cors-headers-2.4.0.tar.gz", hash = "sha256:c4c2ee97139d18541a1be7d96fe337d1694623816d83f53cb7c00da9b94acae1"},
-    {file = "django_cors_headers-2.4.0-py2.py3-none-any.whl", hash = "sha256:5545009c9b233ea7e70da7dbab7cb1c12afa01279895086f98ec243d7eab46fa"},
+    {file = "django-cors-headers-3.4.0.tar.gz", hash = "sha256:f5218f2f0bb1210563ff87687afbf10786e080d8494a248e705507ebd92d7153"},
+    {file = "django_cors_headers-3.4.0-py3-none-any.whl", hash = "sha256:5240062ef0b16668ce8a5f43324c388d65f5439e1a30e22c38684d5ddaff0d15"},
 ]
 django-crispy-forms = [
     {file = "django-crispy-forms-1.7.2.tar.gz", hash = "sha256:5952bab971110d0b86c278132dae0aa095beee8f723e625c3d3fa28888f1675f"},
