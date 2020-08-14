@@ -35,6 +35,12 @@ RISK_RATING_MAPPING = {
     2: ("constrained", "warning"),
     3: ("high risk", "danger"),
 }
+RISK_TRAFFIC_MAPPING = {
+    0: ("minimal", "success"),
+    1: ("low", "info"),
+    2: ("moderate", "warning"),
+    3: ("high", "danger"),
+}
 
 
 class RiskAssessment(models.Model):
@@ -79,7 +85,9 @@ class RiskAssessment(models.Model):
     @property
     def rating_desc(self):
         # Returns a generic description of the risk rating.
-        if self.rating in RISK_RATING_MAPPING:
+        if self.category == 'Traffic' and self.rating in RISK_TRAFFIC_MAPPING:
+            return RISK_TRAFFIC_MAPPING[self.rating][0]
+        elif self.rating in RISK_RATING_MAPPING:
             return RISK_RATING_MAPPING[self.rating][0]
         else:
             return ''
