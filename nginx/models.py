@@ -225,6 +225,7 @@ class WebApp(OriginalConfigMixin, models.Model):
     )
     redirect_to_other = models.CharField(max_length=128, editable=False, null=True)
     redirect_path = models.CharField(max_length=128, editable=False, null=True)
+    clientip_subnet = models.CharField(max_length=64, editable=False, null=True,verbose_name="users")
     configure_txt = models.TextField(editable=False)
     auth_domain = models.PositiveSmallIntegerField(
         editable=False, choices=SSO_AUTH_DOMAINS
@@ -1049,6 +1050,8 @@ def apply_rules(context={}):
                     daily_report.unauthorized_requests -= record.requests
                 elif record.http_status == 408:
                     daily_report.timeout_requests -= record.requests
+                elif record.http_status == 499:
+                    daily_report.client_closed_requests -= record.requests
                 elif record.http_status == 0 or record.http_status >= 400:
                     daily_report.error_requests -= record.requests
 
@@ -1241,6 +1244,7 @@ class WebAppAccessDailyReport(models.Model):
 
     requests = models.PositiveIntegerField(null=False,editable=False,default=0)
     success_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
+    client_closed_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
     error_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
     unauthorized_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
     timeout_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
@@ -1284,6 +1288,8 @@ class WebAppAccessDailyReport(models.Model):
                         daily_report.unauthorized_requests += record.requests
                     elif record.http_status == 408:
                         daily_report.timeout_requests += record.requests
+                    elif record.http_status == 499:
+                        daily_report.client_closed_requests += record.requests
                     elif record.http_status == 0 or record.http_status >= 400:
                         daily_report.error_requests += record.requests
                 else:
@@ -1293,9 +1299,10 @@ class WebAppAccessDailyReport(models.Model):
                         webapp = record.webapp,
                         requests = record.requests,
                         success_requests = record.requests if record.http_status > 0 and record.http_status < 400  else 0,
-                        error_requests = record.requests if record.http_status == 0 or (record.http_status >= 400 and record.http_status not in (401,403,408)) else 0,
+                        error_requests = record.requests if record.http_status == 0 or (record.http_status >= 400 and record.http_status not in (401,403,408,499)) else 0,
                         unauthorized_requests = record.requests if record.http_status in (401,403) else 0,
                         timeout_requests = record.requests if record.http_status == 408 else 0,
+                        client_closed_requests = record.requests if record.http_status == 499 else 0
                     )
                     daily_reports[key] = daily_report
             with transaction.atomic():

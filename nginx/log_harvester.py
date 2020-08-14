@@ -1,4 +1,5 @@
-import json
+import simdjson
+import re
 import os
 import traceback
 import logging
@@ -30,11 +31,121 @@ def get_consume_client():
         )
     return _consume_client
 
-def process_log_file(context,metadata,config_file):
-    with open(config_file,"r") as f:
-        log_records = json.loads(f.read())
+class LogRecordIterator(object):
+    def __init__(self,input_file):
+        self._input_file = input_file
+        self._f = None
+        self._index = None
+        self._record_string = ""
+        self._line = 0
 
+    def _close(self):
+        try:
+            if self._f:
+                self._f.close()
+        except :
+            pass
+        finally:
+            self._f = None
+
+    end_record_re = re.compile("^}\s*\,?$")
+    end_and_start_record_re = re.compile("^\}\s*\,\s*\{$")
+    end_record_and_stream_re = re.compile("^\}\s*\,?\s*\]$")
+    def _next_record(self):
+        if not self._f:
+            raise StopIteration("No more records")
+
+        while (self._f):
+            self._line += 1
+            line = self._f.readline()
+            if not line:
+                #end of file
+                self._close()
+                if self._index is None:
+                    raise StopIteration("No record")
+                elif self._record_string:
+                    raise Exception("The last record is incomplete in Json file '{}'".format(self._input_file))
+                else:
+                    raise Exception("Json file '{}' is not end with ']'".format(self._input_file))
+            sline = line.strip()
+            if not sline:
+                #empty line
+                continue
+            if self._index is None:
+                if sline == "[":
+                    #start of json string
+                    self._index = -1
+                else:
+                    raise Exception("Json file '{}' is not start with '['".format(self._input_file))
+            elif self._record_string == "":
+                if sline == "{":
+                    #start of record
+                    self._record_string = line
+                elif sline == "]":
+                    #end of stream
+                    self._close()
+                    raise StopIteration("No more records")
+                elif sline == ",":
+                    #record separator
+                    continue
+                else:
+                    raise Exception("Found invalid data '{2}' at line {1} in json file '{0}'".format(self._input_file,self._line,line))
+            elif self.end_record_re.search(sline):
+                #end of record
+                self._index += 1
+                self._record_string = self._record_string + "}"
+                record = simdjson.loads(self._record_string)
+                self._record_string = ""
+                return record
+            elif self.end_and_start_record_re.search(sline):
+                #end of record
+                self._index += 1
+                self._record_string = self._record_string + "}"
+                record = simdjson.loads(self._record_string)
+                self._record_string = "{"
+                return record
+            elif self.end_record_and_stream_re.search(sline):
+                #end of record
+                self._index += 1
+                self._record_string = self._record_string + "}"
+                record = simdjson.loads(self._record_string)
+                self._record_string = ""
+                self._close()
+                return record
+            else:
+                # record data
+                self._record_string = self._record_string + line
+
+        self._close()
+        raise StopIteration("No more records")
+
+    def __iter__(self):
+        self._close()
+        self._index = None
+        self._line = 0
+        self._record_string = ""
+        self._f = open(self._input_file,'r')
+        return self
+
+    def __next__(self):
+        return self._next_record()
+
+def to_float(data):
+    try:
+        return float(data)
+    except:
+        return 0
+
+def process_log_file(context,metadata,log_file):
+    if settings.NGINXLOG_STREAMING_PARSE:
+        log_records = LogRecordIterator(log_file)
+    else:
+        with open(log_file,"r") as f:
+            log_records = simdjson.loads(f.read())
+
+    records = 0
     for record in log_records:
+        records += 1
         try:
             if "?" in record["request_path"]:
                 request_path,path_parameters = record["request_path"].split("?",1)
@@ -87,12 +198,12 @@ def process_log_file(context,metadata,config_file):
 
             if accesslog:
                 accesslog.requests += int(record["requests"])
-                accesslog.total_response_time += float(record["total_response_time"])
-                if accesslog.max_response_time < float(record["max_response_time"]):
-                    accesslog.max_response_time = float(record["max_response_time"])
+                accesslog.total_response_time += to_float(record["total_response_time"])
+                if accesslog.max_response_time < to_float(record["max_response_time"]):
+                    accesslog.max_response_time = to_float(record["max_response_time"])
     
-                if accesslog.min_response_time > float(record["min_response_time"]):
-                    accesslog.min_response_time = float(record["min_response_time"])
+                if accesslog.min_response_time > to_float(record["min_response_time"]):
+                    accesslog.min_response_time = to_float(record["min_response_time"])
     
                 accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
                 if all_path_parameters:
@@ -116,10 +227,10 @@ def process_log_file(context,metadata,config_file):
                     path_parameters = path_parameters,
                     all_path_parameters = all_path_parameters,
                     requests = int(record["requests"]),
-                    max_response_time = float(record["max_response_time"]),
-                    min_response_time = float(record["min_response_time"]),
-                    avg_response_time = float(record["avg_response_time"]),
-                    total_response_time = float(record["total_response_time"])
+                    max_response_time = to_float(record["max_response_time"]),
+                    min_response_time = to_float(record["min_response_time"]),
+                    avg_response_time = to_float(record["avg_response_time"]),
+                    total_response_time = to_float(record["total_response_time"])
                 )
             if accesslog.webserver not in context.get("webapps",{}):
                 if "webapps" not in context:
@@ -137,20 +248,23 @@ def process_log_file(context,metadata,config_file):
                     raise Exception("Can't find the app location for request path({1}) in web application({0})".format(accesslog.webapp,accesslog.request_path))
             accesslog.save()
         except Exception as ex:
+            #delete already added records from this log file
+            WebAppAccessLog.objects.filter(log_starttime = metadata["archive_starttime"]).delete()
             logger.error("Failed to parse the nginx access log record({}).{}".format(record,traceback.format_exc()))
             raise Exception("Failed to parse the nginx access log record({}).{}".format(record,str(ex)))
+
+    logger.info("Harvest {1} records from log file '{0}'".format(log_file,records))
             
 
 def process_log(context):
-    def _func(status,metadata,config_file):
+    def _func(status,metadata,log_file):
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but currently consumed histroy data's status is {},metadata={}".format(
                 get_consume_client().get_consume_status_name(status),
                 metadata
             ))
         WebAppAccessLog.objects.filter(log_starttime = metadata["archive_starttime"]).delete()
-        with transaction.atomic():
-            process_log_file(context,metadata,config_file)
+        process_log_file(context,metadata,log_file)
 
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
