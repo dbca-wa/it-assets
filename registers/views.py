@@ -567,7 +567,7 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
     """A list view to display a summary of risk assessments for all IT Systems.
     """
     model = ITSystem
-    paginate_by = 50
+    paginate_by = 20
     template_name = 'registers/riskassessment_list.html'
 
     def get_context_data(self, **kwargs):
