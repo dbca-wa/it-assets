@@ -130,6 +130,7 @@ def process_log_file(context,metadata,log_file):
     webserver_records = {}
     webserver = None
     key = None
+    original_request_path = None
     for record in log_records:
         records += 1
         try:
@@ -151,8 +152,10 @@ def process_log_file(context,metadata,log_file):
             except:
                 http_status = 0
 
+            original_request_path = request_path
             if not request_path:
                 request_path = "/"
+                original_request_path = request_path
             elif len(request_path) > 512:
                 request_path = request_path[0:512]
     
@@ -234,7 +237,7 @@ def process_log_file(context,metadata,log_file):
                         if "webapplocations" not in context:
                             context["webapplocations"] = {}
                         context["webapplocations"][accesslog.webapp] = list(WebAppLocation.objects.filter(app=accesslog.webapp).order_by("-score"))
-                    accesslog.webapplocation = accesslog.webapp.get_matched_location(accesslog.request_path,context["webapplocations"][accesslog.webapp])
+                    accesslog.webapplocation = accesslog.webapp.get_matched_location(original_request_path,context["webapplocations"][accesslog.webapp])
                     if not accesslog.webapplocation and accesslog.http_status < 300 and accesslog.http_status >= 200:
                         logger.warning("Can't find the app location for request path({1}) in web application({0})".format(accesslog.webapp,accesslog.request_path))
                 webserver_records[key] = accesslog
