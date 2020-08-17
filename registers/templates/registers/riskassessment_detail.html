@@ -9,7 +9,14 @@
     {% endif %}
 </h1>
 
-<p>System status: {{ object.get_status_display }}</p>
+<div class="row">
+    <div class="col col-sm-11">
+        <p>System status: {{ object.get_status_display }}</p>
+    </div>
+    <div class="col col-sm-1">
+        <a class="btn btn-info" href="{% url 'riskassessment_glossary' %}"><i class="fas fa-info-circle"></i> Glossary</a>
+    </div>
+</div>
 
 <h2>Risk assessments</h2>
 

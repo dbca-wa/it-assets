@@ -60,7 +60,7 @@ class ADActionList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        return qs.filter(completed__isnull=True)
+        return qs.filter(completed__isnull=True).order_by('created')
 
     def dispatch(self, request, *args, **kwargs):
         if not (request.user.is_superuser or (request.user.is_staff and Group.objects.get(name='OIM Staff') in request.user.groups.all())):

@@ -756,6 +756,14 @@ version = "0.6.0"
 
 [[package]]
 category = "main"
+description = "Seamless operability between C++11 and Python"
+name = "pybind11"
+optional = false
+python-versions = "*"
+version = "2.5.0"
+
+[[package]]
+category = "main"
 description = "C parser in Python"
 name = "pycparser"
 optional = false
@@ -782,6 +790,20 @@ version = "1.7.1"
 crypto = ["cryptography (>=1.4)"]
 flake8 = ["flake8", "flake8-import-order", "pep8-naming"]
 test = ["pytest (>=4.0.1,<5.0.0)", "pytest-cov (>=2.6.0,<3.0.0)", "pytest-runner (>=4.2,<5.0.0)"]
+
+[[package]]
+category = "main"
+description = "simdjson bindings for python"
+name = "pysimdjson"
+optional = false
+python-versions = ">3.4"
+version = "2.5.1"
+
+[package.extras]
+benchmark = ["pytest", "pytest-benchmark", "orjson", "python-rapidjson", "simplejson", "ujson"]
+dev = ["pybind11"]
+release = ["m2r", "sphinx", "ghp-import", "bumpversion"]
+test = ["pytest"]
 
 [[package]]
 category = "main"
@@ -1035,7 +1057,7 @@ python-versions = "*"
 version = "1.1.1"
 
 [metadata]
-content-hash = "ccca9a318ac2bba221c8bab0db6718e1645283313b3e5a3cb50c03cbfaf9ccc4"
+content-hash = "264753e2808e96536eb078802fea583c805c450a696f945ca2b3a95e63e3921d"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1386,6 +1408,10 @@ ptyprocess = [
     {file = "ptyprocess-0.6.0-py2.py3-none-any.whl", hash = "sha256:d7cc528d76e76342423ca640335bd3633420dc1366f258cb31d05e865ef5ca1f"},
     {file = "ptyprocess-0.6.0.tar.gz", hash = "sha256:923f299cc5ad920c68f2bc0bc98b75b9f838b93b599941a6b63ddbc2476394c0"},
 ]
+pybind11 = [
+    {file = "pybind11-2.5.0-py2.py3-none-any.whl", hash = "sha256:205d9f9615eac190811cb8c3c2b2f95f6844ddba0fa0a1d45d00793338741601"},
+    {file = "pybind11-2.5.0.tar.gz", hash = "sha256:ea5a4e7a880112915463826f1acbec5892df36dfe102ecb249229ac514fb54ad"},
+]
 pycparser = [
     {file = "pycparser-2.20-py2.py3-none-any.whl", hash = "sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705"},
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
@@ -1397,6 +1423,24 @@ pygments = [
 pyjwt = [
     {file = "PyJWT-1.7.1-py2.py3-none-any.whl", hash = "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e"},
     {file = "PyJWT-1.7.1.tar.gz", hash = "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"},
+]
+pysimdjson = [
+    {file = "pysimdjson-2.5.1-cp35-cp35m-macosx_10_14_x86_64.whl", hash = "sha256:e860577eddb2601afcbcbf8a8b68eecd7e0029af4e9c2913484e5869bbb30cbe"},
+    {file = "pysimdjson-2.5.1-cp35-cp35m-manylinux2014_aarch64.whl", hash = "sha256:d0a6d4acacf4530ef2c65c8ef5366a350d56cdb218d7b5287ad8598cb6d0c6eb"},
+    {file = "pysimdjson-2.5.1-cp35-cp35m-manylinux2014_x86_64.whl", hash = "sha256:17c3773cfe21f78b0b5b282e99281aecd5dd074662039c4d9eb489c9b480167f"},
+    {file = "pysimdjson-2.5.1-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:8fdd58ddaef6c9e881d49028d120b3cec0d537e0efce837c82f56cbea619acbe"},
+    {file = "pysimdjson-2.5.1-cp36-cp36m-manylinux2014_aarch64.whl", hash = "sha256:0f35a6e42ac234eb054bcbd3c67b02ecee809868a6e301c475241e6f71e48b4c"},
+    {file = "pysimdjson-2.5.1-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:695538184af677de76c7820e35b2e9f84bf0ea719b926697cb6c60968e7e82fa"},
+    {file = "pysimdjson-2.5.1-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:11de98885fa8b62c3fd31e9d05f14bc13896f844377ab1a31780aff475565cd6"},
+    {file = "pysimdjson-2.5.1-cp37-cp37m-manylinux2014_aarch64.whl", hash = "sha256:8d85ab77b7bc62df7bd1b39231c7a955f07216a72744c8ab7c36202ee32feceb"},
+    {file = "pysimdjson-2.5.1-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:7a6917a748076cddfd19c5cabdecfb143f41eea99a6ea20418934b4449b659e5"},
+    {file = "pysimdjson-2.5.1-cp37-cp37m-win_amd64.whl", hash = "sha256:72ec63a40d967f9f2a2568f143227648e49ec93ee2fca0d8fe3dda9b5c67d215"},
+    {file = "pysimdjson-2.5.1-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:8385c2b775ea3de9a548942b5ae5ccbd512725c87965d068bdff3235ec59b313"},
+    {file = "pysimdjson-2.5.1-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:0867c9660cb0db92b398f4a48cf15110d44ac0456debb2ae109d561084558ea6"},
+    {file = "pysimdjson-2.5.1-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:65154471f8bd92f97feaa95a3e1c4899530774ab69e51e097082526982cd7024"},
+    {file = "pysimdjson-2.5.1-cp38-cp38-win_amd64.whl", hash = "sha256:f5faab579e939d3f278ef3686a3447350cd2837fcf03f94628600352eb4a6828"},
+    {file = "pysimdjson-2.5.1-pp36-pypy36_pp73-macosx_10_9_x86_64.whl", hash = "sha256:aa1aaa9d722d0a33ba369a2f7936f9bb3efe954a5238b4359e45c8d877f37181"},
+    {file = "pysimdjson-2.5.1.tar.gz", hash = "sha256:0ccfb9a2f89fbadaa080057150215cf642e05d9f244628aa856904868b553b94"},
 ]
 python-dateutil = [
     {file = "python-dateutil-2.8.1.tar.gz", hash = "sha256:73ebfe9dbf22e832286dafa60473e4cd239f8592f699aa5adaf10050e6e1823c"},

@@ -46,8 +46,9 @@ Set-AzureADUser -ObjectId {{ object.azure_guid}} -{{ object.ad_field }} '{{ obje
 </code>
 </pre>
 
-<a href="{% url 'ad_action_complete' pk=object.pk %}" class="btn btn-primary"><i class="fas fa-check"></i> Mark as completed</a>
-<br>
+<p>
+    <a href="{% url 'ad_action_complete' pk=object.pk %}" class="btn btn-primary"><i class="fas fa-check"></i> Mark as completed</a>
+</p>
 
 {% endblock page_content_inner %}
 
