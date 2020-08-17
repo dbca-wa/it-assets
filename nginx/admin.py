@@ -169,15 +169,15 @@ class WebAppAdmin(ConfigureTxtMixin, admin.ModelAdmin):
 
         def queryset(self, request, queryset):
             if self.value() == 'true':
-                return queryset.filter(redirect_to__isnull=False)
+                return queryset.filter(Q(redirect_to__isnull=False) | Q(redirect_to_other__isnull=False))
             if self.value() == 'false':
-                return queryset.filter(redirect_to__isnull=True)
+                return queryset.filter(redirect_to__isnull=True,redirect_to_other__isnull=True)
 
-    list_display = ('name', 'system_alias','system_env','domain','auth_domain','_redirect','config_modified','_daily_access_report')
+    list_display = ('name', 'system_alias','system_env','domain','auth_domain','clientip_subnet','_redirect','config_modified','_daily_access_report')
     ordering = ('name',)
-    list_filter = ('system_env', RedirectToFilter, ("system_alias__system", admin.RelatedOnlyFieldListFilter))
-    readonly_fields = ('name','auth_domain','_configure_txt','_redirect',"config_modified","config_changed_columns","_daily_access_report")
-    fields = ("name", "domain", "system_alias", "system_env", "auth_domain", "_redirect", 'config_modified', 'config_changed_columns', "_configure_txt","_daily_access_report")
+    list_filter = ('system_env','auth_domain','clientip_subnet', RedirectToFilter, ("system_alias__system", admin.RelatedOnlyFieldListFilter))
+    readonly_fields = ('name','auth_domain','clientip_subnet','_configure_txt','_redirect',"config_modified","config_changed_columns","_daily_access_report")
+    fields = ("name", "domain", "system_alias", "system_env", "auth_domain","clientip_subnet", "_redirect", 'config_modified', 'config_changed_columns', "_configure_txt","_daily_access_report")
 
     search_fields = ['name']
     inlines = [WebAppListenInline, WebAppLocationInline]
@@ -375,6 +375,7 @@ class HttpStatusFilter(admin.SimpleListFilter):
         return [
             ("succeed","Succeed Requests"),
             ("unauthorized","Unauthorized Requests"),
+            ("client_closed","Client Closed Requests"),
             ("error","Error Requests"),
             ("timeout","Timeout Requests"),
         ]
@@ -397,7 +398,9 @@ class HttpStatusFilter(admin.SimpleListFilter):
         elif val == "timeout":
             return queryset.filter(http_status=408)
         elif val == "error":
-            return queryset.filter(Q(http_status=0) | Q(http_status__gte=400)).exclude(http_status__in=(401,403,408))
+            return queryset.filter(Q(http_status=0) | Q(http_status__gte=400)).exclude(http_status__in=(401,403,408,499))
+        elif val == "client_closed":
+            return queryset.filter(http_status=499)
         else:
             return queryset
 
@@ -415,7 +418,7 @@ class WebServerMixin(object):
 
 @admin.register(models.WebAppAccessDailyReport)
 class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
-    list_display = ('log_day','_webserver','_requests','_success_requests','_error_requests','_unauthorized_requests','_timeout_requests')
+    list_display = ('log_day','_webserver','_requests','_success_requests','_error_requests','_unauthorized_requests','_timeout_requests','_client_closed_requests')
     readonly_fields = list_display
     ordering = ('-log_day','-requests',)
 
@@ -427,6 +430,8 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
     def _requests(self,obj):
         if not obj:
             return ""
+        elif obj.requests == 0:
+            return "0"
         else:
             return mark_safe("<A href='{}?log_day={}&q={}'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.requests))
     _requests.short_description = "Requests"
@@ -434,6 +439,8 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
     def _success_requests(self,obj):
         if not obj:
             return ""
+        elif obj.success_requests == 0:
+            return "0"
         else:
             return mark_safe("<A href='{}?log_day={}&q={}&http_status=succeed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.success_requests))
     _success_requests.short_description = "Success Requests"
@@ -441,13 +448,26 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
     def _error_requests(self,obj):
         if not obj:
             return ""
+        elif obj.error_requests == 0:
+            return "0"
         else:
             return mark_safe("<A href='{}?log_day={}&q={}&http_status=error'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.error_requests))
     _error_requests.short_description = "Error Requests"
 
+    def _client_closed_requests(self,obj):
+        if not obj:
+            return ""
+        elif obj.client_closed_requests == 0:
+            return "0"
+        else:
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status=client_closed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.client_closed_requests))
+    _client_closed_requests.short_description = "Client Closed Requests"
+
     def _unauthorized_requests(self,obj):
         if not obj:
             return ""
+        elif obj.unauthorized_requests == 0:
+            return "0"
         else:
             return mark_safe("<A href='{}?log_day={}&q={}&http_status=unauthorized'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.unauthorized_requests))
     _unauthorized_requests.short_description = "Unauthorized Requests"
@@ -455,6 +475,8 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
     def _timeout_requests(self,obj):
         if not obj:
             return ""
+        elif obj.timeout_requests == 0:
+            return "0"
         else:
             return mark_safe("<A href='{}?log_day={}&q={}&http_status=timeout'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.timeout_requests))
     _timeout_requests.short_description = "Timeout Requests"
