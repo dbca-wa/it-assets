@@ -244,7 +244,7 @@ def process_log_file(context,metadata,log_file):
                         context["webapplocations"] = {}
                     context["webapplocations"][accesslog.webapp] = list(WebAppLocation.objects.filter(app=accesslog.webapp).order_by("-score"))
                 accesslog.webapplocation = accesslog.webapp.get_matched_location(accesslog.request_path,context["webapplocations"][accesslog.webapp])
-                if not accesslog.webapplocation and accesslog.http_status < 400 and accesslog.http_status > 0:
+                if not accesslog.webapplocation and accesslog.http_status < 300 and accesslog.http_status >= 200:
                     raise Exception("Can't find the app location for request path({1}) in web application({0})".format(accesslog.webapp,accesslog.request_path))
             accesslog.save()
         except Exception as ex:
