@@ -218,21 +218,28 @@ def itsystem_risks_critical_function(it_systems=None):
     itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
 
     for it in it_systems:
-        if it.system_type:
-            # Create/update a RiskAssessment object for the IT System.
-            risk, created = RiskAssessment.objects.get_or_create(
-                content_type=itsystem_ct,
-                object_id=it.pk,
-                category='Critical function',
-                rating=2,
-            )
-            risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
-            risk.save()
-        else:
-            # If system_type is not recorded for the IT system but there is a risk of this type, delete the risk.
-            risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').first()
-            if risk:
-                risk.delete()
+        # First, check if an auto assessment has been created OR if not assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').exists()
+        ):
+            if it.system_type:
+                # Create/update a RiskAssessment object for the IT System.
+                risk, created = RiskAssessment.objects.get_or_create(
+                    content_type=itsystem_ct,
+                    object_id=it.pk,
+                    category='Critical function',
+                    rating=2,
+                )
+                risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_system_type_display())
+                risk.save()
+            else:
+                # If system_type is not recorded for the IT system but there is a risk of this type, delete the risk.
+                risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Critical function').first()
+                if risk:
+                    risk.delete()
 
 
 def itsystem_risks_backups(it_systems=None):
@@ -243,18 +250,25 @@ def itsystem_risks_backups(it_systems=None):
     itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
 
     for it in it_systems:
-        backup_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').first()
-        if it.backups:
-            if not backup_risk:
-                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
-            backup_risk.rating = 0  # TODO: risk rating base of backup type.
-            backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
-        else:
-            if not backup_risk:
-                backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
-            backup_risk.rating = 2
-            backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
-        backup_risk.save()
+        # First, check if an auto assessment has been created OR if not assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').exists()
+        ):
+            backup_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Backups').first()
+            if it.backups:
+                if not backup_risk:
+                    backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
+                backup_risk.rating = 0  # TODO: risk rating base of backup type.
+                backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
+            else:
+                if not backup_risk:
+                    backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
+                backup_risk.rating = 2
+                backup_risk.notes = '[AUTOMATED ASSESSMENT] No backup scheme is recorded'
+            backup_risk.save()
 
 
 def itsystem_risks_support(it_systems=None):
@@ -265,18 +279,25 @@ def itsystem_risks_support(it_systems=None):
     itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
 
     for it in it_systems:
-        support_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support').first()
-        if not it.bh_support:
-            if not support_risk:
-                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
-            support_risk.rating = 2
-            support_risk.notes = '[AUTOMATED ASSESSMENT] No business hours support contact is recorded'
-        else:
-            if not support_risk:
-                support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
-            support_risk.rating = 0
-            support_risk.notes = '[AUTOMATED ASSESSMENT] Business hours support contact is recorded'
-        support_risk.save()
+        # First, check if an auto assessment has been created OR if not assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support').exists()
+        ):
+            support_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Support').first()
+            if not it.bh_support:
+                if not support_risk:
+                    support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
+                support_risk.rating = 2
+                support_risk.notes = '[AUTOMATED ASSESSMENT] No business hours support contact is recorded'
+            else:
+                if not support_risk:
+                    support_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Support')
+                support_risk.rating = 0
+                support_risk.notes = '[AUTOMATED ASSESSMENT] Business hours support contact is recorded'
+            support_risk.save()
 
 
 def itsystem_risks_access(it_systems=None):
@@ -289,27 +310,34 @@ def itsystem_risks_access(it_systems=None):
 
     for it in it_systems:
         if it.alias.exists():
-            for alias in it.alias.all():
-                webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-                for webapp in webapps:
-                    root_location = webapp.locations.filter(location='/').first()
-                    if root_location:
-                        # Create an access risk
-                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                        if not risk:
-                            risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
-                        if root_location.auth_type == 0:
-                            risk.rating = 2
-                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
-                        else:
-                            risk.rating = 0
-                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
-                        risk.save()
-                    else:
-                        # If any access risk exists, delete it.
-                        if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+            # First, check if an auto assessment has been created OR if not assessment exists.
+            # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+            # which we don't want to overwrite).
+            if (
+                RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+                or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists()
+            ):
+                for alias in it.alias.all():
+                    webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+                    for webapp in webapps:
+                        root_location = webapp.locations.filter(location='/').first()
+                        if root_location:
+                            # Create an access risk
                             risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                            risk.delete()
+                            if not risk:
+                                risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
+                            if root_location.auth_type == 0:
+                                risk.rating = 2
+                                risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
+                            else:
+                                risk.rating = 0
+                                risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
+                            risk.save()
+                        else:
+                            # If any access risk exists, delete it.
+                            if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+                                risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                                risk.delete()
 
 
 def itsystem_risks_traffic(it_systems=None):
@@ -321,52 +349,59 @@ def itsystem_risks_traffic(it_systems=None):
     prod = SystemEnv.objects.get(name='prod')
 
     for it in it_systems:
-        if it.alias.exists():
-            requests = []
-            for alias in it.alias.all():
-                webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-                for webapp in webapps:
-                    if not webapp.dailyreports.exists():
-                        continue
-                    report = webapp.dailyreports.latest()
-                    # Statistics mangling alert: due to the number of requests being 'bursty', we take
-                    # the daily count of requests for the last 28 days, calculate the Z-score for each,
-                    # discard any that are greater than 2 or less than -2, then calculate the mean of
-                    # the remaining values.
-                    # This is completely arbitrary and subject to change.
-                    last_log_day = report.log_day
-                    start_date = (last_log_day - timedelta(days=27))
-                    reports = WebAppAccessDailyReport.objects.filter(webapp=webapp, log_day__gte=start_date)
-                    for i in reports:
-                        requests.append(i.requests)
-            if requests:
-                try:
-                    μ = mean(requests)
-                    σ = stdev(requests)
-                    if σ:  # Avoid a ZeroDivisionError.
-                        requests_filter = []
-                        for i in requests:
-                            if -2.0 <= ((i - μ) / σ) <= 2.0:
-                                requests_filter.append(i)
-                        requests_mean = int(mean(requests_filter))
-                    else:
+        # First, check if an auto assessment has been created OR if not assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').exists()
+        ):
+            if it.alias.exists():
+                requests = []
+                for alias in it.alias.all():
+                    webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
+                    for webapp in webapps:
+                        if not webapp.dailyreports.exists():
+                            continue
+                        report = webapp.dailyreports.latest()
+                        # Statistics mangling alert: due to the number of requests being 'bursty', we take
+                        # the daily count of requests for the last 28 days, calculate the Z-score for each,
+                        # discard any that are greater than 2 or less than -2, then calculate the mean of
+                        # the remaining values.
+                        # This is completely arbitrary and subject to change.
+                        last_log_day = report.log_day
+                        start_date = (last_log_day - timedelta(days=27))
+                        reports = WebAppAccessDailyReport.objects.filter(webapp=webapp, log_day__gte=start_date)
+                        for i in reports:
+                            requests.append(i.requests)
+                if requests:
+                    try:
+                        μ = mean(requests)
+                        σ = stdev(requests)
+                        if σ:  # Avoid a ZeroDivisionError.
+                            requests_filter = []
+                            for i in requests:
+                                if -2.0 <= ((i - μ) / σ) <= 2.0:
+                                    requests_filter.append(i)
+                            requests_mean = int(mean(requests_filter))
+                        else:
+                            requests_mean = int(mean(requests))
+                    except StatisticsError:
                         requests_mean = int(mean(requests))
-                except StatisticsError:
-                    requests_mean = int(mean(requests))
 
-                risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
-                if not risk:
-                    risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
-                if requests_mean >= 10000:
-                    risk.rating = 3
-                    risk.notes = '[AUTOMATED ASSESSMENT] High traffic of daily HTTP requests'
-                elif requests_mean >= 1000:
-                    risk.rating = 2
-                    risk.notes = '[AUTOMATED ASSESSMENT] Moderate traffic of daily HTTP requests'
-                elif requests_mean >= 100:
-                    risk.rating = 1
-                    risk.notes = '[AUTOMATED ASSESSMENT] Low traffic of daily HTTP requests'
-                else:
-                    risk.rating = 0
-                    risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
-                risk.save()
+                    risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
+                    if not risk:
+                        risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
+                    if requests_mean >= 10000:
+                        risk.rating = 3
+                        risk.notes = '[AUTOMATED ASSESSMENT] High traffic of daily HTTP requests'
+                    elif requests_mean >= 1000:
+                        risk.rating = 2
+                        risk.notes = '[AUTOMATED ASSESSMENT] Moderate traffic of daily HTTP requests'
+                    elif requests_mean >= 100:
+                        risk.rating = 1
+                        risk.notes = '[AUTOMATED ASSESSMENT] Low traffic of daily HTTP requests'
+                    else:
+                        risk.rating = 0
+                        risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
+                    risk.save()
