@@ -32,12 +32,13 @@ def get_consume_client():
     return _consume_client
 
 class LogRecordIterator(object):
+    block_size = 1024 * 512 #read 512 k
     def __init__(self,input_file):
         self._input_file = input_file
         self._f = None
         self._index = None
-        self._record_string = ""
-        self._line = 0
+        self._data_block = None
+        self._read = True
 
     def _close(self):
         try:
@@ -48,82 +49,64 @@ class LogRecordIterator(object):
         finally:
             self._f = None
 
-    end_record_re = re.compile("^}\s*\,?$")
-    end_and_start_record_re = re.compile("^\}\s*\,\s*\{$")
-    end_record_and_stream_re = re.compile("^\}\s*\,?\s*\]$")
+    first_record_start_re = re.compile("^\s*\[\s*\{\s*\n")
+    record_sep_re = re.compile("\n\s*}\s*,\s*{\s*\n")
+    last_record_end_re = re.compile("\n\s*}\s*\,?\s*\]\s*$")
     def _next_record(self):
         if not self._f:
             raise StopIteration("No more records")
-
+        
         while (self._f):
-            self._line += 1
-            line = self._f.readline()
-            if not line:
-                #end of file
-                self._close()
-                if self._index is None:
-                    raise StopIteration("No record")
-                elif self._record_string:
-                    raise Exception("The last record is incomplete in Json file '{}'".format(self._input_file))
+            if self._read:
+                data = self._f.read(self.block_size)
+                self._read = False
+                if data:
+                    if self._data_block:
+                        self._data_block += data
+                    else:
+                        self._data_block = data
                 else:
-                    raise Exception("Json file '{}' is not end with ']'".format(self._input_file))
-            sline = line.strip()
-            if not sline:
-                #empty line
-                continue
-            if self._index is None:
-                if sline == "[":
-                    #start of json string
-                    self._index = -1
-                else:
-                    raise Exception("Json file '{}' is not start with '['".format(self._input_file))
-            elif self._record_string == "":
-                if sline == "{":
-                    #start of record
-                    self._record_string = line
-                elif sline == "]":
-                    #end of stream
+                    #end of file
                     self._close()
-                    raise StopIteration("No more records")
-                elif sline == ",":
-                    #record separator
-                    continue
-                else:
-                    raise Exception("Found invalid data '{2}' at line {1} in json file '{0}'".format(self._input_file,self._line,line))
-            elif self.end_record_re.search(sline):
-                #end of record
-                self._index += 1
-                self._record_string = self._record_string + "}"
-                record = simdjson.loads(self._record_string)
-                self._record_string = ""
-                return record
-            elif self.end_and_start_record_re.search(sline):
-                #end of record
-                self._index += 1
-                self._record_string = self._record_string + "}"
-                record = simdjson.loads(self._record_string)
-                self._record_string = "{"
-                return record
-            elif self.end_record_and_stream_re.search(sline):
-                #end of record
-                self._index += 1
-                self._record_string = self._record_string + "}"
-                record = simdjson.loads(self._record_string)
-                self._record_string = ""
-                self._close()
-                return record
-            else:
-                # record data
-                self._record_string = self._record_string + line
+                    if self._data_block:
+                        m = self.last_record_end_re.search(self._data_block)
+                        if m:
+                            self._index += 1
+                            json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
+                            self._data_block = None
+                            return simdjson.loads(json_str)
+                        else:
+                            raise Exception("The last record is incomplete in nginx access log file({}).".format(self._input_file))
+                    else:
+                        raise StopIteration("No more records")
 
-        self._close()
-        raise StopIteration("No more records")
+            if self._index is None:
+                m = self.first_record_start_re.search(self._data_block)
+                if m:
+                    self._data_block = self._data_block[m.end():]
+                    self._index = -1
+                elif self._data_block.strip():
+                    raise Exception("The nginx access log file({}) is an invalid json file".format(self._input_file))
+                else:
+                    self._data_block = None
+                    self._read = True
+            else:
+                m = self.record_sep_re.search(self._data_block)
+                if m:
+                    self._index += 1
+                    json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
+                    self._data_block = self._data_block[m.end():]
+                    return simdjson.loads(json_str)
+                else:
+                    self._read = True
 
     def __iter__(self):
         self._close()
+
         self._index = None
-        self._line = 0
-        self._record_string = ""
+        self._data_block = None
+        self._read = True
+
         self._f = open(self._input_file,'r')
         return self
 
@@ -144,6 +127,10 @@ def process_log_file(context,metadata,log_file):
             log_records = simdjson.loads(f.read())
 
     records = 0
+    webserver_records = {}
+    webserver = None
+    key = None
+    original_request_path = None
     for record in log_records:
         records += 1
         try:
@@ -165,8 +152,10 @@ def process_log_file(context,metadata,log_file):
             except:
                 http_status = 0
 
+            original_request_path = request_path
             if not request_path:
                 request_path = "/"
+                original_request_path = request_path
             elif len(request_path) > 512:
                 request_path = request_path[0:512]
     
@@ -188,14 +177,19 @@ def process_log_file(context,metadata,log_file):
             if request_path is None:
                 continue
 
-            accesslog = WebAppAccessLog.objects.filter(
-                log_starttime = metadata["archive_starttime"],
-                webserver = record["webserver"],
-                request_path = request_path,
-                http_status = http_status,
-                path_parameters = path_parameters
-            ).first()
+            if webserver :
+                if record["webserver"] != webserver:
+                    for log_record in webserver_records.values():
+                        log_record.save()
+                    webserver_records.clear()
+                    webserver = record["webserver"]
+            else:
+                webserver = record["webserver"]
+            
 
+            key = (request_path,http_status,path_parameters)
+
+            accesslog = webserver_records.get(key)
             if accesslog:
                 accesslog.requests += int(record["requests"])
                 accesslog.total_response_time += to_float(record["total_response_time"])
@@ -229,29 +223,32 @@ def process_log_file(context,metadata,log_file):
                     requests = int(record["requests"]),
                     max_response_time = to_float(record["max_response_time"]),
                     min_response_time = to_float(record["min_response_time"]),
-                    avg_response_time = to_float(record["avg_response_time"]),
                     total_response_time = to_float(record["total_response_time"])
                 )
-            if accesslog.webserver not in context.get("webapps",{}):
-                if "webapps" not in context:
-                    context["webapps"] = {}
-                context["webapps"][accesslog.webserver] = WebApp.objects.filter(name=accesslog.webserver).first()
-            accesslog.webapp = context["webapps"][accesslog.webserver]
+                accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
+                if accesslog.webserver not in context.get("webapps",{}):
+                    if "webapps" not in context:
+                        context["webapps"] = {}
+                    context["webapps"][accesslog.webserver] = WebApp.objects.filter(name=accesslog.webserver).first()
+                accesslog.webapp = context["webapps"][accesslog.webserver]
     
-            if accesslog.webapp and not accesslog.webapp.redirect_to and not accesslog.webapp.redirect_to_other:
-                if accesslog.webapp not in context.get("webapplocations",{}):
-                    if "webapplocations" not in context:
-                        context["webapplocations"] = {}
-                    context["webapplocations"][accesslog.webapp] = list(WebAppLocation.objects.filter(app=accesslog.webapp).order_by("-score"))
-                accesslog.webapplocation = accesslog.webapp.get_matched_location(accesslog.request_path,context["webapplocations"][accesslog.webapp])
-                if not accesslog.webapplocation and accesslog.http_status < 400 and accesslog.http_status > 0:
-                    raise Exception("Can't find the app location for request path({1}) in web application({0})".format(accesslog.webapp,accesslog.request_path))
-            accesslog.save()
+                if accesslog.webapp and not accesslog.webapp.redirect_to and not accesslog.webapp.redirect_to_other:
+                    if accesslog.webapp not in context.get("webapplocations",{}):
+                        if "webapplocations" not in context:
+                            context["webapplocations"] = {}
+                        context["webapplocations"][accesslog.webapp] = list(WebAppLocation.objects.filter(app=accesslog.webapp).order_by("-score"))
+                    accesslog.webapplocation = accesslog.webapp.get_matched_location(original_request_path,context["webapplocations"][accesslog.webapp])
+                    if not accesslog.webapplocation and accesslog.http_status < 300 and accesslog.http_status >= 200:
+                        logger.warning("Can't find the app location for request path({1}) in web application({0})".format(accesslog.webapp,accesslog.request_path))
+                webserver_records[key] = accesslog
         except Exception as ex:
             #delete already added records from this log file
             WebAppAccessLog.objects.filter(log_starttime = metadata["archive_starttime"]).delete()
             logger.error("Failed to parse the nginx access log record({}).{}".format(record,traceback.format_exc()))
             raise Exception("Failed to parse the nginx access log record({}).{}".format(record,str(ex)))
+
+    for log_record in webserver_records.values():
+        log_record.save()
 
     logger.info("Harvest {1} records from log file '{0}'".format(log_file,records))
             
