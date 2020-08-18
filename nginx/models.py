@@ -610,7 +610,7 @@ class RequestPathNormalizer(models.Model):
     _module = None
 
     filter_code = models.CharField(max_length=512,null=False,unique=True,help_text="A lambda function with two parameters 'webserver' and 'request_path'")
-    normalize_code = models.TextField(null=False,unique=True,help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path")
+    normalize_code = models.TextField(null=False,help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path")
 
     order = models.PositiveSmallIntegerField(null=False,default=1,help_text="The order to find the filter rule, high order means hight priority")
     changed = models.DateTimeField(null=False,auto_now=True,help_text="The last time when the filter was changed")
