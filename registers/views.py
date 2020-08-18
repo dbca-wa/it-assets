@@ -10,7 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
-from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
+from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, TemplateView
 from organisation.models import DepartmentUser
 from pytz import timezone
 import re
@@ -564,6 +564,8 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
 
 
 class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
+    """A list view to display a summary of risk assessments for all IT Systems.
+    """
     model = ITSystem
     paginate_by = 20
     template_name = 'registers/riskassessment_list.html'
@@ -597,6 +599,8 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
 
 
 class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
+    """A detail view to display a risk assessments and dependencies for a single IT System.
+    """
     model = ITSystem
     template_name = 'registers/riskassessment_detail.html'
 
@@ -610,5 +614,19 @@ class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
         context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
         # Breadcrumb links:
         links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, obj.system_id)]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
+        return context
+
+
+class RiskAssessmentGlossary(LoginRequiredMixin, TemplateView):
+    """A static template to display a glossary of what each risk assessment means, per category.
+    """
+    template_name = 'registers/riskassessment_glossary.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Glossary"
+        # Breadcrumb links:
+        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Glossary")]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
         return context

@@ -23,5 +23,6 @@ urlpatterns = [
     path('standardchange/<int:pk>/', views.StandardChangeDetail.as_view(), name='standard_change_detail'),
     # Views related to risk assessments.
     path('riskassessment/itsystem/', views.RiskAssessmentITSystemList.as_view(), name='riskassessment_itsystem_list'),
+    path('riskassessment/itsystem/glossary/', views.RiskAssessmentGlossary.as_view(), name='riskassessment_glossary'),
     path('riskassessment/itsystem/<int:pk>/', views.RiskAssessmentITSystemDetail.as_view(), name='riskassessment_itsystem_detail'),
 ]

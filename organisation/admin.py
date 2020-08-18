@@ -132,7 +132,7 @@ class DepartmentUserAdmin(VersionAdmin):
             pass
 
         if broker_available:
-            async_task(deptuser_azure_sync, obj)
+            async_task('organisation.utils.deptuser_azure_sync', obj)
         else:
             deptuser_azure_sync(obj)
 
@@ -160,14 +160,18 @@ class ADActionAdmin(ModelAdmin):
 
     date_hierarchy = 'created'
     fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
-    list_display = ('created', 'department_user', '__str__', 'completed', 'completed_by')
+    list_display = ('created', 'department_user', 'azure_guid', 'action', 'completed', 'completed_by')
     list_filter = (CompletedFilter, 'action_type')
     readonly_fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
     search_fields = ('department_user__name',)
 
     def has_add_permission(self, request):
-        """AD actions should not be created manually in the admin site.
-        """
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 

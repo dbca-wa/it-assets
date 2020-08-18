@@ -1,0 +1,58 @@
+{% extends "base_b4.html" %}
+
+{% block extra_style %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.21.0/themes/prism.min.css" integrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSwKHxxrsiw4GHKESGPs5njn/0sMCUMl2svV4wo4BK/rCP7juYz+zx+l6oeQ==" crossorigin="anonymous" />
+{% endblock %}
+
+{% block page_content_inner %}
+<h1>
+    {{ page_title }}
+</h1>
+
+<table class="table table-bordered table-condensed">
+
+    <tbody>
+        <tr>
+            <th>Created</th>
+            <td>{{ object.created }}</td>
+        </tr>
+        <tr>
+            <th>Department user</th>
+            <td>{{ object.department_user }}</td>
+        </tr>
+        <tr>
+            <th>Azure Object ID</th>
+            <td>{{ object.azure_guid }}</td>
+        </tr>
+        <tr>
+            <th>Azure field name</th>
+            <td>{{ object.ad_field }}</td>
+        </tr>
+        <tr>
+            <th>New value</th>
+            <td>{{ object.field_value }}</td>
+        </tr>
+    </tbody>
+
+</table>
+
+<h1>PowerShell instructions</h1>
+
+<pre>
+<code class="language-powershell">
+Connect-AzureAD
+Set-AzureADUser -ObjectId {{ object.azure_guid}} -{{ object.ad_field }} '{{ object.field_value }}'
+</code>
+</pre>
+
+<p>
+    <a href="{% url 'ad_action_complete' pk=object.pk %}" class="btn btn-primary"><i class="fas fa-check"></i> Mark as completed</a>
+</p>
+
+{% endblock page_content_inner %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.21.0/prism.min.js" integrity="sha512-WkVkkoB31AoI9DAk6SEEEyacH9etQXKUov4JRRuM1Y681VsTq7jYgrRw06cbP6Io7kPsKx+tLFpH/HXZSZ2YEQ==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.21.0/components/prism-powershell.min.js" integrity="sha512-1G3vveJPpWtkUP8ud6BVJGNEJELeOeZO2moSOWkju4yJFlJRAq+rg1UpDSsFBR9O1VBsB/q3hI0TNwsHeVJf4A==" crossorigin="anonymous"></script>
+{% endblock %}

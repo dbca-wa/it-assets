@@ -1,14 +1,10 @@
 from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from dbca_utils.utils import env
-from django.conf import settings
 from django.core.files.base import ContentFile
 import json
-import logging
 import os
 import re
-import subprocess
-
 
 
 def get_azure_users_json(container, azure_json_path):
@@ -82,7 +78,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
 
 
 def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.json'):
-    """Utility function to perform all of the steps to sync up a DepartmentUser and Azure AD.
+    """Utility function to perform all of the steps to sync up a single DepartmentUser and Azure AD.
     Function may be run as-is, or queued as an asynchronous task.
     """
     azure_users = get_azure_users_json(container, azure_json)
@@ -94,31 +90,12 @@ def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.jso
         dept_user.audit_ad_actions(azure_user)
 
 
-# Python 2 can't serialize unbound functions, so here's some dumb glue
 def get_photo_path(instance, filename='photo.jpg'):
     return os.path.join('user_photo', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
 
 
 def get_photo_ad_path(instance, filename='photo.jpg'):
     return os.path.join('user_photo_ad', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
-
-
-def logger_setup(name):
-    # Ensure that the logs dir is present.
-    subprocess.check_call(['mkdir', '-p', 'logs'])
-    # Set up logging in a standardised way.
-    logger = logging.getLogger(name)
-    if settings.DEBUG:
-        logger.setLevel(logging.DEBUG)
-    else:  # Log at a higher level when not in debug mode.
-        logger.setLevel(logging.INFO)
-    if not len(logger.handlers):  # Avoid creating duplicate handlers.
-        fh = logging.handlers.RotatingFileHandler(
-            'logs/{}.log'.format(name), maxBytes=5 * 1024 * 1024, backupCount=5)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-    return logger
 
 
 def convert_ad_timestamp(timestamp):

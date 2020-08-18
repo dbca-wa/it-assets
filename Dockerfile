@@ -3,7 +3,7 @@ FROM python:3.7.8-slim-buster as builder_base_itassets
 MAINTAINER asi@dbca.wa.gov.au
 RUN apt-get update -y \
   && apt-get upgrade -y \
-  && apt-get install --no-install-recommends -y wget git libmagic-dev gcc binutils gdal-bin proj-bin python3-dev \
+  && apt-get install --no-install-recommends -y wget git libmagic-dev gcc binutils gdal-bin proj-bin python3-dev nmap \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --upgrade pip
 
@@ -28,12 +28,9 @@ FROM python_libs_itassets
 COPY gunicorn.py manage.py ./
 COPY assets ./assets
 COPY itassets ./itassets
-COPY knowledge ./knowledge
-COPY recoup ./recoup
 COPY registers ./registers
 COPY status ./status
 COPY tracking ./tracking
-COPY webconfig ./webconfig
 COPY nginx ./nginx
 COPY rancher ./rancher
 COPY bigpicture ./bigpicture

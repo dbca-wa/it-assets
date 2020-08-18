@@ -34,7 +34,7 @@ djangorestframework = "3.9.1"
 djangorestframework-csv = "2.1.0"
 djangorestframework-gis = "0.14"
 djangorestframework-recursive = "0.1.2"
-django-cors-headers = "2.4.0"
+django-cors-headers = "3.4.0"
 django-crispy-forms = "1.7.2"
 adal = "1.2.0"
 boto3 = "1.9.86"
@@ -44,9 +44,11 @@ titlecase = "0.12.0"
 sentry-sdk = "0.13.5"
 beautifulsoup4 = "4.8.0"
 pyyaml = "5.3.1"
-data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.4"}
+data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.5"}
 webtemplate-dbca = "^1.2.1"
 django-bootstrap-pagination = "^1.7.1"
+pybind11 = "2.5.0"
+pysimdjson = "2.5.1"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.16.1"

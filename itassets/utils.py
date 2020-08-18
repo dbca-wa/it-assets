@@ -1,8 +1,29 @@
+from django.conf import settings
 from django.db.models import Q
 from django.http import HttpResponse
 from djqscsv import render_to_csv_response
+import logging
 import re
 from restless.dj import DjangoResource
+import subprocess
+
+
+def logger_setup(name):
+    # Ensure that the logs dir is present.
+    subprocess.check_call(['mkdir', '-p', 'logs'])
+    # Set up logging in a standardised way.
+    logger = logging.getLogger(name)
+    if settings.DEBUG:
+        logger.setLevel(logging.DEBUG)
+    else:  # Log at a higher level when not in debug mode.
+        logger.setLevel(logging.INFO)
+    if not len(logger.handlers):  # Avoid creating duplicate handlers.
+        fh = logging.handlers.RotatingFileHandler(
+            'logs/{}.log'.format(name), maxBytes=5 * 1024 * 1024, backupCount=5)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+    return logger
 
 
 def breadcrumbs_list(links):
