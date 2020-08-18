@@ -613,7 +613,7 @@ class RequestPathNormalizer(models.Model):
     _module = None
 
     filter_code = models.CharField(max_length=512,null=False,unique=True,help_text="A lambda function with two parameters 'webserver' and 'request_path'")
-    normalize_code = models.TextField(null=False,unique=True,help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path")
+    normalize_code = models.TextField(null=False,help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path")
 
     order = models.PositiveSmallIntegerField(null=False,default=1,help_text="The order to find the filter rule, high order means hight priority")
     changed = models.DateTimeField(null=False,auto_now=True,help_text="The last time when the filter was changed")
@@ -878,7 +878,33 @@ def apply_rules(context={}):
         del_records.clear()
         excluded_records.clear()
         key = None
-        for record in WebAppAccessLog.objects.filter(log_starttime = log_starttime):
+        webserver = None
+        not_changed_keys = []
+        webserver_records = None
+        for record in WebAppAccessLog.objects.filter(log_starttime = log_starttime).order_by("webserver"):
+            if webserver:
+                if webserver != record.webserver:
+                    not_changed_keys.clear()
+                    for key,log_record in records[webserver].items():
+                        if not log_record._changed:
+                            not_changed_keys.append(key)
+
+                    for key in not_changed_keys:
+                        del records[webserver][key]
+
+                    not_changed_keys.clear()
+                    if not records[webserver]:
+                        del records[webserver]
+
+                    webserver = record.webserver
+                    records[webserver] = {}
+                    webserver_records = records[webserver]
+            else:
+                webserver = record.webserver
+                records[webserver] = {}
+                webserver_records = records[webserver]
+                    
+
             if path_normalizer_changed:
                 path_changed,request_path = RequestPathNormalizer.normalize_path(
                     record.webserver,
@@ -913,9 +939,9 @@ def apply_rules(context={}):
             else:
                 record._changed = False
 
-            key = (log_starttime,record.webserver,record.request_path,record.http_status,record.path_parameters)
-            if key in records:
-                accesslog = records[key]
+            key = (record.request_path,record.http_status,record.path_parameters)
+            if key in webserver_records:
+                accesslog = webserver_records[key]
                 accesslog.requests += int(record.requests)
                 accesslog.total_response_time += record.total_response_time
                 if accesslog.max_response_time < record.max_response_time:
@@ -928,26 +954,25 @@ def apply_rules(context={}):
                 del_records.append(record.id)
                 accesslog._changed = True
             else:
-                records[key] = record
+                webserver_records[key] = record
 
         with transaction.atomic():
-            changed = False
-            for key,record in records.items():
-                if record._changed:
-                    record.save()
-                    changed = True
+            changed_records = 0
+            for webserver_records in records.values():
+                for log_record in webserver_records.values():
+                    if log_record._changed:
+                        log_record.save()
+                        changed_records += 1
 
             if del_records:
                 WebAppAccessLog.objects.filter(id__in=del_records).delete()
-                changed = True
 
             if excluded_records:
                 WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
-                changed = True
 
-            if changed:
-                logger.debug("{0}: {1} log records have been merged into {2} log records,{3} log records were removed".format(log_starttime,len(del_records),len(records),len(excluded_records)))
-
+            if changed_records or del_records or excluded_records:
+                logger.debug("{0}: {1} log records have been merged into {2} log records,{3} log records were removed".format(log_starttime,len(del_records),changed_records,len(excluded_records)))
+                    
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
         if context["f_renew_lock"] and context["renew_lock_time"]:
