@@ -223,9 +223,9 @@ def process_log_file(context,metadata,log_file):
                     requests = int(record["requests"]),
                     max_response_time = to_float(record["max_response_time"]),
                     min_response_time = to_float(record["min_response_time"]),
-                    avg_response_time = to_float(record["avg_response_time"]),
                     total_response_time = to_float(record["total_response_time"])
                 )
+                accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
                 if accesslog.webserver not in context.get("webapps",{}):
                     if "webapps" not in context:
                         context["webapps"] = {}
