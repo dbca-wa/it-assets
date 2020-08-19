@@ -150,12 +150,21 @@ class Dependency(models.Model):
         help_text="The category of this dependency.",
     )
     risks = GenericRelation(RiskAssessment)
+    name = models.TextField(
+        blank=True, editable=False,
+        help_text="String representation value of the content object, for querying",
+    )
 
     class Meta:
         verbose_name_plural = "dependencies"
+        unique_together = ("content_type", "object_id", "category")
 
     def __str__(self):
         return "{} - {}".format(self.content_object, self.category)
+
+    def save(self, *args, **kwargs):
+        self.name = str(self.content_object)
+        super(Dependency, self).save(*args, **kwargs)
 
 
 HEALTH_CHOICES = (

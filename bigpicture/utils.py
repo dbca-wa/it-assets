@@ -75,8 +75,8 @@ def host_dependencies():
             i.save()
 
     for i in WebServer.objects.filter(host__isnull=False):
-        if Dependency.objects.filter(content_type=webserver_ct, object_id=i.pk).exists():
-            webserver_dep = Dependency.objects.get(content_type=webserver_ct, object_id=i.pk)
+        if Dependency.objects.filter(content_type=webserver_ct, object_id=i.pk, category='Proxy target').exists():
+            webserver_dep = Dependency.objects.get(content_type=webserver_ct, object_id=i.pk, category='Proxy target')
             it_systems = ITSystem.objects.filter(dependencies__in=[webserver_dep])
             # Create a Host dependency
             host_dep, created = Dependency.objects.get_or_create(
