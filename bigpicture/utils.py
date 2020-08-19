@@ -198,6 +198,7 @@ def workload_risks_vulns():
     for workload in Workload.objects.filter(image_scan_timestamp__isnull=False):
         if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
             for dep in Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk):
+                # Vulnerabilities
                 vulns = workload.get_image_scan_vulns()
 
                 if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Vulnerability').exists():
@@ -218,6 +219,21 @@ def workload_risks_vulns():
                     ra.rating = 0
                     ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
                 ra.save()
+
+                # Operating System
+                os = workload.get_image_scan_os()
+                if os:
+                    if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Operating System').exists():
+                        risk = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Operating System')
+                    else:
+                        risk = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Operating System')
+                    if os in OS_EOL:
+                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) is past end-of-life'.format(os)
+                        risk.rating = 3
+                    else:
+                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) supported'.format(os)
+                        risk.rating = 0
+                    risk.save()
 
 
 def itsystem_risks_critical_function(it_systems=None):
