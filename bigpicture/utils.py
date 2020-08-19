@@ -261,7 +261,10 @@ def itsystem_risks_backups(it_systems=None):
             if it.backups:
                 if not backup_risk:
                     backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
-                backup_risk.rating = 0  # TODO: risk rating base of backup type.
+                if it.backups == 1:  # Daily local with point in time DB recovery.
+                    backup_risk.rating = 0
+                else:
+                    backup_risk.rating = 1  # Daily local / vendor-managed.
                 backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
             else:
                 if not backup_risk:

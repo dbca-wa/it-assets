@@ -14,6 +14,7 @@ RISK_CATEGORY_CHOICES = (
     ("Operating System", "Operating System"),
     ("Vulnerability", "Vulnerability"),
     ("Contingency plan", "Contingency plan"),
+    # ("Maintenance investment", "Maintenance investment"),
 )
 
 
