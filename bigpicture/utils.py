@@ -27,6 +27,10 @@ def webserver_dependencies():
     webserver_ct = ContentType.objects.get_for_model(WebServer.objects.first())
 
     for it in ITSystem.objects.all():
+        # Remove any existing webserver dependencies.
+        for dep in it.dependencies.filter(content_type=webserver_ct):
+            it.dependencies.remove(dep)
+        # Link current webserver dependencies.
         if it.alias.exists():
             for alias in it.alias.all():
                 alias = it.alias.first()
@@ -50,6 +54,12 @@ def workload_dependencies():
     # These are derived from scans of Kubernetes clusters.
     workload_ct = ContentType.objects.get_for_model(Workload.objects.first())
 
+    # Remove any existing IT System workload dependencies.
+    for it in ITSystem.objects.all():
+        for dep in it.dependencies.filter(content_type=workload_ct):
+            it.dependencies.remove(dep)
+
+    # Link current workload dependencies.
     for workload in Workload.objects.all().exclude(project__name='System'):
         for webapp in workload.webapps:
             if webapp.system_alias.system:
@@ -197,13 +207,13 @@ def workload_risks_vulns():
 
                 if 'CRITICAL' in vulns:
                     ra.rating = 3
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulns (trivy)'.format(workload.image, vulns['CRITICAL'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulnerabilities (trivy)'.format(workload.image, vulns['CRITICAL'])
                 elif 'HIGH' in vulns:
                     ra.rating = 2
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulns (trivy)'.format(workload.image, vulns['HIGH'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulnerabilities (trivy)'.format(workload.image, vulns['HIGH'])
                 elif 'MEDIUM' in vulns:
                     ra.rating = 1
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulns (trivy)'.format(workload.image, vulns['MEDIUM'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulnerabilities (trivy)'.format(workload.image, vulns['MEDIUM'])
                 else:
                     ra.rating = 0
                     ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
