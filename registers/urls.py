@@ -24,5 +24,6 @@ urlpatterns = [
     # Views related to risk assessments.
     path('riskassessment/itsystem/', views.RiskAssessmentITSystemList.as_view(), name='riskassessment_itsystem_list'),
     path('riskassessment/itsystem/glossary/', views.RiskAssessmentGlossary.as_view(), name='riskassessment_glossary'),
+    path('riskassessment/itsystem/export/', views.RiskAssessmentExport.as_view(), name='riskassessment_export'),
     path('riskassessment/itsystem/<int:pk>/', views.RiskAssessmentITSystemDetail.as_view(), name='riskassessment_itsystem_detail'),
 ]
