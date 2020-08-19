@@ -47,8 +47,10 @@ def get_resource_consume_client():
     return _resource_consume_client
 
 upstream_block_re = re.compile("(\s+|^)upstream\s+(?P<name>[a-zA-Z0-9_\-]+)\s*{(?P<body>[^\}]+)}")
-upstream_comments_re = re.compile("#[^\n]+(\n|$)")
+comments_re = re.compile("#[^\n]+(\n|$)")
 upstream_server_re = re.compile("(^|\s+|;)\s*server\s+(?P<server>[a-zA-Z0-9_\-\.]+):(?P<port>[0-9]+)")
+clientip_subnet_block_re = re.compile("(\s+|^)geo\s+\$(?P<name>[a-zA-Z0-9_\-]+)\s*{(?P<body>[^\}]+)}")
+clientip_subnet_rule_re =  re.compile("^\s*if\s+\(\s*\$(?P<name>[a-zA-Z0-9_\-]+)\s*=\s*0\s*\)\s*{\s*return\s*(403|401)\s*;?\s*}\s*;?\s*$",re.IGNORECASE)
 
 sso_auth_domains = [
     (WebAppLocation.SSO_AUTH_TO_DBCA,WebApp.SSO_AUTH_TO_DBCA),
@@ -67,11 +69,12 @@ def process_nginx(nginx_config_resources):
     nginx_includes = nginx_config_json["nginx_includes"]
 
     #parse pre.conf
+    clientip_subnets = {}
     upstream_servers = {}
     pre_conf = nginx_includes.get("pre.conf")
     if pre_conf:
         #remove comments
-        pre_conf = upstream_comments_re.sub("\n",pre_conf)
+        pre_conf = comments_re.sub("\n",pre_conf)
         #parse upstream
         for m in upstream_block_re.finditer(pre_conf):
             name = m.group("name")
@@ -79,12 +82,18 @@ def process_nginx(nginx_config_resources):
             upstream_servers[name] = []
             for s_m in upstream_server_re.finditer(body):
                 upstream_servers[name].append([s_m.group("server"),int(s_m.group("port"))])
-
         logger.debug("""upstream servers:
 {}
 """.format(json.dumps(upstream_servers,cls=JSONEncoder,indent="    ")))
 
+        #parse clientip_subnets
+        for m in clientip_subnet_block_re.finditer(pre_conf):
+            name = m.group("name")
+            clientip_subnets[name] = m.group(0).strip()
 
+        logger.debug("""clientip_subnets:
+{}
+""".format(json.dumps(clientip_subnets,cls=JSONEncoder,indent="    ")))
 
     includes = {}
     def expand_include(include,prefix=""):
@@ -99,18 +108,20 @@ def process_nginx(nginx_config_resources):
         if not isinstance(include_config,str):
             raise Exception("The nginx include({}) is type({}),Not supported".foramt(include,include_config.__class__.__name__))
         include_config_lines = include_config.split(os.linesep)
-        #split the multi statments in a single line to multiple lines
+
         i = len(include_config_lines) - 1
         while i >= 0:
             line = include_config_lines[i]
             striped_line = line.strip()
-            subprefix = line[0:line.index(striped_line)]
-            sublines = [l.strip() for l in striped_line.split(";") if l.strip()]
-            if len(sublines) > 1:
-                del include_config_lines[i]
-                sublines.reverse()
-                for l in sublines:
-                    include_config_lines.insert(i,"{}{};".format(subprefix,l))
+            if "include " in striped_line:
+                #only try to split the line with multi statements into multi lines  if "include" statement is included in the line
+                subprefix = line[0:line.index(striped_line)]
+                sublines = [l.strip() for l in striped_line.split(";") if l.strip()]
+                if len(sublines) > 1:
+                    del include_config_lines[i]
+                    sublines.reverse()
+                    for l in sublines:
+                        include_config_lines.insert(i,"{}{};".format(subprefix,l))
             i -= 1
 
         #expand the nested include 
@@ -148,11 +159,10 @@ def process_nginx(nginx_config_resources):
     nginx_servers = nginx_json["nginx_servers"]
     expanded_server_config = ""
     servers  = {}
+    clientip_subnet = None
     #combine the nginx config 
     for server,server_config in nginx_servers.items():
-        if server not in [ "healthyrivers.dpaw.wa.gov.au"]:
-            #continue
-            pass
+        clientip_subnet = None
         expanded_server_config = ""
         if "redirect" in server_config:
             server_redirect = server_config["redirect"]
@@ -162,8 +172,19 @@ redirect {};""".format(expanded_server_config,server_redirect)
             #expand includes
             server_includes = server_config["includes"]
             for include in server_includes:
+                expanded_include = expand_include(include)
+                #check whether the include is a clientip subnet rule
+                m = clientip_subnet_rule_re.search(expanded_include)
+                if m:
+                    #clientip subnet rule
+                    clientip_subnet = m.group('name')
+                    if clientip_subnet not in clientip_subnets:
+                        raise Exception("Geo block for ({}) Not Found".format(clientip_subnet))
+                    expanded_include = """{}
+{}""".format(expanded_include,clientip_subnets[clientip_subnet])
+                    
                 expanded_server_config = """{}
-{}""".format(expanded_server_config,expand_include(include))
+{}""".format(expanded_server_config,expanded_include)
         if "locations" in server_config:
             server_locations = server_config["locations"]
             for location in server_locations:
@@ -190,7 +211,7 @@ location {} {{
 }}""".format(expanded_server_config,location_path,os.linesep.join(location_rules))
 
         expanded_server_config = expanded_server_config.strip()
-        servers[server] = expanded_server_config
+        servers[server] = (expanded_server_config,clientip_subnet)
         #print("{}\n{}\n\n".format(server,expanded_server_config))
 
     #parse the combined nginx configure
@@ -199,11 +220,9 @@ location {} {{
     system_envs.sort(key=lambda e:len(e.name),reverse=True)
     redirect_servers = []
     serverids = []
+    redirect_serverids = []
     for server in sorted(servers.keys(),key=lambda name:name.split(".",1)[0]):
-        server_config = servers[server]
-        if server not in [ "wildlifelicensing-internal.dpaw.wa.gov.au"]:
-            #continue
-            pass
+        server_config,clientip_subnet = servers[server]
         try:
             server_alias,server_domain,server_env = parse_server(server,domains=domains,system_envs = system_envs)
             #print("============" + server + "\t"  + server_alias.name + "\t" + server_env.name)
@@ -218,7 +237,7 @@ domain={}
 env={}
 
 redirect to {}{}""".format(server_alias,server_domain,server_env,redirect_to_server,redirect_path or ""))
-            redirect_servers.append((server,server_config,server_alias,server_domain,server_env,redirect_to_server,redirect_path))
+            redirect_servers.append((server,server_config,server_alias,server_domain,server_env,redirect_to_server,redirect_path,clientip_subnet))
             continue
         else:
             logger.debug("""name={}
@@ -232,6 +251,9 @@ Locations
 {}""".format(server_alias,server_domain,server_env,os.linesep.join("host={listen_host} port={listen_port} https={https}".format(**l) for l in server_listens),json.dumps(server_locations,cls=JSONEncoder,indent="    ")))
         #save app
         app = WebApp.objects.filter(name=server).first()
+        if not app:
+            app = WebApp(name = server,config_modified=timezone.now())
+
         sso_required = False
         for location in server_locations:
             if location["auth_type"] in (WebAppLocation.SSO_AUTH,WebAppLocation.SSO_AUTH_DUAL):
@@ -246,9 +268,6 @@ Locations
                     auth_domain = a_domain[1]
                     break
 
-        if not app:
-            app = WebApp(name = server,config_modified=timezone.now())
-
         update_fields = []
         for f,val in [
             ("system_alias",server_alias),
@@ -258,6 +277,7 @@ Locations
             ("redirect_to",None),
             ("redirect_to_other",None),
             ("redirect_path",None),
+            ("clientip_subnet",clientip_subnet),
             ("auth_domain",auth_domain)
         ]:
             app.set_config(f,val,update_fields)
@@ -396,25 +416,24 @@ Locations
                 save_location_forward_servers(location,server_location["forward_servers"],created=True)
 
 
-    #process redirect server
+    #process webapp which redirect to another dbca webapp
+    created_servers = 0
     while redirect_servers:
         index = len(redirect_servers) - 1
         created_servers = 0
         while index >= 0:
-            server,server_config,server_alias,server_domain,server_env,redirect_server,redirect_path = redirect_servers[index]
+            server,server_config,server_alias,server_domain,server_env,redirect_server,redirect_path,clientip_subnet = redirect_servers[index]
             try:
                 #save app
                 app = WebApp.objects.filter(name=server).first()
+                if not app:
+                    app = WebApp(name = server,config_modified=timezone.now())
+
                 try:
                     target_server = WebApp.objects.get(name=redirect_server)
                 except ObjectDoesNotExist as ex:
                     target_server = None
                     continue
-
-                del redirect_servers[index]
-    
-                if not app:
-                    app = WebApp(name = server,config_modified=timezone.now())
 
                 update_fields = []
                 for f,val in [
@@ -424,6 +443,7 @@ Locations
                     ("redirect_to",target_server),
                     ("redirect_to_other",None),
                     ("redirect_path",redirect_path),
+                    ("clientip_subnet",clientip_subnet),
                     ("auth_domain",target_server.auth_domain),
                     ("configure_txt",server_config)
                 ]:
@@ -431,11 +451,11 @@ Locations
 
                 if not app.pk:
                     app.save()
-                    serverids.append(app.pk)
+                    redirect_serverids.append(app.pk)
                     logger.debug("Create the WebApp({})".format(app))
                     created_servers += 1
                 else:
-                    serverids.append(app.pk)
+                    redirect_serverids.append(app.pk)
                     if update_fields:
                         app.config_changed_columns = list(update_fields)
                         update_fields.append("config_changed_columns")
@@ -453,58 +473,70 @@ Locations
         
                     #delete app location data
                     WebAppLocation.objects.filter(app = app).delete()
+
+                del redirect_servers[index]
             finally:
                 index -= 1
 
-        if created_servers == 0 and redirect_servers:
-            for server,server_config,server_alias,server_domain,server_env,redirect_server,redirect_path in redirect_servers:
-                #save app
-                app = WebApp.objects.filter(name=server).first()
-                if not app:
-                    app = WebApp(name = server,config_modified=timezone.now())
-
-                update_fields = []
-                for f,val in [
-                    ("system_alias",server_alias),
-                    ("system_env",server_env),
-                    ("domain",server_domain),
-                    ("redirect_to",None),
-                    ("redirect_to_other",redirect_server),
-                    ("redirect_path",redirect_path),
-                    ("auth_domain",WebApp.SSO_AUTH_NOT_REQUIRED),
-                    ("configure_txt",server_config)
-                ]:
-                    app.set_config(f,val,update_fields)
-
-                if not app.pk:
-                    app.save()
-                    serverids.append(app.pk)
-                    logger.debug("Create the WebApp({})".format(app))
-                    created_servers += 1
-                else:
-                    serverids.append(app.pk)
-                    if update_fields:
-                        app.config_changed_columns = list(update_fields)
-                        update_fields.append("config_changed_columns")
-
-                        app.config_modified = timezone.now()
-                        update_fields.append("config_modified")
-
-                        update_fields.append("modified")
-
-                        app.save(update_fields=update_fields)
-                        logger.debug("Update the WebApp({}),update_fields={}".format(app,update_fields))
-        
-                    #delete app listen data
-                    WebAppListen.objects.filter(app = app).delete()
-        
-                    #delete app location data
-                    WebAppLocation.objects.filter(app = app).delete()
+        if created_servers == 0:
             break
 
+    #process webapp which redirect to external webapp
+    if redirect_servers:
+        for server,server_config,server_alias,server_domain,server_env,redirect_server,redirect_path,clientip_subnet in redirect_servers:
+            #save app
+            app = WebApp.objects.filter(name=server).first()
+            if not app:
+                app = WebApp(name = server,config_modified=timezone.now())
+
+            update_fields = []
+            for f,val in [
+                ("system_alias",server_alias),
+                ("system_env",server_env),
+                ("domain",server_domain),
+                ("redirect_to",None),
+                ("redirect_to_other",redirect_server),
+                ("redirect_path",redirect_path),
+                ("clientip_subnet",clientip_subnet),
+                ("auth_domain",WebApp.SSO_AUTH_NOT_REQUIRED),
+                ("configure_txt",server_config)
+            ]:
+                app.set_config(f,val,update_fields)
+
+            if not app.pk:
+                app.save()
+                redirect_serverids.append(app.pk)
+                logger.debug("Create the WebApp({})".format(app))
+            else:
+                redirect_serverids.append(app.pk)
+                if update_fields:
+                    app.config_changed_columns = list(update_fields)
+                    update_fields.append("config_changed_columns")
+
+                    app.config_modified = timezone.now()
+                    update_fields.append("config_modified")
+
+                    update_fields.append("modified")
+
+                    app.save(update_fields=update_fields)
+                    logger.debug("Update the WebApp({}),update_fields={}".format(app,update_fields))
+    
+                #delete app listen data
+                WebAppListen.objects.filter(app = app).delete()
+    
+                #delete app location data
+                WebAppLocation.objects.filter(app = app).delete()
+
                 
-    #delete the not exist server 
-    WebApp.objects.exclude(pk__in=serverids).delete()
+    #delete the not-exist server which redirect to other webapp
+    del_objs = WebApp.objects.exclude(pk__in=redirect_serverids).filter(models.Q(redirect_to__isnull=False) | models.Q(redirect_to_other__isnull=False)).delete()
+    if del_objs[0]:
+        logger.debug("Delete {} WebApp which redirect to other application,deleted objects = {}".format(del_objs[0],del_objs[1]))
+
+    #delete the not-exist server which doesn't redirect to other webapp
+    del_objs = WebApp.objects.exclude(pk__in=serverids).filter(redirect_to__isnull=True,redirect_to_other__isnull=True).delete()
+    if del_objs[0]:
+        logger.debug("Delete {} WebApp which doesn't redirect to other application,deleted objects = {}".format(del_objs[0],del_objs[1]))
 
     logger.info("Parsing nginx configuration successfully.")
 
