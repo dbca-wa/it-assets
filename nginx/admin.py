@@ -356,13 +356,13 @@ class DailyLogDayFilter(admin.SimpleListFilter):
         else:
             return queryset.filter(log_day=timezone.make_aware(datetime.strptime(self.value(),"%Y-%m-%d")).date())
 
-class HttpStatusFilter(admin.SimpleListFilter):
+class HttpStatusGroupFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
     # right admin sidebar just above the filter options.
-    title = 'Http Status'
+    title = 'Http Status Group'
 
     # Parameter for the filter that will be used in the URL query.
-    parameter_name = 'http_status'
+    parameter_name = 'http_status_group'
 
     def lookups(self, request, model_admin):
         """
@@ -549,7 +549,7 @@ class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin
     readonly_fields = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_day','webserver','request_path',)
 
-    list_filter = (DailyLogDayFilter,HttpStatusFilter)
+    list_filter = (DailyLogDayFilter,HttpStatusGroupFilter)
 
     search_fields = ['webserver']
 
@@ -584,7 +584,7 @@ class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,Requ
 
     search_fields = ['webserver']
 
-    list_filter = (LogDayFilter,HttpStatusFilter)
+    list_filter = (LogDayFilter,HttpStatusGroupFilter)
 
     def get_urls(self):
         urls = super().get_urls()
