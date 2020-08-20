@@ -9,12 +9,13 @@
 
 <!-- Search bar -->
 <div class="row">
-    <div class="col col-sm-11">
+    <div class="col col-sm-10">
         <form action="" method="get">
             <input id="search_field" type="text" class="form-control" name="q" placeholder="Search IT Systems" value="{{ query_string }}">
         </form>
     </div>
-    <div class="col col-sm-1">
+    <div class="col col-sm-2">
+        <a class="btn btn-info" href="{% url 'riskassessment_export' %}"><i class="fas fa-file-export"></i> Export</a>
         <a class="btn btn-info" href="{% url 'riskassessment_glossary' %}"><i class="fas fa-info-circle"></i> Glossary</a>
     </div>
 </div>

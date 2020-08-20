@@ -170,13 +170,26 @@
     </dl>
 </div>
 
+<div class="alert alert-info">
+    <dl class="row">
+        <dt class="col-xs-4 col-sm-2">
+            Constrained
+        </dt>
+        <dd class="col-xs-8 col-sm-10">
+            The root location of this web application is not restricted behind O365 single-sign-on,
+            but is restricted to access from internal subnets only.
+        </dd>
+    </dl>
+</div>
+
 <div class="alert alert-warning">
     <dl class="row">
         <dt class="col-xs-4 col-sm-2">
             Constrained
         </dt>
         <dd class="col-xs-8 col-sm-10">
-            The root location of this web application is not restricted behind O365 single-sign-on.
+            The root location of this web application is not restricted behind O365 single-sign-on,
+            and is accessible from the public internet.
         </dd>
     </dl>
 </div>
@@ -194,7 +207,18 @@
             Recommended
         </dt>
         <dd class="col-xs-8 col-sm-10">
-            The IT system has a backup regime recorded.
+            The IT system has a backup regime of at least daily local snapshots, with point-in-time database recovery.
+        </dd>
+    </dl>
+</div>
+
+<div class="alert alert-info">
+    <dl class="row">
+        <dt class="col-xs-4 col-sm-2">
+            Managed
+        </dt>
+        <dd class="col-xs-8 col-sm-10">
+            The IT system has a backup regime of at least daily local snapshots, or backups are vendor-managed.
         </dd>
     </dl>
 </div>

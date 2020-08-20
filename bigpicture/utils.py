@@ -27,6 +27,10 @@ def webserver_dependencies():
     webserver_ct = ContentType.objects.get_for_model(WebServer.objects.first())
 
     for it in ITSystem.objects.all():
+        # Remove any existing webserver dependencies.
+        for dep in it.dependencies.filter(content_type=webserver_ct):
+            it.dependencies.remove(dep)
+        # Link current webserver dependencies.
         if it.alias.exists():
             for alias in it.alias.all():
                 alias = it.alias.first()
@@ -50,6 +54,12 @@ def workload_dependencies():
     # These are derived from scans of Kubernetes clusters.
     workload_ct = ContentType.objects.get_for_model(Workload.objects.first())
 
+    # Remove any existing IT System workload dependencies.
+    for it in ITSystem.objects.all():
+        for dep in it.dependencies.filter(content_type=workload_ct):
+            it.dependencies.remove(dep)
+
+    # Link current workload dependencies.
     for workload in Workload.objects.all().exclude(project__name='System'):
         for webapp in workload.webapps:
             if webapp.system_alias.system:
@@ -75,8 +85,8 @@ def host_dependencies():
             i.save()
 
     for i in WebServer.objects.filter(host__isnull=False):
-        if Dependency.objects.filter(content_type=webserver_ct, object_id=i.pk).exists():
-            webserver_dep = Dependency.objects.get(content_type=webserver_ct, object_id=i.pk)
+        if Dependency.objects.filter(content_type=webserver_ct, object_id=i.pk, category='Proxy target').exists():
+            webserver_dep = Dependency.objects.get(content_type=webserver_ct, object_id=i.pk, category='Proxy target')
             it_systems = ITSystem.objects.filter(dependencies__in=[webserver_dep])
             # Create a Host dependency
             host_dep, created = Dependency.objects.get_or_create(
@@ -188,6 +198,7 @@ def workload_risks_vulns():
     for workload in Workload.objects.filter(image_scan_timestamp__isnull=False):
         if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
             for dep in Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk):
+                # Vulnerabilities
                 vulns = workload.get_image_scan_vulns()
 
                 if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Vulnerability').exists():
@@ -197,17 +208,32 @@ def workload_risks_vulns():
 
                 if 'CRITICAL' in vulns:
                     ra.rating = 3
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulns (trivy)'.format(workload.image, vulns['CRITICAL'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulnerabilities (trivy)'.format(workload.image, vulns['CRITICAL'])
                 elif 'HIGH' in vulns:
                     ra.rating = 2
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulns (trivy)'.format(workload.image, vulns['HIGH'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulnerabilities (trivy)'.format(workload.image, vulns['HIGH'])
                 elif 'MEDIUM' in vulns:
                     ra.rating = 1
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulns (trivy)'.format(workload.image, vulns['MEDIUM'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulnerabilities (trivy)'.format(workload.image, vulns['MEDIUM'])
                 else:
                     ra.rating = 0
                     ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
                 ra.save()
+
+                # Operating System
+                os = workload.get_image_scan_os()
+                if os:
+                    if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Operating System').exists():
+                        risk = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Operating System')
+                    else:
+                        risk = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Operating System')
+                    if os in OS_EOL:
+                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) is past end-of-life'.format(os)
+                        risk.rating = 3
+                    else:
+                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) supported'.format(os)
+                        risk.rating = 0
+                    risk.save()
 
 
 def itsystem_risks_critical_function(it_systems=None):
@@ -261,7 +287,10 @@ def itsystem_risks_backups(it_systems=None):
             if it.backups:
                 if not backup_risk:
                     backup_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Backups')
-                backup_risk.rating = 0  # TODO: risk rating base of backup type.
+                if it.backups == 1:  # Daily local with point in time DB recovery.
+                    backup_risk.rating = 0
+                else:
+                    backup_risk.rating = 1  # Daily local / vendor-managed.
                 backup_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_backups_display())
             else:
                 if not backup_risk:
@@ -327,8 +356,12 @@ def itsystem_risks_access(it_systems=None):
                             if not risk:
                                 risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
                             if root_location.auth_type == 0:
-                                risk.rating = 2
-                                risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
+                                if webapp.clientip_subnet:
+                                    risk.rating = 1
+                                    risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO, but is restricted to internal subnets'
+                                else:
+                                    risk.rating = 2
+                                    risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO and is not restricted to internal subnets'
                             else:
                                 risk.rating = 0
                                 risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
