@@ -356,8 +356,12 @@ def itsystem_risks_access(it_systems=None):
                             if not risk:
                                 risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
                             if root_location.auth_type == 0:
-                                risk.rating = 2
-                                risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO'
+                                if webapp.clientip_subnet:
+                                    risk.rating = 1
+                                    risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO, but is restricted to internal subnets'
+                                else:
+                                    risk.rating = 2
+                                    risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO and is not restricted to internal subnets'
                             else:
                                 risk.rating = 0
                                 risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
