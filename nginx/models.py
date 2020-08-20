@@ -574,7 +574,7 @@ class WebAppLocationServer(models.Model):
             if not listening.ingress_rule.path:
                 if not workloadlistening:
                     workloadlistening = listening
-            elif self.location.startswith(listening.ingress_rule.path):
+            elif self.location.location.startswith(listening.ingress_rule.path):
                 if not workloadlistening:
                     workloadlistening = listening
                     path = listening.ingress_rule.path
