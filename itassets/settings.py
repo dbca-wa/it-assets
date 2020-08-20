@@ -94,7 +94,7 @@ TEMPLATES = [
     }
 ]
 
-ADMINS = ('asi@dbca.wa.gov.au',)
+ADMINS = env('ADMIN_EMAILS', 'asi@dbca.wa.gov.au').split(',')
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
 FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
 FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
