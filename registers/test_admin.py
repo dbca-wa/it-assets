@@ -32,24 +32,3 @@ class RegistersAdminTestCase(ApiTestCase):
         self.assertTrue(response.has_header("Content-Disposition"))
         self.assertEqual(response['Content-Type'],
                          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-    def test_itsystemdependency_reports(self):
-        """Test the ITSystemDependencyAdmin reports view
-        """
-        url = reverse('admin:itsystem_dependency_reports')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-    def test_itsystemdependency_report_all(self):
-        """Test the ITSystemDependencyAdmin reports/all view
-        """
-        url = reverse('admin:itsystem_dependency_report_all')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-    def test_itsystemdependency_report_nodeps(self):
-        """Test the ITSystemDependencyAdmin reports/nodeps view
-        """
-        url = reverse('admin:itsystem_dependency_report_nodeps')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
