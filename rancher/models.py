@@ -249,7 +249,7 @@ class Workload(models.Model):
     _image_vulns_str.short_description = 'Image vulnerabilities'
 
     class Meta:
-        unique_together = [["cluster", "namespace", "name"]]
+        unique_together = [["cluster", "namespace", "name","kind"]]
         ordering = ["cluster__name", 'namespace', 'name']
 
 

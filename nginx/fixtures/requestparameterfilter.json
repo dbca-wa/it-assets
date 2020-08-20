@@ -1,0 +1,28 @@
+[
+{
+    "model": "nginx.requestparameterfilter",
+    "pk": 1,
+    "fields": {
+        "filter_code": "lambda webserver,request_path:\"kmi\" in webserver",
+        "included_parameters": "[\"layers\", \"layer\", \"service\", \"request\", \"typename\"]",
+        "excluded_parameters": null,
+        "case_insensitive": true,
+        "order": 100,
+        "changed": "2020-08-18T04:21:05.456Z",
+        "applied": "2020-08-18T04:28:13.550Z"
+    }
+},
+{
+    "model": "nginx.requestparameterfilter",
+    "pk": 2,
+    "fields": {
+        "filter_code": "lambda webserver,request_path:True",
+        "included_parameters": "[\"__none__\"]",
+        "excluded_parameters": null,
+        "case_insensitive": true,
+        "order": 0,
+        "changed": "2020-08-06T01:04:27.679Z",
+        "applied": "2020-08-18T04:28:13.550Z"
+    }
+}
+]
