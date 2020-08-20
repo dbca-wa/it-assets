@@ -259,7 +259,7 @@ class Workload(models.Model):
                 return ''
 
     class Meta:
-        unique_together = [["cluster", "namespace", "name"]]
+        unique_together = [["cluster", "namespace", "name","kind"]]
         ordering = ["cluster__name", 'namespace', 'name']
 
 
