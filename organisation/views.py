@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import View, ListView, DetailView, UpdateView
 from itassets.utils import breadcrumbs_list
 
@@ -105,7 +106,7 @@ class ADActionComplete(LoginRequiredMixin, UpdateView):
     def get(self, request, *args, **kwargs):
         # We should already have check permissions in dispatch, so 'complete' the ADAction.
         action = self.get_object()
-        action.completed = datetime.now()
+        action.completed = timezone.localtime()
         action.completed_by = request.user
         action.save()
         messages.success(request, "Action {} has been marked as marked as completed".format(action.pk))
