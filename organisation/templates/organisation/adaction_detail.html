@@ -42,7 +42,11 @@
 <pre>
 <code class="language-powershell">
 Connect-AzureAD
+{% if object.field_value %}
 Set-AzureADUser -ObjectId {{ object.azure_guid}} -{{ object.ad_field }} '{{ object.field_value }}'
+{% else %}
+Set-AzureADUser -ObjectId {{ object.azure_guid}} -{{ object.ad_field }} $null
+{% endif %}
 </code>
 </pre>
 
