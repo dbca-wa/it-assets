@@ -69,7 +69,7 @@ class ADActionList(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = 'Azure Active Directory actions'
+        context['page_title'] = 'Active Directory actions'
         # Breadcrumb links:
         links = [(None, 'AD actions')]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
@@ -87,7 +87,7 @@ class ADActionDetail(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
-        context['page_title'] = 'Azure Active Directory action {}'.format(obj.pk)
+        context['page_title'] = 'Active Directory action {}'.format(obj.pk)
         # Breadcrumb links:
         links = [(reverse("ad_action_list"), "AD actions"), (None, obj.pk)]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
