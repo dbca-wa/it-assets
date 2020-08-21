@@ -311,9 +311,9 @@ class DepartmentUserResource(DjangoResource):
         if 'azure_guid' in self.data:  # Exception to the if/elif rule.
             user.azure_guid = self.data['azure_guid']
         if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
-            user.expiry_date = TIMEZONE.localize(parse(self.data['AccountExpirationDate']))
+            user.expiry_date = parse(self.data['AccountExpirationDate'])
         elif 'expiry_date' in self.data and self.data['expiry_date']:
-            user.expiry_date = TIMEZONE.localize(parse(self.data['expiry_date']))
+            user.expiry_date = parse(self.data['expiry_date'])
         if 'Title' in self.data:
             user.title = self.data['Title']
         elif 'title' in self.data:
@@ -370,9 +370,9 @@ class DepartmentUserResource(DjangoResource):
             elif 'ad_guid' in self.data and self.data['ad_guid']:
                 user.ad_guid = self.data['ad_guid']
             if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
-                user.expiry_date = TIMEZONE.localize(parse(self.data['AccountExpirationDate']))
+                user.expiry_date = parse(self.data['AccountExpirationDate'])
             elif 'expiry_date' in self.data and self.data['expiry_date']:
-                user.expiry_date = TIMEZONE.localize(parse(self.data['expiry_date']))
+                user.expiry_date = parse(self.data['expiry_date'])
             if 'Title' in self.data and self.data['Title']:
                 user.title = self.data['Title']
             elif 'title' in self.data and self.data['title']:
