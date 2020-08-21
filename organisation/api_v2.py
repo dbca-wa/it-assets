@@ -36,7 +36,6 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
             'id', 'name', 'preferred_name', 'email', 'username', 'title',
             'telephone', 'extension', 'mobile_phone',
             'location',
-            'photo_ad',
             'org_unit',
             'group_unit',
             'org_unit_chain',
