@@ -268,10 +268,9 @@ class DepartmentUserResource(DjangoResource):
         # anyway.
         # Rationale: we seem to have trouble getting the sync script to check for existing
         # objects by Azure AD GUID.
-        if 'azure_guid' in self.data:
-            if DepartmentUser.objects.filter(azure_guid=self.data['azure_guid']):
-                user = DepartmentUser.objects.get(azure_guid=self.data['azure_guid'])
-                LOGGER.warning('POST request sent but existing user {} matched by Azure AD GUID'.format(user.email))
+        if 'azure_guid' in self.data and DepartmentUser.objects.filter(azure_guid=self.data['azure_guid']).exists():
+            user = DepartmentUser.objects.get(azure_guid=self.data['azure_guid'])
+            LOGGER.warning('POST request sent but existing user {} matched by Azure AD GUID'.format(user.email))
         else:
             user = DepartmentUser()
 
