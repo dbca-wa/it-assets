@@ -84,10 +84,13 @@ class DepartmentUser(MPTTModel):
     assigned_licences = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')  # AssignedLicenses
     mail_nickname = models.CharField(max_length=128, null=True, blank=True)  # MailNickName
-    dir_sync_enabled = models.NullBooleanField(default=None)  # DirSyncEnabled
+    dir_sync_enabled = models.NullBooleanField(default=None)  # DirSyncEnabled - indicates that the Azure user is synced to on-prem AD.
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the address book.
+    ad_guid = models.CharField(
+        max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
+        help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
     preferred_name = models.CharField(
         max_length=256, null=True, blank=True, help_text='Employee-editable preferred name.')
     extension = models.CharField(
@@ -135,9 +138,6 @@ class DepartmentUser(MPTTModel):
         verbose_name='organisational unit',
         help_text="""The organisational unit that represents the user's"""
         """ primary physical location (also set their distribution group).""")
-    ad_guid = models.CharField(
-        max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
-        help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
     # NOTE: remove parent field after copying data to manager.
     parent = TreeForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
@@ -282,37 +282,44 @@ class DepartmentUser(MPTTModel):
         with IT Assets.
         ``azure_user`` will be a dict object derived from current Azure AD JSON output.
         """
-        if not self.azure_guid:
+        if not self.azure_guid and not self.ad_guid:
             return []
 
         actions = []
 
         for field in [
-            # ('AccountEnabled', 'active'),
-            # ('Mail', 'email'),
             ('DisplayName', 'name'),
             ('GivenName', 'given_name'),
             ('Surname', 'surname'),
             ('JobTitle', 'title'),
             ('TelephoneNumber', 'telephone'),
             ('Mobile', 'mobile_phone'),
-            #'Manager',
-            #CompanyName, Department
-            #PhysicalDeliveryOfficeName, PostalCode, State, StreetAddress
-            # ('ProxyAddresses', 'proxy_addresses'),
         ]:
             # Test if the dept user field value is truthy and the AD field in falsy, OR if the fields are not equal.
             if (getattr(self, field[1]) and not azure_user[field[0]]) or azure_user[field[0]] != getattr(self, field[1]):
                 # Get/create a non-completed ADAction for this dept user, for these fields.
                 # This should mean that only one ADAction object is generated for a given field,
                 # even if the value it IT Assets changes more than once before being synced in AD.
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field=field[0],
-                    field=field[1],
-                    completed=None,
-                )
+
+                if self.dir_sync_enabled:
+                    # On-prem AD
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field=AZURE_ONPREM_FIELD_MAP[field[0]],
+                        field=field[1],
+                        completed=None,
+                    )
+                else:
+                    # Azure AD
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field=field[0],
+                        field=field[1],
+                        completed=None,
+                    )
+
                 action.ad_field_value = azure_user[field[0]]
                 action.field_value = getattr(self, field[1])
                 action.save()
@@ -396,7 +403,17 @@ class DepartmentUser(MPTTModel):
                 action.delete()
             elif action.field == 'location.address' and azure_user['StreetAddress'] == self.location.address:
                 action.delete()
-            elif hasattr(self, action.field) and getattr(self, action.field) == azure_user[action.ad_field]:
+            elif action.field == 'name' and azure_user['DisplayName'] == self.name:
+                action.delete()
+            elif action.field == 'given_name' and azure_user['GivenName'] == self.given_name:
+                action.delete()
+            elif action.field == 'surname' and azure_user['Surname'] == self.surname:
+                action.delete()
+            elif action.field == 'title' and azure_user['JobTitle'] == self.title:
+                action.delete()
+            elif action.field == 'telephone' and azure_user['TelephoneNumber'] == self.telephone:
+                action.delete()
+            elif action.field == 'mobile_phone' and azure_user['Mobile'] == self.mobile_phone:
                 action.delete()
 
 
@@ -406,6 +423,15 @@ ACTION_TYPE_CHOICES = (
     ('Disable account', 'Disable account'),
     ('Enable account', 'Enable account'),
 )
+# This dict maps Azure AD field names to onprem AD field names.
+AZURE_ONPREM_FIELD_MAP = {
+    'AccountEnabled': 'Enabled',
+    'Mail': 'EmailAddress',
+    'JobTitle': 'Title',
+    'TelephoneNumber': 'OfficePhone',
+    'Mobile': 'MobilePhone',
+    'CompanyName': 'Company',
+}
 
 
 class ADAction(models.Model):

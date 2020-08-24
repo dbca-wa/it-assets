@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import View, ListView, DetailView, UpdateView
 from itassets.utils import breadcrumbs_list
 
@@ -69,7 +70,7 @@ class ADActionList(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = 'Azure Active Directory actions'
+        context['page_title'] = 'Active Directory actions'
         # Breadcrumb links:
         links = [(None, 'AD actions')]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
@@ -87,7 +88,7 @@ class ADActionDetail(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
-        context['page_title'] = 'Azure Active Directory action {}'.format(obj.pk)
+        context['page_title'] = 'Active Directory action {}'.format(obj.pk)
         # Breadcrumb links:
         links = [(reverse("ad_action_list"), "AD actions"), (None, obj.pk)]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
@@ -105,7 +106,7 @@ class ADActionComplete(LoginRequiredMixin, UpdateView):
     def get(self, request, *args, **kwargs):
         # We should already have check permissions in dispatch, so 'complete' the ADAction.
         action = self.get_object()
-        action.completed = datetime.now()
+        action.completed = timezone.localtime()
         action.completed_by = request.user
         action.save()
         messages.success(request, "Action {} has been marked as marked as completed".format(action.pk))

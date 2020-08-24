@@ -59,7 +59,7 @@ class DepartmentUserAdmin(VersionAdmin):
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
     filter_horizontal = ('secondary_locations',)
-    readonly_fields = ('active', 'email', 'assigned_licences', 'proxy_addresses')
+    readonly_fields = ('active', 'email', 'azure_guid', 'ad_guid', 'assigned_licences', 'proxy_addresses')
     fieldsets = (
         ('Active Directory account fields', {
             'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
@@ -103,9 +103,11 @@ class DepartmentUserAdmin(VersionAdmin):
                 'security_clearance',
             ),
         }),
-        ('Azure AD information', {
-            'description': '''These data are specific to Azure Active Directory only.''',
+        ('Active Directory information', {
+            'description': '''These data are specific to Active Directory only.''',
             'fields': (
+                'azure_guid',
+                'ad_guid',
                 'assigned_licences',
                 'proxy_addresses',
             ),

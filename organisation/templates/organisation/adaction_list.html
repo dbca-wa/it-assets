@@ -10,7 +10,6 @@
         <tr>
             <th>Created</th>
             <th>Department user</th>
-            <th>Azure Object ID</th>
             <th>Action</th>
             <th></th>
         </tr>
@@ -20,7 +19,6 @@
         <tr>
             <td>{{ obj.created }}</td>
             <td><a href="{% url 'admin:organisation_departmentuser_change' object_id=obj.department_user.pk %}">{{ obj.department_user }}</a></td>
-            <td>{{ obj.azure_guid }}</td>
             <td>{{ obj.action }}</td>
             <td>
                 <a href="{% url 'ad_action_detail' pk=obj.pk %}" class="btn btn-secondary btn-sm">Instructions</a>
@@ -30,5 +28,7 @@
     {% endfor %}
     </tbody>
 </table>
+{% else %}
+<p><em>No outstanding actions - good job, team!</em></p>
 {% endif %}
 {% endblock %}
