@@ -34,7 +34,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
     with values from Azure (the source of truth for these values).
     """
     dept_user.azure_guid = azure_user['ObjectId']
-    # dept_user.active = azure_user['AccountEnabled']
+    dept_user.active = azure_user['AccountEnabled']
     dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
     licence_pattern = 'SkuId:\s[a-z0-9-]+'
     dept_user.mail_nickname = azure_user['MailNickName']
