@@ -22,64 +22,83 @@ class Command(BaseCommand):
             help='Comma-separated list of additional emails to which to deliver the report')
 
     def handle(self, *args, **options):
-        d = date.today()
-        if options['datestring']:
-            try:
-                d = datetime.strptime(options['datestring'], '%Y-%m-%d').date()
-            except ValueError:
-                raise CommandError('Invalid date value: {} (use format YYYY-MM-DD)'.format(options['datestring']))
+        try:
+            d = date.today()
+            if options['datestring']:
+                try:
+                    d = datetime.strptime(options['datestring'], '%Y-%m-%d').date()
+                except ValueError:
+                    raise CommandError('Invalid date value: {} (use format YYYY-MM-DD)'.format(options['datestring']))
 
-        emails = None
-        if options['emails']:
-            try:
-                emails = options['emails'].split(',')
-            except ValueError:
-                raise CommandError('Invalid emails value: {} (use comma-separated string)'.format(options['emails']))
+            emails = None
+            if options['emails']:
+                try:
+                    emails = options['emails'].split(',')
+                except ValueError:
+                    raise CommandError('Invalid emails value: {} (use comma-separated string)'.format(options['emails']))
 
-        week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
-        week_end = week_start + timedelta(days=7)
-        rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+            week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
+            week_end = week_start + timedelta(days=7)
+            rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
 
-        # Construct the HTML / plaintext email content to send.
-        context = {
-            'start': week_start,
-            'object_list': rfcs,
-            'domain': Site.objects.get_current().domain,
-        }
-        html_content = render_to_string('registers/email_cab_rfc_calendar.html', context)
+            # Construct the HTML / plaintext email content to send.
+            context = {
+                'start': week_start,
+                'object_list': rfcs,
+                'domain': Site.objects.get_current().domain,
+            }
+            html_content = render_to_string('registers/email_cab_rfc_calendar.html', context)
 
-        table = Texttable(max_width=0)
-        table.set_cols_dtype(['i', 't', 't', 't', 't', 't', 't', 't'])
-        rows = [['Change ref', 'Title', 'Change type', 'Status', 'Requester', 'Endorser', 'Implementer', 'Planned start & end']]
-        for rfc in rfcs:
-            # Planned end date field might be blank.
-            planned_end = rfc.planned_end.strftime('%A, %d-%b-%Y %H:%M') if rfc.planned_end else ''
-            rows.append(
-                [
-                    rfc.pk,
-                    rfc.title,
-                    rfc.get_change_type_display(),
-                    rfc.get_status_display(),
-                    rfc.requester.get_full_name() if rfc.requester else '',
-                    rfc.endorser.get_full_name() if rfc.endorser else '',
-                    rfc.implementer.get_full_name() if rfc.implementer else '',
-                    '{}\n{}'.format(rfc.planned_start.strftime('%A, %d-%b-%Y %H:%M'), planned_end)
-                ]
+            table = Texttable(max_width=0)
+            table.set_cols_dtype(['i', 't', 't', 't', 't', 't', 't', 't'])
+            rows = [['Change ref', 'Title', 'Change type', 'Status', 'Requester', 'Endorser', 'Implementer', 'Planned start & end']]
+            for rfc in rfcs:
+                # Planned end date field might be blank.
+                planned_end = rfc.planned_end.strftime('%A, %d-%b-%Y %H:%M') if rfc.planned_end else ''
+                rows.append(
+                    [
+                        rfc.pk,
+                        rfc.title,
+                        rfc.get_change_type_display(),
+                        rfc.get_status_display(),
+                        rfc.requester.get_full_name() if rfc.requester else '',
+                        rfc.endorser.get_full_name() if rfc.endorser else '',
+                        rfc.implementer.get_full_name() if rfc.implementer else '',
+                        '{}\n{}'.format(rfc.planned_start.strftime('%A, %d-%b-%Y %H:%M'), planned_end)
+                    ]
+                )
+            table.add_rows(rows, header=True)
+            text_content = table.draw()
+
+            # Email the CAB members group.
+            if not Group.objects.filter(name='CAB members').exists():
+                raise CommandError('"CAB members" group does not exist.')
+            cab = Group.objects.get(name='CAB members')
+            subject = 'Weekly change calendar starting {}'.format(week_start.strftime('%A, %d %b %Y'))
+            recipients = list(User.objects.filter(groups__in=[cab], is_active=True).values_list('email', flat=True))
+
+            # Optional additional email recipients.
+            if emails:
+                recipients = recipients + emails
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.NOREPLY_EMAIL,
+                to=recipients,
             )
-        table.add_rows(rows, header=True)
-        text_content = table.draw()
-
-        # Email the CAB members group.
-        if not Group.objects.filter(name='CAB members').exists():
-            raise CommandError('"CAB members" group does not exist.')
-        cab = Group.objects.get(name='CAB members')
-        subject = 'Weekly change calendar starting {}'.format(week_start.strftime('%A, %d %b %Y'))
-        recipients = list(User.objects.filter(groups__in=[cab], is_active=True).values_list('email', flat=True))
-
-        # Optional additional email recipients.
-        if emails:
-            recipients = recipients + emails
-
-        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, recipients)
-        msg.attach_alternative(html_content, 'text/html')
-        msg.send()
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
+        except Exception as ex:
+            error = 'IT Assets email RFC calendar raised an exception at {}'.format(datetime.now().astimezone(timezone(settings.TIME_ZONE)).isoformat())
+            text_content = 'Exception:\n\n{}'.format(ex)
+            if not settings.DEBUG:
+                # Send an email to ADMINS.
+                msg = EmailMultiAlternatives(
+                    subject=error,
+                    body=text_content,
+                    from_email=settings.NOREPLY_EMAIL,
+                    to=settings.ADMINS,
+                )
+                msg.send()
+            raise CommandError(error)

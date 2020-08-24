@@ -207,17 +207,16 @@ description = "The client library for pushing resource to or fetching resource f
 name = "data-storage"
 optional = false
 python-versions = "*"
-version = "3.5"
+version = "3.7"
 
 [package.dependencies]
 azure-storage-blob = "12.3.1"
 pytz = "*"
 
 [package.source]
-reference = "aa0da573220b56294fa03eae3384fad67883c6d1"
+reference = "a277491f5cf79d05a6ae5daa8d0c41d43abda374"
 type = "git"
 url = "https://github.com/dbca-wa/data-storage.git"
-
 [[package]]
 category = "main"
 description = "Utilities for Django/Python apps"
@@ -1057,7 +1056,7 @@ python-versions = "*"
 version = "1.1.1"
 
 [metadata]
-content-hash = "264753e2808e96536eb078802fea583c805c450a696f945ca2b3a95e63e3921d"
+content-hash = "1c93f0eaf1a9da108c05f1ccc97583308d15fdbc3f94d29928378be8b83d2349"
 python-versions = "^3.7"
 
 [metadata.files]

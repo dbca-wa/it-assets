@@ -24,6 +24,7 @@ class DependencyAdmin(ModelDescMixin, VersionAdmin):
     list_display = ("content_object", "category", "updated")
     list_filter = ("category",)
     model_description = Dependency.__doc__
+    search_fields = ("name",)
 
 
 @admin.register(Platform)

@@ -23,7 +23,10 @@ from .forms import (
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm, ChangeRequestApprovalForm
 )
-from .reports import it_system_export, itsr_staff_discrepancies, incident_export, change_request_export, it_system_platform_export
+from .reports import (
+    it_system_export, itsr_staff_discrepancies, incident_export, change_request_export,
+    it_system_platform_export, riskassessment_export,
+)
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -630,3 +633,16 @@ class RiskAssessmentGlossary(LoginRequiredMixin, TemplateView):
         links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Glossary")]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
         return context
+
+
+class RiskAssessmentExport(LoginRequiredMixin, View):
+    """A custom view to export IT System risk assessments to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=risk_assessments_it_systems_{}_{}.xlsx'.format(
+            date.today().isoformat(), datetime.now().strftime('%H%M')
+        )
+        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+        response = riskassessment_export(response, it_systems)
+        return response

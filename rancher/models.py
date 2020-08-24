@@ -1,5 +1,6 @@
 import subprocess
 import json
+import re
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
@@ -18,7 +19,7 @@ class Cluster(models.Model):
     succeed_resources = models.PositiveIntegerField(editable=False,default=0)
     failed_resources = models.PositiveIntegerField(editable=False,default=0)
     refresh_message = models.TextField(null=True,blank=True,editable=False)
-    
+
 
     def __str__(self):
         return self.name
@@ -260,6 +261,15 @@ class Workload(DeletedMixin,models.Model):
             return ''
         return ', '.join(['{}: {}'.format(k.capitalize(), v) for (k, v) in self.get_image_scan_vulns().items()])
     _image_vulns_str.short_description = 'Image vulnerabilities'
+
+    def get_image_scan_os(self):
+        if self.image_scan_json and 'Target' in self.image_scan_json and self.image_scan_json['Target']:
+            pattern = '\\((.*?)\\)'
+            match = re.search(pattern, self.image_scan_json['Target'])
+            if match:
+                return match.groups()[0].capitalize()
+            else:
+                return ''
 
     class Meta:
         unique_together = [["cluster", "namespace", "name","kind"]]
