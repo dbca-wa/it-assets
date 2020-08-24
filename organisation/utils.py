@@ -44,11 +44,13 @@ def update_deptuser_from_azure(azure_user, dept_user):
 
     skus = [re.search(licence_pattern, i)[0].replace('SkuId: ', '') for i in azure_user['AssignedLicenses'] if re.search(licence_pattern, i)]
     dept_user.assigned_licences = []
+    # MS licence SKU reference:
+    # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     ms_licence_skus = {
         'c5928f49-12ba-48f7-ada3-0d743a3601d5': 'VISIOCLIENT',
         '1f2f344a-700d-42c9-9427-5cea1d5d7ba6': 'STREAM',
-        'b05e124f-c7cc-45a0-a6aa-8cf78c946968': 'EMSPREMIUM',
-        'c7df2760-2c81-4ef7-b578-5b5392b571df': 'ENTERPRISEPREMIUM',
+        'b05e124f-c7cc-45a0-a6aa-8cf78c946968': 'ENTERPRISE MOBILITY + SECURITY E5',  # EMSPREMIUM
+        'c7df2760-2c81-4ef7-b578-5b5392b571df': 'OFFICE 365 E5',  # ENTERPRISEPREMIUM
         '87bbbc60-4754-4998-8c88-227dca264858': 'POWERAPPS_INDIVIDUAL_USER',
         '6470687e-a428-4b7a-bef2-8a291ad947c9': 'WINDOWS_STORE',
         '6fd2c87f-b296-42f0-b197-1e91e994b900': 'ENTERPRISEPACK',
@@ -59,9 +61,9 @@ def update_deptuser_from_azure(azure_user, dept_user):
         '338148b6-1b11-4102-afb9-f92b6cdc0f8d': 'DYN365_ENTERPRISE_P1_IW',
         '6070a4c8-34c6-4937-8dfb-39bbc6397a60': 'MEETING_ROOM',
         'a403ebcc-fae0-4ca2-8c8c-7a907fd6c235': 'POWER_BI_STANDARD',
-        '111046dd-295b-4d6d-9724-d52ac90bd1f2': 'WIN_DEF_ATP',
+        '111046dd-295b-4d6d-9724-d52ac90bd1f2': 'Microsoft Defender Advanced Threat Protection',  # WIN_DEF_ATP
         '710779e8-3d4a-4c88-adb9-386c958d1fdf': 'TEAMS_EXPLORATORY',
-        'efccb6f7-5641-4e0e-bd10-b4976e1bf68e': 'EMS',
+        'efccb6f7-5641-4e0e-bd10-b4976e1bf68e': 'ENTERPRISE MOBILITY + SECURITY E3',  # EMS
         '90d8b3f8-712e-4f7b-aa1e-62e7ae6cbe96': 'SMB_APPS',
         'fcecd1f9-a91e-488d-a918-a96cdb6ce2b0': 'AX7_USER_TRIAL',
         '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RMSBASIC',
