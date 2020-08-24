@@ -1,7 +1,5 @@
 from data_storage import AzureBlobStorage
-from datetime import datetime, timedelta
 from dbca_utils.utils import env
-from django.core.files.base import ContentFile
 import json
 import os
 import re
@@ -93,35 +91,12 @@ def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.jso
 
 
 def get_photo_path(instance, filename='photo.jpg'):
+    """NOTE: unused, but retain for historical migration purposes.
+    """
     return os.path.join('user_photo', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
 
 
 def get_photo_ad_path(instance, filename='photo.jpg'):
-    return os.path.join('user_photo_ad', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
-
-
-def convert_ad_timestamp(timestamp):
-    """Converts an Active Directory timestamp to a Python datetime object.
-    Ref: http://timestamp.ooz.ie/p/time-in-python.html
+    """NOTE: unused, but retain for historical migration purposes.
     """
-    epoch_start = datetime(year=1601, month=1, day=1)
-    seconds_since_epoch = timestamp / 10**7
-    return epoch_start + timedelta(seconds=seconds_since_epoch)
-
-
-def load_mugshots(data_dir='/root/mugshots'):
-    from .models import DepartmentUser
-    files = [x for x in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, x))]
-    valid = 0
-    for f in files:
-        name = os.path.splitext(f)[0]
-        qs = DepartmentUser.objects.filter(username__iexact=name)
-        if qs:
-            with open(os.path.join(data_dir, f)) as fp:
-                qs[0].photo.save(f, ContentFile(fp.read()))
-            print('Updated photo for {}'.format(name))
-            valid += 1
-        else:
-            print('ERROR: Username {} not found'.format(name))
-
-    print('{}/{} photos valid'.format(valid, len(files)))
+    return os.path.join('user_photo_ad', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
