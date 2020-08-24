@@ -93,6 +93,7 @@ def update_namespace(cluster,status,metadata,config):
         obj = Namespace(cluster=cluster,name=name)
 
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("project",("metadata","labels","field.cattle.io/projectId"),lambda val:Project.objects.get_or_create(cluster=cluster,projectid=val)[0]),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
@@ -120,9 +121,16 @@ def update_namespace(cluster,status,metadata,config):
 
 def delete_namespace(cluster,status,metadata,config):
     name = config["metadata"]["name"]
+    
+    del_rows = Namespace.objects.filter(cluster=cluster,name=name).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete namespace({}.{})".format(cluster,name))
+
+    """
     del_objs = Namespace.objects.filter(cluster=cluster,name=name).delete()
     if del_objs[0]:
-        logger.debug("Delete namespace({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete namespace({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def _get_ingress_protocol(val):
     if "http" in val:
@@ -185,6 +193,7 @@ def update_ingress(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = Ingress(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
     ])
@@ -209,9 +218,14 @@ def delete_ingress(cluster,status,metadata,config):
     if not namespace:
         return
     name = config["metadata"]["name"]
+    del_rows = Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete Ingress({}.{})".format(namespace,name))
+    """
     del_objs = Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
     if del_objs[0]:
-        logger.debug("Delete Ingress({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete Ingress({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def _get_volume_uuid(val):
     if val.startswith("pvc-"):
@@ -260,6 +274,7 @@ def update_volume(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = PersistentVolume(cluster=cluster,name=name)
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("kind","kind",None),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
@@ -287,9 +302,14 @@ def update_volume(cluster,status,metadata,config):
 
 def delete_volume(cluster,status,metadata,config):
     name = config["metadata"]["name"]
+    del_rows = PersistentVolume.objects.filter(cluster=cluster,name=name).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically Delete PersistentVolume({}.{})".format(cluster,name))
+    """
     del_objs = PersistentVolume.objects.filter(cluster=cluster,name=name).delete()
     if del_objs[0]:
-        logger.debug("Delete PersistentVolume({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete PersistentVolume({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def update_volume_claim(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -300,6 +320,7 @@ def update_volume_claim(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = PersistentVolumeClaim(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("writable",("spec","accessModes"),lambda val:True if next((v for v in val if "write" in v.lower()),None) else False),
@@ -323,9 +344,14 @@ def delete_volume_claim(cluster,status,metadata,config):
     if not namespace:
         return
     name = config["metadata"]["name"]
+    del_rows = PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete PersistentVolumeClaim({}.{})".format(namespace,name))
+    """
     del_objs = PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
     if del_objs[0]:
-        logger.debug("Delete PersistentVolumeClaim({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete PersistentVolumeClaim({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def update_workload_envs(workload,config,env_configs):
     """
@@ -562,6 +588,7 @@ def update_deployment(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = Workload(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("kind","kind",None),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
@@ -607,9 +634,14 @@ def delete_deployment(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
+    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete the deployment workload({2}:{0}.{1})".format(namespace,name,kind))
+    """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
     if del_objs[0]:
-        logger.debug("Delete the deployment workload({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete the deployment workload({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def update_cronjob(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -621,6 +653,7 @@ def update_cronjob(cluster,status,metadata,config):
         obj = Workload(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
 
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("kind","kind",None),
         ("modified",[("spec","jobTemplate","spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
@@ -667,9 +700,14 @@ def delete_cronjob(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
+    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete the cronjob workload({2}:{0}.{1})".format(namespace,name,kind))
+    """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
     if del_objs[0]:
-        logger.debug("Delete the cronjob workload({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete the cronjob workload({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def update_statefulset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -681,6 +719,7 @@ def update_statefulset(cluster,status,metadata,config):
         obj = Workload(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
 
     update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("kind","kind",None),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
@@ -757,9 +796,14 @@ def delete_statefulset(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
+    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete the statefulset workload({2}:{0}.{1})".format(namespace,name,kind))
+    """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
     if del_objs[0]:
-        logger.debug("Delete the statefulset workload({}),deleted objects = {}".format(name,del_objs))
+        logger.info("Delete the statefulset workload({}),deleted objects = {}".format(name,del_objs))
+    """
 
 def update_databaseserver(hostname,kind,port,modified,host=None,ip=None,internal_name=None,internal_port=None,workload=None):
     if not port:

@@ -42,8 +42,17 @@ class Project(models.Model):
         unique_together = [["cluster","projectid"]]
         ordering = ["cluster__name",'name']
 
+class DeletedMixin(models.Model):
+    deleted = models.DateTimeField(editable=False,null=True)
 
-class Namespace(models.Model):
+    @property
+    def is_deleted(self):
+        return True if self.deleted else False
+
+    class Meta:
+        abstract = True
+
+class Namespace(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='namespaces',editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='namespaces',editable=False)
     name = models.CharField(max_length=64,editable=False)
@@ -60,7 +69,7 @@ class Namespace(models.Model):
         ordering = ["cluster__name",'name']
 
 
-class PersistentVolume(models.Model):
+class PersistentVolume(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='volumes',editable=False)
     name = models.CharField(max_length=128,editable=False)
     kind = models.CharField(max_length=64,editable=False)
@@ -86,7 +95,7 @@ class PersistentVolume(models.Model):
         ordering = ["cluster__name",'name']
 
 
-class PersistentVolumeClaim(models.Model):
+class PersistentVolumeClaim(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='volumeclaims',editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='volumeclaims',editable=False)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='volumeclaims',editable=False,null=True)
@@ -109,7 +118,7 @@ class PersistentVolumeClaim(models.Model):
         unique_together = [["volume","name"],["cluster","namespace","name"]]
 
 
-class Ingress(models.Model):
+class Ingress(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='ingresses',editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='ingresses',editable=False)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='ingresses',editable=False,null=True)
@@ -146,6 +155,10 @@ class IngressRule(models.Model):
     refreshed = models.DateTimeField(auto_now=True)
 
     @property
+    def is_deleted(self):
+        return self.ingress.is_deleted
+
+    @property
     def listen(self):
         if self.path:
             return "{}://{}:{}/{}".format(self.protocol,self.hostname,self.port,self.path)
@@ -162,7 +175,7 @@ class IngressRule(models.Model):
         unique_together = [["ingress","protocol","hostname","path"],["cluster","servicename"]]
 
 
-class Workload(models.Model):
+class Workload(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads', editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads', editable=False)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads', editable=False, null=True)
@@ -267,6 +280,10 @@ class WorkloadListening(models.Model):
     refreshed = models.DateTimeField(auto_now=True)
 
     @property
+    def is_deleted(self):
+        return self.workload.is_deleted or (self.ingress_rule.is_deleted if self.ingress_rule else False)
+
+    @property
     def listen(self):
         if self.ingress_rule:
             return self.ingress_rule.listen
@@ -290,6 +307,10 @@ class WorkloadEnv(models.Model):
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_deleted(self):
+        return self.workload.is_deleted
 
     def __str__(self):
         return "{}.{}".format(self.workload,self.name)
@@ -316,6 +337,16 @@ class WorkloadVolume(models.Model):
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_deleted(self):
+        if self.workload.is_deleted:
+            return True
+        if self.volume_claim and self.volume_claim.is_deleted:
+            return True
+        if self.volume and self.volume.is_deleted:
+            return True
+        return False
 
     def __str__(self):
         return "{}.{}".format(self.workload,self.name)
@@ -401,6 +432,10 @@ class WorkloadDatabase(models.Model):
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
     refreshed = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_deleted(self):
+        return self.workload.is_deleted
 
     class Meta:
         unique_together = [["workload","database","config_items"]]
