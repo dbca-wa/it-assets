@@ -94,8 +94,11 @@ class WorkloadLinkMixin(object):
             return ""
         else:
             workload = self.get_workload(obj)
-            url = reverse(self.workload_change_url_name, args=(workload.id,))
-            return mark_safe("<A href='{}'>{}</A><A href='{}' style='margin-left:50px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(url,workload.name,workload.viewurl,workload.managementurl))
+            if workload.is_deleted:
+                return mark_safe("<A href='{}'>{}</A>".format(url,workload.name))
+            else:
+                url = reverse(self.workload_change_url_name, args=(workload.id,))
+                return mark_safe("<A href='{}'>{}</A><A href='{}' style='margin-left:50px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(url,workload.name,workload.viewurl,workload.managementurl))
     _workload.short_description = "Workload"
 
     def _manage(self,obj):
@@ -103,12 +106,17 @@ class WorkloadLinkMixin(object):
             return ""
         else:
             workload = self.get_workload(obj)
-            return mark_safe("<A href='{}' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(workload.viewurl,workload.managementurl))
+            if workload.is_deleted:
+                return ""
+            else:
+                return mark_safe("<A href='{}' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(workload.viewurl,workload.managementurl))
     _manage.short_description = ""
 
     def _name(self,workload):
         if not workload :
             return ""
+        elif workload.is_deleted:
+            return workload.name
         else:
             return mark_safe("{}<A href='{}' style='margin-left:50px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(workload.name,workload.viewurl,workload.managementurl))
     _name.short_description = "Name"
@@ -173,6 +181,16 @@ class ClusterAdmin(admin.ModelAdmin):
 
     refresh.short_description = 'Refresh'
 
+class DeletedMixin(object):
+    def _deleted(self,obj):
+        if not obj :
+            return ""
+        elif obj.deleted:
+            return mark_safe("<img src='/static/admin/img/icon-yes.svg'> {}".format(obj.deleted))
+        else:
+            return mark_safe("<img src='/static/admin/img/icon-no.svg'>")
+    _deleted.short_description = "Deleted"
+
 
 @admin.register(models.Project)
 class ProjectAdmin(ClusterLinkMixin,admin.ModelAdmin):
@@ -189,9 +207,9 @@ class ProjectAdmin(ClusterLinkMixin,admin.ModelAdmin):
         return False
 
 
-class WorkloadInline(WorkloadLinkMixin,admin.TabularInline):
+class WorkloadInline(DeletedMixin,WorkloadLinkMixin,admin.TabularInline):
     model = models.Workload
-    readonly_fields = ('_name_with_link', 'kind','image',"modified")
+    readonly_fields = ('_name_with_link', 'kind','image',"modified","_deleted")
     fields = readonly_fields
     ordering = ('name',)
     get_workload = staticmethod(lambda obj:obj)
@@ -205,14 +223,48 @@ class WorkloadInline(WorkloadLinkMixin,admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
+class DeletedFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = 'Existing Status'
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'is_deleted'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        return [(False,"Existing"),(True,"Deleted")]
+
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        val = self.value()
+        if not val:
+            return queryset
+        elif val == 'True':
+            return queryset.filter(deleted__isnull=False)
+        else:
+            return queryset.filter(deleted__isnull=True)
 
 @admin.register(models.Namespace)
-class NamespaceAdmin(ClusterLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster','_project')
-    readonly_fields = ('name','_cluster','_project')
+class NamespaceAdmin(DeletedMixin,ClusterLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster','_project','_deleted')
+    readonly_fields = ('name','_cluster','_project','_deleted')
     fields = readonly_fields
     ordering = ('cluster__name','project__name','name')
-    list_filter = ('project',)
+    list_filter = ('project',DeletedFilter)
 
     inlines = [WorkloadInline]
 
@@ -226,9 +278,9 @@ class NamespaceAdmin(ClusterLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
         return False
 
 
-class WorkloadVolumeInline(WorkloadInlineMixin,admin.TabularInline):
+class WorkloadVolumeInline(DeletedMixin,WorkloadInlineMixin,admin.TabularInline):
     model = models.WorkloadVolume
-    readonly_fields = ('_workload','_cluster','_project','_namespace')
+    readonly_fields = ('_workload','_cluster','_project','_namespace','_deleted')
     fields = readonly_fields
     ordering = ('workload',)
     get_cluster = staticmethod(lambda obj:obj.workload.cluster)
@@ -237,11 +289,11 @@ class WorkloadVolumeInline(WorkloadInlineMixin,admin.TabularInline):
 
 
 @admin.register(models.PersistentVolume)
-class PersistentVolumeAdmin(ClusterLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity','writable',"modified")
-    readonly_fields = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity',"volume_mode","uuid",'writable','reclaim_policy','_node_affinity',"modified","created")
+class PersistentVolumeAdmin(DeletedMixin,ClusterLinkMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity','writable',"modified",'_deleted')
+    readonly_fields = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity',"volume_mode","uuid",'writable','reclaim_policy','_node_affinity',"modified","created",'_deleted')
     ordering = ('cluster','name',)
-    list_filter = ('cluster',)
+    list_filter = ('cluster',DeletedFilter)
     inlines = [WorkloadVolumeInline]
 
     def _capacity(self,obj):
@@ -289,9 +341,9 @@ class WorkloadEnvInline(admin.TabularInline):
         return False
 
 
-class WorkloadListeningInline(admin.TabularInline):
-    readonly_fields = ('_listen','protocol','container_port','modified')
-    fields = ('_listen','protocol','container_port','modified')
+class WorkloadListeningInline(DeletedMixin,admin.TabularInline):
+    readonly_fields = ('_listen','protocol','container_port','modified','_deleted')
+    fields = ('_listen','protocol','container_port','modified','_deleted')
     model = models.WorkloadListening
     classes = ["collapse"]
 
@@ -312,9 +364,9 @@ class WorkloadListeningInline(admin.TabularInline):
         return False
 
 
-class WorkloadVolumeInline(VolumeLinkMixin,admin.TabularInline):
-    readonly_fields = ('name','mountpath','subpath','writable','volumepath','_capacity','_volume','_other_config')
-    fields = ('name','mountpath','subpath','writable','volumepath','_capacity','_volume','_other_config')
+class WorkloadVolumeInline(DeletedMixin,VolumeLinkMixin,admin.TabularInline):
+    readonly_fields = ('name','mountpath','subpath','writable','volumepath','_capacity','_volume','_other_config','_deleted')
+    fields = ('name','mountpath','subpath','writable','volumepath','_capacity','_volume','_other_config','_deleted')
     model = models.WorkloadVolume
     classes = ["collapse"]
 
@@ -344,9 +396,9 @@ class WorkloadVolumeInline(VolumeLinkMixin,admin.TabularInline):
         return False
 
 
-class WorkloadDatabaseInline1(DatabaseLinkMixin,admin.TabularInline):
+class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline):
     model = models.WorkloadDatabase
-    readonly_fields = ('_server','_port','_database','schema','user',"password",'config_items')
+    readonly_fields = ('_server','_port','_database','schema','user',"password",'config_items','_deleted')
     fields = readonly_fields
     ordering = ('workload',)
 
@@ -375,13 +427,13 @@ class WorkloadDatabaseInline1(DatabaseLinkMixin,admin.TabularInline):
 
 
 @admin.register(models.Workload)
-class WorkloadAdmin(ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin, admin.ModelAdmin):
-    list_display = ('_manage', 'name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'modified')
+class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin, admin.ModelAdmin):
+    list_display = ('_manage', 'name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'modified','_deleted')
     list_display_links = ('name',)
     readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_webapps', 'modified')
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'image_scan_timestamp', '_webapps', 'modified')
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'image_scan_timestamp', '_webapps', 'modified','_deleted')
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
-    list_filter = ('cluster', 'namespace', 'kind')
+    list_filter = ('cluster',DeletedFilter, 'namespace', 'kind')
     search_fields = ['name', 'project__name', 'namespace__name']
     get_workload = staticmethod(lambda obj: obj)
 
@@ -416,9 +468,9 @@ class WorkloadAdmin(ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, Work
         return False
 
 
-class WorkloadDatabaseInline2(WorkloadInlineMixin,admin.TabularInline):
+class WorkloadDatabaseInline2(DeletedMixin,WorkloadInlineMixin,admin.TabularInline):
     model = models.WorkloadDatabase
-    readonly_fields = ('_workload','_cluster','_project','_namespace','user',"password",'config_items')
+    readonly_fields = ('_workload','_cluster','_project','_namespace','user',"password",'config_items','_deleted')
     fields = readonly_fields
     ordering = ('workload',)
     get_cluster = staticmethod(lambda obj:obj.workload.cluster)

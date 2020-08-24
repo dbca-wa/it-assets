@@ -160,6 +160,10 @@ class IngressRule(models.Model):
         return self.ingress.is_deleted
 
     @property
+    def deleted(self):
+        return self.ingress.deleted
+
+    @property
     def listen(self):
         if self.path:
             return "{}://{}:{}/{}".format(self.protocol,self.hostname,self.port,self.path)
@@ -294,6 +298,10 @@ class WorkloadListening(models.Model):
         return self.workload.is_deleted or (self.ingress_rule.is_deleted if self.ingress_rule else False)
 
     @property
+    def deleted(self):
+        return self.workload.deleted or (self.ingress_rule.deleted if self.ingress_rule else None)
+
+    @property
     def listen(self):
         if self.ingress_rule:
             return self.ingress_rule.listen
@@ -321,6 +329,10 @@ class WorkloadEnv(models.Model):
     @property
     def is_deleted(self):
         return self.workload.is_deleted
+
+    @property
+    def deleted(self):
+        return self.workload.deleted
 
     def __str__(self):
         return "{}.{}".format(self.workload,self.name)
@@ -357,6 +369,16 @@ class WorkloadVolume(models.Model):
         if self.volume and self.volume.is_deleted:
             return True
         return False
+
+    @property
+    def deleted(self):
+        if self.workload.deleted:
+            return self.workload.deleted
+        if self.volume_claim and self.volume_claim.deleted:
+            return self.volume_claim.deleted
+        if self.volume and self.volume.deleted:
+            return self.volume.deleted
+        return None
 
     def __str__(self):
         return "{}.{}".format(self.workload,self.name)
@@ -446,6 +468,10 @@ class WorkloadDatabase(models.Model):
     @property
     def is_deleted(self):
         return self.workload.is_deleted
+
+    @property
+    def deleted(self):
+        return self.workload.deleted
 
     class Meta:
         unique_together = [["workload","database","config_items"]]
