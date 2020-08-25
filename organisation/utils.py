@@ -20,13 +20,26 @@ def find_user_in_list(user_list, email=None, objectid=None):
     """
     if email:
         for user in user_list:
-            if user['Mail'] and user['Mail'].lower() == email.lower():
+            if 'Mail' in user and user['Mail'] and user['Mail'].lower() == email.lower():  # Azure AD
+                return user
+            elif 'EmailAddress' in user and user['EmailAddress'] and user['EmailAddress'].lower() == email.lower():  # Onprem AD
                 return user
     if objectid:
         for user in user_list:
-            if user['ObjectId'] and user['ObjectId'] == objectid:
+            if 'ObjectId' in user and user['ObjectId'] and user['ObjectId'] == objectid:  # Azure AD
+                return user
+            elif 'ObjectGUID' in user and user['ObjectGUID'] and user['ObjectGUID'] == objectid:  # Onprem AD
                 return user
     return None
+
+
+def update_deptuser_from_onprem_ad(ad_user, dept_user):
+    """For given onprem AD user and DepartmentUser objects, update the DepartmentUser object fields
+    with values from AD (the source of truth for these values).
+    Currently, only ObjectGUID should be copied.
+    """
+    dept_user.ad_guid = ad_user['ObjectGUID']
+    dept_user.save()
 
 
 def update_deptuser_from_azure(azure_user, dept_user):
