@@ -342,13 +342,22 @@ class DepartmentUser(MPTTModel):
         # Cost Centre
         if self.cost_centre:
             if not azure_user['CompanyName'] or azure_user['CompanyName'] != self.cost_centre.code:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='CompanyName',
-                    field='cost_centre.code',
-                    completed=None,
-                )
+                if self.dir_sync_enabled:  # Onprem AD.
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='Company',
+                        field='cost_centre.code',
+                        completed=None,
+                    )
+                else:
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,  # Azure AD
+                        action_type='Change account field',
+                        ad_field='CompanyName',
+                        field='cost_centre.code',
+                        completed=None,
+                    )
                 action.field_value = self.cost_centre.code
                 action.ad_field_value = azure_user['CompanyName']
                 action.save()
@@ -357,13 +366,22 @@ class DepartmentUser(MPTTModel):
         # Location
         if self.location:
             if not azure_user['PhysicalDeliveryOfficeName'] or azure_user['PhysicalDeliveryOfficeName'] != self.location.name:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='PhysicalDeliveryOfficeName',
-                    field='location.name',
-                    completed=None,
-                )
+                if self.dir_sync_enabled:  # On-prem AD
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='physicalDeliveryOfficeName',
+                        field='location.name',
+                        completed=None,
+                    )
+                else:  # Azure AD
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='PhysicalDeliveryOfficeName',
+                        field='location.name',
+                        completed=None,
+                    )
                 action.field_value = self.location.name
                 action.ad_field_value = azure_user['PhysicalDeliveryOfficeName']
                 action.save()
@@ -447,8 +465,6 @@ class ADAction(models.Model):
     field_value = models.TextField(blank=True, null=True, help_text='Value of the field in IT Assets')
     completed = models.DateTimeField(null=True, blank=True, editable=False)
     completed_by = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True, editable=False)
-    # log = models.TextField()
-    # automated = models.BooleanField(default=False, help_text='Will this action be completed by automated processes?')
 
     class Meta:
         verbose_name = 'AD action'
@@ -462,6 +478,10 @@ class ADAction(models.Model):
     @property
     def azure_guid(self):
         return self.department_user.azure_guid
+
+    @property
+    def ad_guid(self):
+        return self.department_user.ad_guid
 
     @property
     def action(self):
