@@ -30,6 +30,14 @@ class Command(BaseCommand):
         for user in DepartmentUser.objects.filter(pk__in=user_pks):
             azure_user = find_user_in_list(ad_users, user.email)
             if azure_user:
-                user.audit_ad_actions(azure_user)
+                try:
+                    user.audit_ad_actions(azure_user)
+                except Exception as ex:
+                    self.stdout.write(
+                        self.style.ERROR(
+                            'Exception raised during checking of AD actions for {}'.format(user.email)
+                        )
+                    )
+                    self.stdout.write(self.style.ERROR(ex))
 
         self.stdout.write(self.style.SUCCESS('Completed'))

@@ -413,7 +413,7 @@ class DepartmentUser(MPTTModel):
         actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
 
         for action in actions:
-            if action.field == 'manager.email' and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
+            if action.field == 'manager.email' and azure_user['Manager'] and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
                 action.delete()
             elif action.field == 'cost_centre.code' and azure_user['CompanyName'] == self.cost_centre.code:
                 action.delete()
