@@ -23,6 +23,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.SUCCESS('Comparing Department Users to Azure AD user accounts'))
         azure_users = get_azure_users_json(container=options['container'], azure_json_path=options['json_path'])
 
         for az in azure_users:
@@ -88,3 +89,5 @@ class Command(BaseCommand):
                 # Update the existing DepartmentUser object fields with values from Azure.
                 user = DepartmentUser.objects.get(azure_guid=az['ObjectId'])
                 update_deptuser_from_azure(az, user)
+
+        self.stdout.write(self.style.SUCCESS('Completed'))

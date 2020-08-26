@@ -23,6 +23,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.SUCCESS('Comparing Department Users to on-prem AD user accounts'))
         ad_users = get_azure_users_json(container=options['container'], azure_json_path=options['json_path'])
 
         for user in DepartmentUser.objects.filter(active=True, ad_guid__isnull=True):
@@ -30,3 +31,5 @@ class Command(BaseCommand):
             if ad_user:
                 update_deptuser_from_onprem_ad(ad_user, user)
                 self.stdout.write(self.style.SUCCESS('Updated ad_guid for {}'.format(user.email)))
+
+        self.stdout.write(self.style.SUCCESS('Completed'))
