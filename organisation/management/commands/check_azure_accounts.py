@@ -4,7 +4,7 @@ from organisation.utils import get_azure_users_json, update_deptuser_from_azure
 
 
 class Command(BaseCommand):
-    help = 'Checks user accounts from Azure AD and creates/updates linked DepartmentUser objects as needed'
+    help = 'Checks user accounts from Azure AD and creates/updates linked DepartmentUser objects'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -23,6 +23,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.SUCCESS('Comparing Department Users to Azure AD user accounts'))
         azure_users = get_azure_users_json(container=options['container'], azure_json_path=options['json_path'])
 
         for az in azure_users:
@@ -84,3 +85,9 @@ class Command(BaseCommand):
                     )
                     update_deptuser_from_azure(az, new_user)  # Easier way to set some fields.
                     self.stdout.write(self.style.SUCCESS('Created {}'.format(new_user.email)))
+            else:
+                # Update the existing DepartmentUser object fields with values from Azure.
+                user = DepartmentUser.objects.get(azure_guid=az['ObjectId'])
+                update_deptuser_from_azure(az, user)
+
+        self.stdout.write(self.style.SUCCESS('Completed'))

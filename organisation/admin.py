@@ -48,7 +48,7 @@ change_email.short_description = "Change select department user's primary email 
 
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
-    actions = (disable_enable_acount, change_email)
+    # actions = (disable_enable_acount, change_email)
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
@@ -62,7 +62,7 @@ class DepartmentUserAdmin(VersionAdmin):
     readonly_fields = ('active', 'email', 'azure_guid', 'ad_guid', 'assigned_licences', 'proxy_addresses')
     fieldsets = (
         ('Active Directory account fields', {
-            'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
+            # 'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
             'fields': (
                 'active',
                 'email',
@@ -97,10 +97,10 @@ class DepartmentUserAdmin(VersionAdmin):
                 'vip',
                 'executive',
                 'contractor',
+                'security_clearance',
+                'account_type',
                 'notes',
                 'working_hours',
-                'account_type',
-                'security_clearance',
             ),
         }),
         ('Active Directory information', {
