@@ -553,17 +553,16 @@ def alesco_db_import(update_dept_user=False):
 
     employee_iter = alesco_employee_fetch()
 
-    logger.info("Querying Alesco database for employee information")
     for eid, jobs in employee_iter:
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            user.alesco_data = jobs
+            # ASSUMPTION: the "first" object in the list of Alesco jobs for each user is the current one.
+            user.alesco_data = jobs[0]
             user.alesco_data_updated = TZ.localize(datetime.now())
-            update_fields = ["alesco_data"]
+            user.save()
             if update_dept_user:
-                update_user_from_alesco(user, update_fields=update_fields)
-            else:
-                user.save()
+                update_fields = ["alesco_data"]
+                # update_user_from_alesco(user, update_fields=update_fields)
 
 
 def departmentuser_alesco_descrepancy(users):

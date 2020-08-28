@@ -1,6 +1,5 @@
-import traceback
 from django.core.management.base import BaseCommand, CommandError
-from organisation.alesco import synctask
+from organisation.alesco.calmp_ict_view_v2 import alesco_db_import
 
 
 class Command(BaseCommand):
@@ -10,8 +9,9 @@ class Command(BaseCommand):
         parser.add_argument('--update', action='store_true', help='Also update DepartmentUser field values')
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.SUCCESS('Querying Alesco database for employee information'))
         try:
-            synctask.alesco_db_import(update_dept_user=options['update'])
-        except:
-            traceback.print_exc()
+            alesco_db_import(update_dept_user=options['update'])
+        except Exception as ex:
+            self.stdout.write(self.style.ERROR(ex))
             raise CommandError('Syncronisation from Alesco database failed')
