@@ -128,6 +128,11 @@ class DepartmentUser(MPTTModel):
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
 
+    # Cache of Alesco data
+    alesco_data = JSONField(
+        null=True, blank=True, help_text='Readonly data from Alesco')
+    alesco_data_updated = models.DateTimeField(null=True, blank=True)
+
     # Fields below are likely to be deprecated and progressively removed.
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
@@ -161,8 +166,6 @@ class DepartmentUser(MPTTModel):
     hr_auto_expiry = models.BooleanField(
         default=False, verbose_name='HR auto expiry',
         help_text='When the HR termination date changes, automatically update the expiry date to match.')
-    alesco_data = JSONField(
-        null=True, blank=True, help_text='Readonly data from Alesco')
     o365_licence = models.NullBooleanField(
         default=None, editable=False,
         help_text='Account consumes an Office 365 licence.')
@@ -180,55 +183,9 @@ class DepartmentUser(MPTTModel):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ''):
                 self.employee_id = None
-        '''
-        # If the CC is set but not the OrgUnit, use the CC's OrgUnit.
-        if self.cost_centre and not self.org_unit:
-            self.org_unit = self.cost_centre.org_position
-        if self.cost_centre and self.org_unit:
-            self.org_data = self.org_data or {}
-            self.org_data["units"] = list(self.org_unit.get_ancestors(include_self=True).values(
-                "id", "name", "acronym", "unit_type", "costcentre__code",
-                "costcentre__name", "location__name"))
-            self.org_data["unit"] = self.org_data["units"][-1] if len(self.org_data["units"]) else None
-            if self.org_unit.location:
-                self.org_data["location"] = self.org_unit.location.as_dict()
-            for unit in self.org_data["units"]:
-                unit["unit_type"] = self.org_unit.TYPE_CHOICES_DICT[
-                    unit["unit_type"]]
-            if self.cost_centre:
-                self.org_data["cost_centre"] = {
-                    "name": self.cost_centre.org_position.name if self.cost_centre.org_position else '',
-                    "code": self.cost_centre.code,
-                    "cost_centre_manager": str(self.cost_centre.manager),
-                    "business_manager": str(self.cost_centre.business_manager),
-                    "admin": str(self.cost_centre.admin),
-                    "tech_contact": str(self.cost_centre.tech_contact),
-                }
-            if self.cost_centres_secondary.exists():
-                self.org_data['cost_centres_secondary'] = [{
-                    'name': i.name,
-                    'code': i.code,
-                } for i in self.cost_centres_secondary.all()]
-            if self.org_units_secondary:
-                self.org_data['org_units_secondary'] = [{
-                    'name': i.name,
-                    'acronym': i.name,
-                    'unit_type': i.get_unit_type_display(),
-                } for i in self.org_units_secondary.all()]
-        '''
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
-
-    def org_data_pretty(self):
-        if not self.org_data:
-            return self.org_data
-        return format_html(json2html.convert(json=self.org_data))
-
-    def alesco_data_pretty(self):
-        if not self.alesco_data:
-            return self.alesco_data
-        return format_html(json2html.convert(json=self.alesco_data, clubbing=False))
 
     @property
     def password_age_days(self):
@@ -413,7 +370,7 @@ class DepartmentUser(MPTTModel):
         actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
 
         for action in actions:
-            if action.field == 'manager.email' and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
+            if action.field == 'manager.email' and azure_user['Manager'] and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
                 action.delete()
             elif action.field == 'cost_centre.code' and azure_user['CompanyName'] == self.cost_centre.code:
                 action.delete()

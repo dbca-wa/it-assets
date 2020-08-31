@@ -35,6 +35,13 @@
     This user account is synced to <strong>on-premises Active Directory</strong>.
     Carry out the instructions below on a suitable management host.
 </p>
+{% if not object.department_user.ad_guid %}
+<p>
+    <strong>NOTE: Department User has no on-premises Active Directory GUID associated.</strong>
+    Ensure that the on-prem account exists and wait for the user's AD GUID to be automatically
+    synced into IT Assets (should take less than 15 minutes).
+</p>
+{% endif %}
 {% else %}
 <p>
     This user acount in online-only in <strong>Azure Active Directory</strong>.
@@ -42,33 +49,31 @@
 </p>
 {% endif %}
 
-<pre>
-<code class="language-powershell">
 {% if object.department_user.dir_sync_enabled %}
-
-    {% if object.ad_field == "Manager" %}
+{% if object.department_user.ad_guid %}
+<pre><code class="language-powershell">
+{% if object.ad_field == "Manager" %}
 $manager = Get-ADUser -Identity {{ object.department_user.manager.ad_guid }}
 Set-ADUser -Identity {{ object.department_user.ad_guid }} -Manager $manager
-    {% else %}
-
-    {% if object.field_value %}
-Set-ADUser -Identity {{ object.department_user.ad_guid }} -{{ object.ad_field }} '{{ object.field_value }}'
-    {% else %}
-Set-ADUser -Identity {{ object.department_user.ad_guid }} -{{ object.ad_field }} $null
-    {% endif %}
-
-    {% endif %}
-
 {% else %}
-Connect-AzureAD
-    {% if object.field_value %}
-Set-AzureADUser -ObjectId {{ object.department_user.azure_guid}} -{{ object.ad_field }} '{{ object.field_value }}'
-    {% else %}
-Set-AzureADUser -ObjectId {{ object.department_user.azure_guid}} -{{ object.ad_field }} $null
-    {% endif %}
+{% if object.field_value %}
+Set-ADUser -Identity {{ object.department_user.ad_guid }} -{{ object.ad_field }} '{{ object.field_value }}'
+{% else %}
+Set-ADUser -Identity {{ object.department_user.ad_guid }} -{{ object.ad_field }} $null
 {% endif %}
-</code>
-</pre>
+{% endif %}
+</code></pre>
+{% endif %}
+{% else %}
+<pre><code class="language-powershell">
+Connect-AzureAD
+{% if object.field_value %}
+Set-AzureADUser -ObjectId {{ object.department_user.azure_guid}} -{{ object.ad_field }} '{{ object.field_value }}'
+{% else %}
+Set-AzureADUser -ObjectId {{ object.department_user.azure_guid}} -{{ object.ad_field }} $null
+{% endif %}
+</code></pre>
+{% endif %}
 
 <p>
     <a href="{% url 'ad_action_complete' pk=object.pk %}" class="btn btn-primary"><i class="fas fa-check"></i> Mark as completed</a>
