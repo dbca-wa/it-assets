@@ -32,23 +32,9 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
-def disable_enable_acount(modeladmin, request, queryset):
-    pass
-
-
-disable_enable_acount.short_description = "Disable or enable selected department user's Active Directory account"
-
-
-def change_email(modeladmin, request, queryset):
-    pass
-
-
-change_email.short_description = "Change select department user's primary email address in Active Directory"
-
-
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
-    # actions = (disable_enable_acount, change_email)
+    actions = ('clear_ad_guid',)
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
@@ -137,6 +123,11 @@ class DepartmentUserAdmin(VersionAdmin):
             async_task('organisation.utils.deptuser_azure_sync', obj)
         else:
             deptuser_azure_sync(obj)
+
+    def clear_ad_guid(self, request, queryset):
+        queryset.update(ad_guid=None)
+        self.message_user(request, "AD GUID has been cleared for the selected user(s)")
+    clear_ad_guid.short_description = "Clear a user's onprem AD GUID following migration between AD instances"
 
 
 @register(ADAction)
