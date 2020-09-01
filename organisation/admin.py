@@ -34,7 +34,7 @@ class DepartmentUserForm(forms.ModelForm):
 
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
-    actions = ('clear_ad_guid',)
+    actions = ('clear_ad_guid', 'clear_azure_guid')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
@@ -126,8 +126,13 @@ class DepartmentUserAdmin(VersionAdmin):
 
     def clear_ad_guid(self, request, queryset):
         queryset.update(ad_guid=None)
-        self.message_user(request, "AD GUID has been cleared for the selected user(s)")
-    clear_ad_guid.short_description = "Clear a user's onprem AD GUID following migration between AD instances"
+        self.message_user(request, "On-prem AD GUID has been cleared for the selected user(s)")
+    clear_ad_guid.short_description = "Clear a user's on-prem AD GUID following migration between AD instances"
+
+    def clear_azure_guid(self, request, queryset):
+        queryset.update(azure_guid=None)
+        self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
+    clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
 
 
 @register(ADAction)
