@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from organisation.alesco.calmp_ict_view_v2 import ascender_db_import
+from organisation.ascender import ascender_db_import
 
 
 class Command(BaseCommand):
@@ -11,7 +11,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Querying Ascender database for employee information'))
         try:
-            ascender_db_import(update_dept_user=options['update'])
+            ascender_db_import()
+            self.stdout.write(self.style.SUCCESS('Completed'))
         except Exception as ex:
             self.stdout.write(self.style.ERROR(ex))
             raise CommandError('Syncronisation from Ascender database failed')
