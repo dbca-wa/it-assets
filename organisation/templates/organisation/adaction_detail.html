@@ -21,6 +21,12 @@
             <th>Department user</th>
             <td>{{ object.department_user }}</td>
         </tr>
+        {% if object.department_user.cost_centre and object.department_user.cost_centre.division_name %}
+        <tr>
+            <th>Division</th>
+            <td>{{ object.department_user.cost_centre.get_division_name_display }}</td>
+        </tr>
+        {% endif %}
         <tr>
             <th>Synced to on-prem AD?</th>
             <td>{{ object.department_user.dir_sync_enabled }}</td>
