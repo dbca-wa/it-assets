@@ -128,7 +128,7 @@ class DepartmentUser(MPTTModel):
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
 
-    # Cache of Alesco data
+    # Cache of Ascender data
     alesco_data = JSONField(
         null=True, blank=True, help_text='Readonly data from Alesco')
     alesco_data_updated = models.DateTimeField(null=True, blank=True)
@@ -190,12 +190,6 @@ class DepartmentUser(MPTTModel):
     @property
     def password_age_days(self):
         return None
-
-    @property
-    def ad_expired(self):
-        if self.expiry_date and self.expiry_date < timezone.now():
-            return True
-        return False
 
     @property
     def children_filtered(self):

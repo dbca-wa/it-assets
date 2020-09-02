@@ -102,10 +102,6 @@ class DepartmentUserResource(DjangoResource):
             prepped['date_updated'] = data['date_updated'].astimezone(TIMEZONE)
         if 'expiry_date' in data and data['expiry_date']:
             prepped['expiry_date'] = data['expiry_date'].astimezone(TIMEZONE)
-            if data['expiry_date'] < timezone.now():
-                data['ad_expired'] = True
-            else:
-                data['ad_expired'] = False
         return prepped
 
     @classmethod
