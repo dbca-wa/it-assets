@@ -565,9 +565,6 @@ class CostCentre(models.Model):
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
-    # NOTE: delete division field after copying data to division_name.
-    division = models.ForeignKey(
-        OrgUnit, on_delete=models.PROTECT, null=True, editable=False, related_name='costcentres_in_division')
     division_name = models.CharField(max_length=128, choices=DIVISION_CHOICES, null=True, blank=True)
     org_position = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, blank=True, null=True)
