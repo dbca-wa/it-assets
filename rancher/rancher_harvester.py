@@ -21,13 +21,14 @@ from nginx.models import WebAppLocationServer
 
 logger = logging.getLogger(__name__)
 
-RANCHER_FILE_RE=re.compile("(^|/)(ingress-|cronjob-|deployment-|persistentvolumeclaim-|persistentvolume-|namespace-|statefulset-).+\.(yaml|yml)$")
+RANCHER_FILE_RE=re.compile("(^|/)(ingress-|cronjob-|deployment-|daemonset-|persistentvolumeclaim-|persistentvolume-|namespace-|statefulset-).+\.(yaml|yml)$")
 
 
 VOLUMN_RE=re.compile("(^|/)persistentvolume-.+\.(yaml|yml)$")
 VOLUMN_CLAIM_RE=re.compile("(^|/)persistentvolumeclaim.+\.(yaml|yml)$")
 DEPLOYMENT_RE=re.compile("(^|/)deployment-.+\.(yaml|yml)$")
 CRONJOB_RE=re.compile("(^|/)cronjob-.+\.(yaml|yml)$")
+DAEMONSET_RE=re.compile("(^|/)daemonset-.+\.(yaml|yml)$")
 NAMESPACE_RE=re.compile("(^|/)namespace-.+\.(yaml|yml)$")
 INGRESS_RE=re.compile("(^|/)ingress-.+\.(yaml|yml)$")
 STATEFULSET_RE=re.compile("(^|/)statefulset-.+\.(yaml|yml)$")
@@ -56,7 +57,7 @@ def get_consume_client(cluster):
         _consume_clients[cluster] = ResourceConsumeClient(
             AzureBlobStorage(settings.RANCHER_STORAGE_CONNECTION_STRING,settings.RANCHER_CONTAINER),
             settings.RANCHER_RESOURCE_NAME,
-            settings.RANCHER_RESOURCE_CLIENTID,
+            settings.RESOURCE_CLIENTID,
             resource_base_path="{}/{}".format(settings.RANCHER_RESOURCE_NAME,cluster)
 
         )
@@ -82,6 +83,26 @@ def set_field(obj,field,val,update_fields):
         setattr(obj,field,val)
         update_fields.append(field)
 
+def update_project(cluster,projectid):
+    try:
+        obj = Project.objects.get(cluster=cluster,projectid=projectid)
+    except ObjectDoesNotExist as ex:
+        obj = Project(cluster=cluster,projectid=projectid)
+
+    update_fields = set_fields(obj,config,[
+        ("added_by_log",None,lambda obj:False)
+    ])
+
+    if obj.pk is None:
+        obj.save()
+        logger.debug("Create project({})".format(obj))
+    elif update_fields:
+        obj.save(update_fields=update_fields)
+        logger.debug("Update project({}),update_fields={}".format(obj,update_fields))
+    else:
+        logger.debug("The project({}) is not changed".format(obj))
+
+    return obj
 
 def update_namespace(cluster,status,metadata,config):
     namespace_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
@@ -94,8 +115,9 @@ def update_namespace(cluster,status,metadata,config):
 
     update_fields = set_fields(obj,config,[
         ("deleted",None,lambda obj:None),
+        ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
-        ("project",("metadata","labels","field.cattle.io/projectId"),lambda val:Project.objects.get_or_create(cluster=cluster,projectid=val)[0]),
+        ("project",("metadata","labels","field.cattle.io/projectId"),lambda val:update_project(cluster,val)),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
     ])
 
@@ -416,17 +438,33 @@ def update_workload_listenings(workload,config):
     """
     Return True if some env is updated;otherwise return False
     """
+    #get listen config from public endpoints
     listen_configs = get_property(config,("metadata","annotations","field.cattle.io/publicEndpoints"),lambda val: json.loads(val) if val else None)
-    if not listen_configs:
-        del_objs = WorkloadListening.objects.filter(workload=workload).delete()
-        if del_objs[0]:
-            logger.debug("Delete the listenings for workload({}),deleted objects = {}".format(workload,del_objs))
-            return True
-        else:
-            return False
+    if listen_configs:
+        #if serviceName is not provided(daemonset has not serviceName in its listen config), populate one.
+        for listen_config in listen_configs:
+            if "serviceName" not in listen_config:
+                listen_config["serviceName"] = "{0}:{2}({1})".format(workload.namespace.name,listen_config["protocol"].lower(),listen_config["port"])
+    else:
+        #if can't get the listen config from public endpoints, try to find them in specification
+        listen_configs = []
+        for port_config in get_property(config,("spec","template","spec",'containers',0,"ports")) or []:
+            listen_configs.append({
+                "serviceName":"{0}:{2}({1})".format(workload.namespace.name,port_config.get("protocol","").lower(),port_config.get("containerPort",0)),
+                "port":int(port_config.get("containerPort",0)),
+                "protocol":port_config.get("protocol","").lower()
+            })
+        if not listen_configs:
+            del_objs = WorkloadListening.objects.filter(workload=workload).delete()
+            if del_objs[0]:
+                logger.debug("Delete the listenings for workload({}),deleted objects = {}".format(workload,del_objs))
+                return True
+            else:
+                return False
 
     updated = False
     name = None
+    # remove the not deleted listenings from db
     del_objs = WorkloadListening.objects.filter(workload=workload).exclude(servicename__in=[c["serviceName"] for c in listen_configs]).delete()
     if del_objs[0]:
         logger.debug("Delete the listenings for workload({}),deleted objects = {}".format(workload,del_objs))
@@ -445,6 +483,7 @@ def update_workload_listenings(workload,config):
             ("protocol","protocol",lambda val: val.lower() if val else None),
         ])
 
+        #try to find the ingressName or container port
         if "ingressName" in listen_config:
             #ingress router
             ingress_rule = IngressRule.objects.get(cluster=workload.cluster,servicename=listen_config["serviceName"])
@@ -586,10 +625,12 @@ def update_deployment(cluster,status,metadata,config):
     try:
         obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name)
     update_fields = set_fields(obj,config,[
         ("deleted",None,lambda obj:None),
+        ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
+        ("project",None,lambda val:namespace.project),
         ("kind","kind",None),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("replicas",("spec","replicas"),lambda val:int(val) if val else 0),
@@ -650,11 +691,13 @@ def update_cronjob(cluster,status,metadata,config):
     try:
         obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name)
 
     update_fields = set_fields(obj,config,[
         ("deleted",None,lambda obj:None),
+        ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
+        ("project",None,lambda val:namespace.project),
         ("kind","kind",None),
         ("modified",[("spec","jobTemplate","spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("image",("spec","jobTemplate","spec","template","spec","containers",0,"image"),None),
@@ -709,6 +752,74 @@ def delete_cronjob(cluster,status,metadata,config):
         logger.info("Delete the cronjob workload({}),deleted objects = {}".format(name,del_objs))
     """
 
+def update_daemonset(cluster,status,metadata,config):
+    namespace = config["metadata"]["namespace"]
+    namespace = Namespace.objects.get(cluster=cluster,name=namespace)
+    name = config["metadata"]["name"]
+    try:
+        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
+    except ObjectDoesNotExist as ex:
+        obj = Workload(cluster=cluster,namespace=namespace,name=name)
+
+    update_fields = set_fields(obj,config,[
+        ("deleted",None,lambda obj:None),
+        ("added_by_log",None,lambda obj:False),
+        ("api_version","apiVersion",None),
+        ("kind","kind",None),
+        ("project",None,lambda val:namespace.project),
+        ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
+        ("image",("spec","template","spec","containers",0,"image"),None),
+        ("image_pullpolicy",("spec","template","spec","containers",0,"imagePullPolicy"),None),
+        ("replicas",None,lambda val:0),
+        ("cmd",("spec","template","spec","containers",0,"args"), lambda val:json.dumps(val) if val else None),
+        ("schedule",None, lambda val: None),
+        ("failedjobshistorylimit", None,lambda val:None),
+        ("successfuljobshistorylimit", None,lambda val:None),
+        ("suspend", None,lambda val:None),
+        ("concurrency_policy", None,lambda val:None)
+    ])
+
+    created = False
+    if obj.pk is None:
+        obj.created = obj.modified
+        obj.save()
+        created = True
+        logger.debug("Create daemonset workload({})".format(obj))
+
+    #update envs
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")))
+
+    #delete all listening objects
+    updated = update_workload_listenings(obj,config) or updated
+
+    #update volumes
+    updated = update_workload_volumes(obj,config,get_property(config,("spec","template","spec"))) or updated
+
+    if created:
+        pass
+    elif update_fields or updated:
+        update_fields.append("refreshed")
+        obj.save(update_fields=update_fields)
+        logger.debug("Update the daemon workload({}),update_fields={}".format(obj,update_fields))
+    else:
+        logger.debug("The daemon workload({}) is not changed".format(obj))
+
+def delete_daemonset(cluster,status,metadata,config):
+    namespace = config["metadata"]["namespace"]
+    namespace = Namespace.objects.filter(cluster=cluster,name=namespace).first()
+    if not namespace:
+        return
+    name = config["metadata"]["name"]
+    kind = config["kind"]
+    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
+    if del_rows:
+        logger.info("Logically delete the daemonset workload({2}:{0}.{1})".format(namespace,name,kind))
+    """
+    del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
+    if del_objs[0]:
+        logger.info("Delete the daemonset workload({}),deleted objects = {}".format(name,del_objs))
+    """
+
 def update_statefulset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = Namespace.objects.get(cluster=cluster,name=namespace)
@@ -716,11 +827,13 @@ def update_statefulset(cluster,status,metadata,config):
     try:
         obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name)
 
     update_fields = set_fields(obj,config,[
         ("deleted",None,lambda obj:None),
+        ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
+        ("project",None,lambda val:namespace.project),
         ("kind","kind",None),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("image",("spec","template","spec","containers",0,"image"),None),
@@ -1272,7 +1385,9 @@ process_func_map = {
     50:update_statefulset,
     60:update_deployment,
     70:update_cronjob,
+    75:update_daemonset,
     80:delete_cronjob,
+    80:delete_daemonset,
     90:delete_deployment,
     100:delete_statefulset,
     110:delete_ingress,
@@ -1296,8 +1411,12 @@ def resource_type(status,resource_id):
         return 60
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
         return 70
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and DAEMONSET_RE.search(resource_id):
+        return 75
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and CRONJOB_RE.search(resource_id):
         return 80
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DAEMONSET_RE.search(resource_id):
+        return 85
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DEPLOYMENT_RE.search(resource_id):
         return 90
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and STATEFULSET_RE.search(resource_id):
@@ -1384,7 +1503,9 @@ def harvest(cluster,reconsume=False):
             message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
 
         cluster.refresh_message = message
-        cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message"])
+        if cluster.succeed_resources or cluster.failed_resources:
+            cluster.added_by_log = False
+        cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message","added_by_log"])
 
         return result
     finally:

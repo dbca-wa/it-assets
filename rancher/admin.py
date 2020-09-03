@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.utils.html import format_html, mark_safe
 from django.urls import reverse
+from django.utils import timezone
 
 from django_q.tasks import async_task
 
@@ -29,7 +30,6 @@ class ClusterLinkMixin(object):
             return mark_safe("<A href='{}'>{}</A>".format(url,cluster.name))
     _cluster.short_description = "Cluster"
 
-
 class ProjectLinkMixin(object):
     project_change_url_name = 'admin:{}_{}_change'.format(models.Project._meta.app_label,models.Project._meta.model_name)
     get_project = staticmethod(lambda obj:obj.project)
@@ -39,10 +39,27 @@ class ProjectLinkMixin(object):
             return ""
         else:
             project = self.get_project(obj)
-            url = reverse(self.project_change_url_name, args=(project.id,))
-            return mark_safe("<A href='{}'>{}</A>".format(url,project.name or project.projectid))
+            if project:
+                url = reverse(self.project_change_url_name, args=(project.id,))
+                return mark_safe("<span style='white-space:nowrap;'><A href='{2}' target='manage_workloads'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{0}' style='margin-left:5px'>{1}</A></span>".format(url,project.name or project.projectid,project.managementurl))
+            else:
+                return ""
     _project.short_description = "Project"
 
+    def _projectid(self,obj):
+        if not obj :
+            return ""
+        else:
+            project = self.get_project(obj)
+            if project:
+                return mark_safe("{0}<A href='{1}' style='margin-left:20px' target='manage_workloads'><img src='/static/img/view.jpg' width=16 height=16></A>".format(project.projectid,project.managementurl))
+            else:
+                return ""
+    _projectid.short_description = "Projectid"
+
+    def _projectid_with_link(self,obj):
+        return self._project(obj)
+    _projectid_with_link.short_description = "Projectid"
 
 class NamespaceLinkMixin(object):
     namespace_change_url_name = 'admin:{}_{}_change'.format(models.Namespace._meta.app_label,models.Namespace._meta.model_name)
@@ -83,22 +100,123 @@ class DatabaseLinkMixin(object):
     _database.short_description = "Database"
 
 
+class ContainersLinkMixin(object):
+    containers_url_name = 'admin:{}_{}_changelist'.format(models.Container._meta.app_label,models.Container._meta.model_name)
+    def _containers(self,obj):
+        if not obj :
+            return ""
+        else:
+            url = reverse(self.containers_url_name, args=[])
+            return mark_safe("<A href='{}?workload__id__exact={}'>Containers</A>".format(url,obj.id))
+    _containers.short_description = "Containers"
+
+class ContainerLinkMixin(object):
+    container_url_name = 'admin:{}_{}_change'.format(models.Container._meta.app_label,models.Container._meta.model_name)
+    def _container(self,obj):
+        if not obj :
+            return ""
+        else:
+            url = reverse(self.container_url_name, args=[obj.container.id])
+            return mark_safe("<A href='{}?container__id__exact={}'>{} ({})</A>".format(url,obj.container.workload.name,obj.container.containerid,timezone.localtime(obj.container.started).strftime("%Y-%m-%d %H:%M:%S") if obj.container.started else ""))
+    _container.short_description = "Container"
+
+    def _container_short(self,obj):
+        if not obj :
+            return ""
+        else:
+            url = reverse(self.container_url_name, args=[obj.container.id])
+            return mark_safe("<A href='{}?container__id__exact={}'>{} ({})</A>".format(url,obj.container.id,obj.container.workload.name,timezone.localtime(obj.container.started).strftime("%Y-%m-%d %H:%M:%S") if obj.container.started else ""))
+    _container.short_description = "Container"
+
+class LogsLinkMixin(object):
+    logs_url_name = 'admin:{}_{}_changelist'.format(models.ContainerLog._meta.app_label,models.ContainerLog._meta.model_name)
+    def _logs(self,obj):
+        if not obj or not obj.log:
+            return ""
+        else:
+            url = reverse(self.logs_url_name, args=[])
+            if obj.warning and obj.error:
+                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Errors</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={3}'>Warnings</A>".format(url,obj.id,models.ContainerLog.ERROR,models.ContaienrLog.WARNING))
+            elif obj.warning:
+                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Warnings</A>".format(url,obj.id,models.ContaienrLog.WARNING))
+            elif obj.error:
+                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Errors</A>".format(url,obj.id,models.ContainerLog.ERROR))
+            else:
+                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A>".format(url,obj.id))
+    _logs.short_description = "Logs"
+
+class WorkloadsLinkMixin(object):
+    workloads_url_name = 'admin:{}_{}_changelist'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
+    def _workloads(self,obj):
+        if not obj :
+            return ""
+        else:
+            workloads = obj.active_workloads + obj.deleted_workloads
+            if workloads:
+                url = reverse(self.workloads_url_name, args=[])
+                if obj.__class__ == models.Cluster:
+                    return mark_safe("<A href='{}?cluster__id__exact={}'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.Project:
+                    return mark_safe("<A href='{}?project__id__exact={}'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.Namespace:
+                    return mark_safe("<A href='{}?namespace__id__exact={}'>{}</A>".format(url,obj.id,workloads))
+                else:
+                    return workloads
+            else:
+                return "0"
+    _workloads.short_description = "Workloads"
+
+    def _active_workloads(self,obj):
+        if not obj :
+            return ""
+        else:
+            workloads = obj.active_workloads
+            if workloads:
+                url = reverse(self.workloads_url_name, args=[])
+                if obj.__class__ == models.Cluster:
+                    return mark_safe("<A href='{}?cluster__id__exact={}&deleted__isnull=True'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.Project:
+                    return mark_safe("<A href='{}?project__id__exact={}&deleted__isnull=True'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.Namespace:
+                    return mark_safe("<A href='{}?namespace__id__exact={}&deleted__isnull=True'>{}</A>".format(url,obj.id,workloads))
+                else:
+                    return workloads
+            else:
+                return "0"
+    _active_workloads.short_description = "Acrive Workloads"
+
+    def _deleted_workloads(self,obj):
+        if not obj :
+            return ""
+        else:
+            workloads = obj.deleted_workloads
+            if workloads:
+                url = reverse(self.workloads_url_name, args=[])
+                if obj.__class__ == models.Cluster:
+                    return mark_safe("<A href='{}?cluster__id__exact={}&deleted__isnull=False'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.Project:
+                    return mark_safe("<A href='{}?project__id__exact={}&deleted__isnull=False'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.Namespace:
+                    return mark_safe("<A href='{}?namespace__id__exact={}&deleted__isnull=False'>{}</A>".format(url,obj.id,workloads))
+                else:
+                    return workloads
+            else:
+                return "0"
+    _deleted_workloads.short_description = "Deleted Workloads"
+
 class WorkloadLinkMixin(object):
     workload_change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
     get_workload = staticmethod(lambda obj:obj.workload)
     def _workload(self,obj):
-        """
-        Used for foreign key
-        """
         if not obj :
             return ""
         else:
             workload = self.get_workload(obj)
-            if workload.is_deleted:
-                return mark_safe("<A href='{}'>{}</A>".format(url,workload.name))
+            url = reverse(self.workload_change_url_name, args=(workload.id,))
+            if workload.is_deleted or workload.added_by_log:
+                return mark_safe("<A href='{}'>{}({})</A>".format(url,workload.name,workload.kind))
             else:
-                url = reverse(self.workload_change_url_name, args=(workload.id,))
-                return mark_safe("<A href='{}'>{}</A><A href='{}' style='margin-left:50px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(url,workload.name,workload.viewurl,workload.managementurl))
+                return mark_safe("<A href='{3}' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{4}' target='manage_workload' style='margin-left:5px'><img src='/static/img/setting.jpg' width=16 height=16></A><A href='{0}' style='margin-left:5px'>{1}({2})</A>".format(url,workload.name,workload.kind,workload.viewurl,workload.managementurl))
     _workload.short_description = "Workload"
 
     def _manage(self,obj):
@@ -106,7 +224,7 @@ class WorkloadLinkMixin(object):
             return ""
         else:
             workload = self.get_workload(obj)
-            if workload.is_deleted:
+            if workload.is_deleted or workload.added_by_log:
                 return ""
             else:
                 return mark_safe("<A href='{}' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(workload.viewurl,workload.managementurl))
@@ -115,14 +233,22 @@ class WorkloadLinkMixin(object):
     def _name(self,workload):
         if not workload :
             return ""
-        elif workload.is_deleted:
+        elif workload.is_deleted or workload.added_by_log:
             return workload.name
         else:
-            return mark_safe("{}<A href='{}' style='margin-left:50px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(workload.name,workload.viewurl,workload.managementurl))
+            return mark_safe("{}<A href='{}' style='margin-left:20px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(workload.name,workload.viewurl,workload.managementurl))
     _name.short_description = "Name"
 
     def _name_with_link(self,obj):
-        return self._workload(obj)
+        if not obj :
+            return ""
+        else:
+            workload = self.get_workload(obj)
+            url = reverse(self.workload_change_url_name, args=(workload.id,))
+            if workload.is_deleted or workload.added_by_log:
+                return mark_safe("<A href='{}'>{}</A>".format(url,workload.name))
+            else:
+                return mark_safe("<A href='{2}' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{3}' target='manage_workload' style='margin-left:5px'><img src='/static/img/setting.jpg' width=16 height=16></A><A href='{0}' style='margin-left:5px'>{1}</A>".format(url,workload.name,workload.viewurl,workload.managementurl))
     _name_with_link.short_description = "Name"
 
 
@@ -142,9 +268,9 @@ class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,W
 
 
 @admin.register(models.Cluster)
-class ClusterAdmin(admin.ModelAdmin):
-    list_display = ('name','ip', 'clusterid','succeed_resources','failed_resources','refreshed','modified')
-    readonly_fields = ('ip','clusterid','succeed_resources','failed_resources','refreshed','modified','created','_refresh_message')
+class ClusterAdmin(WorkloadsLinkMixin,admin.ModelAdmin):
+    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','refreshed','modified','added_by_log')
+    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','refreshed','modified','created','added_by_log','_refresh_message')
     ordering = ('name',)
     actions = ('refresh','enforce_refresh')
 
@@ -186,19 +312,22 @@ class DeletedMixin(object):
         if not obj :
             return ""
         elif obj.deleted:
-            return mark_safe("<img src='/static/admin/img/icon-yes.svg'> {}".format(obj.deleted))
+            return mark_safe("<img src='/static/admin/img/icon-yes.svg'> {}".format(timezone.localtime(obj.deleted).strftime("%Y-%m-%d %H:%M:%S")))
         else:
             return mark_safe("<img src='/static/admin/img/icon-no.svg'>")
     _deleted.short_description = "Deleted"
 
 
 @admin.register(models.Project)
-class ProjectAdmin(ClusterLinkMixin,admin.ModelAdmin):
-    list_display = ('projectid','_cluster','name')
-    readonly_fields = ('projectid','_cluster')
-    fields = ('projectid','_cluster','name')
+class ProjectAdmin(ClusterLinkMixin,ProjectLinkMixin,WorkloadsLinkMixin,admin.ModelAdmin):
+    list_display = ('_projectid_with_link','_cluster','name','_workloads','_active_workloads','_deleted_workloads')
+    readonly_fields = ('_projectid','_cluster','_workloads','_active_workloads','_deleted_workloads')
+    fields = ('_projectid','_cluster','name','_workloads','_active_workloads','_deleted_workloads')
     ordering = ('cluster__name','name',)
     list_filter = ('cluster',)
+    list_display_links = None
+
+    get_project = staticmethod(lambda obj:obj)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -209,7 +338,7 @@ class ProjectAdmin(ClusterLinkMixin,admin.ModelAdmin):
 
 class WorkloadInline(DeletedMixin,WorkloadLinkMixin,admin.TabularInline):
     model = models.Workload
-    readonly_fields = ('_name_with_link', 'kind','image',"modified","_deleted")
+    readonly_fields = ('_name_with_link', 'kind','image',"suspend","modified","_deleted")
     fields = readonly_fields
     ordering = ('name',)
     get_workload = staticmethod(lambda obj:obj)
@@ -223,13 +352,13 @@ class WorkloadInline(DeletedMixin,WorkloadLinkMixin,admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
-class DeletedFilter(admin.SimpleListFilter):
+class ExistingStatusFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
     # right admin sidebar just above the filter options.
     title = 'Existing Status'
 
     # Parameter for the filter that will be used in the URL query.
-    parameter_name = 'is_deleted'
+    parameter_name = 'existing_status'
 
     def lookups(self, request, model_admin):
         """
@@ -239,7 +368,7 @@ class DeletedFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        return [(False,"Existing"),(True,"Deleted")]
+        return [("living","Living"),("deleted","Deleted"),("added_by_log","Added by Log")]
 
 
     def queryset(self, request, queryset):
@@ -253,18 +382,22 @@ class DeletedFilter(admin.SimpleListFilter):
         val = self.value()
         if not val:
             return queryset
-        elif val == 'True':
-            return queryset.filter(deleted__isnull=False)
-        else:
+        elif val == 'living':
             return queryset.filter(deleted__isnull=True)
+        elif val == "deleted":
+            return queryset.filter(deleted__isnull=False)
+        elif val == "added_by_log":
+            return queryset.filter(added_by_log=True)
+        else:
+            return queryset
 
 @admin.register(models.Namespace)
-class NamespaceAdmin(DeletedMixin,ClusterLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster','_project','_deleted')
-    readonly_fields = ('name','_cluster','_project','_deleted')
+class NamespaceAdmin(DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
+    readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
     fields = readonly_fields
     ordering = ('cluster__name','project__name','name')
-    list_filter = ('project',DeletedFilter)
+    list_filter = ('project',ExistingStatusFilter)
 
     inlines = [WorkloadInline]
 
@@ -293,7 +426,7 @@ class PersistentVolumeAdmin(DeletedMixin,ClusterLinkMixin,admin.ModelAdmin):
     list_display = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity','writable',"modified",'_deleted')
     readonly_fields = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity',"volume_mode","uuid",'writable','reclaim_policy','_node_affinity',"modified","created",'_deleted')
     ordering = ('cluster','name',)
-    list_filter = ('cluster',DeletedFilter)
+    list_filter = ('cluster',ExistingStatusFilter)
     inlines = [WorkloadVolumeInline]
 
     def _capacity(self,obj):
@@ -427,13 +560,13 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 
 
 @admin.register(models.Workload)
-class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin, admin.ModelAdmin):
-    list_display = ('_manage', 'name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'modified','_deleted')
-    list_display_links = ('name',)
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_webapps', 'modified')
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'image_scan_timestamp', '_webapps', 'modified','_deleted')
+class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin, admin.ModelAdmin):
+    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers', 'modified','_deleted',"added_by_log")
+    list_display_links = None
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_webapps','_containers', 'modified',"suspend","added_by_log")
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers',"suspend", 'modified','_deleted',"added_by_log")
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
-    list_filter = ('cluster',DeletedFilter, 'namespace', 'kind')
+    list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']
     get_workload = staticmethod(lambda obj: obj)
 
@@ -525,7 +658,7 @@ class DatabaseAdmin(admin.ModelAdmin):
             return ""
         else:
             return obj.server.internal_port
-    _internal_port.short_descrinternal_porttion = "Internal Port"
+    _internal_port.short_descrtion = "Internal Port"
 
     workload_change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
     def _workload(self,obj):
@@ -546,3 +679,135 @@ class DatabaseAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+class RunningStatusFilter(admin.SimpleListFilter):
+    # Human-readable title which will be displayed in the
+    # right admin sidebar just above the filter options.
+    title = 'Running Status'
+
+    # Parameter for the filter that will be used in the URL query.
+    parameter_name = 'is_running'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each
+        tuple is the coded value for the option that will
+        appear in the URL query. The second element is the
+        human-readable name for the option that will appear
+        in the right sidebar.
+        """
+        return [(True,"Running"),(False,"Terminated")]
+
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value
+        provided in the query string and retrievable via
+        `self.value()`.
+        """
+        # Compare the requested value (either '80s' or '90s')
+        # to decide how to filter the queryset.
+        val = self.value()
+        if not val:
+            return queryset
+        elif val == 'True':
+            return queryset.filter(container_terminated__isnull=True)
+        else:
+            return queryset.filter(container_terminated__isnull=False)
+
+@admin.register(models.Container)
+class ContainerAdmin(ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsLinkMixin,admin.ModelAdmin):
+    list_display = ('_containerid','_cluster', '_namespace', '_workload','status','poduid','_started', '_terminated','_last_checked',"_logs")
+    readonly_fields = ('containerid','_cluster', '_namespace', '_workload','image','poduid','podip','status','pod_created','pod_started','container_created', 'container_started', 'container_terminated','exitcode','last_checked',"_logs",'ports','envs')
+    ordering = ('cluster__name', 'namespace__name', 'workload__name','workload__kind','-container_started')
+    list_filter = ('cluster',"workload__kind","status")
+    search_fields = ['workload__name','workload__namespace__name','containerid']
+
+    def _last_checked(self,obj):
+        if not obj:
+            return ""
+        else:
+            return timezone.localtime(obj.last_checked).strftime("%Y-%m-%d %H:%M:%S")
+    _last_checked.short_description = "Last Check"
+
+    def _started(self,obj):
+        if not obj:
+            return ""
+        elif obj.container_started:
+            return timezone.localtime(obj.container_started).strftime("%Y-%m-%d %H:%M:%S")
+        elif obj.pod_started:
+            return timezone.localtime(obj.pod_started).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return ""
+    _started.short_description = "Started"
+
+    def _terminated(self,obj):
+        if not obj:
+            return ""
+        elif obj.container_terminated:
+            return timezone.localtime(obj.container_terminated).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return ""
+    _terminated.short_description = "Terminated"
+
+    def _containerid(self,obj):
+        if not obj:
+            return ""
+        elif obj.containerid:
+            return "{}...{}".format(obj.containerid[:8],obj.containerid[-8:])
+        else:
+            return ""
+    _containerid.short_description = "Containerid"
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(models.ContainerLog)
+class ContainerLogAdmin(ContainerLinkMixin,admin.ModelAdmin):
+    list_display = ("_logtime",'_container_short',"level","source","_short_message")
+    readonly_fields = ("_logtime",'_container',"level","source","_message")
+
+    list_filter = ("level",)
+
+    ordering = ("container","logtime")
+    search_fields = ['container__id','container__workload__name']
+
+    def _short_message(self,obj):
+        if not obj or not obj.message:
+            return ""
+        else:
+            return "{} ...".format(obj.message[:100])
+    _short_message.short_description = "message"
+
+    def _message(self,obj):
+        if not obj or not obj.message:
+            return ""
+        elif "\n" in obj.message:
+            return mark_safe("<pre>{}</pre>".format(obj.message))
+        else:
+            return mark_safe("<pre style='white-space:normal'>{}</pre>".format(obj.message))
+    _message.short_description = "message"
+
+    def _logtime(self,obj):
+        if not obj :
+            return ""
+        else:
+            return timezone.localtime(obj.logtime).strftime("%Y-%m-%d %H:%M:%S.%f")
+    _logtime.short_description = "Logtime"
+
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+

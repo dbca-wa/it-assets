@@ -6,6 +6,8 @@ import logging
 import re
 from restless.dj import DjangoResource
 import subprocess
+import simdjson
+import re
 
 
 def logger_setup(name):
@@ -214,3 +216,90 @@ class FieldsFormatter(object):
                 pass
 
         return data
+
+
+class LogRecordIterator(object):
+    """
+    for azlog dump file
+    """
+    block_size = 1024 * 512 #read 512 k
+    def __init__(self,input_file):
+        self._input_file = input_file
+        self._f = None
+        self._index = None
+        self._data_block = None
+        self._read = True
+
+    def _close(self):
+        try:
+            if self._f:
+                self._f.close()
+        except :
+            pass
+        finally:
+            self._f = None
+
+    first_record_start_re = re.compile("^\s*\[\s*\{\s*\n")
+    record_sep_re = re.compile("\n\s*}\s*,\s*{\s*\n")
+    last_record_end_re = re.compile("\n\s*}\s*\,?\s*\]\s*$")
+    def _next_record(self):
+        if not self._f:
+            raise StopIteration("No more records")
+        
+        while (self._f):
+            if self._read:
+                data = self._f.read(self.block_size)
+                self._read = False
+                if data:
+                    if self._data_block:
+                        self._data_block += data
+                    else:
+                        self._data_block = data
+                else:
+                    #end of file
+                    self._close()
+                    if self._data_block:
+                        m = self.last_record_end_re.search(self._data_block)
+                        if m:
+                            self._index += 1
+                            json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
+                            self._data_block = None
+                            return simdjson.loads(json_str)
+                        else:
+                            raise Exception("The last record is incomplete in file({}).".format(self._input_file))
+                    else:
+                        raise StopIteration("No more records")
+
+            if self._index is None:
+                m = self.first_record_start_re.search(self._data_block)
+                if m:
+                    self._data_block = self._data_block[m.end():]
+                    self._index = -1
+                elif self._data_block.strip():
+                    raise Exception("The file({}) is an invalid json file".format(self._input_file))
+                else:
+                    self._data_block = None
+                    self._read = True
+            else:
+                m = self.record_sep_re.search(self._data_block)
+                if m:
+                    self._index += 1
+                    json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
+                    self._data_block = self._data_block[m.end():]
+                    return simdjson.loads(json_str)
+                else:
+                    self._read = True
+
+    def __iter__(self):
+        self._close()
+
+        self._index = None
+        self._data_block = None
+        self._read = True
+
+        self._f = open(self._input_file,'r')
+        return self
+
+    def __next__(self):
+        return self._next_record()
+
