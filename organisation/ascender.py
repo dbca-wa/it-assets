@@ -193,9 +193,36 @@ def ascender_db_import():
 
 
 def get_deptuser_no_empid():
+    """Return a QS of DepartmentUsers with no employee_id value.
+    """
     users = DepartmentUser.objects.filter(
         **DepartmentUser.ACTIVE_FILTER,
         employee_id__isnull=True,
-        account_type__in=[2, 0, 8]
+        account_type__in=[2, 0, 8],  # Permanent, fixed contract, seasonal.
     )
     return users
+
+
+def get_ascender_matches():
+    """Return a list of possible Ascender matches, in the format:
+    [EMPLOYEE ID,ASCENDER NAME,IT ASSETS NAME, IT ASSETS PK]
+    """
+    users = get_deptuser_no_empid()
+    ascender_data = ascender_employee_fetch()
+    matches_list = []
+    ascender_jobs = []
+
+    for eid, jobs in ascender_data:
+        ascender_jobs.append(jobs[0])
+
+    for user in users:
+        for data in ascender_jobs:
+            if user.given_name.upper() == data['first_name'] and user.surname.upper() == data['surname']:
+                matches_list.append([
+                    data['employee_id'],
+                    '{} {}'.format(data['first_name'], data['surname']),
+                    user.get_full_name(),
+                    user.pk,
+                ])
+
+    return matches_list
