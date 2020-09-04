@@ -10,6 +10,7 @@
         <tr>
             <th>Created</th>
             <th>Department user</th>
+            <th>Division</th>
             <th>Action</th>
             <th></th>
         </tr>
@@ -19,6 +20,11 @@
         <tr>
             <td>{{ obj.created }}</td>
             <td><a href="{% url 'admin:organisation_departmentuser_change' object_id=obj.department_user.pk %}">{{ obj.department_user }}</a></td>
+            <td>
+                {% if obj.department_user.cost_centre and obj.department_user.cost_centre.division_name %}
+                {{ obj.department_user.cost_centre.division_name }}
+                {% endif %}
+            </td>
             <td>{{ obj.action }}</td>
             <td>
                 <a href="{% url 'ad_action_detail' pk=obj.pk %}" class="btn btn-secondary btn-sm">Instructions</a>
