@@ -34,6 +34,22 @@ class DepartmentUserForm(forms.ModelForm):
 
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
+
+    class AssignedLicenceFilter(SimpleListFilter):
+        title = 'assigned licences'
+        parameter_name = 'assigned_licences'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('OFFICE 365 E5', 'OFFICE 365 E5'),
+                ('OFFICE 365 E3', 'OFFICE 365 E3'),
+                ('OFFICE 365 E1', 'OFFICE 365 E1'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value():
+                return queryset.filter(assigned_licences__contains=[self.value()])
+
     actions = ('clear_ad_guid', 'clear_azure_guid')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
@@ -41,7 +57,7 @@ class DepartmentUserAdmin(VersionAdmin):
     list_display = (
         'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
     )
-    list_filter = ('account_type', 'active', 'vip', 'executive', 'shared_account')
+    list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
     filter_horizontal = ('secondary_locations',)
