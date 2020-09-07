@@ -146,7 +146,7 @@ class HardwareAsset(Asset):
         max_length=50, help_text='The serial number or service tag.')
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True)
     assigned_user = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True)
     local_property = models.BooleanField(
         default=False, help_text='''Indicates an item that is not registered with Finance (i.e. is
             valued <$5,000 and is not defined as portable and attractive).''')
