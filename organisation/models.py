@@ -213,17 +213,12 @@ class DepartmentUser(MPTTModel):
         return self.org_unit
 
     def get_office_licence(self):
-        """Dumb function to return the first of several hardcoded MS licences assigned to the user.
+        """Return O365 licence terms familar to the directors.
         """
-        o365 = [
-            'OFFICE 365 E5',
-            'OFFICE 365 E3',
-            'OFFICE 365 E1',
-        ]
-        if self.assigned_licences:
-            for o in o365:
-                if o in self.assigned_licences:
-                    return o
+        if 'OFFICE 365 E5' in self.assigned_licences:
+            return 'On-premises (E5)'
+        elif 'OFFICE 365 E1' in self.assigned_licences:
+            return 'Cloud (E1)'
         return None
 
     def get_gal_department(self):

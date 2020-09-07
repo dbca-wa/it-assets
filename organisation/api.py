@@ -147,10 +147,13 @@ class DepartmentUserResource(DjangoResource):
             user_values.append({
                 'name': u.name,
                 'email': u.email,
-                'cost_centre': u.cost_centre.code if u.cost_centre else '',
+                'cost_centre': u.cost_centre.code if u.cost_centre else None,
                 'o365_licence': u.get_office_licence(),
+                'active': u.active,
+                'shared': u.shared_account,
             })
         resp = self.formatters.format(self.request, user_values)
+        resp = {'objects': resp}
         return resp
 
     # Hack: duplicate list() method, decorated with skip_prepare in order to improve performance.
