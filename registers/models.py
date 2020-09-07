@@ -238,8 +238,8 @@ class ITSystem(CommonFields):
 
     @property
     def division_name(self):
-        if self.cost_centre and self.cost_centre.division:
-            return self.cost_centre.division.name
+        if self.cost_centre and self.cost_centre.division_name:
+            return self.cost_centre.get_division_name_display()
         else:
             return ''
 
