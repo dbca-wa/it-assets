@@ -1,5 +1,6 @@
 from dateutil.parser import parse
 from django.conf import settings
+from django.db.models import Q
 from django.urls import path, re_path
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseBadRequest
@@ -33,8 +34,8 @@ def format_fileField(request, value):
 
 
 def format_position_type(request, value):
-    position_type = dict(DepartmentUser.POSITION_TYPE_CHOICES)
     if value is not None:
+        position_type = dict(DepartmentUser.POSITION_TYPE_CHOICES)
         return position_type[value]
     else:
         return value
@@ -88,7 +89,8 @@ class DepartmentUserResource(DjangoResource):
     def __init__(self, *args, **kwargs):
         super(DepartmentUserResource, self).__init__(*args, **kwargs)
         self.http_methods.update({
-            'list_fast': {'GET': 'list_fast'}
+            'list_fast': {'GET': 'list_fast'},
+            'list_licences': {'GET': 'list_licences'},
         })
 
     def prepare(self, data):
@@ -102,10 +104,7 @@ class DepartmentUserResource(DjangoResource):
             prepped['date_updated'] = data['date_updated'].astimezone(TIMEZONE)
         if 'expiry_date' in data and data['expiry_date']:
             prepped['expiry_date'] = data['expiry_date'].astimezone(TIMEZONE)
-            if data['expiry_date'] < timezone.now():
-                data['ad_expired'] = True
-            else:
-                data['ad_expired'] = False
+
         return prepped
 
     @classmethod
@@ -116,6 +115,7 @@ class DepartmentUserResource(DjangoResource):
         return [
             path('', self.as_list(), name=self.build_url_name('list', name_prefix)),
             path('fast/', self.as_view('list_fast'), name=self.build_url_name('list_fast', name_prefix)),
+            path('licences/', self.as_view('list_licences'), name=self.build_url_name('list_licences', name_prefix)),
             re_path(r'^(?P<guid>[0-9A-Za-z-_@\'&\.]+)/$', self.as_detail(), name=self.build_url_name('detail', name_prefix)),
         ]
 
@@ -133,6 +133,28 @@ class DepartmentUserResource(DjangoResource):
         TODO: implement optional token-based auth to secure this.
         """
         return True
+
+    def list_licences(self):
+        # Return active users having an E5 or E1 licence assigned.
+        users = DepartmentUser.objects.filter(active=True)
+        users = users.filter(
+            Q(assigned_licences__contains=['OFFICE 365 E5']) | Q(assigned_licences__contains=['OFFICE 365 E1'])
+        )
+        users = users.order_by('name')
+        # user_values = list(users.values('name', 'email', 'cost_centre__code', 'assigned_licences'))
+        user_values = []
+        for u in users:
+            user_values.append({
+                'name': u.name,
+                'email': u.email,
+                'cost_centre': u.cost_centre.code if u.cost_centre else None,
+                'o365_licence': u.get_office_licence(),
+                'active': u.active,
+                'shared': u.shared_account,
+            })
+        resp = self.formatters.format(self.request, user_values)
+        resp = {'objects': resp}
+        return resp
 
     # Hack: duplicate list() method, decorated with skip_prepare in order to improve performance.
     @skip_prepare

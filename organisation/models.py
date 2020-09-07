@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.gis.db import models
-from django.utils import timezone
 from django.utils.html import format_html
 from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
@@ -128,7 +127,7 @@ class DepartmentUser(MPTTModel):
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
 
-    # Cache of Alesco data
+    # Cache of Ascender data
     alesco_data = JSONField(
         null=True, blank=True, help_text='Readonly data from Alesco')
     alesco_data_updated = models.DateTimeField(null=True, blank=True)
@@ -192,12 +191,6 @@ class DepartmentUser(MPTTModel):
         return None
 
     @property
-    def ad_expired(self):
-        if self.expiry_date and self.expiry_date < timezone.now():
-            return True
-        return False
-
-    @property
     def children_filtered(self):
         return self.children.filter(**self.ACTIVE_FILTER).exclude(account_type__in=self.ACCOUNT_TYPE_EXCLUDE)
 
@@ -218,6 +211,15 @@ class DepartmentUser(MPTTModel):
                 if org.unit_type in (0, 1):
                     return org
         return self.org_unit
+
+    def get_office_licence(self):
+        """Return O365 licence terms familar to the directors.
+        """
+        if 'OFFICE 365 E5' in self.assigned_licences:
+            return 'On-premises (E5)'
+        elif 'OFFICE 365 E1' in self.assigned_licences:
+            return 'Cloud (E1)'
+        return None
 
     def get_gal_department(self):
         """Return a string to place into the "Department" field for the Global Address List.
@@ -565,9 +567,6 @@ class CostCentre(models.Model):
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
-    # NOTE: delete division field after copying data to division_name.
-    division = models.ForeignKey(
-        OrgUnit, on_delete=models.PROTECT, null=True, editable=False, related_name='costcentres_in_division')
     division_name = models.CharField(max_length=128, choices=DIVISION_CHOICES, null=True, blank=True)
     org_position = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, blank=True, null=True)

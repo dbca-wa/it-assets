@@ -544,9 +544,9 @@ def alesco_employee_fetch():
         yield (employee_id, records)
 
 
-def alesco_db_import(update_dept_user=False):
-    """A task to update DepartmentUser field values from Alesco database information.
-    By default, it saves Alesco data in the alesco_data JSON field.
+def ascender_db_import(update_dept_user=False):
+    """A task to update DepartmentUser field values from Ascender database information.
+    By default, it saves Ascender data in the alesco_data JSON field.
     If update_dept_user == True, the function will also update several other field values.
     """
     from organisation.models import DepartmentUser
@@ -554,10 +554,11 @@ def alesco_db_import(update_dept_user=False):
     employee_iter = alesco_employee_fetch()
 
     for eid, jobs in employee_iter:
+        # ASSUMPTION: the "first" object in the list of Alesco jobs for each user is the current one.
+        job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            # ASSUMPTION: the "first" object in the list of Alesco jobs for each user is the current one.
-            user.alesco_data = jobs[0]
+            user.alesco_data = job
             user.alesco_data_updated = TZ.localize(datetime.now())
             user.save()
             if update_dept_user:

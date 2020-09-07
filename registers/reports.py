@@ -106,7 +106,7 @@ def it_system_export(fileobj, it_systems):
                 ', '.join([str(j) for j in i.user_groups.all()]),
                 i.get_system_type_display() if i.system_type else '',
                 i.cost_centre.code if i.cost_centre else '',
-                i.cost_centre.division.name if (i.cost_centre and i.cost_centre.division) else '',
+                i.division_name,
                 i.owner.get_full_name() if i.owner else '',
                 i.technology_custodian.get_full_name() if i.technology_custodian else '',
                 i.information_custodian.get_full_name() if i.information_custodian else '',
