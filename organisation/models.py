@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.gis.db import models
-from django.utils import timezone
 from django.utils.html import format_html
 from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
@@ -212,6 +211,20 @@ class DepartmentUser(MPTTModel):
                 if org.unit_type in (0, 1):
                     return org
         return self.org_unit
+
+    def get_office_licence(self):
+        """Dumb function to return the first of several hardcoded MS licences assigned to the user.
+        """
+        o365 = [
+            'OFFICE 365 E5',
+            'OFFICE 365 E3',
+            'OFFICE 365 E1',
+        ]
+        if self.assigned_licences:
+            for o in o365:
+                if o in self.assigned_licences:
+                    return o
+        return None
 
     def get_gal_department(self):
         """Return a string to place into the "Department" field for the Global Address List.
