@@ -67,17 +67,6 @@ cryptography = ">=2.1.4"
 msrest = ">=0.6.10"
 
 [[package]]
-category = "main"
-description = "Internationalization utilities"
-name = "babel"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "2.6.0"
-
-[package.dependencies]
-pytz = ">=0a"
-
-[[package]]
 category = "dev"
 description = "Specifications for callback functions passed in to an API"
 name = "backcall"
@@ -119,12 +108,12 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = "*"
-version = "1.9.86"
+version = "1.14.56"
 
 [package.dependencies]
-botocore = ">=1.12.86,<1.13.0"
+botocore = ">=1.17.56,<1.18.0"
 jmespath = ">=0.7.1,<1.0.0"
-s3transfer = ">=0.1.10,<0.2.0"
+s3transfer = ">=0.3.0,<0.4.0"
 
 [[package]]
 category = "main"
@@ -132,18 +121,15 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = "*"
-version = "1.12.253"
+version = "1.17.56"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
 jmespath = ">=0.7.1,<1.0.0"
-
-[package.dependencies.python-dateutil]
-python = ">=2.7"
-version = ">=2.1,<3.0.0"
+python-dateutil = ">=2.1,<3.0.0"
 
 [package.dependencies.urllib3]
-python = ">=3.4"
+python = "<3.4.0 || >=3.5.0"
 version = ">=1.20,<1.26"
 
 [[package]]
@@ -330,7 +316,7 @@ description = "Use Leaflet in your django projects"
 name = "django-leaflet"
 optional = false
 python-versions = "*"
-version = "0.24.0"
+version = "0.27.1"
 
 [package.dependencies]
 Django = "*"
@@ -381,7 +367,7 @@ description = "A multiprocessing distributed task queue for Django"
 name = "django-q"
 optional = false
 python-versions = "*"
-version = "1.3.1"
+version = "1.3.3"
 
 [package.dependencies]
 arrow = "*"
@@ -677,11 +663,11 @@ category = "main"
 description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
 name = "openpyxl"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-version = "2.6.2"
+python-versions = ">=3.6,"
+version = "3.0.5"
 
 [package.dependencies]
-et_xmlfile = "*"
+et-xmlfile = "*"
 jdcal = "*"
 
 [[package]]
@@ -898,10 +884,10 @@ description = "An Amazon S3 Transfer Manager"
 name = "s3transfer"
 optional = false
 python-versions = "*"
-version = "0.1.13"
+version = "0.3.3"
 
 [package.dependencies]
-botocore = ">=1.3.0,<2.0.0"
+botocore = ">=1.12.36,<2.0a.0"
 
 [[package]]
 category = "main"
@@ -979,7 +965,7 @@ description = "module for creating simple ASCII tables"
 name = "texttable"
 optional = false
 python-versions = "*"
-version = "1.6.1"
+version = "1.6.3"
 
 [[package]]
 category = "main"
@@ -1051,10 +1037,10 @@ description = "A Python module for creating Excel XLSX files."
 name = "xlsxwriter"
 optional = false
 python-versions = "*"
-version = "1.1.1"
+version = "1.3.3"
 
 [metadata]
-content-hash = "290294212d187de1da0d59468592e0438528abc7878fcb230046d1d2911b0c2c"
+content-hash = "09a6f2099ca29d12ccefeea4cd930539ca5d7e75bac67ced6b17e2aa074402c3"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1082,10 +1068,6 @@ azure-storage-blob = [
     {file = "azure-storage-blob-12.3.1.zip", hash = "sha256:02030d657914c221961f6e7ebafc6ec36761649c04396b368e0b102cbcdcf26c"},
     {file = "azure_storage_blob-12.3.1-py2.py3-none-any.whl", hash = "sha256:e797cb23186e23791f30d424473245383d24d16451a66c6556ca7c7c96678541"},
 ]
-babel = [
-    {file = "Babel-2.6.0-py2.py3-none-any.whl", hash = "sha256:6778d85147d5d85345c14a26aada5e478ab04e39b078b0745ee6870c2b5cf669"},
-    {file = "Babel-2.6.0.tar.gz", hash = "sha256:8cba50f48c529ca3fa18cf81fa9403be176d374ac4d60738b839122dfaaa3d23"},
-]
 backcall = [
     {file = "backcall-0.2.0-py2.py3-none-any.whl", hash = "sha256:fbbce6a29f263178a1f7915c1940bde0ec2b2a967566fe1c65c1dfb7422bd255"},
     {file = "backcall-0.2.0.tar.gz", hash = "sha256:5cbdbf27be5e7cfadb448baf0aa95508f91f2bbc6c6437cd9cd06e2a4c215e1e"},
@@ -1100,12 +1082,12 @@ blessed = [
     {file = "blessed-1.17.8.tar.gz", hash = "sha256:7671d057b2df6ddbefd809009fb08feb2f8d2d163d240b5e765088a90519b2f1"},
 ]
 boto3 = [
-    {file = "boto3-1.9.86-py2.py3-none-any.whl", hash = "sha256:d1338582bc58741f54bd6b43488de6097a82ea45cebed0a3fd936981eadbb3a5"},
-    {file = "boto3-1.9.86.tar.gz", hash = "sha256:63cd957ba663f5c10ff48ed904575eaa701314f79f18dbc59bd050311cd5f809"},
+    {file = "boto3-1.14.56-py2.py3-none-any.whl", hash = "sha256:2ab73b0c400ab8c7df84bee7564ef8a0813021da28dd7a05fcbffb77a8ae9de9"},
+    {file = "boto3-1.14.56.tar.gz", hash = "sha256:bb2222fa02fcd09b39e581e532d4f013ea850742d8cd46e9c10a21028b6d2ef5"},
 ]
 botocore = [
-    {file = "botocore-1.12.253-py2.py3-none-any.whl", hash = "sha256:dc080aed4f9b220a9e916ca29ca97a9d37e8e1d296fe89cbaeef929bf0c8066b"},
-    {file = "botocore-1.12.253.tar.gz", hash = "sha256:3baf129118575602ada9926f5166d82d02273c250d0feb313fc270944b27c48b"},
+    {file = "botocore-1.17.56-py2.py3-none-any.whl", hash = "sha256:73fd22d70611fdcfbb44d1e5f77f7edf8a45a58e6286d50963cc19f9cf9e3e67"},
+    {file = "botocore-1.17.56.tar.gz", hash = "sha256:5a72e1758f3c89c663d74eb733d313f69d059ab4fd571ad41829d666e3367392"},
 ]
 certifi = [
     {file = "certifi-2020.6.20-py2.py3-none-any.whl", hash = "sha256:8fc0819f1f30ba15bdb34cceffb9ef04d99f420f68eb75d901e9560b8749fc41"},
@@ -1214,7 +1196,8 @@ django-js-asset = [
     {file = "django_js_asset-1.2.2-py2.py3-none-any.whl", hash = "sha256:8ec12017f26eec524cab436c64ae73033368a372970af4cf42d9354fcb166bdd"},
 ]
 django-leaflet = [
-    {file = "django-leaflet-0.24.0.tar.gz", hash = "sha256:efdf98ae0bb52f1c5e0fdceb20b870dc6a58378340366a9083f857ccea66117b"},
+    {file = "django-leaflet-0.27.1.tar.gz", hash = "sha256:b530960242fe7718572b23976dd6037823dd478335c22c4434931335acf88bdd"},
+    {file = "django_leaflet-0.27.1-py3-none-any.whl", hash = "sha256:3cf1bc8a0e41d22651541ad5b5e2a8f2c6a13a603728883cd332daf785b37250"},
 ]
 django-mptt = [
     {file = "django-mptt-0.11.0.tar.gz", hash = "sha256:dfdb3af75ad27cdd4458b0544ec8574174f2b90f99bc2cafab6a15b4bc1895a8"},
@@ -1230,8 +1213,8 @@ django-picklefield = [
     {file = "django_picklefield-3.0.1-py3-none-any.whl", hash = "sha256:3c702a54fde2d322fe5b2f39b8f78d9f655b8f77944ab26f703be6c0ed335a35"},
 ]
 django-q = [
-    {file = "django-q-1.3.1.tar.gz", hash = "sha256:a45ffccd07c798fe70c5ad3b047562eafd76e6209c57d6a62709b6dd309ba3b0"},
-    {file = "django_q-1.3.1-py3-none-any.whl", hash = "sha256:7ac33207a70b86d33e893953b1c95c40e386310f8abf9e77b075c9cf2f02a34a"},
+    {file = "django-q-1.3.3.tar.gz", hash = "sha256:de7077660ede36bfdd89ab9405d6393b598bb3e0bfed61f59a0a9074cc4942bb"},
+    {file = "django_q-1.3.3-py3-none-any.whl", hash = "sha256:de4433b10d96ef921f8f4e813053fc8d881a50c0657d0fada11d7538213b2a04"},
 ]
 django-queryset-csv = [
     {file = "django-queryset-csv-1.0.0.tar.gz", hash = "sha256:9ba890536fb48ba9bf2a2f75d1205ac01d58c127da19e5a8e8dc096c207d4818"},
@@ -1323,7 +1306,8 @@ oauthlib = [
     {file = "oauthlib-3.1.0.tar.gz", hash = "sha256:bee41cc35fcca6e988463cacc3bcb8a96224f470ca547e697b604cc697b2f889"},
 ]
 openpyxl = [
-    {file = "openpyxl-2.6.2.tar.gz", hash = "sha256:1d2af392cef8c8227bd2ac3ebe3a28b25aba74fd4fa473ce106065f0b73bfe2e"},
+    {file = "openpyxl-3.0.5-py2.py3-none-any.whl", hash = "sha256:f7d666b569f729257082cf7ddc56262431878f602dcc2bc3980775c59439cdab"},
+    {file = "openpyxl-3.0.5.tar.gz", hash = "sha256:18e11f9a650128a12580a58e3daba14e00a11d9e907c554a17ea016bf1a2c71b"},
 ]
 parso = [
     {file = "parso-0.7.0-py2.py3-none-any.whl", hash = "sha256:158c140fc04112dc45bca311633ae5033c2c2a7b732fa33d0955bad8152a8dd0"},
@@ -1482,8 +1466,8 @@ restless = [
     {file = "restless-2.1.1.tar.gz", hash = "sha256:f66b590cd1a248fd60a7f6540dff318a180bcbf073eefa16ac5ea978c161087b"},
 ]
 s3transfer = [
-    {file = "s3transfer-0.1.13-py2.py3-none-any.whl", hash = "sha256:c7a9ec356982d5e9ab2d4b46391a7d6a950e2b04c472419f5fdec70cc0ada72f"},
-    {file = "s3transfer-0.1.13.tar.gz", hash = "sha256:90dc18e028989c609146e241ea153250be451e05ecc0c2832565231dacdf59c1"},
+    {file = "s3transfer-0.3.3-py2.py3-none-any.whl", hash = "sha256:2482b4259524933a022d59da830f51bd746db62f047d6eb213f2f8855dcb8a13"},
+    {file = "s3transfer-0.3.3.tar.gz", hash = "sha256:921a37e2aefc64145e7b73d50c71bb4f26f46e4c9f414dc648c6245ff92cf7db"},
 ]
 sentry-sdk = [
     {file = "sentry-sdk-0.13.5.tar.gz", hash = "sha256:c6b919623e488134a728f16326c6f0bcdab7e3f59e7f4c472a90eea4d6d8fe82"},
@@ -1509,7 +1493,8 @@ text-unidecode = [
     {file = "text_unidecode-1.2-py2.py3-none-any.whl", hash = "sha256:801e38bd550b943563660a91de8d4b6fa5df60a542be9093f7abf819f86050cc"},
 ]
 texttable = [
-    {file = "texttable-1.6.1.tar.gz", hash = "sha256:2b60a5304ccfbeac80ffae7350d7c2f5d7a24e9aab5036d0f82489746419d9b2"},
+    {file = "texttable-1.6.3-py2.py3-none-any.whl", hash = "sha256:f802f2ef8459058736264210f716c757cbf85007a30886d8541aa8c3404f1dda"},
+    {file = "texttable-1.6.3.tar.gz", hash = "sha256:ce0faf21aa77d806bbff22b107cc22cce68dc9438f97a2df32c93e9afa4ce436"},
 ]
 titlecase = [
     {file = "titlecase-0.12.0-py3-none-any.whl", hash = "sha256:95d643a0c08097c02933aced707adfe1c275c335019e8e514dea782a465c5b84"},
@@ -1534,6 +1519,6 @@ webtemplate-dbca = [
     {file = "webtemplate-dbca-1.2.1.tar.gz", hash = "sha256:ff6f9e56fc96f8f50d1baa4b5e77cebb789a7e753dee8628892e3eb8513d8d54"},
 ]
 xlsxwriter = [
-    {file = "XlsxWriter-1.1.1-py2.py3-none-any.whl", hash = "sha256:9db09ab93f462aa8b7559073ac58dcb4c18dc4321f8c04fb9eed0941c81ca0b5"},
-    {file = "XlsxWriter-1.1.1.tar.gz", hash = "sha256:b9d45a55c4ca976264f592fb8ceafba52cafe4e381050ade74abf11efa92d097"},
+    {file = "XlsxWriter-1.3.3-py2.py3-none-any.whl", hash = "sha256:88ab71d464e8f6c3923335cc92d6035260aa9e7c8b27fcbb3a5bc07e2c671d22"},
+    {file = "XlsxWriter-1.3.3.tar.gz", hash = "sha256:830cad0a88f0f95e5a8945ee082182aa68ab89e7d9725d0c32c196207634244b"},
 ]
