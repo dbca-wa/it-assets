@@ -128,11 +128,7 @@ class DepartmentUserResource(DjangoResource):
         return resp
 
     def is_authenticated(self):
-        """This method is currently required for create/update to work via the
-        AD sync scripts.
-        TODO: implement optional token-based auth to secure this.
-        """
-        return True
+        return self.request.user.is_authenticated
 
     def list_licences(self):
         # Return active users having an E5 or E1 licence assigned.
@@ -141,7 +137,6 @@ class DepartmentUserResource(DjangoResource):
             Q(assigned_licences__contains=['OFFICE 365 E5']) | Q(assigned_licences__contains=['OFFICE 365 E1'])
         )
         users = users.order_by('name')
-        # user_values = list(users.values('name', 'email', 'cost_centre__code', 'assigned_licences'))
         user_values = []
         for u in users:
             user_values.append({
@@ -204,9 +199,6 @@ class DepartmentUserResource(DjangoResource):
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
-    # NOTE: skip_prepare provides a huge performance improvement to this method, but at present we
-    # cannot use it because we need to modify the serialised object.
-    # @skip_prepare
     def list(self):
         """Pass query params to modify the API output.
         Include `org_structure=true` and `sync_o365=true` to output only
