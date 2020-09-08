@@ -216,7 +216,7 @@ class DepartmentUser(MPTTModel):
         """Return O365 licence terms familar to the directors.
         """
         if 'OFFICE 365 E5' in self.assigned_licences:
-            return 'On-premises (E5)'
+            return 'On-premise (E5)'
         elif 'OFFICE 365 E1' in self.assigned_licences:
             return 'Cloud (E1)'
         return None
