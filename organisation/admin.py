@@ -32,37 +32,39 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
-def disable_enable_acount(modeladmin, request, queryset):
-    pass
-
-
-disable_enable_acount.short_description = "Disable or enable selected department user's Active Directory account"
-
-
-def change_email(modeladmin, request, queryset):
-    pass
-
-
-change_email.short_description = "Change select department user's primary email address in Active Directory"
-
-
 @register(DepartmentUser)
 class DepartmentUserAdmin(VersionAdmin):
-    actions = (disable_enable_acount, change_email)
+
+    class AssignedLicenceFilter(SimpleListFilter):
+        title = 'assigned licences'
+        parameter_name = 'assigned_licences'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('OFFICE 365 E5', 'OFFICE 365 E5'),
+                ('OFFICE 365 E3', 'OFFICE 365 E3'),
+                ('OFFICE 365 E1', 'OFFICE 365 E1'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value():
+                return queryset.filter(assigned_licences__contains=[self.value()])
+
+    actions = ('clear_ad_guid', 'clear_azure_guid')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
         'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
     )
-    list_filter = ('account_type', 'active', 'vip', 'executive', 'shared_account')
+    list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
     filter_horizontal = ('secondary_locations',)
     readonly_fields = ('active', 'email', 'azure_guid', 'ad_guid', 'assigned_licences', 'proxy_addresses')
     fieldsets = (
         ('Active Directory account fields', {
-            'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
+            # 'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
             'fields': (
                 'active',
                 'email',
@@ -97,10 +99,10 @@ class DepartmentUserAdmin(VersionAdmin):
                 'vip',
                 'executive',
                 'contractor',
+                'security_clearance',
+                'account_type',
                 'notes',
                 'working_hours',
-                'account_type',
-                'security_clearance',
             ),
         }),
         ('Active Directory information', {
@@ -137,6 +139,16 @@ class DepartmentUserAdmin(VersionAdmin):
             async_task('organisation.utils.deptuser_azure_sync', obj)
         else:
             deptuser_azure_sync(obj)
+
+    def clear_ad_guid(self, request, queryset):
+        queryset.update(ad_guid=None)
+        self.message_user(request, "On-prem AD GUID has been cleared for the selected user(s)")
+    clear_ad_guid.short_description = "Clear a user's on-prem AD GUID following migration between AD instances"
+
+    def clear_azure_guid(self, request, queryset):
+        queryset.update(azure_guid=None)
+        self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
+    clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
 
 
 @register(ADAction)

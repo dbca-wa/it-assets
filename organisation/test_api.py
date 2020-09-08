@@ -27,15 +27,8 @@ class ProfileTestCase(ApiTestCase):
         response = self.client.get(self.url)
         j = response.json()
         obj = j['objects'][0]
-        #self.assertFalse(obj['telephone'])
-        #tel = '9111 1111'
-        #response = self.client.post(self.url, {'telephone': tel})
-        #self.assertEqual(response.status_code, 200)
-        #j = response.json()
-        #obj = j['objects'][0]
-        #self.assertEqual(obj['telephone'], tel)
-
         self.assertFalse(obj['telephone'])
+
         for f, v in [
             ('telephone', '91111 1111'),
             ('mobile_phone', '9111 1112'),
@@ -56,28 +49,6 @@ class ProfileTestCase(ApiTestCase):
 
 
 class OptionResourceTestCase(ApiTestCase):
-
-    @skip('Inconsistent testing results')
-    def test_data_org_structure(self):
-        """Test the data_org_structure API endpoint
-        """
-        url = '/api/options/?list=org_structure'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        # Division 1 will be present in the response.
-        self.assertContains(response, self.div1.name)
-        # Response can be deserialised into a dict.
-        r = response.json()
-        self.assertTrue(isinstance(r, dict))
-        # Deserialised response contains a list.
-        self.assertTrue(isinstance(r['objects'], list))
-        # Make OrgUnit inactive to test exclusion.
-        self.branch1.active = False
-        self.branch1.save()
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        # Division 1 won't be present in the response.
-        self.assertNotContains(response, self.branch1.name)
 
     def test_data_cost_centre(self):
         """Test the data_cost_centre API endpoint
@@ -213,17 +184,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertContains(response, self.user1.email)
         # Division 1 will be present in the response.
         self.assertContains(response, self.div1.name)
-
-    def test_org_structure_sync_0365(self):
-        """Test the sync_o365=true request parameter
-        """
-        self.div1.sync_o365 = False
-        self.div1.save()
-        url = '/api/users/?org_structure=true&sync_o365=true'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        # Division 1 won't be present in the response.
-        self.assertNotContains(response, self.div1.name)
 
     def test_create_invalid(self):
         """Test the DepartmentUserResource create response with missing data
@@ -368,7 +328,6 @@ class DepartmentUserExportTestCase(ApiTestCase):
 
     def setUp(self):
         super(DepartmentUserExportTestCase, self).setUp()
-        # Create some hardware.
         mixer.cycle(10).blend(DepartmentUser)
 
     def test_get(self):

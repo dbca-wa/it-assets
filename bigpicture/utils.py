@@ -79,10 +79,16 @@ def host_dependencies():
 
     # First, try to match webservers to hosts based on their name.
     for i in WebServer.objects.filter(host__isnull=True):
-        if Host.objects.filter(name__istartswith=i.name):
+        if Host.objects.filter(name__istartswith=i.name).exists():
             host = Host.objects.filter(name__istartswith=i.name).first()
             i.host = host
             i.save()
+        elif i.other_names:  # Fall back to trying the other names for the Webserver (if applicable).
+            for name in i.other_names:
+                if Host.objects.filter(name__istartswith=name).exists():
+                    host = Host.objects.filter(name__istartswith=name).first()
+                    i.host = host
+                    i.save()
 
     for i in WebServer.objects.filter(host__isnull=False):
         if Dependency.objects.filter(content_type=webserver_ct, object_id=i.pk, category='Proxy target').exists():

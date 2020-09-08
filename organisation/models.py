@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.gis.db import models
-from django.utils import timezone
 from django.utils.html import format_html
 from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
@@ -128,6 +127,11 @@ class DepartmentUser(MPTTModel):
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
 
+    # Cache of Ascender data
+    alesco_data = JSONField(
+        null=True, blank=True, help_text='Readonly data from Alesco')
+    alesco_data_updated = models.DateTimeField(null=True, blank=True)
+
     # Fields below are likely to be deprecated and progressively removed.
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
@@ -161,8 +165,6 @@ class DepartmentUser(MPTTModel):
     hr_auto_expiry = models.BooleanField(
         default=False, verbose_name='HR auto expiry',
         help_text='When the HR termination date changes, automatically update the expiry date to match.')
-    alesco_data = JSONField(
-        null=True, blank=True, help_text='Readonly data from Alesco')
     o365_licence = models.NullBooleanField(
         default=None, editable=False,
         help_text='Account consumes an Office 365 licence.')
@@ -180,65 +182,13 @@ class DepartmentUser(MPTTModel):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ''):
                 self.employee_id = None
-        '''
-        # If the CC is set but not the OrgUnit, use the CC's OrgUnit.
-        if self.cost_centre and not self.org_unit:
-            self.org_unit = self.cost_centre.org_position
-        if self.cost_centre and self.org_unit:
-            self.org_data = self.org_data or {}
-            self.org_data["units"] = list(self.org_unit.get_ancestors(include_self=True).values(
-                "id", "name", "acronym", "unit_type", "costcentre__code",
-                "costcentre__name", "location__name"))
-            self.org_data["unit"] = self.org_data["units"][-1] if len(self.org_data["units"]) else None
-            if self.org_unit.location:
-                self.org_data["location"] = self.org_unit.location.as_dict()
-            for unit in self.org_data["units"]:
-                unit["unit_type"] = self.org_unit.TYPE_CHOICES_DICT[
-                    unit["unit_type"]]
-            if self.cost_centre:
-                self.org_data["cost_centre"] = {
-                    "name": self.cost_centre.org_position.name if self.cost_centre.org_position else '',
-                    "code": self.cost_centre.code,
-                    "cost_centre_manager": str(self.cost_centre.manager),
-                    "business_manager": str(self.cost_centre.business_manager),
-                    "admin": str(self.cost_centre.admin),
-                    "tech_contact": str(self.cost_centre.tech_contact),
-                }
-            if self.cost_centres_secondary.exists():
-                self.org_data['cost_centres_secondary'] = [{
-                    'name': i.name,
-                    'code': i.code,
-                } for i in self.cost_centres_secondary.all()]
-            if self.org_units_secondary:
-                self.org_data['org_units_secondary'] = [{
-                    'name': i.name,
-                    'acronym': i.name,
-                    'unit_type': i.get_unit_type_display(),
-                } for i in self.org_units_secondary.all()]
-        '''
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
 
-    def org_data_pretty(self):
-        if not self.org_data:
-            return self.org_data
-        return format_html(json2html.convert(json=self.org_data))
-
-    def alesco_data_pretty(self):
-        if not self.alesco_data:
-            return self.alesco_data
-        return format_html(json2html.convert(json=self.alesco_data, clubbing=False))
-
     @property
     def password_age_days(self):
         return None
-
-    @property
-    def ad_expired(self):
-        if self.expiry_date and self.expiry_date < timezone.now():
-            return True
-        return False
 
     @property
     def children_filtered(self):
@@ -261,6 +211,15 @@ class DepartmentUser(MPTTModel):
                 if org.unit_type in (0, 1):
                     return org
         return self.org_unit
+
+    def get_office_licence(self):
+        """Return O365 licence terms familar to the directors.
+        """
+        if 'OFFICE 365 E5' in self.assigned_licences:
+            return 'On-premise (E5)'
+        elif 'OFFICE 365 E1' in self.assigned_licences:
+            return 'Cloud (E1)'
+        return None
 
     def get_gal_department(self):
         """Return a string to place into the "Department" field for the Global Address List.
@@ -342,13 +301,22 @@ class DepartmentUser(MPTTModel):
         # Cost Centre
         if self.cost_centre:
             if not azure_user['CompanyName'] or azure_user['CompanyName'] != self.cost_centre.code:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='CompanyName',
-                    field='cost_centre.code',
-                    completed=None,
-                )
+                if self.dir_sync_enabled:  # Onprem AD.
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='Company',
+                        field='cost_centre.code',
+                        completed=None,
+                    )
+                else:
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,  # Azure AD
+                        action_type='Change account field',
+                        ad_field='CompanyName',
+                        field='cost_centre.code',
+                        completed=None,
+                    )
                 action.field_value = self.cost_centre.code
                 action.ad_field_value = azure_user['CompanyName']
                 action.save()
@@ -357,13 +325,22 @@ class DepartmentUser(MPTTModel):
         # Location
         if self.location:
             if not azure_user['PhysicalDeliveryOfficeName'] or azure_user['PhysicalDeliveryOfficeName'] != self.location.name:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='PhysicalDeliveryOfficeName',
-                    field='location.name',
-                    completed=None,
-                )
+                if self.dir_sync_enabled:  # On-prem AD
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='physicalDeliveryOfficeName',
+                        field='location.name',
+                        completed=None,
+                    )
+                else:  # Azure AD
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='PhysicalDeliveryOfficeName',
+                        field='location.name',
+                        completed=None,
+                    )
                 action.field_value = self.location.name
                 action.ad_field_value = azure_user['PhysicalDeliveryOfficeName']
                 action.save()
@@ -395,7 +372,7 @@ class DepartmentUser(MPTTModel):
         actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
 
         for action in actions:
-            if action.field == 'manager.email' and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
+            if action.field == 'manager.email' and azure_user['Manager'] and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
                 action.delete()
             elif action.field == 'cost_centre.code' and azure_user['CompanyName'] == self.cost_centre.code:
                 action.delete()
@@ -447,8 +424,6 @@ class ADAction(models.Model):
     field_value = models.TextField(blank=True, null=True, help_text='Value of the field in IT Assets')
     completed = models.DateTimeField(null=True, blank=True, editable=False)
     completed_by = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True, editable=False)
-    # log = models.TextField()
-    # automated = models.BooleanField(default=False, help_text='Will this action be completed by automated processes?')
 
     class Meta:
         verbose_name = 'AD action'
@@ -462,6 +437,10 @@ class ADAction(models.Model):
     @property
     def azure_guid(self):
         return self.department_user.azure_guid
+
+    @property
+    def ad_guid(self):
+        return self.department_user.ad_guid
 
     @property
     def action(self):
@@ -588,9 +567,6 @@ class CostCentre(models.Model):
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
-    # NOTE: delete division field after copying data to division_name.
-    division = models.ForeignKey(
-        OrgUnit, on_delete=models.PROTECT, null=True, editable=False, related_name='costcentres_in_division')
     division_name = models.CharField(max_length=128, choices=DIVISION_CHOICES, null=True, blank=True)
     org_position = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, blank=True, null=True)

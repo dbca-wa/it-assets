@@ -38,17 +38,9 @@ class ITSystemResourceTestCase(ApiTestCase):
 class ChangeRequestViewSetTestCase(ApiTestCase):
 
     def test_list(self):
-        # url = reverse('changerequest-list')
         url = '/api/v2/changerequest/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-
-    # def test_retrieve(self):
-    #     url = reverse('changerequest-retrieve')
-    #
-    #     # url = '/api/v2/changerequest/retrieve'
-    #     response = self.client.get(url)
-    #     self.assertEqual(response.status_code, 200)
 
     def test_create(self):
         url = reverse('change_request_create')

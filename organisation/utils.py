@@ -20,13 +20,27 @@ def find_user_in_list(user_list, email=None, objectid=None):
     """
     if email:
         for user in user_list:
-            if user['Mail'] and user['Mail'].lower() == email.lower():
+            if 'Mail' in user and user['Mail'] and user['Mail'].lower() == email.lower():  # Azure AD
+                return user
+            elif 'EmailAddress' in user and user['EmailAddress'] and user['EmailAddress'].lower() == email.lower():  # Onprem AD
                 return user
     if objectid:
         for user in user_list:
-            if user['ObjectId'] and user['ObjectId'] == objectid:
+            if 'ObjectId' in user and user['ObjectId'] and user['ObjectId'] == objectid:  # Azure AD
+                return user
+            elif 'ObjectGUID' in user and user['ObjectGUID'] and user['ObjectGUID'] == objectid:  # Onprem AD
                 return user
     return None
+
+
+def update_deptuser_from_onprem_ad(ad_user, dept_user):
+    """For given onprem AD user and DepartmentUser objects, update the DepartmentUser object fields
+    with values from AD (the source of truth for these values).
+    Currently, only ObjectGUID and SamAccountName should be synced from on-prem AD.
+    """
+    dept_user.ad_guid = ad_user['ObjectGUID']
+    dept_user.username = ad_user['SamAccountName']
+    dept_user.save()
 
 
 def update_deptuser_from_azure(azure_user, dept_user):
@@ -34,7 +48,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
     with values from Azure (the source of truth for these values).
     """
     dept_user.azure_guid = azure_user['ObjectId']
-    # dept_user.active = azure_user['AccountEnabled']
+    dept_user.active = azure_user['AccountEnabled']
     dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
     licence_pattern = 'SkuId:\s[a-z0-9-]+'
     dept_user.mail_nickname = azure_user['MailNickName']
@@ -45,13 +59,13 @@ def update_deptuser_from_azure(azure_user, dept_user):
     # MS licence SKU reference:
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     ms_licence_skus = {
-        'c5928f49-12ba-48f7-ada3-0d743a3601d5': 'VISIOCLIENT',
+        'c5928f49-12ba-48f7-ada3-0d743a3601d5': 'VISIO Online Plan 2',  # VISIOCLIENT
         '1f2f344a-700d-42c9-9427-5cea1d5d7ba6': 'STREAM',
         'b05e124f-c7cc-45a0-a6aa-8cf78c946968': 'ENTERPRISE MOBILITY + SECURITY E5',  # EMSPREMIUM
         'c7df2760-2c81-4ef7-b578-5b5392b571df': 'OFFICE 365 E5',  # ENTERPRISEPREMIUM
         '87bbbc60-4754-4998-8c88-227dca264858': 'POWERAPPS_INDIVIDUAL_USER',
         '6470687e-a428-4b7a-bef2-8a291ad947c9': 'WINDOWS_STORE',
-        '6fd2c87f-b296-42f0-b197-1e91e994b900': 'ENTERPRISEPACK',
+        '6fd2c87f-b296-42f0-b197-1e91e994b900': 'OFFICE 365 E3',  # ENTERPRISEPACK
         'f30db892-07e9-47e9-837c-80727f46fd3d': 'FLOW_FREE',
         '440eaaa8-b3e0-484b-a8be-62870b9ba70a': 'PHONESYSTEM_VIRTUALUSER',
         'bc946dac-7877-4271-b2f7-99d2db13cd2c': 'FORMS_PRO',
@@ -65,8 +79,8 @@ def update_deptuser_from_azure(azure_user, dept_user):
         '90d8b3f8-712e-4f7b-aa1e-62e7ae6cbe96': 'SMB_APPS',
         'fcecd1f9-a91e-488d-a918-a96cdb6ce2b0': 'AX7_USER_TRIAL',
         '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RMSBASIC',
-        '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECTPROFESSIONAL',
-        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'STANDARDPACK',
+        '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECT ONLINE PROFESSIONAL',  # PROJECTPROFESSIONAL
+        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1', # STANDARDPACK
     }
     for sku in skus:
         if sku in ms_licence_skus:
