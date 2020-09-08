@@ -56,6 +56,51 @@ def get_container_status(container,status):
     else:
         return container.status
 
+def update_latest_containers(context,container,workload=None,workload_update_fields=None):
+    if workload is None:
+        workload_key = (container.workload.cluster.id,container.workload.name,container.workload.kind)
+        if workload_key not in context["workloads"]:
+            workload_update_fields = []
+            context["workloads"][workload_key] = (container.workload,workload_update_fields)
+        else:
+            workload,workload_update_fields = context["workloads"][workload_key]
+
+    if workload.kind in ("Deployment",'DaemonSet','StatefulSet','service?'):
+        if container.status in ("Waiting","Running"):
+            if workload.latest_containers is None:
+                workload.latest_containers=[[container.id,1,0]]
+                if "latest_containers" not in workload_update_fields:
+                    workload_update_fields.append("latest_containers")
+            elif container.id not in workload.latest_containers:
+                workload.latest_containers.append([container.id,1,0])
+                if "latest_containers" not in workload_update_fields:
+                    workload_update_fields.append("latest_containers")
+        elif workload.latest_containers and container.id in workload.latest_containers:
+            index = len(workload.latest_containers) - 1
+            while index >= 0:
+                if workload.latest_containers[index][0] == container.id:
+                    del workload.latest_contaienrs[index]
+                    if "latest_containers" not in workload_update_fields:
+                        workload_update_fields.append("latest_containers")
+                    break
+                else:
+                    index -= 1
+    else:
+        if workload.latest_containers is None or len(workload.latest_containers) != 1 or workload.latest_containers[0][0] != container.id:
+            if container.status in ("Waiting","Running"):
+                workload.latest_containers=[[container.id,1,0]]
+            else:
+                workload.latest_containers=[[container.id,0,0]]
+            if "latest_containers" not in workload_update_fields:
+                workload_update_fields.append("latest_containers")
+        else:
+            if container.status in ("Waiting","Running"):
+                workload.latest_containers[0][1]=1
+            else:
+                workload.latest_containers[0][1]=0
+            if "latest_containers" not in workload_update_fields:
+                workload_update_fields.append("latest_containers")
+
 def process_status_file(context,metadata,status_file):
     if settings.CONTAINERSTATUS_STREAMING_PARSE:
         status_records = LogRecordIterator(status_file)
@@ -107,7 +152,8 @@ def process_status_file(context,metadata,status_file):
                     cluster.save()
 
                 context["clusters"][clustername] = cluster
-
+            
+            workload = None
             key = (cluster.id,containerid)
             if key in context["terminated_containers"]:
                 continue
@@ -121,7 +167,7 @@ def process_status_file(context,metadata,status_file):
                     workload_key = (cluster.id,workload_name,kind)
                     workload = None
                     if workload_key in context["workloads"]:
-                        workload = context["workloads"][workload_key]
+                        workload,workload_update_fields = context["workloads"][workload_key]
                     else:
                         #try to find the workload through cluster and workload name
                         workload_qs = Workload.objects.filter(cluster=cluster,name=workload_name)
@@ -129,35 +175,36 @@ def process_status_file(context,metadata,status_file):
                             if obj.image.startswith(image_without_tag) and ((kind == obj.kind) or (ports and obj.listenings.all().count()) or (not ports and obj.listenings.all().count() == 0)):
                                 workload = obj
                                 break
-                    if not workload:
-                        #not found , create a workload for this log
-                        namespace_key = (cluster.id,"unknown")
-                        if namespace_key in context["namespaces"]:
-                            namespace = context["namespaces"][namespace_key]
-                        else:
-                            try:
-                                namespace = Namespace.objects.get(cluster=cluster,name="unknown")
-                            except ObjectDoesNotExist as ex:
-                                namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True)
-                                namespace.save()
-    
-                            context["namespaces"][namespace_key] = namespace
-    
-                        image = "{}:{}".format(record["image"].strip(),record["imagetag"].strip())
-                        workload = Workload(
-                            cluster=namespace.cluster,
-                            project=namespace.project,
-                            namespace=namespace,
-                            name=workload_name,
-                            image=image,
-                            kind=kind,
-                            api_version="",
-                            added_by_log=True,
-                            modified=timezone.now(),
-                            created=timezone.now()
-                        )
-                        workload.save()
-                    context["workloads"][workload_key] = workload
+                        if not workload:
+                            #not found , create a workload for this log
+                            namespace_key = (cluster.id,"unknown")
+                            if namespace_key in context["namespaces"]:
+                                namespace = context["namespaces"][namespace_key]
+                            else:
+                                try:
+                                    namespace = Namespace.objects.get(cluster=cluster,name="unknown")
+                                except ObjectDoesNotExist as ex:
+                                    namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True)
+                                    namespace.save()
+        
+                                context["namespaces"][namespace_key] = namespace
+        
+                            image = "{}:{}".format(record["image"].strip(),record["imagetag"].strip())
+                            workload = Workload(
+                                cluster=namespace.cluster,
+                                project=namespace.project,
+                                namespace=namespace,
+                                name=workload_name,
+                                image=image,
+                                kind=kind,
+                                api_version="",
+                                added_by_log=True,
+                                modified=timezone.now(),
+                                created=timezone.now()
+                            )
+                            workload.save()
+                        workload_update_fields = []
+                        context["workloads"][workload_key] = (workload,workload_update_fields)
 
                     container = Container(
                         cluster=workload.cluster,
@@ -168,6 +215,14 @@ def process_status_file(context,metadata,status_file):
                         )
                 context["containers"][key] = container
 
+            if workload is None:
+                workload_key = (container.workload.cluster.id,container.workload.name,container.workload.kind)
+                if workload_key not in context["workloads"]:
+                    workload_update_fields = []
+                    workload = container.workload
+                    context["workloads"][key] = (workload,workload_update_fields)
+                else:
+                    workload,workload_update_fields = context["workloads"][workload_key]
             #container
             container_status = get_container_status(container,record["containerstate"])
             update_fields = set_fields(container,[
@@ -181,6 +236,8 @@ def process_status_file(context,metadata,status_file):
                 ("status",container_status),
                 ("last_checked",to_datetime(record["max_timegenerated"]))
             ])
+            
+            update_latest_containers(context,container,workload=workload,workload_update_fields=workload_update_fields)
 
             if container.pk is None:
                 container.save()
@@ -196,6 +253,7 @@ def process_status_file(context,metadata,status_file):
             logger.error("Failed to parse pod status record({}).{}".format(record,traceback.format_exc()))
             raise Exception("Failed to parse pod status record({}).{}".format(record,str(ex)))
 
+    context["last_archive_time"] = metadata["archive_endtime"]
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
             
 
@@ -209,6 +267,7 @@ def process_status(context):
         process_status_file(context,metadata,status_file)
 
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+
 
     return _func
                         
@@ -236,6 +295,19 @@ def harvest(reconsume=False):
         }
         #consume nginx config file
         result = get_containerstatus_client().consume(process_status(context))
+        #change the status of containers which has no status data harvested in recent half an hour
+        if "last_archive_time" in context:
+            for container in Container.objects.filter(status__in=("Waiting",'Running'),last_checked__lt=context["last_archive_time"] - datetime.timedelta(minutes=30)):
+                container.status="LostHeartbeat"
+                container.save(update_fields=["status"])
+                update_latest_containers(context,container)
+
+        #save workload 
+        for workload,workload_update_fields in context["workloads"].values():
+            if not workload.id:
+                workload.save()
+            elif workload_update_fields:
+                workload.save(update_fields=workload_update_fields)
         return result
 
     finally:

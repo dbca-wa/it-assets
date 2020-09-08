@@ -151,6 +151,9 @@ def process_status_file(context,metadata,status_file):
                 #added by continnerstatus, and found a matched record in podstatus, try to delete the workload created by containerstatus
                 if not Container.objects.filter(cluster=cluster,workload=previous_workload).exists():
                     #no container references the previous workload, delete it
+                    previous_workload_key = (previous_workload.namespace,previous_workload.name,previous_workload.kind)
+                    if previous_workload_key in context["workloads"]:
+                        del context["workloads"][previous_workload_key]
                     previous_workload.delete()
 
                     if previous_namespace and previous_namespace != namespace and previous_namespace.added_by_log and previous_namespace.name == "unknown":

@@ -102,13 +102,52 @@ class DatabaseLinkMixin(object):
 
 class ContainersLinkMixin(object):
     containers_url_name = 'admin:{}_{}_changelist'.format(models.Container._meta.app_label,models.Container._meta.model_name)
+    container_url_name = 'admin:{}_{}_change'.format(models.Container._meta.app_label,models.Container._meta.model_name)
     def _containers(self,obj):
         if not obj :
             return ""
-        else:
+        elif not obj.latest_containers:
             url = reverse(self.containers_url_name, args=[])
-            return mark_safe("<A href='{}?workload__id__exact={}'>Containers</A>".format(url,obj.id))
+            return mark_safe("<A href='{0}?workload__id__exact={1}'>All</A>".format(url,obj.id))
+        elif len(obj.latest_containers) == 1:
+            list_url = reverse(self.containers_url_name, args=[])
+            change_url = reverse(self.container_url_name, args=[obj.latest_containers[0][0]])
+            if obj.latest_containers[0][2] & models.Workload.ERROR == models.Workload.ERROR:
+                img = "<img src='/static/img/error.png' width=16 height=16>"
+            elif obj.latest_containers[0][2] & models.Workload.WARNING == models.Workload.WARNING:
+                img = "<img src='/static/img/warning.png' width=16 height=16>"
+            elif obj.latest_containers[0][2] & models.Workload.INFO == models.Workload.INFO:
+                img = "<img src='/static/img/info.png' width=16 height=16>"
+            else:
+                img = ""
+
+            return mark_safe("<span style='white-space:nowrap'><A href='{0}'>{3}Latest</A><A style='margin-left:5px' href='{1}?workload__id__exact={2}'>All</A></span>".format(change_url,list_url,obj.id,img))
+        else:
+            level = 0
+            for container in obj.latest_containers:
+                level |= container[2]
+
+            if level & models.Workload.ERROR == models.Workload.ERROR:
+                img = "<img src='/static/img/error.png' width=16 height=16>"
+            elif level & models.Workload.WARNING == models.Workload.WARNING:
+                img = "<img src='/static/img/warning.png' width=16 height=16>"
+            elif level & models.Workload.INFO == models.Workload.INFO:
+                img = "<img src='/static/img/info.png' widht=16 height=16>"
+            else:
+                img = ""
+
+            list_url = reverse(self.containers_url_name, args=[])
+            return mark_safe("<span style='white-space:nowrap'><A href='{0}?id__in={2}'>{3}Latest</A><A style='margin-left:5px' href='{0}?workload__id__exact={1}'>All</A></span>".format(list_url,obj.id,[o[0] for o in obj.latest_containers],img))
     _containers.short_description = "Containers"
+
+    def _running_status(self,obj):
+        if not obj :
+            return ""
+        elif not obj.latest_containers:
+            return "Stopped"
+        else:
+            return "Running" if any(o[1] for o in obj.latest_containers) else "Stopped"
+    _running_status.short_description = "Status"
 
 class ContainerLinkMixin(object):
     container_url_name = 'admin:{}_{}_change'.format(models.Container._meta.app_label,models.Container._meta.model_name)
@@ -561,10 +600,10 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 
 @admin.register(models.Workload)
 class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin, admin.ModelAdmin):
-    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers', 'modified','_deleted',"added_by_log")
+    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', 'modified','_deleted',"added_by_log")
     list_display_links = None
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_webapps','_containers', 'modified',"suspend","added_by_log")
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers',"suspend", 'modified','_deleted',"added_by_log")
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas', '_webapps','_containers','_running_status', 'modified',"suspend","added_by_log")
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", 'modified','_deleted',"added_by_log")
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']
@@ -572,6 +611,15 @@ class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLi
 
     inlines = [WorkloadDatabaseInline1, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
     webapp_change_url_name = 'admin:{}_{}_change'.format(WebApp._meta.app_label, WebApp._meta.model_name)
+
+    def _replicas(self,obj):
+        if not obj:
+            return ""
+        elif obj.kind == "Deployment":
+            return obj.replicas
+        else:
+            return ""
+    _replicas.short_description = "Replicas"
 
     def _webapps(self, obj):
         if not obj:
@@ -718,13 +766,48 @@ class RunningStatusFilter(admin.SimpleListFilter):
 @admin.register(models.Container)
 class ContainerAdmin(ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsLinkMixin,admin.ModelAdmin):
     list_display = ('_containerid','_cluster', '_namespace', '_workload','status','poduid','_started', '_terminated','_last_checked',"_logs")
-    readonly_fields = ('containerid','_cluster', '_namespace', '_workload','image','poduid','podip','status','pod_created','pod_started','container_created', 'container_started', 'container_terminated','exitcode','last_checked',"_logs",'ports','envs')
+    readonly_fields = ('containerid','_cluster', '_namespace', '_workload','image','poduid','podip','status','_pod_created','_pod_started','_container_created', '_container_started', '_container_terminated','exitcode','_last_checked',"_logs",'ports','envs')
     ordering = ('cluster__name', 'namespace__name', 'workload__name','workload__kind','-container_started')
     list_filter = ('cluster',"workload__kind","status")
     search_fields = ['workload__name','workload__namespace__name','containerid']
 
+    def _container_terminated(self,obj):
+        if not obj or not obj.container_terminated:
+            return ""
+        else:
+            return timezone.localtime(obj.container_terminated).strftime("%Y-%m-%d %H:%M:%S")
+    _container_terminated.short_description = "Container Terminated"
+
+    def _container_started(self,obj):
+        if not obj or not obj.container_started:
+            return ""
+        else:
+            return timezone.localtime(obj.container_started).strftime("%Y-%m-%d %H:%M:%S")
+    _container_started.short_description = "Container Started"
+
+    def _container_created(self,obj):
+        if not obj or not obj.container_created:
+            return ""
+        else:
+            return timezone.localtime(obj.container_created).strftime("%Y-%m-%d %H:%M:%S")
+    _container_created.short_description = "Container Created"
+
+    def _pod_started(self,obj):
+        if not obj or not obj.pod_started:
+            return ""
+        else:
+            return timezone.localtime(obj.pod_started).strftime("%Y-%m-%d %H:%M:%S")
+    _pod_started.short_description = "Pod Started"
+
+    def _pod_created(self,obj):
+        if not obj or not obj.pod_created:
+            return ""
+        else:
+            return timezone.localtime(obj.pod_created).strftime("%Y-%m-%d %H:%M:%S")
+    _pod_created.short_description = "Pod Created"
+
     def _last_checked(self,obj):
-        if not obj:
+        if not obj or not obj.last_checked:
             return ""
         else:
             return timezone.localtime(obj.last_checked).strftime("%Y-%m-%d %H:%M:%S")

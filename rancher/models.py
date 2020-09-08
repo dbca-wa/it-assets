@@ -264,11 +264,17 @@ class IngressRule(models.Model):
 
 
 class Workload(DeletedMixin,models.Model):
+    ERROR = 4
+    WARNING = 2
+    INFO = 1
+
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads', editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads', editable=False,null=True)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads', editable=False, null=True)
     name = models.CharField(max_length=128, editable=False)
     kind = models.CharField(max_length=64, editable=False)
+
+    latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
 
     replicas = models.PositiveSmallIntegerField(editable=False, null=True)
     image = models.CharField(max_length=128, editable=False)

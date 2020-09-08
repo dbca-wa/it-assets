@@ -51,6 +51,54 @@ def get_containerlog_client():
         )
     return _containerlog_client
 
+def update_latest_containers(context,containerlog):
+    container = containerlog.container
+    workload_key = (container.workload.cluster.id,container.workload.name,container.workload.kind)
+    if workload_key not in context["workloads"]:
+        workload_update_fields = []
+        workload = container.workload
+        context["workloads"][workload_key] = (workload,workload_update_fields)
+    else:
+        workload,workload_update_fields = context["workloads"][workload_key]
+
+    if not workload.latest_containers:
+        return
+
+    if "latest_containers" not in workload_update_fields:
+        index = 0
+        while index < len(workload.latest_containers):
+            container_data = workload.latest_containers[index]
+            if container_data[0] != container.id:
+                index += 1
+                continue
+            else:
+                if containerlog.level == ContainerLog.WARNING:
+                    status = Workload.WARNING | Workload.INFO
+                elif containerlog.level == ContainerLog.ERROR:
+                    status = Workload.ERROR | Workload.INFO
+                else:
+                    status = Workload.INFO
+
+                if container_data[2] & status != status:
+                    workload.new_latest_containers = [list(o) for o in workload.latest_containers]
+                    workload.new_latest_containers[index][2] = workload.latest_containers[index][2] | status
+                    workload_update_fields.append("latest_containers")
+                break
+    else:
+        for container_data in workload.new_latest_containers:
+            if container_data[0] != container.id:
+                continue
+            else:
+                if containerlog.level == ContainerLog.WARNING:
+                    status = Workload.WARNING | Workload.INFO
+                elif containerlog.level == ContainerLog.ERROR:
+                    status = Workload.ERROR | Workload.INFO
+                else:
+                    status = Workload.INFO
+
+                container_data[2] = container_data[2] | status
+                break
+
 def process_status_file(context,metadata,status_file):
     if settings.CONTAINERLOG_STREAMING_PARSE:
         status_records = LogRecordIterator(status_file)
@@ -140,6 +188,7 @@ def process_status_file(context,metadata,status_file):
                 records += 1
 
                 containerlog.save()
+                update_latest_containers(context,containerlog)
 
                 container_update_fields = set_fields(container,[
                     ("log", True),
@@ -176,6 +225,7 @@ def process_status_file(context,metadata,status_file):
     for containerlog in containerlogs:
         records += 1
         containerlog.save()
+        update_latest_containers(context,containerlog)
         container_update_fields = set_fields(container,[
             ("log", True),
              ("warning", True if level == ContainerLog.WARNING else container.warning),
@@ -263,6 +313,27 @@ def harvest(reconsume=False):
         }
         #consume nginx config file
         result = get_containerlog_client().consume(process_status(context))
+
+        #save workload 
+        for workload,workload_update_fields in context["workloads"].values():
+            if not workload.id:
+                workload.save()
+            elif workload_update_fields:
+                if Workload.objects.filter(id=workload.id,latest_containers=workload.latest_containers).update(latest_containers=workload.new_latest_containers) == 0:
+                    #workload's latest_containers changed
+                    db_workload = workload.objects.filter(id=workload.id).first()
+                    if not db_workload or not db_workload.latest_containers:
+                        continue
+                    changed = False
+                    for container in db_workload.latest_containers:
+                        for o in workload.new_latest_containers:
+                            if container[0] == o[0]:
+                                container[2] = o[2]
+                                changed = True
+                                break
+                    if changed:
+                        db_workload.save(update_fields=workload_update_fields)
+
         return result
 
     finally:
