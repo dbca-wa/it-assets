@@ -54,11 +54,11 @@ class Computer(CommonFields):
         help_text='User last seen logged on'
     )
     probable_owner = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
         related_name='computers_probably_owned',
         help_text='Automatically-generated "most probable" device owner.')
     managed_by = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
         related_name='computers_managed',
         help_text='"Official" device owner/manager (set in AD).')
     date_pdq_updated = models.DateTimeField(null=True, blank=True)
@@ -67,10 +67,10 @@ class Computer(CommonFields):
     date_pdq_last_seen = models.DateTimeField(null=True, blank=True)
     pdq_id = models.PositiveIntegerField(null=True, unique=True)
     location = models.ForeignKey(
-        Location, on_delete=models.PROTECT, null=True, blank=True,
+        Location, on_delete=models.SET_NULL, null=True, blank=True,
         help_text='Physical location')
     ec2_instance = models.ForeignKey(
-        'tracking.EC2Instance', on_delete=models.PROTECT, null=True, blank=True,
+        'tracking.EC2Instance', on_delete=models.SET_NULL, null=True, blank=True,
         verbose_name='EC2 instance')
 
     def __str__(self):
@@ -83,7 +83,7 @@ class Mobile(CommonFields):
     ad_guid = models.CharField(max_length=48, null=True, unique=True)
     ad_dn = models.CharField(max_length=512, null=True, unique=True)
     registered_to = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True)
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True)
     model = models.CharField(max_length=128, null=True)
     os_name = models.CharField(max_length=128, null=True)
     # Identity is a GUID, from Exchange.
@@ -226,11 +226,11 @@ class FreshdeskTicket(models.Model):
         'FreshdeskContact', on_delete=models.PROTECT, null=True, blank=True,
         related_name='freshdesk_responder')
     du_requester = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
         related_name='du_requester',
         help_text='Department User who raised the ticket.')
     du_responder = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
         related_name='du_responder',
         help_text='Department User to whom the ticket is assigned.')
 
@@ -310,7 +310,7 @@ class FreshdeskConversation(models.Model):
     freshdesk_contact = models.ForeignKey(
         'FreshdeskContact', on_delete=models.PROTECT, null=True, blank=True)
     du_user = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
         help_text='Department User who is adding to the conversation.')
 
     def __str__(self):
@@ -356,7 +356,7 @@ class FreshdeskContact(models.Model):
         null=True, blank=True, help_text='Contact updated timestamp.')
     # Non-Freshdesk data below.
     du_user = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, blank=True, null=True,
         help_text='Department User that is represented by this Freshdesk contact.')
 
     def __str__(self):
