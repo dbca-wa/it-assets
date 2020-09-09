@@ -185,52 +185,6 @@ def it_system_hardware_export(fileobj, hardware):
     return fileobj
 
 
-def incident_export(fileobj, incidents):
-    with xlsxwriter.Workbook(
-        fileobj,
-        {
-            'in_memory': True,
-            'default_date_format': 'dd-mmm-yyyy HH:MM',
-            'remove_timezone': True,
-        },
-    ) as workbook:
-        # Incident Register worksheet
-        register = workbook.add_worksheet('Incident register')
-        register.write_row('A1', (
-            'Incident no.', 'Status', 'Description', 'Priority', 'Category', 'Start time',
-            'Resolution time', 'Duration', 'RTO met', 'System(s) affected', 'Location(s) affected',
-            'Incident manager', 'Incident owner', 'Detection method', 'Workaround action(s)',
-            'Root cause', 'Remediation action(s)', 'Division(s) affected'
-        ))
-        row = 1
-        for i in incidents:
-            register.write_row(row, 0, [
-                i.pk, i.status.capitalize(), i.description, i.get_priority_display(),
-                i.get_category_display(), i.start.astimezone(TZ),
-                i.resolution.astimezone(TZ) if i.resolution else '',
-                str(i.duration) if i.duration else '', i.rto_met(),
-                i.systems_affected, i.locations_affected,
-                i.manager.get_full_name() if i.manager else '',
-                i.owner.get_full_name() if i.owner else '',
-                i.get_detection_display(), i.workaround, i.root_cause, i.remediation,
-                i.divisions_affected if i.divisions_affected else ''
-            ])
-            row += 1
-        register.set_column('A:A', 11)
-        register.set_column('C:C', 72)
-        register.set_column('D:D', 13)
-        register.set_column('E:E', 18)
-        register.set_column('F:G', 16)
-        register.set_column('H:H', 13)
-        register.set_column('I:I', 8)
-        register.set_column('J:K', 28)
-        register.set_column('L:M', 16)
-        register.set_column('N:N', 20)
-        register.set_column('O:R', 24)
-
-        return fileobj
-
-
 def change_request_export(fileobj, rfcs):
     with xlsxwriter.Workbook(
         fileobj,
