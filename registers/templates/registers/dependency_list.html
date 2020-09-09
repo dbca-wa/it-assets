@@ -1,0 +1,51 @@
+{% extends "base_b4.html" %}
+{% load bootstrap_pagination %}
+{% load itsystem_risks %}
+
+{% block page_content_inner %}
+<h1>{{ page_title }}</h1>
+
+{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
+
+<!-- Search bar -->
+<div class="row">
+    <div class="col col-sm-10">
+        <form action="" method="get">
+            <input id="search_field" type="text" class="form-control" name="q" placeholder="Search IT Systems" value="{{ query_string }}">
+        </form>
+    </div>
+    <div class="col col-sm-2">
+        <a class="btn btn-info" href="{% url 'dependency_export' %}"><i class="fas fa-file-export"></i> Export</a>
+    </div>
+</div>
+
+<br>
+
+{% if object_list %}
+<table class="table table-striped table-bordered table-condensed">
+    <thead>
+        <tr>
+            <th>System ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Division</th>
+            <th>Compute dependencies</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for obj in object_list %}
+        <tr>
+            <td><a href="{% url 'riskassessment_itsystem_detail' pk=obj.pk %}">{{ obj.system_id }}</a></td>
+            <td>{{ obj.name }}</td>
+            <td>{{ obj.get_status_display }}</td>
+            <td>{{ obj.division_name }}</td>
+            <td>{{ obj.get_compute_dependencies|join:", " }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+<div>
+    {% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
+</div>
+{% endblock %}

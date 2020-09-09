@@ -330,3 +330,36 @@ def riskassessment_export(fileobj, it_systems):
         sheet.set_column('E:M', 19)
 
     return fileobj
+
+
+def dependency_export(fileobj, it_systems):
+    with xlsxwriter.Workbook(
+        fileobj,
+        {
+            'in_memory': True,
+            'default_date_format': 'dd-mmm-yyyy HH:MM',
+            'remove_timezone': True,
+        },
+    ) as workbook:
+        sheet = workbook.add_worksheet('Risk assessments - IT systems')
+        sheet.write_row('A1', (
+            'IT system ID', 'IT system name', 'IT system status', 'Division',
+            'Compute dependencies',
+        ))
+        row = 1
+        for i in it_systems:
+            sheet.write_row(row, 0, [
+                i.system_id,
+                i.name,
+                i.get_status_display(),
+                i.division_name,
+                ', '.join([str(dep) for dep in i.get_compute_dependencies()]),
+            ])
+            row += 1
+
+        sheet.set_column('B:B', 50)
+        sheet.set_column('C:C', 18)
+        sheet.set_column('D:D', 40)
+        sheet.set_column('E:E', 90)
+
+    return fileobj

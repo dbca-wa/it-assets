@@ -17,15 +17,15 @@ import re
 
 from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
 from itassets.utils import breadcrumbs_list, get_query
-from .models import ITSystem, Incident, ChangeRequest, ChangeLog, StandardChange
+from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm, ChangeRequestApprovalForm
 )
 from .reports import (
-    it_system_export, itsr_staff_discrepancies, incident_export, change_request_export,
-    it_system_platform_export, riskassessment_export,
+    it_system_export, itsr_staff_discrepancies, change_request_export,
+    it_system_platform_export, riskassessment_export, dependency_export,
 )
 from .utils import search_filter
 
@@ -79,31 +79,6 @@ class ITSystemPlatformExport(LoginRequiredMixin, View):
 
         platforms = Platform.objects.all()
         response = it_system_platform_export(response, it_systems, platforms)
-        return response
-
-
-class IncidentList(LoginRequiredMixin, ListView):
-    paginate_by = 20
-
-    def get_queryset(self):
-        # By default, return ongoing incidents only.
-        if 'all' in self.request.GET:
-            return Incident.objects.all()
-        return Incident.objects.filter(resolution__isnull=True)
-
-
-class IncidentDetail(LoginRequiredMixin, DetailView):
-    model = Incident
-
-
-class IncidentExport(LoginRequiredMixin, View):
-    """A custom view to export all Incident values to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=incident_register_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-        incidents = Incident.objects.all()
-        response = incident_export(response, incidents)
         return response
 
 
@@ -645,4 +620,51 @@ class RiskAssessmentExport(LoginRequiredMixin, View):
         )
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         response = riskassessment_export(response, it_systems)
+        return response
+
+
+class DependencyITSystemList(LoginRequiredMixin, ListView):
+    """A list view to display a summary of hardware dependencies for all IT Systems.
+    """
+    model = ITSystem
+    paginate_by = 20
+    template_name = 'registers/dependency_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'Dependencies - IT Systems'
+        if 'q' in self.request.GET:
+            context['query_string'] = self.request.GET['q']
+        # Breadcrumb links:
+        links = [(None, 'Dependencies')]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
+        return context
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Default to prod/prod-legacy IT systems only.
+        qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+        # Did we pass in a search string? If so, filter the queryset and return it.
+        if 'q' in self.request.GET and self.request.GET['q']:
+            query_str = self.request.GET['q']
+            # Replace single-quotes with double-quotes
+            query_str = query_str.replace("'", '"')
+            # If the model is registered with in admin.py, filter it using registered search_fields.
+            if site._registry[self.model].search_fields:
+                search_fields = site._registry[self.model].search_fields
+                entry_query = get_query(query_str, search_fields)
+                qs = qs.filter(entry_query)
+        return qs
+
+
+class DependencyExport(LoginRequiredMixin, View):
+    """A custom view to export IT System dependencies to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=dependencies_it_systems_{}_{}.xlsx'.format(
+            date.today().isoformat(), datetime.now().strftime('%H%M')
+        )
+        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
+        response = dependency_export(response, it_systems)
         return response

@@ -310,6 +310,10 @@ class ITSystem(CommonFields):
         # rating, or else return None.
         return self.get_risks(category).first()
 
+    def get_compute_dependencies(self):
+        # Return a list of dependency content objects of category 'Compute'.
+        return [i.content_object for i in self.dependencies.filter(category='Compute')]
+
 
 class StandardChange(models.Model):
     """A standard change that will be used multiple times.

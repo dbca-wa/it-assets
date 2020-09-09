@@ -26,4 +26,6 @@ urlpatterns = [
     path('riskassessment/itsystem/glossary/', views.RiskAssessmentGlossary.as_view(), name='riskassessment_glossary'),
     path('riskassessment/itsystem/export/', views.RiskAssessmentExport.as_view(), name='riskassessment_export'),
     path('riskassessment/itsystem/<int:pk>/', views.RiskAssessmentITSystemDetail.as_view(), name='riskassessment_itsystem_detail'),
+    path('dependency/itsystem/', views.DependencyITSystemList.as_view(), name='dependency_itsystem_list'),
+    path('dependency/itsystem/export/', views.DependencyExport.as_view(), name='dependency_export'),
 ]
