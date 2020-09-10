@@ -2,7 +2,7 @@ from datetime import timedelta
 from django.contrib.contenttypes.models import ContentType
 from rancher.models import Workload
 from registers.models import ITSystem
-from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport
+from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport, WebAppLocation
 from status.models import Host
 from statistics import mean, stdev, StatisticsError
 from .models import Dependency, RiskAssessment
@@ -355,7 +355,7 @@ def itsystem_risks_access(it_systems=None):
                 for alias in it.alias.all():
                     webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
                     for webapp in webapps:
-                        root_location = webapp.locations.filter(location='/').first()
+                        root_location = webapp.locations.filter(location='/', location_type=WebAppLocation.PREFIX_LOCATION).first()
                         if root_location:
                             # Create an access risk
                             risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()

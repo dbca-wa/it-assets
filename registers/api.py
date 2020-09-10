@@ -105,34 +105,6 @@ class ITSystemResource(CSVDjangoResource):
             if data.availability
             else "",
             "status": data.get_status_display() if data.status else "",
-            "dependencies": [
-                {
-                    "dependency__system_id": i.dependency.system_id,
-                    "dependency__name": i.dependency.name,
-                    "criticality": i.get_criticality_display(),
-                    "technology_custodian__name": i.dependency.technology_custodian.name
-                    if i.dependency.technology_custodian
-                    else "",
-                    "technology_custodian__email": i.dependency.technology_custodian.email
-                    if i.dependency.technology_custodian
-                    else "",
-                }
-                for i in data.itsystemdependency_set.all()
-            ],
-            "dependants": [
-                {
-                    "dependant__system_id": i.itsystem.system_id,
-                    "dependant__name": i.itsystem.name,
-                    "criticality": i.get_criticality_display(),
-                    "technology_custodian__name": i.itsystem.technology_custodian.name
-                    if i.itsystem.technology_custodian
-                    else "",
-                    "technology_custodian__email": i.itsystem.technology_custodian.email
-                    if i.itsystem.technology_custodian
-                    else "",
-                }
-                for i in data.dependency.all()
-            ],
             "usergroups": [
                 {"name": i.name, "count": i.user_count} for i in data.user_groups.all()
             ],
@@ -169,11 +141,6 @@ class ITSystemResource(CSVDjangoResource):
             "bh_support",
             "ah_support",
             "user_groups",
-            "itsystemdependency_set",
-            "itsystemdependency_set__dependency",
-            "itsystemdependency_set__dependency__technology_custodian",
-            "dependency__itsystem",
-            "dependency__itsystem__technology_custodian",
         )
 
     def list(self):
