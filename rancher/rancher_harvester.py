@@ -18,6 +18,7 @@ from .models import (Cluster,Namespace,Project,
         DatabaseServer,Database,DatabaseUser,WorkloadDatabase)
 from data_storage.utils import get_property
 from nginx.models import WebAppLocationServer
+from .utils import set_fields,set_field,set_fields_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -63,34 +64,16 @@ def get_consume_client(cluster):
         )
     return _consume_clients[cluster]
 
-def set_fields(obj,config,fields):
-    update_fields = None if obj.pk is None else []
-    for field,prop,get_func in fields:
-        val = get_property(config,prop,get_func)
-        if obj.pk is None:
-            setattr(obj,field,val)
-        elif getattr(obj,field) != val:
-            setattr(obj,field,val)
-            update_fields.append(field)
-
-    return update_fields
-
-
-def set_field(obj,field,val,update_fields):
-    if obj.pk is None:
-        setattr(obj,field,val)
-    elif getattr(obj,field) != val:
-        setattr(obj,field,val)
-        update_fields.append(field)
-
 def update_project(cluster,projectid):
+    if not projectid:
+        return None
     try:
         obj = Project.objects.get(cluster=cluster,projectid=projectid)
     except ObjectDoesNotExist as ex:
         obj = Project(cluster=cluster,projectid=projectid)
 
-    update_fields = set_fields(obj,config,[
-        ("added_by_log",None,lambda obj:False)
+    update_fields = set_fields(obj,[
+        ("added_by_log",False)
     ])
 
     if obj.pk is None:
@@ -113,7 +96,7 @@ def update_namespace(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = Namespace(cluster=cluster,name=name)
 
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
@@ -179,7 +162,7 @@ def update_ingress_rules(ingress,configs):
                 obj = IngressRule.objects.get(ingress=ingress,protocol=protocol,hostname=hostname,path=path)
             except ObjectDoesNotExist as ex:
                 obj = IngressRule(ingress=ingress,protocol=protocol,hostname=hostname,path=path,cluster=ingress.cluster)
-            update_fields = set_fields(obj,backend,[
+            update_fields = set_fields_from_config(obj,backend,[
                 ("servicename",("backend","serviceName"),lambda val: "{}:{}".format(ingress.namespace.name,val)),
                 ("serviceport",("backend","servicePort"),lambda val:int(val))
             ])
@@ -214,7 +197,7 @@ def update_ingress(cluster,status,metadata,config):
         obj = Ingress.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
         obj = Ingress(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
@@ -295,7 +278,7 @@ def update_volume(cluster,status,metadata,config):
         obj = PersistentVolume.objects.get(cluster=cluster,name=name)
     except ObjectDoesNotExist as ex:
         obj = PersistentVolume(cluster=cluster,name=name)
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("kind","kind",None),
@@ -341,7 +324,7 @@ def update_volume_claim(cluster,status,metadata,config):
         obj = PersistentVolumeClaim.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
         obj = PersistentVolumeClaim(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
@@ -413,7 +396,7 @@ def update_workload_envs(workload,config,env_configs):
             obj = WorkloadEnv.objects.get(workload=workload,name=name)
         except ObjectDoesNotExist as ex:
             obj = WorkloadEnv(workload=workload,name=name)
-        update_fields = set_fields(obj,env_config,[
+        update_fields = set_fields_from_config(obj,env_config,[
             ("value",None,_get_env_value)
         ])
 
@@ -477,7 +460,7 @@ def update_workload_listenings(workload,config):
         except ObjectDoesNotExist as ex:
             obj = WorkloadListening(workload=workload,servicename=servicename)
 
-        update_fields = set_fields(obj,listen_config,[
+        update_fields = set_fields_from_config(obj,listen_config,[
             ("servicename","serviceName",None),
             ("listen_port","port",lambda val:int(val)),
             ("protocol","protocol",lambda val: val.lower() if val else None),
@@ -573,7 +556,7 @@ def update_workload_volumes(workload,config,spec_config):
             obj = WorkloadVolume(workload=workload,name=name)
 
         writable = get_property(volumemount_config,"readOnly",lambda val: False if val else True)
-        update_fields = set_fields(obj,volumemount_config,[
+        update_fields = set_fields_from_config(obj,volumemount_config,[
             ("mountpath","mountPath",None),
             ("subpath","subPath",None)
         ])
@@ -626,7 +609,7 @@ def update_deployment(cluster,status,metadata,config):
         obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
         obj = Workload(cluster=cluster,namespace=namespace,name=name)
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
@@ -693,7 +676,7 @@ def update_cronjob(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = Workload(cluster=cluster,namespace=namespace,name=name)
 
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
@@ -761,7 +744,7 @@ def update_daemonset(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = Workload(cluster=cluster,namespace=namespace,name=name)
 
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
@@ -829,7 +812,7 @@ def update_statefulset(cluster,status,metadata,config):
     except ObjectDoesNotExist as ex:
         obj = Workload(cluster=cluster,namespace=namespace,name=name)
 
-    update_fields = set_fields(obj,config,[
+    update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
