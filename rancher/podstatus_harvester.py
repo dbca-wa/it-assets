@@ -32,7 +32,7 @@ def get_podstatus_client(cache=True):
             max_saved_consumed_resources=settings.PODSTATUS_MAX_SAVED_CONSUMED_RESOURCES
         )
         if cache:
-            _containerstatus_client = client
+            _podstatus_client = client
         else:
             return client
 
