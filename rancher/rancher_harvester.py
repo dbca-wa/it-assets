@@ -614,16 +614,16 @@ def update_deployment(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
+    kind = get_property(config,"kind")
     try:
-        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name,kind=kind)
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
         ("project",None,lambda val:namespace.project),
-        ("kind","kind",None),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("replicas",("spec","replicas"),lambda val:int(val) if val else 0),
         ("image",("spec","template","spec","containers",0,"image"),None),
@@ -680,17 +680,17 @@ def update_cronjob(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
+    kind = get_property(config,"kind")
     try:
-        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name,kind=kind)
 
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
         ("project",None,lambda val:namespace.project),
-        ("kind","kind",None),
         ("modified",[("spec","jobTemplate","spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("image",("spec","jobTemplate","spec","template","spec","containers",0,"image"),None),
         ("image_pullpolicy",("spec","jobTemplate","spec","template","spec","containers",0,"imagePullPolicy"),None),
@@ -748,10 +748,11 @@ def update_daemonset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
+    kind = get_property(config,"kind")
     try:
-        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name,kind=kind)
 
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
@@ -816,10 +817,11 @@ def update_statefulset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
+    kind = get_property(config,"kind")
     try:
-        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
-        obj = Workload(cluster=cluster,namespace=namespace,name=name)
+        obj = Workload(cluster=cluster,namespace=namespace,name=name,kind=kind)
 
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
