@@ -88,7 +88,7 @@ def update_project(cluster,projectid):
 def update_namespace(cluster,status,metadata,config):
     namespace_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
 
-    name = config["metadata"]["name"]
+    name = config["metadata"]["name"] or ""
     try:
         obj = Namespace.objects.get(cluster=cluster,name=name)
     except ObjectDoesNotExist as ex:
@@ -577,7 +577,7 @@ def update_workload_volumes(workload,config,spec_config):
             claimname = volume_config["persistentVolumeClaim"]["claimName"]
             set_field(obj,"volume_claim", PersistentVolumeClaim.objects.get(cluster=workload.cluster,namespace=workload.namespace,name=claimname),update_fields)
             set_field(obj,"volume", obj.volume_claim.volume,update_fields)
-            set_field(obj,"volumepath", obj.volume_claim.volume.volumepath,update_fields)
+            set_field(obj,"volumepath", obj.volume_claim.volume.volumepath if obj.volume_claim.volume else None ,update_fields)
             set_field(obj,"other_config", None,update_fields)
             if writable:
                 writable = obj.volume_claim.writable
