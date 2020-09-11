@@ -569,6 +569,8 @@ def update_workload_volumes(workload,config,spec_config):
             ("mountpath","mountPath",None),
             ("subpath","subPath",None)
         ])
+        if name not in volume_configs:
+            continue
         volume_config = volume_configs[name]
         if "persistentVolumeClaim" in volume_config:
             #reference the volume from volume claim
