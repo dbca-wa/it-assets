@@ -717,12 +717,12 @@ class NamespaceListener(object):
             return
 
         if existing_obj.project:
-            existing_obj.project.active_workloads -= instance.active_workloads
-            existing_obj.project.deleted_workloads -= instance.deleted_workloads
+            existing_obj.project.active_workloads -= instance.project.active_workloads
+            existing_obj.project.deleted_workloads -= instance.project.deleted_workloads
             existing_obj.project.save(update_fields=["active_workloads","deleted_workloads"])
 
         if instance.project:
-            instance.project.active_workloads += instance.active_workloads
-            instance.project.deleted_workloads += instance.deleted_workloads
+            instance.project.active_workloads += instance.project.active_workloads
+            instance.project.deleted_workloads += instance.project.deleted_workloads
             instance.project.save(update_fields=["active_workloads","deleted_workloads"])
 
