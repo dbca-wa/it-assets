@@ -271,7 +271,7 @@ class Workload(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads', editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads', editable=False,null=True)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads', editable=False, null=True)
-    name = models.CharField(max_length=128, editable=False)
+    name = models.CharField(max_length=512, editable=False)
     kind = models.CharField(max_length=64, editable=False)
 
     latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
@@ -684,11 +684,11 @@ class WorkloadListener(object):
     @receiver(pre_delete,sender=Workload)
     def delete_workload(sender,instance,**kwargs):
         if instance.deleted:
-            def update_workoads(obj):
+            def update_workloads(obj):
                 obj.deleted_workloads -= 1
                 return ["deleted_workloads"]
         else:
-            def update_workoads(obj):
+            def update_workloads(obj):
                 obj.active_workloads -= 1
                 return ["active_workloads"]
 

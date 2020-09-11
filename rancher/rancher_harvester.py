@@ -72,9 +72,7 @@ def update_project(cluster,projectid):
     except ObjectDoesNotExist as ex:
         obj = Project(cluster=cluster,projectid=projectid)
 
-    update_fields = set_fields(obj,[
-        ("added_by_log",False)
-    ])
+    update_fields = None
 
     if obj.pk is None:
         obj.save()
@@ -112,6 +110,15 @@ def update_namespace(cluster,status,metadata,config):
         update_fields.append("refreshed")
         obj.save(update_fields=update_fields)
         logger.debug("Update namespace({}),update_fields={}".format(obj,update_fields))
+        if "project" in update_fields:
+            #namespace's project is changed, 
+            #update PersistentVolumeClaim
+            PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=obj).update(project=obj.project)
+            #update Ingress
+            Ingress.objects.filter(cluster=cluster,namespace=obj).update(project=obj.project)
+            #update Workload
+            Workload.objects.filter(cluster=cluster,namespace=obj).update(project=obj.project)
+
     else:
         logger.debug("The namespace({}) is not changed".format(obj))
 
@@ -196,10 +203,11 @@ def update_ingress(cluster,status,metadata,config):
     try:
         obj = Ingress.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
-        obj = Ingress(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
+        obj = Ingress(cluster=cluster,namespace=namespace,name=name)
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
+        ("project",None,lambda val:namespace.project),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
     ])
 
@@ -323,10 +331,11 @@ def update_volume_claim(cluster,status,metadata,config):
     try:
         obj = PersistentVolumeClaim.objects.get(cluster=cluster,namespace=namespace,name=name)
     except ObjectDoesNotExist as ex:
-        obj = PersistentVolumeClaim(cluster=cluster,namespace=namespace,name=name,project=namespace.project)
+        obj = PersistentVolumeClaim(cluster=cluster,namespace=namespace,name=name)
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
+        ("project",None,lambda val:namespace.project),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("writable",("spec","accessModes"),lambda val:True if next((v for v in val if "write" in v.lower()),None) else False),
         ("volume",("spec","volumeName"),lambda val: PersistentVolume.objects.get(cluster=cluster,name=val) if val else None),

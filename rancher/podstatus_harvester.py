@@ -76,6 +76,7 @@ def process_status_file(context,metadata,status_file):
             if cluster_name in context["clusters"]:
                 cluster = context["clusters"][cluster_name]
             else:
+                #logger.debug("find cluster {}".format(cluster_name))
                 try:
                     cluster = Cluster.objects.get(name=cluster_name)
                 except ObjectDoesNotExist as ex:
@@ -88,6 +89,7 @@ def process_status_file(context,metadata,status_file):
             if key in context["namespaces"]:
                 namespace = context["namespaces"][key]
             else:
+                #logger.debug("find namespace {}".format(namespace_name))
                 try:
                     namespace = Namespace.objects.get(cluster=cluster,name=namespace_name)
                 except ObjectDoesNotExist as ex:
@@ -114,17 +116,19 @@ def process_status_file(context,metadata,status_file):
 
             key = (namespace,workload_name,workload_kind)
             if key in context["workloads"]:
-                workload = context["workloads"][key]
+                workload,workload_update_fields = context["workloads"][key]
             else:
+                #logger.debug("find workload.{}/{}({})".format(namespace.name,workload_name,workload_kind))
                 try:
-                    logger.debug("find workload, cluster={}, project={}, namespace={},name={},kind={}".format(cluster,namespace.project,namespace,workload_name,workload_kind))
+                    #logger.debug("find workload, cluster={}, project={}, namespace={},name={},kind={}".format(cluster,namespace.project,namespace,workload_name,workload_kind))
                     workload = Workload.objects.get(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind)
                 except ObjectDoesNotExist as ex:
                     workload = Workload(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind,image="",api_version="",modified=timezone.now(),created=timezone.now(),added_by_log=True)
                     if pod_created.date() < timezone.now().date():
                         workload.deleted = max_timegenerated
                     workload.save()
-                context["workloads"][key] = workload
+                workload_update_fields = []
+                context["workloads"][key] = (workload,workload_update_fields)
             
             try:
                 container = Container.objects.get(cluster=cluster,containerid=containerid)
@@ -146,23 +150,12 @@ def process_status_file(context,metadata,status_file):
             ])
             if workload and workload.deleted and workload.deleted < max_timegenerated:
                 workload.deleted = max_timegenerated
-                workload.save(update_fields=["deleted"])
+                if "deleted" not in workload_update_fields:
+                    workload_update_fields.append("deleted")
 
             if previous_workload and previous_workload != workload and previous_workload.added_by_log and previous_workload.namespace.name == "unknown":
-                #added by continnerstatus, and found a matched record in podstatus, try to delete the workload created by containerstatus
-                if not Container.objects.filter(cluster=cluster,workload=previous_workload).exists():
-                    #no container references the previous workload, delete it
-                    previous_workload_key = (previous_workload.namespace,previous_workload.name,previous_workload.kind)
-                    if previous_workload_key in context["workloads"]:
-                        del context["workloads"][previous_workload_key]
-                    previous_workload.delete()
-
-                    if previous_namespace and previous_namespace != namespace and previous_namespace.added_by_log and previous_namespace.name == "unknown":
-                        #added by continnerstatus, try to delete the workload created by containerstatus if no workload references it 
-                        if not Workload.objects.filter(cluster=cluster,namespace=previous_namespace).exists():
-                            #no workload references the previous namespace, delete it
-                            previous_namespace.delete()
-
+                context["orphan_workloads"].add(previous_workload)
+                context["orphan_namespaces"].add(previous_workload.namespace)
 
             if container.pk is None:
                 container.save()
@@ -177,8 +170,13 @@ def process_status_file(context,metadata,status_file):
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
             
 
-def process_status(context):
+def process_status(context,max_harvest_files):
     def _func(status,metadata,status_file):
+        if max_harvest_files:
+            if context["harvested_files"] >= max_harvest_files:
+                raise Exception("Already harvested {} files".format(context["harvested_files"]))
+            context["harvested_files"] += 1
+            
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but currently consumed histroy data's status is {},metadata={}".format(
                 get_podstatus_client().get_consume_status_name(status),
@@ -186,11 +184,29 @@ def process_status(context):
             ))
         process_status_file(context,metadata,status_file)
 
+        #save workload 
+        for workload,workload_update_fields in context["workloads"].values():
+            if workload_update_fields:
+                workload.save(update_fields=workload_update_fields)
+                workload_update_fields.clear()
+
+        #delete orphan workloads
+        for workload in context["orphan_workloads"]:
+            if not Container.objects.filter(cluster=workload.cluster,workload=workload).exists():
+                workload.delete()
+        context["orphan_workloads"].clear()
+
+        #delete orphan namespaces
+        for namespace in context["orphan_namespaces"]:
+            if not Workload.objects.filter(cluster=namespace.cluster,namespace=namespace).exists():
+                namespace.delete()
+        context["orphan_namespaces"].clear()
+
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     return _func
                         
-def harvest(reconsume=False):
+def harvest(reconsume=False,max_harvest_files=None):
     try:
         renew_lock_time = get_podstatus_client().acquire_lock(expired=settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG)
     except exceptions.AlreadyLocked as ex: 
@@ -208,10 +224,15 @@ def harvest(reconsume=False):
             "f_renew_lock":get_podstatus_client().renew_lock,
             "clusters":{},
             "namespaces":{},
-            "workloads":{}
+            "workloads":{},
+            "orphan_workloads":set(),
+            "orphan_namespaces":set()
         }
+        if max_harvest_files:
+            context["harvested_files"] = 0
         #consume nginx config file
-        result = get_podstatus_client().consume(process_status(context))
+        result = get_podstatus_client().consume(process_status(context,max_harvest_files))
+
         return result
 
     finally:

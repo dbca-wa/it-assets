@@ -137,7 +137,7 @@ class ContainersLinkMixin(object):
                 img = ""
 
             list_url = reverse(self.containers_url_name, args=[])
-            return mark_safe("<span style='white-space:nowrap'><A href='{0}?id__in={2}'>{3}Latest</A><A style='margin-left:5px' href='{0}?workload__id__exact={1}'>All</A></span>".format(list_url,obj.id,[o[0] for o in obj.latest_containers],img))
+            return mark_safe("<span style='white-space:nowrap'><A href='{0}?id__in={2}'>{3}Latest</A><A style='margin-left:5px' href='{0}?workload__id__exact={1}'>All</A></span>".format(list_url,obj.id,",".join(str(o[0]) for o in obj.latest_containers),img))
     _containers.short_description = "Containers"
 
     def _running_status(self,obj):

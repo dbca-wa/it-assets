@@ -283,6 +283,27 @@ def process_status(context):
             elif container_update_fields:
                 container.save(update_fields=container_update_fields)
 
+        #save workload 
+        for workload,workload_update_fields in context["workloads"].values():
+            if not workload.id:
+                workload.save()
+            elif workload_update_fields:
+                if Workload.objects.filter(id=workload.id,latest_containers=workload.latest_containers).update(latest_containers=workload.new_latest_containers) == 0:
+                    #workload's latest_containers changed
+                    db_workload = workload.objects.filter(id=workload.id).first()
+                    if not db_workload or not db_workload.latest_containers:
+                        continue
+                    changed = False
+                    for container in db_workload.latest_containers:
+                        for o in workload.new_latest_containers:
+                            if container[0] == o[0]:
+                                container[2] = o[2]
+                                changed = True
+                                break
+                    if changed:
+                        db_workload.save(update_fields=workload_update_fields)
+                workload_update_fields.clear()
+
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     return _func
@@ -313,26 +334,6 @@ def harvest(reconsume=False):
         }
         #consume nginx config file
         result = get_containerlog_client().consume(process_status(context))
-
-        #save workload 
-        for workload,workload_update_fields in context["workloads"].values():
-            if not workload.id:
-                workload.save()
-            elif workload_update_fields:
-                if Workload.objects.filter(id=workload.id,latest_containers=workload.latest_containers).update(latest_containers=workload.new_latest_containers) == 0:
-                    #workload's latest_containers changed
-                    db_workload = workload.objects.filter(id=workload.id).first()
-                    if not db_workload or not db_workload.latest_containers:
-                        continue
-                    changed = False
-                    for container in db_workload.latest_containers:
-                        for o in workload.new_latest_containers:
-                            if container[0] == o[0]:
-                                container[2] = o[2]
-                                changed = True
-                                break
-                    if changed:
-                        db_workload.save(update_fields=workload_update_fields)
 
         return result
 
