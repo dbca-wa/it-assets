@@ -1507,7 +1507,7 @@ def harvest(cluster,reconsume=False):
 
 def harvest_all(reconsume=False):
     consume_results = []
-    for cluster in Cluster.objects.all():
+    for cluster in Cluster.objects.filter(added_by_log=False):
         consume_results.append((cluster,harvest(cluster,reconsume=reconsume)))
 
     return consume_results
