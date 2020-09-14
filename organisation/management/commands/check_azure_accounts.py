@@ -86,8 +86,16 @@ class Command(BaseCommand):
                     update_deptuser_from_azure(az, new_user)  # Easier way to set some fields.
                     self.stdout.write(self.style.SUCCESS('Created {}'.format(new_user.email)))
             else:
-                # Update the existing DepartmentUser object fields with values from Azure.
-                user = DepartmentUser.objects.get(azure_guid=az['ObjectId'])
-                update_deptuser_from_azure(az, user)
+                if az['Mail']:  # Azure object has an email; proceed.
+                    # Update the existing DepartmentUser object fields with values from Azure.
+                    user = DepartmentUser.objects.get(azure_guid=az['ObjectId'])
+                    try:
+                        update_deptuser_from_azure(az, user)
+                    except:
+                        self.stdout.write(
+                            self.style.NOTICE(
+                                'Error during sync of {} with Azure ObjectId {}'.format(user.email, az['ObjectId'])
+                            )
+                        )
 
         self.stdout.write(self.style.SUCCESS('Completed'))
