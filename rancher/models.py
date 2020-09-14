@@ -1,7 +1,8 @@
 import subprocess
 import json
+import logging
 import re
-from django.db import models
+from django.db import models,transaction
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.urls import reverse
@@ -9,6 +10,7 @@ from django.utils import timezone
 from django.db.models.signals import pre_save,pre_delete
 from django.dispatch import receiver
 
+logger = logging.getLogger(__name__)
 
 class Cluster(models.Model):
     name = models.CharField(max_length=64,unique=True)
@@ -88,7 +90,7 @@ class Project(models.Model):
 
     @property
     def managementurl(self):
-        return "{0}/p/{1}:{2}/workloads".format(settings.RANCHER_MANAGEMENT_URL,self.cluster.clusterid,self.projectid)
+        return "{0}/p/{1}:{2}/workloads".format(settings.GET_CLUSTER_MANAGEMENT_URL(self.cluster.name),self.cluster.clusterid,self.projectid)
 
     def __str__(self):
         if self.name:
@@ -145,6 +147,10 @@ class Namespace(DeletedMixin,models.Model):
         if update_fields:
             self.save(update_fields=update_fields)
 
+    def save(self,*args,**kwargs):
+        with transaction.atomic():
+            return super().save(*args,**kwargs)
+    
     def __str__(self):
         return "{}.{}".format(self.cluster.name,self.name)
 
@@ -181,7 +187,7 @@ class PersistentVolume(DeletedMixin,models.Model):
 
 class PersistentVolumeClaim(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='volumeclaims',editable=False)
-    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='volumeclaims',editable=False)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='volumeclaims',editable=False,null=True)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='volumeclaims',editable=False,null=True)
     volume = models.ForeignKey(PersistentVolume, on_delete=models.PROTECT, related_name='volumeclaims',editable=False,null=True)
     name = models.CharField(max_length=128,editable=False)
@@ -204,7 +210,7 @@ class PersistentVolumeClaim(DeletedMixin,models.Model):
 
 class Ingress(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='ingresses',editable=False)
-    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='ingresses',editable=False)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='ingresses',editable=False,null=True)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='ingresses',editable=False,null=True)
     name = models.CharField(max_length=128,editable=False)
 
@@ -301,17 +307,17 @@ class Workload(DeletedMixin,models.Model):
 
     @property
     def viewurl(self):
-        if self.added_by_log:
+        if self.added_by_log or not self.project:
             return None
         else:
-            return "{0}/p/{1}:{2}/workload/{3}:{4}:{5}".format(settings.RANCHER_MANAGEMENT_URL,self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
+            return "{0}/p/{1}:{2}/workload/{3}:{4}:{5}".format(settings.GET_CLUSTER_MANAGEMENT_URL(self.cluster.name),self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
 
     @property
     def managementurl(self):
-        if self.added_by_log:
+        if self.added_by_log or not self.project:
             return None
         else:
-            return "{0}/p/{1}:{2}/workloads/run?group=namespace&namespaceId={4}&upgrade=true&workloadId={3}:{4}:{5}".format(settings.RANCHER_MANAGEMENT_URL,self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
+            return "{0}/p/{1}:{2}/workloads/run?group=namespace&namespaceId={4}&upgrade=true&workloadId={3}:{4}:{5}".format(settings.GET_CLUSTER_MANAGEMENT_URL(self.cluster.name),self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
 
     @property
     def webapps(self):
@@ -322,6 +328,10 @@ class Workload(DeletedMixin,models.Model):
 
         return apps
 
+    def save(self,*args,**kwargs):
+        with transaction.atomic():
+            return super().save(*args,**kwargs)
+    
     def __str__(self):
         return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
 
@@ -717,12 +727,159 @@ class NamespaceListener(object):
             return
 
         if existing_obj.project:
-            existing_obj.project.active_workloads -= instance.project.active_workloads
-            existing_obj.project.deleted_workloads -= instance.project.deleted_workloads
+            logger.debug("previous project({}):active_workload={},deleted_workloads={}   namespace({}):active_workloads={},deleted_workloads={}".format(
+                existing_obj.project,
+                existing_obj.project.active_workloads,
+                existing_obj.project.deleted_workloads,
+                instance,instance.active_workloads,
+                instance.deleted_workloads
+            ))
+            existing_obj.project.active_workloads -= instance.active_workloads
+            existing_obj.project.deleted_workloads -= instance.deleted_workloads
             existing_obj.project.save(update_fields=["active_workloads","deleted_workloads"])
 
         if instance.project:
-            instance.project.active_workloads += instance.project.active_workloads
-            instance.project.deleted_workloads += instance.project.deleted_workloads
+            logger.debug("new project({}):active_workload={},deleted_workloads={}   namespace({}):active_workloads={},deleted_workloads={}".format(
+                instance.project,
+                instance.project.active_workloads,
+                instance.project.deleted_workloads,
+                instance,instance.active_workloads,
+                instance.deleted_workloads
+            ))
+            instance.project.active_workloads += instance.active_workloads
+            instance.project.deleted_workloads += instance.deleted_workloads
             instance.project.save(update_fields=["active_workloads","deleted_workloads"])
+
+
+def sync_project():
+    for obj in Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
+        obj.project = obj.namespace.project
+        obj.save(update_fields=["project"])
+
+    for obj in Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False):
+        obj.project = None
+        obj.save(update_fields=["project"])
+
+    for obj in Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
+        obj.project = obj.namespace.project
+        obj.save(update_fields=["project"])
+
+    for obj in Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
+        obj.project = None
+        obj.save(update_fields=["project"])
+
+    for obj in PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
+        obj.project = obj.namespace.project
+        obj.save(update_fields=["project"])
+
+    for obj in PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
+        obj.project = None
+        obj.save(update_fields=["project"])
+
+def check_project():
+    objs = list(Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
+    objs += list(Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False))
+    if objs:
+        print("The following workloads'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
+
+    objs = list(Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
+    objs += list(Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False))
+    if objs:
+        print("The following ingresses'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
+
+    objs = list(PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
+    objs += list(PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False))
+    if objs:
+        print("The following PersistentVolumeClaims'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
+
+def check_workloads():
+    for obj in Namespace.objects.all():
+        active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
+        deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
+        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
+            print("Namespace({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
+                obj,
+                obj.id,
+                obj.active_workloads,
+                active_workloads,
+                obj.deleted_workloads,
+                deleted_workloads
+            ))
+
+
+    for obj in Project.objects.all():
+        active_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=True).count()
+        deleted_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=False).count()
+        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
+            print("Project({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
+                obj,
+                obj.id,
+                obj.active_workloads,
+                active_workloads,
+                obj.deleted_workloads,
+                deleted_workloads
+            ))
+
+    for obj in Cluster.objects.all():
+        active_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=True).count()
+        deleted_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=False).count()
+        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
+            print("Cluster({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
+                obj,
+                obj.id,
+                obj.active_workloads,
+                active_workloads,
+                obj.deleted_workloads,
+                deleted_workloads
+            ))
+
+def sync_workloads():
+    for obj in Namespace.objects.all():
+        active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
+        deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
+        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
+            print("Namespace({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
+                obj,
+                obj.id,
+                obj.active_workloads,
+                active_workloads,
+                obj.deleted_workloads,
+                deleted_workloads
+            ))
+            obj.active_workloads = active_workloads
+            obj.deleted_workloads = deleted_workloads
+            obj.save(update_fields=["active_workloads","deleted_workloads"])
+
+
+    for obj in Project.objects.all():
+        active_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=True).count()
+        deleted_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=False).count()
+        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
+            print("Project({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
+                obj,
+                obj.id,
+                obj.active_workloads,
+                active_workloads,
+                obj.deleted_workloads,
+                deleted_workloads
+            ))
+            obj.active_workloads = active_workloads
+            obj.deleted_workloads = deleted_workloads
+            obj.save(update_fields=["active_workloads","deleted_workloads"])
+
+    for obj in Cluster.objects.all():
+        active_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=True).count()
+        deleted_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=False).count()
+        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
+            print("Cluster({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
+                obj,
+                obj.id,
+                obj.active_workloads,
+                active_workloads,
+                obj.deleted_workloads,
+                deleted_workloads
+            ))
+            obj.active_workloads = active_workloads
+            obj.deleted_workloads = deleted_workloads
+            obj.save(update_fields=["active_workloads","deleted_workloads"])
 

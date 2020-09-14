@@ -101,7 +101,6 @@ def update_namespace(cluster,status,metadata,config):
         ("project",("metadata","labels","field.cattle.io/projectId"),lambda val:update_project(cluster,val)),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
     ])
-
     if obj.pk is None:
         obj.created = obj.modified
         obj.save()
@@ -110,7 +109,7 @@ def update_namespace(cluster,status,metadata,config):
         update_fields.append("refreshed")
         obj.save(update_fields=update_fields)
         logger.debug("Update namespace({}),update_fields={}".format(obj,update_fields))
-        if "project" in update_fields:
+        if "project" in update_fields :
             #namespace's project is changed, 
             #update PersistentVolumeClaim
             PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=obj).update(project=obj.project)
