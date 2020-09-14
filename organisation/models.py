@@ -329,7 +329,7 @@ class DepartmentUser(MPTTModel):
                     action, created = ADAction.objects.get_or_create(
                         department_user=self,
                         action_type='Change account field',
-                        ad_field='physicalDeliveryOfficeName',
+                        ad_field='Office',
                         field='location.name',
                         completed=None,
                     )
