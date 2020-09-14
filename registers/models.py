@@ -312,6 +312,7 @@ class ITSystem(CommonFields):
 
     def get_compute_dependencies(self):
         # Return a list of dependency content objects of category 'Compute'.
+        # Used in the dependency list view.
         return [i.content_object for i in self.dependencies.filter(category='Compute')]
 
 

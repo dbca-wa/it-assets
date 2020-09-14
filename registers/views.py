@@ -3,7 +3,6 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin import site
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -16,7 +15,7 @@ from pytz import timezone
 import re
 
 from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
-from itassets.utils import breadcrumbs_list, get_query
+from itassets.utils import breadcrumbs_list
 from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
@@ -87,12 +86,12 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        from .admin import ChangeRequestAdmin
         queryset = super().get_queryset()
         if 'mine' in self.request.GET:
             email = self.request.user.email
             queryset = queryset.filter(requester__email__iexact=email)
         if 'q' in self.request.GET and self.request.GET['q']:
+            from .admin import ChangeRequestAdmin
             q = search_filter(ChangeRequestAdmin.search_fields, self.request.GET['q'])
             queryset = queryset.filter(q)
         return queryset
@@ -565,14 +564,9 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
         qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         # Did we pass in a search string? If so, filter the queryset and return it.
         if 'q' in self.request.GET and self.request.GET['q']:
-            query_str = self.request.GET['q']
-            # Replace single-quotes with double-quotes
-            query_str = query_str.replace("'", '"')
-            # If the model is registered with in admin.py, filter it using registered search_fields.
-            if site._registry[self.model].search_fields:
-                search_fields = site._registry[self.model].search_fields
-                entry_query = get_query(query_str, search_fields)
-                qs = qs.filter(entry_query)
+            from .admin import ITSystemAdmin
+            q = search_filter(ITSystemAdmin.search_fields, self.request.GET['q'])
+            qs = qs.filter(q)
         return qs
 
 
@@ -646,14 +640,9 @@ class DependencyITSystemList(LoginRequiredMixin, ListView):
         qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         # Did we pass in a search string? If so, filter the queryset and return it.
         if 'q' in self.request.GET and self.request.GET['q']:
-            query_str = self.request.GET['q']
-            # Replace single-quotes with double-quotes
-            query_str = query_str.replace("'", '"')
-            # If the model is registered with in admin.py, filter it using registered search_fields.
-            if site._registry[self.model].search_fields:
-                search_fields = site._registry[self.model].search_fields
-                entry_query = get_query(query_str, search_fields)
-                qs = qs.filter(entry_query)
+            from .admin import ITSystemAdmin
+            q = search_filter(ITSystemAdmin.search_fields, self.request.GET['q'])
+            qs = qs.filter(q)
         return qs
 
 

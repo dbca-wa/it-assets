@@ -47,13 +47,26 @@ def update_deptuser_from_azure(azure_user, dept_user):
     """For given Azure AD user and DepartmentUser objects, update the DepartmentUser object fields
     with values from Azure (the source of truth for these values).
     """
-    dept_user.azure_guid = azure_user['ObjectId']
-    dept_user.active = azure_user['AccountEnabled']
-    dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
-    licence_pattern = 'SkuId:\s[a-z0-9-]+'
-    dept_user.mail_nickname = azure_user['MailNickName']
+    if azure_user['ObjectId'] != dept_user.azure_guid:
+        dept_user.azure_guid = azure_user['ObjectId']
+    if azure_user['AccountEnabled'] != dept_user.active:
+        dept_user.active = azure_user['AccountEnabled']
+    if azure_user['Mail'] != dept_user.email:
+        dept_user.email = azure_user['Mail']
+    if azure_user['DisplayName'] != dept_user.name:
+        dept_user.name = azure_user['DisplayName']
+    if azure_user['GivenName'] != dept_user.given_name:
+        dept_user.given_name = azure_user['GivenName']
+    if azure_user['Surname'] != dept_user.surname:
+        dept_user.surname = azure_user['Surname']
+    if azure_user['MailNickName'] != dept_user.mail_nickname:
+        dept_user.mail_nickname = azure_user['MailNickName']
+    if azure_user['DirSyncEnabled'] != dept_user.dir_sync_enabled:
+        dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
+
     dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in azure_user['ProxyAddresses'] if i.lower().startswith('smtp')]
 
+    licence_pattern = 'SkuId:\s[a-z0-9-]+'
     skus = [re.search(licence_pattern, i)[0].replace('SkuId: ', '') for i in azure_user['AssignedLicenses'] if re.search(licence_pattern, i)]
     dept_user.assigned_licences = []
     # MS licence SKU reference:
@@ -80,7 +93,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
         'fcecd1f9-a91e-488d-a918-a96cdb6ce2b0': 'AX7_USER_TRIAL',
         '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RMSBASIC',
         '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECT ONLINE PROFESSIONAL',  # PROJECTPROFESSIONAL
-        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1', # STANDARDPACK
+        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1',  # STANDARDPACK
     }
     for sku in skus:
         if sku in ms_licence_skus:
