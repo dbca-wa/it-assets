@@ -52,7 +52,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
     if azure_user['AccountEnabled'] != dept_user.active:
         dept_user.active = azure_user['AccountEnabled']
     if azure_user['Mail'] != dept_user.email:
-        dept_user.email = azure_user['Mail'].lower()
+        dept_user.email = azure_user['Mail']
     if azure_user['DisplayName'] != dept_user.name:
         dept_user.name = azure_user['DisplayName']
     if azure_user['GivenName'] != dept_user.given_name:
