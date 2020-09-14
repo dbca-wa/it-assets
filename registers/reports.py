@@ -343,7 +343,7 @@ def dependency_export(fileobj, it_systems):
     ) as workbook:
         sheet = workbook.add_worksheet('Risk assessments - IT systems')
         sheet.write_row('A1', (
-            'IT system ID', 'IT system name', 'IT system status', 'Division',
+            'IT system ID', 'IT system name', 'IT system status', 'Division', 'Availability',
             'Compute dependencies',
         ))
         row = 1
@@ -353,13 +353,15 @@ def dependency_export(fileobj, it_systems):
                 i.name,
                 i.get_status_display(),
                 i.division_name,
+                i.get_availability_display() if i.availability else '',
                 ', '.join([str(dep) for dep in i.get_compute_dependencies()]),
             ])
             row += 1
 
         sheet.set_column('B:B', 50)
-        sheet.set_column('C:C', 18)
+        sheet.set_column('C:C', 20)
         sheet.set_column('D:D', 40)
-        sheet.set_column('E:E', 90)
+        sheet.set_column('E:E', 20)
+        sheet.set_column('F:F', 90)
 
     return fileobj

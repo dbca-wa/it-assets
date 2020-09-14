@@ -32,8 +32,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'django_extensions',
     # Third-party applications:
+    'django_extensions',
     'corsheaders',
     'reversion',
     'crispy_forms',
