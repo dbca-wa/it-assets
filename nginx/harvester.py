@@ -42,7 +42,7 @@ def get_resource_consume_client():
         _resource_consume_client = ResourceConsumeClient(
             AzureBlobStorage(settings.NGINX_STORAGE_CONNECTION_STRING,settings.NGINX_CONTAINER),
             settings.NGINX_RESOURCE_NAME,
-            settings.NGINX_RESOURCE_CLIENTID
+            settings.RESOURCE_CLIENTID
         )
     return _resource_consume_client
 

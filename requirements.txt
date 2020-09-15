@@ -35,7 +35,7 @@ sentry-sdk==0.13.5
 beautifulsoup4==4.8.0
 webtemplate-dbca==1.2.1
 django-bootstrap-pagination==1.7.1
-git+git://github.com/dbca-wa/data-storage@v3.7#egg=data-storage==3.7
+git+git://github.com/dbca-wa/data-storage@v3.8#egg=data-storage==3.8
 pyyaml==5.3.1
 pybind11==2.5.0
 pysimdjson==2.5.1
