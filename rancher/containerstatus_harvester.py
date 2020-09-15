@@ -216,7 +216,7 @@ def process_status_file(context,metadata,status_file):
                                 modified=timezone.now(),
                                 created=timezone.now()
                             )
-                            if finished.date() < timezone.now().date():
+                            if finished and finished.date() < timezone.now().date():
                                 workload.deleted = finished
                             workload.save()
 
