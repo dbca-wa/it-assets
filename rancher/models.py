@@ -641,8 +641,7 @@ class ContainerLog(models.Model):
     archiveid = models.CharField(max_length=64,null=True,editable=False)
 
     class Meta:
-        unique_together = [["container","logtime","level"]]
-        index_together = [["container","level"],["archiveid"]]
+        index_together = [["container","logtime","level"],["container","level"],["archiveid"]]
         ordering = ["container","logtime"]
 
 
