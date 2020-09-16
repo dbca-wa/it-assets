@@ -276,6 +276,8 @@ def process_status(context):
             if not last_consume or last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
                 raise Exception("Consume containerlog only after podstatus and containerstatus are consumed")
             context["clients"][key] = last_consume
+
+        ContainerLog.objects.fitler(archiveid=metadata["resource_id"]).delete()
         
         process_status_file(context,metadata,status_file)
 
@@ -319,8 +321,9 @@ def harvest(reconsume=False):
         return ([],[(None,None,None,msg)])
         
     try:
-        if reconsume and get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-            get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+        if reconsume:
+            if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
             clean_containerlogs()
 
     

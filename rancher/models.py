@@ -871,7 +871,7 @@ def clean_containers():
     sync_workloads()
 
 def clean_containerlogs():
-    ContainerLog.objects.delete()
+    ContainerLog.objects.all().delete()
     Container.objects.all().update(log=False,warning=False,error=False)
     for workload in Workload.objects.all():
         if workload.latest_containers:
