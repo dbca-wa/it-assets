@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.http import QueryDict
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
-from .models import Cluster,Namespace,Workload,Container,ContainerLog
+from .models import Cluster,Namespace,Workload,Container,ContainerLog,clean_containerlogs
 from itassets.utils import LogRecordIterator
 
 from .utils import to_datetime,set_fields,set_field
@@ -120,15 +120,19 @@ def process_status_file(context,metadata,status_file):
                 continue
             message = message.replace("\\n","\n")
             source = (record["logentrysource"] or "").strip() or None
-            level = ContainerLog.INFO
+            level = None
             newmessage = False
-            if source.lower() in ('stderr',):
-                level = ContainerLog.ERROR
-            else:
-                for log_level_re,value in log_levels:
-                    if log_level_re.search(message):
-                        level,newmessage = value
-                        break
+            for log_level_re,value in log_levels:
+                if log_level_re.search(message):
+                    level,newmessage = value
+                    break
+
+            if level is None:
+                if source.lower() in ('stderr',):
+                    level = ContainerLog.ERROR
+                else:
+                    level = ContainerLog.INFO
+
             computer = record["computer"].strip()
             cluster = None
             clustername = None
@@ -273,8 +277,6 @@ def process_status(context):
                 raise Exception("Consume containerlog only after podstatus and containerstatus are consumed")
             context["clients"][key] = last_consume
         
-        ContainerLog.objects.filter(archiveid=metadata["resource_id"]).delete()
-
         process_status_file(context,metadata,status_file)
 
         for container,container_update_fields  in context["containers"].values():
@@ -319,6 +321,8 @@ def harvest(reconsume=False):
     try:
         if reconsume and get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
             get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+            clean_containerlogs()
+
     
         context = {
             "reconsume":reconsume,
