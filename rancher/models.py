@@ -650,6 +650,7 @@ class WorkloadListener(object):
     @staticmethod
     @receiver(pre_save,sender=Workload)
     def save_workload(sender,instance,update_fields=None,**kwargs):
+        existing_obj = None
         if instance.pk:
             if update_fields:
                 if "deleted" not in update_fields:
@@ -664,50 +665,39 @@ class WorkloadListener(object):
             #update
             if instance.deleted :
                 def update_workloads(obj):
-                    obj.active_workloads -= 1
-                    obj.deleted_workloads += 1
-                    return ["active_workloads","deleted_workloads"]
+                    obj.__class__.objects.filter(pk=obj.pk).update(active_workloads=models.F("active_workloads") - 1,deleted_workloads=models.F("deleted_workloads") + 1)
             else:
                 def update_workloads(obj):
-                    obj.active_workloads += 1
-                    obj.deleted_workloads -= 1
-                    return ["active_workloads","deleted_workloads"]
+                    obj.__class__.objects.filter(pk=obj.pk).update(active_workloads=models.F("active_workloads") + 1,deleted_workloads=models.F("deleted_workloads") - 1)
 
         else:
             #create
             if instance.deleted:
                 def update_workloads(obj):
-                    obj.deleted_workloads += 1
-                    return ["deleted_workloads"]
+                    obj.__class__.objects.filter(pk=obj.pk).update(deleted_workloads=models.F("deleted_workloads") + 1)
             else:
                 def update_workloads(obj):
-                    obj.active_workloads += 1
-                    return ["active_workloads"]
+                    obj.__class__.objects.filter(pk=obj.pk).update(active_workloads=models.F("active_workloads") + 1)
         
         for obj in [instance.namespace,instance.project,instance.cluster]:
             if not obj:
                 continue
-            update_fields = update_workloads(obj)
-            obj.save(update_fields=update_fields)
+            update_workloads(obj)
 
     @staticmethod
     @receiver(pre_delete,sender=Workload)
     def delete_workload(sender,instance,**kwargs):
         if instance.deleted:
             def update_workloads(obj):
-                obj.deleted_workloads -= 1
-                return ["deleted_workloads"]
+                obj.__class__.objects.filter(pk=obj.pk).update(deleted_workloads=models.F("deleted_workloads") - 1)
         else:
             def update_workloads(obj):
-                obj.active_workloads -= 1
-                return ["active_workloads"]
+                obj.__class__.objects.filter(pk=obj.pk).update(active_workloads=models.F("active_workloads") - 1)
 
         for obj in [instance.namespace,instance.project,instance.cluster]:
             if not obj:
                 continue
-            update_fields = update_workloads(obj)
-            obj.save(update_fields=update_fields)
-
+            update_workloads(obj)
         
 class NamespaceListener(object):
     @staticmethod
@@ -727,28 +717,16 @@ class NamespaceListener(object):
             return
 
         if existing_obj.project:
-            logger.debug("previous project({}):active_workload={},deleted_workloads={}   namespace({}):active_workloads={},deleted_workloads={}".format(
-                existing_obj.project,
-                existing_obj.project.active_workloads,
-                existing_obj.project.deleted_workloads,
-                instance,instance.active_workloads,
-                instance.deleted_workloads
-            ))
-            existing_obj.project.active_workloads -= instance.active_workloads
-            existing_obj.project.deleted_workloads -= instance.deleted_workloads
-            existing_obj.project.save(update_fields=["active_workloads","deleted_workloads"])
+            Project.objects.filter(pk = existing_obj.project.pk).update(
+                active_workloads=models.F("active_workloads") - instance.active_workloads,
+                deleted_workloads=models.F("deleted_workloads") - instance.deleted_workloads
+            )
 
         if instance.project:
-            logger.debug("new project({}):active_workload={},deleted_workloads={}   namespace({}):active_workloads={},deleted_workloads={}".format(
-                instance.project,
-                instance.project.active_workloads,
-                instance.project.deleted_workloads,
-                instance,instance.active_workloads,
-                instance.deleted_workloads
-            ))
-            instance.project.active_workloads += instance.active_workloads
-            instance.project.deleted_workloads += instance.deleted_workloads
-            instance.project.save(update_fields=["active_workloads","deleted_workloads"])
+            Project.objects.filter(pk = instance.project.pk).update(
+                active_workloads=models.F("active_workloads") + instance.active_workloads,
+                deleted_workloads=models.F("deleted_workloads") + instance.deleted_workloads
+            )
 
 
 def sync_project():
@@ -883,3 +861,12 @@ def sync_workloads():
             obj.deleted_workloads = deleted_workloads
             obj.save(update_fields=["active_workloads","deleted_workloads"])
 
+def clean_containers():
+    sync_workloads()
+    Container.objects.all().delete()
+    Workload.objects.filter(added_by_log=True).delete()
+    Namespace.objects.filter(added_by_log=True).delete()
+    Cluster.objects.filter(added_by_log=True).delete()
+    Workload.objects.all().update(deleted=None)
+    sync_project()
+    sync_workloads()
