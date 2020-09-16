@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField, ArrayField
+from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 from django.utils.html import format_html
 from json2html import json2html
@@ -53,7 +53,7 @@ class DepartmentUser(MPTTModel):
         editable=False, help_text='Azure AD ObjectId')  # ObjectId
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
-    email = models.EmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
+    email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')  # DisplayName
     given_name = models.CharField(
@@ -329,7 +329,7 @@ class DepartmentUser(MPTTModel):
                     action, created = ADAction.objects.get_or_create(
                         department_user=self,
                         action_type='Change account field',
-                        ad_field='physicalDeliveryOfficeName',
+                        ad_field='Office',
                         field='location.name',
                         completed=None,
                     )
