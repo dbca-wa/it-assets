@@ -641,8 +641,7 @@ class ContainerLog(models.Model):
     archiveid = models.CharField(max_length=64,null=True,editable=False)
 
     class Meta:
-        unique_together = [["container","logtime","level"]]
-        index_together = [["container","level"],["archiveid"]]
+        index_together = [["container","logtime","level"],["container","level"],["archiveid"]]
         ordering = ["container","logtime"]
 
 
@@ -870,3 +869,16 @@ def clean_containers():
     Workload.objects.all().update(deleted=None)
     sync_project()
     sync_workloads()
+
+def clean_containerlogs():
+    ContainerLog.objects.delete()
+    Container.objects.all().update(log=False,warning=False,error=False)
+    for workload in Workload.objects.all():
+        if workload.latest_containers:
+            for container in workload.latest_containers:
+                container[2] = 0
+            workload.save(update_fields=["latest_containers"])
+
+
+
+

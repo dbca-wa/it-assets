@@ -286,6 +286,17 @@ def process_status(context,max_harvest_files):
                 get_containerstatus_client().get_consume_status_name(status),
                 metadata
             ))
+
+        for key,client in (("podstatus_client",get_podstatus_client(cache=False)),):
+            if key in context["clients"]:
+                last_consume = context["clients"][key]
+                if last_consume[1]["archive_endtime"] >= metadata["archive_endtime"]:
+                    continue
+            last_consume = client.last_consume
+            if not last_consume or last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
+                raise Exception("Consume containerstatus only after podstatus is consumed")
+            context["clients"][key] = last_consume
+
         process_status_file(context,metadata,status_file)
 
         #save workload 
@@ -316,6 +327,7 @@ def harvest(reconsume=False,max_harvest_files=None):
             "renew_lock_time":renew_lock_time,
             "f_renew_lock":get_containerstatus_client().renew_lock,
             "clusters":{},
+            "clients":{},
             "namespaces":{},
             "workloads":{},
             "containers":{},
