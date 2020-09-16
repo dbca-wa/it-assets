@@ -290,7 +290,7 @@ def process_status(context):
             elif workload_update_fields:
                 if Workload.objects.filter(id=workload.id,latest_containers=workload.latest_containers).update(latest_containers=workload.new_latest_containers) == 0:
                     #workload's latest_containers changed
-                    db_workload = workload.objects.filter(id=workload.id).first()
+                    db_workload = Workload.objects.filter(id=workload.id).first()
                     if not db_workload or not db_workload.latest_containers:
                         continue
                     changed = False
