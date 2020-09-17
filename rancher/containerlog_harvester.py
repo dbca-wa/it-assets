@@ -277,7 +277,7 @@ def process_status(context):
                 raise Exception("Consume containerlog only after podstatus and containerstatus are consumed")
             context["clients"][key] = last_consume
 
-        ContainerLog.objects.fitler(archiveid=metadata["resource_id"]).delete()
+        ContainerLog.objects.filter(archiveid=metadata["resource_id"]).delete()
         
         process_status_file(context,metadata,status_file)
 
