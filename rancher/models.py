@@ -862,11 +862,12 @@ def sync_workloads():
 
 def clean_containers():
     sync_workloads()
+    ContainerLog.objects.all().delete()
     Container.objects.all().delete()
     Workload.objects.filter(added_by_log=True).delete()
     Namespace.objects.filter(added_by_log=True).delete()
     Cluster.objects.filter(added_by_log=True).delete()
-    Workload.objects.all().update(deleted=None)
+    Workload.objects.all().update(deleted=None,latest_containers=None)
     sync_project()
     sync_workloads()
 
@@ -879,6 +880,64 @@ def clean_containerlogs():
                 container[2] = 0
             workload.save(update_fields=["latest_containers"])
 
+def sync_latestcontainers():
+    Workload.objects.all().update(latest_containers=None)
+    workloads = {}
+    for container in Container.objects.all().order_by("id"):
+        workload_key = (container.workload.cluster.id,container.workload.namespace.name,container.workload.name,container.workload.kind)
+        if workload_key not in workloads:
+            workload_update_fields = []
+            workload = container.workload
+            workloads[workload_key] = (workload,workload_update_fields)
+        else:
+            workload,workload_update_fields = workloads[workload_key]
+
+        log_status = (Workload.INFO if container.log else 0) | (Workload.WARNING if container.warning else 0) | (Workload.ERROR if container.error else 0)
+        if workload.kind in ("Deployment",'DaemonSet','StatefulSet','service?'):
+            if container.status in ("Waiting","Running"):
+                if workload.latest_containers is None:
+                    workload.latest_containers=[[container.id,1,log_status]]
+                    if "latest_containers" not in workload_update_fields:
+                        workload_update_fields.append("latest_containers")
+                elif any(obj for obj in workload.latest_containers if obj[0] == container.id):
+                    pass
+                else:
+                    workload.latest_containers.append([container.id,1,log_status])
+                    if "latest_containers" not in workload_update_fields:
+                        workload_update_fields.append("latest_containers")
+            elif workload.latest_containers :
+                index = len(workload.latest_containers) - 1
+                while index >= 0:
+                    if workload.latest_containers[index][0] == container.id:
+                        del workload.latest_containers[index]
+                        if "latest_containers" not in workload_update_fields:
+                            workload_update_fields.append("latest_containers")
+                        break
+                    else:
+                        index -= 1
+        else:
+            if workload.latest_containers is None or len(workload.latest_containers) != 1 or workload.latest_containers[0][0] != container.id:
+                if container.status in ("Waiting","Running"):
+                    workload.latest_containers=[[container.id,1,log_status]]
+                else:
+                    workload.latest_containers=[[container.id,0,log_status]]
+                if "latest_containers" not in workload_update_fields:
+                    workload_update_fields.append("latest_containers")
+            else:
+                if container.status in ("Waiting","Running"):
+                    workload.latest_containers[0][1]=1
+                else:
+                    workload.latest_containers[0][1]=0
+                if "latest_containers" not in workload_update_fields:
+                    workload_update_fields.append("latest_containers")
+
+    
+    for workload,workload_update_fields in workloads.values():
+        if not workload_update_fields:
+            continue
+
+        logger.debug("Workload({}<{}>):update latest_containers to {}".format(workload,workload.id,workload.latest_containers))
+        workload.save(update_fields=workload_update_fields)
 
 
 

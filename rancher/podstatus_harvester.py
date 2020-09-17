@@ -124,8 +124,8 @@ def process_status_file(context,metadata,status_file):
                     workload = Workload.objects.get(cluster=cluster,namespace=namespace,name=workload_name,kind=workload_kind)
                 except ObjectDoesNotExist as ex:
                     workload = Workload(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind,image="",api_version="",modified=timezone.now(),created=timezone.now(),added_by_log=True)
-                    if pod_created.date() < timezone.now().date():
-                        workload.deleted = max_timegenerated
+                    #if pod_created.date() < timezone.now().date():
+                    #    workload.deleted = max_timegenerated
                     workload.save()
                 workload_update_fields = []
                 context["workloads"][key] = (workload,workload_update_fields)
