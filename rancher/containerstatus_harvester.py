@@ -165,6 +165,7 @@ def process_status_file(context,metadata,status_file):
                 context["clusters"][clustername] = cluster
             
             workload = None
+            container = None
             key = (cluster.id,containerid)
             if key in context["terminated_containers"]:
                 continue
@@ -209,7 +210,7 @@ def process_status_file(context,metadata,status_file):
                             try:
                                 namespace = Namespace.objects.get(cluster=cluster,name="unknown")
                             except ObjectDoesNotExist as ex:
-                                namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True)
+                                namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True,created=created or timezone.now(),modified=created or timezone.now())
                                 namespace.save()
     
                             context["namespaces"][namespace_key] = namespace
@@ -227,8 +228,8 @@ def process_status_file(context,metadata,status_file):
                                 kind=kind,
                                 api_version="",
                                 added_by_log=True,
-                                modified=timezone.now(),
-                                created=timezone.now()
+                                modified=created or timezone.now(),
+                                created=created or timezone.now()
                             )
                             #if finished and finished.date() < timezone.now().date():
                             #    workload.deleted = finished
@@ -299,7 +300,12 @@ def process_status(context,max_harvest_files):
                 if last_consume[1]["archive_endtime"] >= metadata["archive_endtime"]:
                     continue
             last_consume = client.last_consume
-            if not last_consume or last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
+            if not last_consume:
+                raise exceptions.StopConsuming("Can't consume containerstatus file({0}) which archive_endtime is {1}, because no podstatus file was consumed".format(
+                    metadata["resource_id"],
+                    metadata["archive_endtime"]
+                ))
+            elif last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
                 raise exceptions.StopConsuming("Can't consume containerstatus file({0}) which archive_endtime({1}) is after the archive_endtime({3}) of the last consumed podstatus file({2}) that was consumed at {4}".format(
                     metadata["resource_id"],
                     metadata["archive_endtime"],
