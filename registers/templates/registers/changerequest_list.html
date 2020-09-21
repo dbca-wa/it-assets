@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load bootstrap_pagination %}
 
 {% block extra_head %}
 <title>Change requests</title>
@@ -80,29 +81,7 @@
   <div class="col-xs-12">
     <section class="paginator text-center">
       <nav>
-        <ul class="pagination">
-          <li>
-            {% if page_obj.has_previous %}
-              <a href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">Previous</a>
-            {% endif %}
-          </li>
-          {% for page_num in paginator.page_range %}
-            {% ifequal paginator.number page_num %}
-            <li class="active">
-              <a href="?page={{ page_num }}">{{ page_num }}</a>
-            </li>
-            {% else %}
-            <li>
-              <a href="?page={{ page_num }}">{{ page_num }}</a>
-            </li>
-            {% endifequal %}
-          {% endfor %}
-          <li>
-            {% if page_obj.has_next %}
-              <a href="?page={{ page_obj.next_page_number }}" aria-label="Next">Next</a>
-            {% endif %}
-          </li>
-        </ul>
+      {% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}
       </nav>
     </section>
   </div>

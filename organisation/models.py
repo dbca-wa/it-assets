@@ -254,8 +254,15 @@ class DepartmentUser(MPTTModel):
             ('TelephoneNumber', 'telephone'),
             ('Mobile', 'mobile_phone'),
         ]:
-            # Test if the dept user field value is truthy and the AD field in falsy, OR if the fields are not equal.
+            # Test if the dept user field value is truthy and the AAD field in falsy, OR if the fields are not equal.
             if (getattr(self, field[1]) and not azure_user[field[0]]) or azure_user[field[0]] != getattr(self, field[1]):
+
+                # Second check: consider a dept user field value of None to be equivalent to an AAD value of "N/A".
+                # If so, skip over the field (don't create an ADAction).
+                # This is stupid and I hate it.
+                if not getattr(self, field[1]) and azure_user[field[0]] and azure_user[field[0]].strip().lower() == 'n/a':
+                    continue
+
                 # Get/create a non-completed ADAction for this dept user, for these fields.
                 # This should mean that only one ADAction object is generated for a given field,
                 # even if the value it IT Assets changes more than once before being synced in AD.
@@ -557,7 +564,6 @@ DIVISION_CHOICES = (
     ("RIA", "Rottnest Island Authority"),
     ("ZPA", "Zoological Parks Authority"),
 )
-#{'BCS', 'BGPA', 'CBS', 'CPC', 'ODG', 'PWS', 'RIA', 'ZPA'}
 
 
 class CostCentre(models.Model):

@@ -16,7 +16,7 @@ def get_azure_users_json(container, azure_json_path):
 
 
 def find_user_in_list(user_list, email=None, objectid=None):
-    """For a list of dicts (Azure AD users), find the first one matching email/objectid (or None).
+    """For a list of dicts (Azure/onprem AD users), find the first one matching email/objectid (or None).
     """
     if email:
         for user in user_list:
