@@ -175,9 +175,9 @@ class LogsLinkMixin(object):
         else:
             url = reverse(self.logs_url_name, args=[])
             if obj.warning and obj.error:
-                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Errors</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={3}'>Warnings</A>".format(url,obj.id,models.ContainerLog.ERROR,models.ContaienrLog.WARNING))
+                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Errors</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={3}'>Warnings</A>".format(url,obj.id,models.ContainerLog.ERROR,models.ContainerLog.WARNING))
             elif obj.warning:
-                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Warnings</A>".format(url,obj.id,models.ContaienrLog.WARNING))
+                return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Warnings</A>".format(url,obj.id,models.ContainerLog.WARNING))
             elif obj.error:
                 return mark_safe("<A href='{0}?container__id__exact={1}'>Logs</A><A style='margin-left:5px' href='{0}?container__id__exact={1}&level={2}'>Errors</A>".format(url,obj.id,models.ContainerLog.ERROR))
             else:

@@ -16,6 +16,7 @@ from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
 from .models import Cluster,Namespace,Workload,Container
 from itassets.utils import LogRecordIterator
 
+from .podstatus_harvester import get_podstatus_client
 from .utils import to_datetime,set_fields,set_field
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ def get_container_status(container,status):
 
 def update_latest_containers(context,container,workload=None,workload_update_fields=None):
     if workload is None:
-        workload_key = (container.workload.cluster.id,container.workload.name,container.workload.kind)
+        workload_key = (container.workload.cluster.id,container.workload.namespace.name,container.workload.name,container.workload.kind)
         if workload_key not in context["workloads"]:
             workload_update_fields = []
             workload = container.workload
@@ -172,43 +173,56 @@ def process_status_file(context,metadata,status_file):
             else:
                 try:
                     container = Container.objects.get(cluster=cluster,containerid=containerid)
+                    context["containers"][key] = container
                 except ObjectDoesNotExist as ex:
-                    kind = "service?" if ports else "jobs?"
-                    workload_key = (cluster.id,workload_name,kind)
-                    workload = None
-                    if workload_key in context["workloads"]:
-                        workload,workload_update_fields = context["workloads"][workload_key]
-                    else:
-                        #try to find the workload through cluster and workload name
-                        workload_qs = Workload.objects.filter(cluster=cluster,name=workload_name)
-                        for obj in workload_qs:
-                            if obj.image.startswith(image_without_tag) and ((ports and obj.listenings.all().count()) or (not ports and obj.listenings.all().count() == 0)):
-                                workload = obj
-                                break
-                        if not workload:
-                            workload_name = "{}-{}".format(image_without_tag,workload_name)
-                            workload = Workload.objects.filter(cluster=cluster,name=workload_name,kind=kind).first()
+                    pass
+
+            if container:
+                workload_key = (container.workload.cluster.id,container.workload.namespace.name,container.workload.name,container.workload.kind)
+                if workload_key not in context["workloads"]:
+                    workload_update_fields = []
+                    workload = container.workload
+                    context["workloads"][workload_key] = (workload,workload_update_fields)
+                else:
+                    workload,workload_update_fields = context["workloads"][workload_key]
+
+            else:
+                kind = "service?" if ports else "jobs?"
+                new_workload_name = "{}-{}".format(image_without_tag,workload_name)
+                workload_key = (cluster.id,"unknown",new_workload_name,kind)
+                workload = None
+                if workload_key in context["workloads"]:
+                    workload,workload_update_fields = context["workloads"][workload_key]
+                else:
+                    #try to find the workload through cluster and workload name
+                    workload_qs = Workload.objects.filter(cluster=cluster,name=workload_name)
+                    for obj in workload_qs:
+                        if obj.image.startswith(image_without_tag) and ((ports and obj.listenings.all().count()) or (not ports and obj.listenings.all().count() == 0)):
+                            workload = obj
+                            break
+                    if not workload:
+                        #not found , create a workload for this log
+                        namespace_key = (cluster.id,"unknown")
+                        if namespace_key in context["namespaces"]:
+                            namespace = context["namespaces"][namespace_key]
+                        else:
+                            try:
+                                namespace = Namespace.objects.get(cluster=cluster,name="unknown")
+                            except ObjectDoesNotExist as ex:
+                                namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True)
+                                namespace.save()
+    
+                            context["namespaces"][namespace_key] = namespace
+
+                        workload = Workload.objects.filter(cluster=cluster,namespace=namespace,name=new_workload_name,kind=kind).first()
 
                         if not workload:
-                            #not found , create a workload for this log
-                            namespace_key = (cluster.id,"unknown")
-                            if namespace_key in context["namespaces"]:
-                                namespace = context["namespaces"][namespace_key]
-                            else:
-                                try:
-                                    namespace = Namespace.objects.get(cluster=cluster,name="unknown")
-                                except ObjectDoesNotExist as ex:
-                                    namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True)
-                                    namespace.save()
-        
-                                context["namespaces"][namespace_key] = namespace
-        
                             image = "{}:{}".format(record["image"].strip(),record["imagetag"].strip())
                             workload = Workload(
                                 cluster=namespace.cluster,
                                 project=namespace.project,
                                 namespace=namespace,
-                                name=workload_name,
+                                name=new_workload_name,
                                 image=image,
                                 kind=kind,
                                 api_version="",
@@ -216,20 +230,21 @@ def process_status_file(context,metadata,status_file):
                                 modified=timezone.now(),
                                 created=timezone.now()
                             )
-                            if finished and finished.date() < timezone.now().date():
-                                workload.deleted = finished
+                            #if finished and finished.date() < timezone.now().date():
+                            #    workload.deleted = finished
                             workload.save()
 
-                        workload_update_fields = []
-                        context["workloads"][workload_key] = (workload,workload_update_fields)
+                    workload_key = (cluster.id,workload.namespace.name,workload.name,workload.kind)
+                    workload_update_fields = []
+                    context["workloads"][workload_key] = (workload,workload_update_fields)
 
-                    container = Container(
-                        cluster=workload.cluster,
-                        namespace=workload.namespace,
-                        workload=workload,
-                        poduid = "",
-                        containerid = containerid
-                        )
+                container = Container(
+                    cluster=workload.cluster,
+                    namespace=workload.namespace,
+                    workload=workload,
+                    poduid = "",
+                    containerid = containerid
+                )
                 context["containers"][key] = container
 
             #container
@@ -250,15 +265,6 @@ def process_status_file(context,metadata,status_file):
                 container.save()
             elif update_fields:
                 container.save(update_fields=update_fields)
-
-            if workload is None:
-                workload_key = (container.workload.cluster.id,container.workload.namespace.id,container.workload.name,container.workload.kind)
-                if workload_key not in context["workloads"]:
-                    workload_update_fields = []
-                    workload = container.workload
-                    context["workloads"][key] = (workload,workload_update_fields)
-                else:
-                    workload,workload_update_fields = context["workloads"][workload_key]
 
             update_latest_containers(context,container,workload=workload,workload_update_fields=workload_update_fields)
             if container_status.lower() in ("deleted","terminated"):
@@ -294,7 +300,13 @@ def process_status(context,max_harvest_files):
                     continue
             last_consume = client.last_consume
             if not last_consume or last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
-                raise Exception("Consume containerstatus only after podstatus is consumed")
+                raise exceptions.StopConsuming("Can't consume containerstatus file({0}) which archive_endtime({1}) is after the archive_endtime({3}) of the last consumed podstatus file({2}) that was consumed at {4}".format(
+                    metadata["resource_id"],
+                    metadata["archive_endtime"],
+                    last_consume[1]["resource_id"],
+                    last_consume[1]["archive_endtime"],
+                    last_consume[2]["consume_date"],
+                ))
             context["clients"][key] = last_consume
 
         process_status_file(context,metadata,status_file)
