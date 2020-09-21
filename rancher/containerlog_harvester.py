@@ -268,21 +268,27 @@ def process_status(context):
                 metadata
             ))
             for name,key,client in (("podstatus","podstatus_client",get_podstatus_client(cache=False)),("containerstatus","containerstatus_client",get_containerstatus_client(cache=False))):
-            if key in context["clients"]:
-                last_consume = context["clients"][key]
-                if last_consume[1]["archive_endtime"] >= metadata["archive_endtime"]:
-                    continue
-            last_consume = client.last_consume
-            if not last_consume or last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
-                raise exceptions.StopConsuming("Can't consume containerlog file({0}) which archive_endtimne({1}) is after the archive_endtime({4}) of the last consumed {2} file({3}) that was consumed at {5}".format(
-                    metadata["resource_id"],
-                    metadata["archive_endtime"],
-                    name,
-                    last_consume[1]["resource_id"],
-                    last_consume[1]["archive_endtime"],
-                    last_consume[2]["consume_date"],
-                ))
-            context["clients"][key] = last_consume
+                if key in context["clients"]:
+                    last_consume = context["clients"][key]
+                    if last_consume[1]["archive_endtime"] >= metadata["archive_endtime"]:
+                        continue
+                last_consume = client.last_consume
+                if not last_consume:
+                    raise exceptions.StopConsuming("Can't consume containerlog file({0}) which archive_endtimne is {1}, because no {2} file was consumed.".format(
+                        metadata["resource_id"],
+                        metadata["archive_endtime"],
+                        name
+                    ))
+                elif last_consume[1]["archive_endtime"] < metadata["archive_endtime"]:
+                    raise exceptions.StopConsuming("Can't consume containerlog file({0}) which archive_endtimne({1}) is after the archive_endtime({4}) of the last consumed {2} file({3}) that was consumed at {5}".format(
+                        metadata["resource_id"],
+                        metadata["archive_endtime"],
+                        name,
+                        last_consume[1]["resource_id"],
+                        last_consume[1]["archive_endtime"],
+                        last_consume[2]["consume_date"],
+                    ))
+                context["clients"][key] = last_consume
 
         ContainerLog.objects.filter(archiveid=metadata["resource_id"]).delete()
         
