@@ -858,7 +858,7 @@ class ContainerLogAdmin(ContainerLinkMixin,admin.ModelAdmin):
 
     list_filter = ("level",)
 
-    ordering = ("container","logtime")
+    ordering = ("container__workload","-logtime")
     search_fields = ['container__id','container__workload__name']
 
     def _short_message(self,obj):

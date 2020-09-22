@@ -68,10 +68,12 @@ def process_status_file(context,metadata,status_file):
                 #data is incomplete,ignore
                 continue
 
-            if record["clusterid"].strip().lower() == "rancher-k3s":
-                cluster_name = record["computer"].strip()
-            else:
+            if record["computer"].strip().lower().startswith("aks-nodepool"):
                 cluster_name = record["clusterid"].strip().rsplit("/")[-1]
+            else:
+                cluster_name = record["computer"].strip()
+
+            cluster_name = cluster_name.split(".",1)[0]
 
             if cluster_name in context["clusters"]:
                 cluster = context["clusters"][cluster_name]
@@ -93,7 +95,7 @@ def process_status_file(context,metadata,status_file):
                 try:
                     namespace = Namespace.objects.get(cluster=cluster,name=namespace_name)
                 except ObjectDoesNotExist as ex:
-                    namespace = Namespace(cluster=cluster,name=namespace_name,added_by_log=True)
+                    namespace = Namespace(cluster=cluster,name=namespace_name,added_by_log=True,created=pod_created,modified=pod_created)
                     namespace.save()
                 context["namespaces"][key] = namespace
                 
@@ -123,7 +125,7 @@ def process_status_file(context,metadata,status_file):
                     #logger.debug("find workload, cluster={}, project={}, namespace={},name={},kind={}".format(cluster,namespace.project,namespace,workload_name,workload_kind))
                     workload = Workload.objects.get(cluster=cluster,namespace=namespace,name=workload_name,kind=workload_kind)
                 except ObjectDoesNotExist as ex:
-                    workload = Workload(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind,image="",api_version="",modified=timezone.now(),created=timezone.now(),added_by_log=True)
+                    workload = Workload(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind,image="",api_version="",modified=pod_created,created=pod_created,added_by_log=True)
                     #if pod_created.date() < timezone.now().date():
                     #    workload.deleted = max_timegenerated
                     workload.save()
