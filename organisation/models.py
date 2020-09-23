@@ -187,10 +187,6 @@ class DepartmentUser(MPTTModel):
         super(DepartmentUser, self).save(*args, **kwargs)
 
     @property
-    def password_age_days(self):
-        return None
-
-    @property
     def children_filtered(self):
         return self.children.filter(**self.ACTIVE_FILTER).exclude(account_type__in=self.ACCOUNT_TYPE_EXCLUDE)
 

@@ -4,7 +4,6 @@ from django.db.models import Q
 from django.urls import path, re_path
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseBadRequest
-from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -56,6 +55,25 @@ def format_location(request, value):
         return None
 
 
+def format_cost_centre(request, value):
+    if value is not None:
+        cc = CostCentre.objects.get(pk=value)
+        return {
+            'code': cc.code,
+            'division': cc.get_division_name_display() if cc.division_name else '',
+        }
+    else:
+        return None
+
+
+def format_manager(request, value):
+    if value is not None:
+        manager = DepartmentUser.objects.get(pk=value)
+        return {'name': manager.name, 'email': manager.email}
+    else:
+        return None
+
+
 class DepartmentUserResource(DjangoResource):
     """An API Resource class to represent DepartmentUser objects.
     This class is used to create & update synchronised user account data from
@@ -65,25 +83,22 @@ class DepartmentUserResource(DjangoResource):
     """
     COMPACT_ARGS = (
         'pk', 'name', 'title', 'email', 'telephone',
-        'mobile_phone', 'extension', 'org_data', 'parent__email',
-        'parent__name', 'username', 'org_unit__location__id',
-        'org_unit__location__name', 'org_unit__location__address',
-        'org_unit__location__pobox', 'org_unit__location__phone',
-        'org_unit__location__fax', 'ad_guid', 'employee_id',
-        'location', 'preferred_name', 'expiry_date', 'o365_licence')
+        'mobile_phone', 'extension', 'cost_centre',
+        'manager', 'employee_id', 'location', 'preferred_name',
+    )
     VALUES_ARGS = COMPACT_ARGS + (
-        'date_updated', 'active',
-        'given_name', 'surname', 'home_phone',
-        'other_phone', 'notes', 'working_hours', 'position_type',
-        'account_type', 'shared_account')
+        'active', 'given_name', 'surname', 'home_phone', 'other_phone',
+        'position_type', 'account_type', 'shared_account',
+    )
     MINIMAL_ARGS = (
         'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone')
-    PROPERTY_ARGS = ('password_age_days',)
 
     formatters = FieldsFormatter(formatters={
         'position_type': format_position_type,
         'account_type': format_account_type,
         'location': format_location,
+        'cost_centre': format_cost_centre,
+        'manager': format_manager,
     })
 
     def __init__(self, *args, **kwargs):
@@ -92,20 +107,6 @@ class DepartmentUserResource(DjangoResource):
             'list_fast': {'GET': 'list_fast'},
             'list_licences': {'GET': 'list_licences'},
         })
-
-    def prepare(self, data):
-        """Modify the returned object to append the GAL Department value.
-        """
-        prepped = super(DepartmentUserResource, self).prepare(data)
-
-        if 'pk' in data:
-            prepped['gal_department'] = DepartmentUser.objects.get(pk=data['pk']).get_gal_department()
-        if 'date_updated' in data and data['date_updated']:
-            prepped['date_updated'] = data['date_updated'].astimezone(TIMEZONE)
-        if 'expiry_date' in data and data['expiry_date']:
-            prepped['expiry_date'] = data['expiry_date'].astimezone(TIMEZONE)
-
-        return prepped
 
     @classmethod
     def urls(self, name_prefix=None):
@@ -177,12 +178,10 @@ class DepartmentUserResource(DjangoResource):
             users = DepartmentUser.objects.filter(pk=self.request.GET['pk'])
         else:
             # No other filtering:
-            # Return 'active' DU objects, excluding predefined account types and contractors
-            # and expired accounts.
+            # Return 'active' DU objects, excluding predefined account types and contractors.
             FILTERS = DepartmentUser.ACTIVE_FILTER.copy()
             users = DepartmentUser.objects.filter(**FILTERS)
             users = users.exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            users = users.exclude(expiry_date__lte=timezone.now())
         # Parameters to modify the API output.
         if 'minimal' in self.request.GET:
             # For the minimal response, we don't need a prefetch_related.
@@ -231,18 +230,10 @@ class DepartmentUserResource(DjangoResource):
             users = DepartmentUser.objects.filter(cost_centre__code__icontains=self.request.GET['cost_centre'])
         else:
             # No other filtering:
-            # Return 'active' DU objects, excluding predefined account types and contractors
-            # and expired accounts.
+            # Return 'active' DU objects, excluding predefined account types and contractors.
             FILTERS = DepartmentUser.ACTIVE_FILTER.copy()
             users = DepartmentUser.objects.filter(**FILTERS)
             users = users.exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            users = users.exclude(expiry_date__lte=timezone.now())
-        # Non-mutually-exclusive filters:
-        if 'o365_licence' in self.request.GET:
-            if self.request.GET['o365_licence'].lower() == 'true':
-                users = users.filter(o365_licence=True)
-            elif self.request.GET['o365_licence'].lower() == 'false':
-                users = users.filter(o365_licence=False)
 
         # Parameters to modify the API output.
         if 'minimal' in self.request.GET:
@@ -451,11 +442,6 @@ class DepartmentUserResource(DjangoResource):
                               'members': list(set(members))})
         for obj in costcentres:
             members = [d[0] for d in qs.filter(cost_centre=obj).values_list('email')]
-            # We also need to iterate through DepartmentUsers to add those with
-            # secondary CCs as members to each CostCentre.
-            for i in DepartmentUser.objects.filter(cost_centres_secondary__isnull=False):
-                if obj in i.cost_centres_secondary.all():
-                    members.append(i.email)
             structure.append({'id': 'db-cc_{}'.format(obj.pk),
                               'name': str(obj),
                               'email': slugify(obj.name),
@@ -531,8 +517,6 @@ def profile(request):
 
     if request.method == 'GET':
         data = qs.values(*self.VALUES_ARGS)[0]
-        # Add the password_age_days property to the API response.
-        data['password_age_days'] = user.password_age_days
     elif request.method == 'POST':
         if 'telephone' in request.POST:
             user.telephone = request.POST['telephone']
