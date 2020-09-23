@@ -149,9 +149,10 @@ def process_status_file(context,metadata,status_file):
                     cluster.save()
 
                 context["clusters"][clustername] = cluster
+            """
             if cluster.name != 'az-k3s-oim01':
                 continue
-
+            """
 
             key = (cluster.id,containerid)
             if key in context["containers"]:
@@ -166,8 +167,10 @@ def process_status_file(context,metadata,status_file):
                         continue
                 container_update_fields = []
                 context["containers"][key] = (container,container_update_fields)
+            """
             if container.workload.namespace.name != 'bfrs' or container.workload.kind != 'Deployment' or container.workload.name != 'prod':
                 continue
+            """
 
             key = (cluster.id,containerid)
             if key in context["containerlogs"]:
