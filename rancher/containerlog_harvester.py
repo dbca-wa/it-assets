@@ -34,7 +34,7 @@ log_levels = [
     (re.compile("(^|\s+)level\s*=\s*info\s+",re.IGNORECASE),(ContainerLog.INFO,True)),
     (re.compile("(^|\s+)level\s*=\s*warn(ing)?\s+",re.IGNORECASE),(ContainerLog.WARNING,True)),
     (re.compile("(^|\s+)level\s*=\s*error\s+",re.IGNORECASE),(ContainerLog.ERROR,True)),
-    (re.compile("[^a-zA-Z0-9\_\-]+(exception|error|failed|wrong|err)[^a-zA-Z0-9\_\-]+",re.IGNORECASE),(ContainerLog.ERROR,False))
+    (re.compile("(exception|error|failed|wrong|err||traceback)\s+",re.IGNORECASE),(ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
 def get_containerlog_client():
@@ -53,7 +53,7 @@ def get_containerlog_client():
 
 def update_latest_containers(context,containerlog):
     container = containerlog.container
-    workload_key = (container.workload.cluster.id,container.workload.name,container.workload.kind)
+    workload_key = (container.workload.cluster.id,container.workload.namespace.name,container.workload.name,container.workload.kind)
     if workload_key not in context["workloads"]:
         workload_update_fields = []
         workload = container.workload
@@ -64,6 +64,13 @@ def update_latest_containers(context,containerlog):
     if not workload.latest_containers:
         return
 
+    if containerlog.level == ContainerLog.WARNING:
+        status = Workload.WARNING | Workload.INFO
+    elif containerlog.level == ContainerLog.ERROR:
+        status = Workload.ERROR | Workload.INFO
+    else:
+        status = Workload.INFO
+
     if "latest_containers" not in workload_update_fields:
         index = 0
         while index < len(workload.latest_containers):
@@ -72,13 +79,6 @@ def update_latest_containers(context,containerlog):
                 index += 1
                 continue
             else:
-                if containerlog.level == ContainerLog.WARNING:
-                    status = Workload.WARNING | Workload.INFO
-                elif containerlog.level == ContainerLog.ERROR:
-                    status = Workload.ERROR | Workload.INFO
-                else:
-                    status = Workload.INFO
-
                 if container_data[2] & status != status:
                     workload.new_latest_containers = [list(o) for o in workload.latest_containers]
                     workload.new_latest_containers[index][2] = workload.latest_containers[index][2] | status
@@ -89,13 +89,6 @@ def update_latest_containers(context,containerlog):
             if container_data[0] != container.id:
                 continue
             else:
-                if containerlog.level == ContainerLog.WARNING:
-                    status = Workload.WARNING | Workload.INFO
-                elif containerlog.level == ContainerLog.ERROR:
-                    status = Workload.ERROR | Workload.INFO
-                else:
-                    status = Workload.INFO
-
                 container_data[2] = container_data[2] | status
                 break
 
@@ -136,6 +129,7 @@ def process_status_file(context,metadata,status_file):
             computer = record["computer"].strip()
             cluster = None
             clustername = None
+            
             if computer in context["clusters"]:
                 cluster = context["clusters"][computer]
             elif record.get("resourceid"):
@@ -155,6 +149,8 @@ def process_status_file(context,metadata,status_file):
                     cluster.save()
 
                 context["clusters"][clustername] = cluster
+            if cluster.name != 'az-k3s-oim01':
+                continue
 
 
             key = (cluster.id,containerid)
@@ -170,6 +166,8 @@ def process_status_file(context,metadata,status_file):
                         continue
                 container_update_fields = []
                 context["containers"][key] = (container,container_update_fields)
+            if container.workload.namespace.name != 'bfrs' or container.workload.kind != 'Deployment' or container.workload.name != 'prod':
+                continue
 
             key = (cluster.id,containerid)
             if key in context["containerlogs"]:
@@ -196,8 +194,8 @@ def process_status_file(context,metadata,status_file):
 
                 container_update_fields = set_fields(container,[
                     ("log", True),
-                    ("warning", True if level == ContainerLog.WARNING else container.warning),
-                    ("error", True if level == ContainerLog.ERROR else container.error),
+                    ("warning", True if containerlog.level == ContainerLog.WARNING else container.warning),
+                    ("error", True if containerlog.level == ContainerLog.ERROR else container.error),
                 ],container_update_fields)
                 if newmessage and containerlog.logtime >= logtime:
                     #more than one logs at the same time, add one millesconds to the logtime because of unique index
@@ -215,7 +213,6 @@ def process_status_file(context,metadata,status_file):
                     containerlog.level = level
                 #containerlog.message = "{}\n{}:{}".format(containerlog.message,logtime.strftime("%Y-%m-%d %H:%M:%S.%f"),message)
                 containerlog.message = "{}\n{}".format(containerlog.message,message)
-                containerlog.latest_logtime = logtime
                 if logtime > containerlog.latest_logtime:
                     containerlog.latest_logtime = logtime
         except Exception as ex:
@@ -319,7 +316,11 @@ def process_status(context):
                                 break
                     if changed:
                         db_workload.save(update_fields=workload_update_fields)
+                        workload.latest_containers = db_workload.latest_containers
+                else:
+                    workload.latest_containers = workload.new_latest_containers
                 workload_update_fields.clear()
+                delattr(workload,"new_latest_containers")
 
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
