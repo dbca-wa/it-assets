@@ -91,8 +91,9 @@ class DepartmentUserAdmin(VersionAdmin):
             ),
         }),
         ('Other user metadata fields', {
-            'description': 'Data in these fields are not synchronised with Active Directory.',
+            'description': 'Data in these fields are not synchronised with Active Directory, but may be listed in the Address Book.',
             'fields': (
+                'org_unit',
                 'preferred_name',
                 'extension',
                 'home_phone',

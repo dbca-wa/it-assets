@@ -75,6 +75,10 @@ class DepartmentUser(MPTTModel):
     cost_centre = models.ForeignKey(
         'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
         help_text='Cost centre to which the employee currently belongs')  # CompanyName
+    org_unit = models.ForeignKey(
+        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
+        verbose_name='organisational unit',
+        help_text="The organisational unit to which the employee belongs.")
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
         help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
@@ -137,11 +141,6 @@ class DepartmentUser(MPTTModel):
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
-    org_unit = models.ForeignKey(
-        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
-        verbose_name='organisational unit',
-        help_text="""The organisational unit that represents the user's"""
-        """ primary physical location (also set their distribution group).""")
     # NOTE: remove parent field after copying data to manager.
     parent = TreeForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
@@ -185,10 +184,6 @@ class DepartmentUser(MPTTModel):
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
-
-    @property
-    def password_age_days(self):
-        return None
 
     @property
     def children_filtered(self):
