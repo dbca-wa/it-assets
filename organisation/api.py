@@ -74,6 +74,13 @@ def format_manager(request, value):
         return None
 
 
+def format_org_unit(request, value):
+    if value is not None:
+        return OrgUnit.objects.get(pk=value).name
+    else:
+        return None
+
+
 class DepartmentUserResource(DjangoResource):
     """An API Resource class to represent DepartmentUser objects.
     This class is used to create & update synchronised user account data from
@@ -88,7 +95,7 @@ class DepartmentUserResource(DjangoResource):
     )
     VALUES_ARGS = COMPACT_ARGS + (
         'active', 'given_name', 'surname', 'home_phone', 'other_phone',
-        'position_type', 'account_type', 'shared_account',
+        'position_type', 'account_type', 'shared_account', 'org_unit',
     )
     MINIMAL_ARGS = (
         'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone')
@@ -99,6 +106,7 @@ class DepartmentUserResource(DjangoResource):
         'location': format_location,
         'cost_centre': format_cost_centre,
         'manager': format_manager,
+        'org_unit': format_org_unit,
     })
 
     def __init__(self, *args, **kwargs):
@@ -189,7 +197,7 @@ class DepartmentUserResource(DjangoResource):
         else:
             if 'compact' in self.request.GET:
                 self.VALUES_ARGS = self.COMPACT_ARGS
-            users = users.prefetch_related('org_unit', 'org_unit__location', 'parent')
+            users = users.prefetch_related('manager', 'location', 'cost_centre')
 
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
@@ -242,7 +250,7 @@ class DepartmentUserResource(DjangoResource):
         else:
             if 'compact' in self.request.GET:
                 self.VALUES_ARGS = self.COMPACT_ARGS
-            users = users.prefetch_related('org_unit', 'org_unit__location', 'parent')
+            users = users.prefetch_related('manager', 'location', 'cost_centre')
 
         user_values = list(users.order_by('name').values(*self.VALUES_ARGS))
         resp = self.formatters.format(self.request, user_values)
