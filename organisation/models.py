@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField, ArrayField
+from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 from django.utils.html import format_html
 from json2html import json2html
@@ -53,7 +53,7 @@ class DepartmentUser(MPTTModel):
         editable=False, help_text='Azure AD ObjectId')  # ObjectId
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
-    email = models.EmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
+    email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')  # DisplayName
     given_name = models.CharField(
@@ -75,6 +75,10 @@ class DepartmentUser(MPTTModel):
     cost_centre = models.ForeignKey(
         'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
         help_text='Cost centre to which the employee currently belongs')  # CompanyName
+    org_unit = models.ForeignKey(
+        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
+        verbose_name='organisational unit',
+        help_text="The organisational unit to which the employee belongs.")
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
         help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
@@ -137,11 +141,6 @@ class DepartmentUser(MPTTModel):
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
-    org_unit = models.ForeignKey(
-        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
-        verbose_name='organisational unit',
-        help_text="""The organisational unit that represents the user's"""
-        """ primary physical location (also set their distribution group).""")
     # NOTE: remove parent field after copying data to manager.
     parent = TreeForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
@@ -185,10 +184,6 @@ class DepartmentUser(MPTTModel):
         if self.account_type in [5, 9]:  # Shared/role-based account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
-
-    @property
-    def password_age_days(self):
-        return None
 
     @property
     def children_filtered(self):
@@ -254,8 +249,15 @@ class DepartmentUser(MPTTModel):
             ('TelephoneNumber', 'telephone'),
             ('Mobile', 'mobile_phone'),
         ]:
-            # Test if the dept user field value is truthy and the AD field in falsy, OR if the fields are not equal.
+            # Test if the dept user field value is truthy and the AAD field in falsy, OR if the fields are not equal.
             if (getattr(self, field[1]) and not azure_user[field[0]]) or azure_user[field[0]] != getattr(self, field[1]):
+
+                # Second check: consider a dept user field value of None to be equivalent to an AAD value of "N/A".
+                # If so, skip over the field (don't create an ADAction).
+                # This is stupid and I hate it.
+                if not getattr(self, field[1]) and azure_user[field[0]] and azure_user[field[0]].strip().lower() == 'n/a':
+                    continue
+
                 # Get/create a non-completed ADAction for this dept user, for these fields.
                 # This should mean that only one ADAction object is generated for a given field,
                 # even if the value it IT Assets changes more than once before being synced in AD.
@@ -329,7 +331,7 @@ class DepartmentUser(MPTTModel):
                     action, created = ADAction.objects.get_or_create(
                         department_user=self,
                         action_type='Change account field',
-                        ad_field='physicalDeliveryOfficeName',
+                        ad_field='Office',
                         field='location.name',
                         completed=None,
                     )
@@ -557,7 +559,6 @@ DIVISION_CHOICES = (
     ("RIA", "Rottnest Island Authority"),
     ("ZPA", "Zoological Parks Authority"),
 )
-#{'BCS', 'BGPA', 'CBS', 'CPC', 'ODG', 'PWS', 'RIA', 'ZPA'}
 
 
 class CostCentre(models.Model):

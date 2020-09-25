@@ -61,23 +61,27 @@ class DepartmentUserAdmin(VersionAdmin):
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
     filter_horizontal = ('secondary_locations',)
-    readonly_fields = ('active', 'email', 'azure_guid', 'ad_guid', 'assigned_licences', 'proxy_addresses')
+    readonly_fields = (
+        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
+        'assigned_licences', 'proxy_addresses',
+    )
     fieldsets = (
         ('Active Directory account fields', {
             # 'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
             'fields': (
                 'active',
                 'email',
-            ),
-        }),
-        ('User information fields', {
-            'description': '''<span class="errornote">Data in these fields is synchronised with Active Directory.<br>
-                Do not edit information in this section without written permission from People Services
-                or the cost centre manager (forms are required).</span>''',
-            'fields': (
                 'name',
                 'given_name',
                 'surname',
+            ),
+        }),
+        ('User information fields', {
+            'description': '''<span class="errornote">Data in these fields is synchronised from Active Directory,
+                but can be edited here.<br>
+                Do not edit information in this section without written permission from People Services
+                or the cost centre manager (forms are required).</span>''',
+            'fields': (
                 'title',
                 'telephone',
                 'mobile_phone',
@@ -87,8 +91,9 @@ class DepartmentUserAdmin(VersionAdmin):
             ),
         }),
         ('Other user metadata fields', {
-            'description': '''Data in these fields are not synchronised with Active Directory.''',
+            'description': 'Data in these fields are not synchronised with Active Directory, but may be listed in the Address Book.',
             'fields': (
+                'org_unit',
                 'preferred_name',
                 'extension',
                 'home_phone',
@@ -105,8 +110,8 @@ class DepartmentUserAdmin(VersionAdmin):
                 'working_hours',
             ),
         }),
-        ('Active Directory information', {
-            'description': '''These data are specific to Active Directory only.''',
+        ('Office 365 and Active Directory information', {
+            'description': 'These data are specific to Office 365 and Active Directory.',
             'fields': (
                 'azure_guid',
                 'ad_guid',

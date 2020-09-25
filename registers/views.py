@@ -86,15 +86,17 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         if 'mine' in self.request.GET:
             email = self.request.user.email
-            queryset = queryset.filter(requester__email__iexact=email)
-        if 'q' in self.request.GET and self.request.GET['q']:
+            qs = super().get_queryset().filter(requester__email__iexact=email).distinct()
+        elif 'q' in self.request.GET and self.request.GET['q']:
             from .admin import ChangeRequestAdmin
             q = search_filter(ChangeRequestAdmin.search_fields, self.request.GET['q'])
-            queryset = queryset.filter(q)
-        return queryset
+            qs = super().get_queryset().filter(q).distinct()
+        else:
+            # Exclude cancelled RFCs with no planned start date so they don't clutter the first page.
+            qs = super().get_queryset().exclude(status=6, planned_start__isnull=True)
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -566,7 +568,7 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
         if 'q' in self.request.GET and self.request.GET['q']:
             from .admin import ITSystemAdmin
             q = search_filter(ITSystemAdmin.search_fields, self.request.GET['q'])
-            qs = qs.filter(q)
+            qs = qs.filter(q).distinct()
         return qs
 
 
@@ -642,7 +644,7 @@ class DependencyITSystemList(LoginRequiredMixin, ListView):
         if 'q' in self.request.GET and self.request.GET['q']:
             from .admin import ITSystemAdmin
             q = search_filter(ITSystemAdmin.search_fields, self.request.GET['q'])
-            qs = qs.filter(q)
+            qs = qs.filter(q).distinct()
         return qs
 
 

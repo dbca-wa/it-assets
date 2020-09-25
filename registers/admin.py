@@ -55,7 +55,9 @@ class ITSystemAdmin(VersionAdmin):
         'status', 'system_type', 'availability', 'seasonality', 'recovery_category', PlatformFilter)
     search_fields = (
         'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
-        'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation', 'cost_centre__code')
+        'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation',
+        'cost_centre__code', 'dependencies__name',
+    )
     raw_id_fields = (
         'owner', 'technology_custodian', 'information_custodian', 'cost_centre', 'bh_support', 'ah_support')
     fieldsets = (
