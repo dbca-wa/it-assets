@@ -580,7 +580,7 @@ def update_workload_listenings(workload,config):
         servicename = listen_config["serviceName"]
         if "ingressName" in listen_config:
             #ingress router
-            ingress_namespace,ingressname = listen_config["ingressname"].split(":")
+            ingress_namespace,ingressname = listen_config["ingressName"].split(":")
             ingress_namespace = Namespace.objects.get(cluster=workload.cluster,name=ingress_namespace)
             ingress = Ingress.objects.get(cluster=workload.cluster,namespace=ingress_namespace,name=ingressname)
             ingress_rule = IngressRule.objects.get(ingress=ingress,servicename=listen_config["serviceName"])
@@ -1515,7 +1515,7 @@ process_func_map = {
     70:update_cronjob,
     75:update_daemonset,
     80:delete_cronjob,
-    80:delete_daemonset,
+    85:delete_daemonset,
     90:delete_deployment,
     100:delete_statefulset,
     110:delete_ingress,
@@ -1586,7 +1586,14 @@ def resource_filter(resource_id):
 def harvest(cluster,reconsume=False):
     renew_lock_time = None
     try:
-        cluster = Cluster.objects.get(name=cluster)
+        if isinstance(cluster,Cluster):
+            pass
+        elif isinstance(cluster,int):
+            cluster = Cluster.objects.get(id=cluster)
+        else:
+            cluster = Cluster.objects.get(name=cluster)
+        if cluster.added_by_log:
+            return ([],[])
         
         try:
             renew_lock_time = get_consume_client(cluster.name).acquire_lock(expired=3000)
