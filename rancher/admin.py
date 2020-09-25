@@ -17,6 +17,36 @@ from nginx.models import WebApp
 logger = logging.getLogger(__name__)
 
 
+class DatetimeMixin(object):
+    def _modified(self,obj):
+        if not obj or not obj.modified :
+            return ""
+        else:
+            return timezone.localtime(obj.modified).strftime("%Y-%m-%d %H:%M:%S")
+    _modified.short_description = "Modified"
+
+    def _created(self,obj):
+        if not obj or not obj.created :
+            return ""
+        else:
+            return timezone.localtime(obj.created).strftime("%Y-%m-%d %H:%M:%S")
+    _created.short_description = "Created"
+
+    def _refreshed(self,obj):
+        if not obj or not obj.refreshed :
+            return ""
+        else:
+            return timezone.localtime(obj.refreshed).strftime("%Y-%m-%d %H:%M:%S")
+    _refreshed.short_description = "Refreshed"
+
+class EnvValueMixin(object):
+    def _value(self,obj):
+        if not obj or not obj.value :
+            return ""
+        else:
+            return mark_safe("<pre style='white-space:normal'>{}</pre>".format(obj.value))
+    _value.short_description = "Value"
+
 class ClusterLinkMixin(object):
     cluster_change_url_name = 'admin:{}_{}_change'.format(models.Cluster._meta.app_label,models.Cluster._meta.model_name)
     get_cluster = staticmethod(lambda obj:obj.cluster)
@@ -307,9 +337,9 @@ class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,W
 
 
 @admin.register(models.Cluster)
-class ClusterAdmin(WorkloadsLinkMixin,admin.ModelAdmin):
-    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','refreshed','modified','added_by_log')
-    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','refreshed','modified','created','added_by_log','_refresh_message')
+class ClusterAdmin(WorkloadsLinkMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','added_by_log')
+    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','_created','added_by_log','_refresh_message')
     ordering = ('name',)
     actions = ('refresh','enforce_refresh')
 
@@ -375,9 +405,9 @@ class ProjectAdmin(ClusterLinkMixin,ProjectLinkMixin,WorkloadsLinkMixin,admin.Mo
         return False
 
 
-class WorkloadInline(DeletedMixin,WorkloadLinkMixin,admin.TabularInline):
+class WorkloadInline(DeletedMixin,WorkloadLinkMixin,DatetimeMixin,admin.TabularInline):
     model = models.Workload
-    readonly_fields = ('_name_with_link', 'kind','image',"suspend","modified","_deleted")
+    readonly_fields = ('_name_with_link', 'kind','image',"suspend","_modified","_deleted")
     fields = readonly_fields
     ordering = ('name',)
     get_workload = staticmethod(lambda obj:obj)
@@ -449,6 +479,29 @@ class NamespaceAdmin(DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLin
     def has_change_permission(self, request, obj=None):
         return False
 
+class ConfigMapItemInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
+    model = models.ConfigMapItem
+    readonly_fields = ('name','_value','_modified','_created','_refreshed')
+    fields = readonly_fields
+    ordering = ('name',)
+
+@admin.register(models.ConfigMap)
+class ConfigMapAdmin(ClusterLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster',"_namespace","_modified","_created","_refreshed")
+    readonly_fields = list_display
+    ordering = ('cluster__name','namespace__name','name')
+    list_filter = ('cluster','namespace')
+
+    inlines = [ConfigMapItemInline]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 class WorkloadVolumeInline(DeletedMixin,WorkloadInlineMixin,admin.TabularInline):
     model = models.WorkloadVolume
@@ -461,9 +514,9 @@ class WorkloadVolumeInline(DeletedMixin,WorkloadInlineMixin,admin.TabularInline)
 
 
 @admin.register(models.PersistentVolume)
-class PersistentVolumeAdmin(DeletedMixin,ClusterLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity','writable',"modified",'_deleted')
-    readonly_fields = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity',"volume_mode","uuid",'writable','reclaim_policy','_node_affinity',"modified","created",'_deleted')
+class PersistentVolumeAdmin(DeletedMixin,ClusterLinkMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity','writable',"_modified",'_deleted')
+    readonly_fields = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity',"volume_mode","uuid",'writable','reclaim_policy','_node_affinity',"_modified","_created",'_deleted')
     ordering = ('cluster','name',)
     list_filter = ('cluster',ExistingStatusFilter)
     inlines = [WorkloadVolumeInline]
@@ -497,11 +550,24 @@ class PersistentVolumeAdmin(DeletedMixin,ClusterLinkMixin,admin.ModelAdmin):
         return False
 
 
-class WorkloadEnvInline(admin.TabularInline):
-    readonly_fields = ('name','value','modified','created')
-    fields = ('name','value','modified')
+class WorkloadEnvInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
+    readonly_fields = ('name','_value','_configmap','_modified','_created')
+    fields = ('name','_value',"_configmap",'_modified')
     model = models.WorkloadEnv
     classes = ["collapse"]
+
+    configmap_change_url_name = 'admin:{}_{}_change'.format(models.ConfigMap._meta.app_label,models.ConfigMap._meta.model_name)
+    def _configmap(self,obj):
+        if not obj or not obj.configmap:
+            return ""
+        else:
+            url = reverse(self.configmap_change_url_name, args=(obj.configmap.id,))
+            if obj.configmapitem:
+                return mark_safe("<A href='{}'>{}</A>".format(url,obj.configmapitem))
+            else:
+                return mark_safe("<A href='{}'>{}</A>".format(url,obj.configmap))
+    _configmap.short_description = "Config Map"
+
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -513,9 +579,9 @@ class WorkloadEnvInline(admin.TabularInline):
         return False
 
 
-class WorkloadListeningInline(DeletedMixin,admin.TabularInline):
-    readonly_fields = ('_listen','protocol','container_port','modified','_deleted')
-    fields = ('_listen','protocol','container_port','modified','_deleted')
+class WorkloadListeningInline(DeletedMixin,DatetimeMixin,admin.TabularInline):
+    readonly_fields = ('_listen','protocol','container_port','_modified','_deleted')
+    fields = ('_listen','protocol','container_port','_modified','_deleted')
     model = models.WorkloadListening
     classes = ["collapse"]
 
@@ -599,11 +665,11 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 
 
 @admin.register(models.Workload)
-class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin, admin.ModelAdmin):
-    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', 'modified','_deleted',"added_by_log")
+class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,DatetimeMixin, admin.ModelAdmin):
+    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted',"added_by_log")
     list_display_links = None
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas', '_webapps','_containers','_running_status', 'modified',"suspend","added_by_log")
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", 'modified','_deleted',"added_by_log")
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']

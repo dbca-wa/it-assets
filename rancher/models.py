@@ -94,9 +94,9 @@ class Project(models.Model):
 
     def __str__(self):
         if self.name:
-            return "{}.{}".format(self.cluster.name,self.name)
+            return "{}:{}".format(self.cluster.name,self.name)
         else:
-            return "{}.{}".format(self.cluster.name,self.projectid)
+            return "{}:{}".format(self.cluster.name,self.projectid)
 
     class Meta:
         unique_together = [["cluster","projectid"]]
@@ -152,7 +152,7 @@ class Namespace(DeletedMixin,models.Model):
             return super().save(*args,**kwargs)
     
     def __str__(self):
-        return "{}.{}".format(self.cluster.name,self.name)
+        return "{}:{}".format(self.cluster.name,self.name)
 
     class Meta:
         unique_together = [["cluster","name"]]
@@ -183,6 +183,39 @@ class PersistentVolume(DeletedMixin,models.Model):
     class Meta:
         unique_together = [["cluster","name"],["cluster","volumepath"],["cluster","uuid"]]
         ordering = ["cluster__name",'name']
+
+class ConfigMap(models.Model):
+    cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='configmaps',editable=False)
+    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='configmaps',editable=False)
+    name = models.CharField(max_length=128,editable=False)
+    api_version = models.CharField(max_length=64,editable=False)
+
+    modified = models.DateTimeField(editable=False)
+    created = models.DateTimeField(editable=False)
+    refreshed = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "{}:{}".format(self.namespace,self.name)
+
+    class Meta:
+        unique_together = [["cluster","namespace","name"]]
+        ordering = ["cluster__name","namespace__name",'name']
+
+class ConfigMapItem(models.Model):
+    configmap = models.ForeignKey(ConfigMap, on_delete=models.CASCADE, related_name='items',editable=False)
+    name = models.CharField(max_length=128,editable=False)
+    value = models.TextField(max_length=1024,editable=False,null=True)
+
+    modified = models.DateTimeField(editable=False)
+    created = models.DateTimeField(editable=False)
+    refreshed = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "{}.{}".format(self.configmap,self.name)
+
+    class Meta:
+        unique_together = [["configmap","name"]]
+        ordering = ["configmap",'name']
 
 
 class PersistentVolumeClaim(DeletedMixin,models.Model):
@@ -266,7 +299,8 @@ class IngressRule(models.Model):
             return "{}> {}://{}".format(self.ingress,self.protocol,self.hostname)
 
     class Meta:
-        unique_together = [["ingress","protocol","hostname","path"],["cluster","servicename"]]
+        unique_together = [["ingress","protocol","hostname","path"],["ingress","servicename"]]
+        index_together = [["cluster","servicename"]]
 
 
 class Workload(DeletedMixin,models.Model):
@@ -421,13 +455,16 @@ class WorkloadListening(models.Model):
         return "{}.{}".format(self.workload,self.servicename)
 
     class Meta:
-        unique_together = [["workload","servicename"]]
+        unique_together = [["workload","servicename","ingress_rule"]]
 
 
 class WorkloadEnv(models.Model):
     workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='envs',editable=False)
+    configmap = models.ForeignKey(ConfigMap, on_delete=models.CASCADE, related_name='workloadenvs',editable=False,null=True)
+    configmapitem = models.ForeignKey(ConfigMapItem, on_delete=models.CASCADE, related_name='workloadenvs',editable=False,null=True)
+
     name = models.CharField(max_length=128,editable=False)
-    value = models.CharField(max_length=1024,editable=False,null=True)
+    value = models.TextField(editable=False,null=True)
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)

@@ -14,6 +14,7 @@ from django.db import transaction
 from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
+        ConfigMap,ConfigMapItem,
         Workload,WorkloadEnv,Ingress,IngressRule,WorkloadListening,WorkloadVolume,
         DatabaseServer,Database,DatabaseUser,WorkloadDatabase)
 from data_storage.utils import get_property
@@ -22,8 +23,7 @@ from .utils import set_fields,set_field,set_fields_from_config
 
 logger = logging.getLogger(__name__)
 
-RANCHER_FILE_RE=re.compile("(^|/)(ingress-|cronjob-|deployment-|daemonset-|persistentvolumeclaim-|persistentvolume-|namespace-|statefulset-).+\.(yaml|yml)$")
-
+RANCHER_FILE_RE=re.compile("(^|/)(ingress-|cronjob-|deployment-|daemonset-|persistentvolumeclaim-|persistentvolume-|namespace-|statefulset-|configmap-).+\.(yaml|yml)$")
 
 VOLUMN_RE=re.compile("(^|/)persistentvolume-.+\.(yaml|yml)$")
 VOLUMN_CLAIM_RE=re.compile("(^|/)persistentvolumeclaim.+\.(yaml|yml)$")
@@ -33,6 +33,7 @@ DAEMONSET_RE=re.compile("(^|/)daemonset-.+\.(yaml|yml)$")
 NAMESPACE_RE=re.compile("(^|/)namespace-.+\.(yaml|yml)$")
 INGRESS_RE=re.compile("(^|/)ingress-.+\.(yaml|yml)$")
 STATEFULSET_RE=re.compile("(^|/)statefulset-.+\.(yaml|yml)$")
+CONFIGMAP_RE=re.compile("(^|/)configmap-.+\.(yaml|yml)$")
 
 class JSONEncoder(json.JSONEncoder):
     """
@@ -142,6 +143,63 @@ def delete_namespace(cluster,status,metadata,config):
     if del_objs[0]:
         logger.info("Delete namespace({}),deleted objects = {}".format(name,del_objs))
     """
+
+def update_configmap(cluster,status,metadata,config):
+    namespace = config["metadata"]["namespace"]
+    namespace = Namespace.objects.get(cluster=cluster,name=namespace)
+
+    name = config["metadata"]["name"]
+
+    try:
+        obj = ConfigMap.objects.get(cluster=cluster,namespace=namespace,name=name)
+    except ObjectDoesNotExist as ex:
+        obj = ConfigMap(cluster=cluster,namespace=namespace,name=name)
+
+    update_fields = set_fields_from_config(obj,config,[
+        ("api_version","apiVersion",None),
+        ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
+    ])
+    if obj.pk is None:
+        obj.created = obj.modified
+        obj.save()
+        logger.debug("Create configmap({})".format(obj))
+    elif update_fields:
+        update_fields.append("refreshed")
+        obj.save(update_fields=update_fields)
+        logger.debug("Update configmap({}),update_fields={}".format(obj,update_fields))
+    else:
+        logger.debug("The configmap({}) is not changed".format(obj))
+    
+    #save configmap items
+    for key,value in config.get("data",{}).items():
+        try:
+            item = ConfigMapItem.objects.get(configmap=obj,name=key)
+        except ObjectDoesNotExist as ex:
+            item = ConfigMapItem(configmap=obj,name=key)
+
+        item_update_fields = set_fields(item,[
+            ("value",value)
+        ])
+        if item.pk is None:
+            item.created = obj.modified
+            item.modified = obj.modified
+            item.save()
+        elif item_update_fields:
+            item_update_fields.append("refreshed")
+            item_update_fields.append("modified")
+            item.modified = obj.modified
+            item.save(update_fields=item_update_fields)
+        
+def delete_configmap(cluster,status,metadata,config):
+    namespace = config["metadata"]["namespace"]
+    namespace = Namespace.objects.filter(cluster=cluster,name=namespace).first()
+    if not namespace:
+        return
+    
+    name = config["metadata"]["name"]
+    del_objs = ConfigMap.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
+    if del_objs[0]:
+        logger.info("Delete ConfigMap({}.{}),deleted objects = {}".format(namespace,name,del_objs))
 
 def _get_ingress_protocol(val):
     if "http" in val:
@@ -366,11 +424,11 @@ def delete_volume_claim(cluster,status,metadata,config):
         logger.info("Delete PersistentVolumeClaim({}),deleted objects = {}".format(name,del_objs))
     """
 
-def update_workload_envs(workload,config,env_configs):
+def update_workload_envs(workload,config,env_configs,envfrom_configs=None):
     """
     Return True if some env is updated;otherwise return False
     """
-    if not env_configs:
+    if not env_configs and not envfrom_configs:
         del_objs = WorkloadEnv.objects.filter(workload=workload).delete()
         if del_objs[0]:
             logger.debug("Delete the envs for workload({}),deleted objects = {}".format(workload,del_objs))
@@ -380,32 +438,45 @@ def update_workload_envs(workload,config,env_configs):
 
     def _get_env_value(env_config):
         if "value" in env_config:
-            return env_config["value"]
-        elif "valueFrom" in env_config and "fieldRef" in env_config["valueFrom"]:
-            val = get_property(config,tuple(env_config["valueFrom"]["fieldRef"]["fieldPath"].split(".")))
-            if val is None:
-                return yaml.dump(env_config["valueFrom"])
-            else:
-                return val
+            return (env_config["value"],None,None)
+        elif "valueFrom" in env_config:
+            if "fieldRef" in env_config["valueFrom"]:
+                val = get_property(config,tuple(env_config["valueFrom"]["fieldRef"]["fieldPath"].split(".")))
+                if val is None:
+                    return (yaml.dump(env_config["valueFrom"]),None,None)
+                else:
+                    return (val,None,None)
+            elif "configMapKeyRef" in env_config["valueFrom"]:
+                #env from configmap
+                configmap_config = env_config["valueFrom"]["configMapKeyRef"]
+                configmap_name = configmap_config["name"]
+                configmap = ConfigMap.objects.get(cluster=workload.cluster,namespace=workload.namespace,name=configmap_name)
+                configitem = ConfigMapItem.objects.filter(configmap=configmap,name=configmap_config["key"]).first()
+                return (configitem.value if configitem else None,configmap,configitem)
         elif len(env_config) == 1:
-            return None
+            return (None,None,None)
         else:
-            return yaml.dump(env_config)
+            return (yaml.dump(env_config),None,None)
 
     updated = False
     name = None
-    del_objs = WorkloadEnv.objects.filter(workload=workload).exclude(name__in=[c["name"] for c in env_configs]).delete()
-    if del_objs[0]:
-        logger.debug("Delete the envs for workload({}),deleted objects = {}".format(workload,del_objs))
-        updated = True
-    for env_config in env_configs:
+    env_ids = []
+    env_names = []
+    #update env from env_configs
+    for env_config in env_configs or []:
         name = env_config["name"]
+        env_names.append(name)
         try:
             obj = WorkloadEnv.objects.get(workload=workload,name=name)
         except ObjectDoesNotExist as ex:
             obj = WorkloadEnv(workload=workload,name=name)
-        update_fields = set_fields_from_config(obj,env_config,[
-            ("value",None,_get_env_value)
+
+        value,configmap,configmapitem = _get_env_value(env_config)
+
+        update_fields = set_fields(obj,[
+            ("value",value),
+            ("configmap",configmap),
+            ("configmapitem",configmapitem)
         ])
 
         if obj.pk is None:
@@ -423,6 +494,54 @@ def update_workload_envs(workload,config,env_configs):
             logger.debug("Update the deployment workload env({}),update_fields={}".format(obj,update_fields))
         else:
             logger.debug("The deployment workload env({}) is not changed".format(obj))
+        env_ids.append(obj.id)
+
+    #update env from envfrom_configs
+    for envfrom_config in envfrom_configs or []:
+        if "configMapRef" in envfrom_config:
+            #env from configMap
+            prefix = envfrom_config.get("prefix") or None
+            configmap_name = envfrom_config["configMapRef"]["name"]
+            configmap = ConfigMap.objects.get(cluster=workload.cluster,namespace=workload.namespace,name=configmap_name)
+            configitem_qs = ConfigMapItem.objects.filter(configmap=configmap)
+            if prefix:
+                configitem_qs = configitem_qs.filter(name__startswith=prefix)
+            for configitem in configitem_qs:
+                if configitem.name in env_names:
+                    #already declared in workload,ignore
+                    continue
+                try:
+                    obj = WorkloadEnv.objects.get(workload=workload,name=configitem.name)
+                except ObjectDoesNotExist as ex:
+                    obj = WorkloadEnv(workload=workload,name=configitem.name)
+
+                update_fields = set_fields(obj,[
+                    ("value",configitem.value),
+                    ("configmap",configmap),
+                    ("configmapitem",configitem)
+                ])
+
+                if obj.pk is None:
+                    obj.modified = workload.modified
+                    obj.created = workload.modified
+                    obj.save()
+                    updated = True
+                    logger.debug("Create deployment workload env({})".format(obj))
+                elif update_fields:
+                    obj.modified = workload.modified
+                    update_fields.append("modified")
+                    update_fields.append("refreshed")
+                    obj.save(update_fields=update_fields)
+                    updated = True
+                    logger.debug("Update the deployment workload env({}),update_fields={}".format(obj,update_fields))
+                else:
+                    logger.debug("The deployment workload env({}) is not changed".format(obj))
+                env_ids.append(obj.id)
+
+    del_objs = WorkloadEnv.objects.filter(workload=workload).exclude(id__in=env_ids).delete()
+    if del_objs[0]:
+        logger.debug("Delete the envs for workload({}),deleted objects = {}".format(workload,del_objs))
+        updated = True
     return updated
 
 def update_workload_listenings(workload,config):
@@ -455,18 +574,26 @@ def update_workload_listenings(workload,config):
 
     updated = False
     name = None
-    # remove the not deleted listenings from db
-    del_objs = WorkloadListening.objects.filter(workload=workload).exclude(servicename__in=[c["serviceName"] for c in listen_configs]).delete()
-    if del_objs[0]:
-        logger.debug("Delete the listenings for workload({}),deleted objects = {}".format(workload,del_objs))
-        updated = True
 
+    listen_ids = []
     for listen_config in listen_configs:
         servicename = listen_config["serviceName"]
-        try:
-            obj = WorkloadListening.objects.get(workload=workload,servicename=servicename)
-        except ObjectDoesNotExist as ex:
-            obj = WorkloadListening(workload=workload,servicename=servicename)
+        if "ingressName" in listen_config:
+            #ingress router
+            ingress_namespace,ingressname = listen_config["ingressName"].split(":")
+            ingress_namespace = Namespace.objects.get(cluster=workload.cluster,name=ingress_namespace)
+            ingress = Ingress.objects.get(cluster=workload.cluster,namespace=ingress_namespace,name=ingressname)
+            ingress_rule = IngressRule.objects.get(ingress=ingress,servicename=listen_config["serviceName"])
+            try:
+                obj = WorkloadListening.objects.get(workload=workload,servicename=servicename,ingress_rule=ingress_rule)
+            except ObjectDoesNotExist as ex:
+                obj = WorkloadListening(workload=workload,servicename=servicename,ingress_rule=ingress_rule)
+        else:
+            ingress_rule = None
+            try:
+                obj = WorkloadListening.objects.get(workload=workload,servicename=servicename,ingress_rule__isnull=True)
+            except ObjectDoesNotExist as ex:
+                obj = WorkloadListening(workload=workload,servicename=servicename,ingress_rule=None)
 
         update_fields = set_fields_from_config(obj,listen_config,[
             ("servicename","serviceName",None),
@@ -475,10 +602,8 @@ def update_workload_listenings(workload,config):
         ])
 
         #try to find the ingressName or container port
-        if "ingressName" in listen_config:
+        if ingress_rule:
             #ingress router
-            ingress_rule = IngressRule.objects.get(cluster=workload.cluster,servicename=listen_config["serviceName"])
-            set_field(obj,"ingress_rule", ingress_rule,update_fields)
             set_field(obj,"container_port", ingress_rule.serviceport,update_fields)
             #try to update the ingressrule's port if not match
             if ingress_rule.port != obj.listen_port:
@@ -493,7 +618,6 @@ def update_workload_listenings(workload,config):
                 ingress_rule.cluster.save(update_fields=["ip"])
         else:
             #port mapping
-            set_field(obj,"ingress_rule", None,update_fields)
             container_port = None
             dns_name = obj.servicename.split(':',1)[1]
             for ports_config in json.loads(get_property(config,("spec","template","metadata","annotations","field.cattle.io/ports")) or "[]"):
@@ -528,6 +652,14 @@ def update_workload_listenings(workload,config):
             logger.debug("Update the workload listening({}),update_fields={}".format(obj,update_fields))
         else:
             logger.debug("The workload listening({}) is not changed".format(obj))
+        listen_ids.append(obj.id)
+
+    # remove the not deleted listenings from db
+    del_objs = WorkloadListening.objects.filter(workload=workload).exclude(id__in=listen_ids).delete()
+    if del_objs[0]:
+        logger.debug("Delete the listenings for workload({}),deleted objects = {}".format(workload,del_objs))
+        updated = True
+
     return updated
 
 
@@ -644,7 +776,7 @@ def update_deployment(cluster,status,metadata,config):
         logger.debug("Create deployment workload({})".format(obj))
 
     #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")))
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom")))
 
     #update listenings
     updated = update_workload_listenings(obj,config) or updated
@@ -712,7 +844,7 @@ def update_cronjob(cluster,status,metadata,config):
         logger.debug("Create cronjob workload({})".format(obj))
 
     #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"env")))
+    updated = update_workload_envs(obj,config,get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"env")),get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"envFrom")))
 
     #delete all listening objects
     updated = update_workload_listenings(obj,config) or updated
@@ -781,7 +913,7 @@ def update_daemonset(cluster,status,metadata,config):
         logger.debug("Create daemonset workload({})".format(obj))
 
     #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")))
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom")))
 
     #delete all listening objects
     updated = update_workload_listenings(obj,config) or updated
@@ -850,7 +982,7 @@ def update_statefulset(cluster,status,metadata,config):
         logger.debug("Create statefulset workload({})".format(obj))
 
     #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")))
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom")))
 
     #update listenings
     updated = update_workload_listenings(obj,config) or updated
@@ -1374,6 +1506,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
 
 process_func_map = {
     10:update_namespace,
+    15:update_configmap,
     20:update_volume,
     30:update_volume_claim,
     40:update_ingress,
@@ -1382,18 +1515,21 @@ process_func_map = {
     70:update_cronjob,
     75:update_daemonset,
     80:delete_cronjob,
-    80:delete_daemonset,
+    85:delete_daemonset,
     90:delete_deployment,
     100:delete_statefulset,
     110:delete_ingress,
     120:delete_volume_claim,
     130:delete_volume,
+    135:delete_configmap,
     140:delete_namespace
 }
 
 def resource_type(status,resource_id):
     if status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and NAMESPACE_RE.search(resource_id):
         return 10
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CONFIGMAP_RE.search(resource_id):
+        return 15
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_RE.search(resource_id):
         return 20
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_CLAIM_RE.search(resource_id):
@@ -1422,6 +1558,8 @@ def resource_type(status,resource_id):
         return 120
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and VOLUMN_RE.search(resource_id):
         return 130
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and CONFIGMAP_RE.search(resource_id):
+        return 135
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and NAMESPACE_RE.search(resource_id):
         return 140
     else:
@@ -1448,7 +1586,14 @@ def resource_filter(resource_id):
 def harvest(cluster,reconsume=False):
     renew_lock_time = None
     try:
-        cluster = Cluster.objects.get(name=cluster)
+        if isinstance(cluster,Cluster):
+            pass
+        elif isinstance(cluster,int):
+            cluster = Cluster.objects.get(id=cluster)
+        else:
+            cluster = Cluster.objects.get(name=cluster)
+        if cluster.added_by_log:
+            return ([],[])
         
         try:
             renew_lock_time = get_consume_client(cluster.name).acquire_lock(expired=3000)
