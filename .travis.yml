@@ -28,9 +28,9 @@ install:
     - poetry config virtualenvs.create false
     - poetry install --no-interaction --no-ansi
 before_script:
-    - psql -U postgres -c "create database travis_ci_test;"
-    - psql -U postgres -d travis_ci_test -c "create extension postgis;"
-    - psql -U postgres -d travis_ci_test -c "create extension citext;"
+    - psql -U postgres -c "create extension postgis"
+    - psql -U postgres -c "create extension citext"
+    - psql -U postgres -c "create database travis_ci_test"
     - python manage.py migrate --noinput
 script:
     - python manage.py test
