@@ -153,14 +153,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertContains(response, self.del_user.email)
         self.assertNotContains(response, self.user1.email)
         self.assertNotContains(response, self.shared.email)  # Belongs to CC1.
-        # Test filtering by O365 licence status.
-        self.user1.o365_licence = True
-        self.user1.save()
-        url = '/api/users/?o365_licence=true'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.user1.email)
-        self.assertNotContains(response, self.user2.email)
 
     def test_detail(self):
         """Test the DepartmentUserResource detail response
