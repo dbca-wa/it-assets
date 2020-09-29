@@ -17,7 +17,7 @@ class RancherViewsTestCase(TestCase):
         self.n_user.set_password('pass')
         self.n_user.save()
         self.client.login(username='normaluser', password='pass')
-        self.workload = mixer.blend(Workload)
+        self.workload = mixer.blend(Workload, latest_containers=[1])
 
     def test_workload_detail(self):
         url = reverse('workload_detail', kwargs={'pk': self.workload.pk})
