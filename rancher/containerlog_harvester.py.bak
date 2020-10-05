@@ -24,17 +24,17 @@ from .podstatus_harvester import get_podstatus_client
 logger = logging.getLogger(__name__)
 
 log_levels = [
-    (re.compile("(^|[^a-zA-Z]+)TRACE[^a-zA-Z]+",re.IGNORECASE),(ContainerLog.TRACE,True)),
-    (re.compile("(^|[^a-zA-Z]+)DEBUG[^a-zA-Z]+",re.IGNORECASE),(ContainerLog.DEBUG,True)),
-    (re.compile("(^|[^a-zA-Z]+)INFO[^a-zA-Z]+",re.IGNORECASE),(ContainerLog.INFO,True)),
-    (re.compile("(^|[^a-zA-Z]+)WARN(ING)?[^a-zA-Z]+",re.IGNORECASE),(ContainerLog.WARNING,True)),
-    (re.compile("(^|[^a-zA-Z]+)ERROR[^a-zA-Z]+",re.IGNORECASE),(ContainerLog.ERROR,True)),
+    (re.compile("(^|[^a-zA-Z]+)TRACE\s+",re.IGNORECASE),(ContainerLog.TRACE,True)),
+    (re.compile("(^|[^a-zA-Z]+)DEBUG\s+",re.IGNORECASE),(ContainerLog.DEBUG,True)),
+    (re.compile("(^|[^a-zA-Z]+)INFO\s+",re.IGNORECASE),(ContainerLog.INFO,True)),
+    (re.compile("(^|[^a-zA-Z]+)WARN(ING)?\s+",re.IGNORECASE),(ContainerLog.WARNING,True)),
+    (re.compile("(^|[^a-zA-Z]s+)ERROR\s+",re.IGNORECASE),(ContainerLog.ERROR,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*trace\s+",re.IGNORECASE),(ContainerLog.TRACE,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*debug\s+",re.IGNORECASE),(ContainerLog.DEBUG,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*info\s+",re.IGNORECASE),(ContainerLog.INFO,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*warn(ing)?\s+",re.IGNORECASE),(ContainerLog.WARNING,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*error\s+",re.IGNORECASE),(ContainerLog.ERROR,True)),
-    (re.compile("(exception|error|failed|wrong|err|traceback)\s+",re.IGNORECASE),(ContainerLog.ERROR,False))
+    (re.compile("(exception|error|failed|wrong|err||traceback)\s+",re.IGNORECASE),(ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
 def get_containerlog_client():
