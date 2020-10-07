@@ -668,8 +668,8 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,DatetimeMixin, admin.ModelAdmin):
     list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted',"added_by_log")
     list_display_links = None
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'schedule','_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']
