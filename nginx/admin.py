@@ -442,7 +442,7 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
         elif obj.success_requests == 0:
             return "0"
         else:
-            return mark_safe("<A href='{}?log_day={}&q={}&http_status=succeed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.success_requests))
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status_group=succeed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.success_requests))
     _success_requests.short_description = "Success Requests"
 
     def _error_requests(self,obj):
@@ -451,7 +451,7 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
         elif obj.error_requests == 0:
             return "0"
         else:
-            return mark_safe("<A href='{}?log_day={}&q={}&http_status=error'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.error_requests))
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status_group=error'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.error_requests))
     _error_requests.short_description = "Error Requests"
 
     def _client_closed_requests(self,obj):
@@ -460,7 +460,7 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
         elif obj.client_closed_requests == 0:
             return "0"
         else:
-            return mark_safe("<A href='{}?log_day={}&q={}&http_status=client_closed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.client_closed_requests))
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status_group=client_closed'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.client_closed_requests))
     _client_closed_requests.short_description = "Client Closed Requests"
 
     def _unauthorized_requests(self,obj):
@@ -469,7 +469,7 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
         elif obj.unauthorized_requests == 0:
             return "0"
         else:
-            return mark_safe("<A href='{}?log_day={}&q={}&http_status=unauthorized'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.unauthorized_requests))
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status_group=unauthorized'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.unauthorized_requests))
     _unauthorized_requests.short_description = "Unauthorized Requests"
 
     def _timeout_requests(self,obj):
@@ -478,7 +478,7 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
         elif obj.timeout_requests == 0:
             return "0"
         else:
-            return mark_safe("<A href='{}?log_day={}&q={}&http_status=timeout'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.timeout_requests))
+            return mark_safe("<A href='{}?log_day={}&q={}&http_status_group=timeout'>{}</A>".format(reverse(self.dailylog_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.timeout_requests))
     _timeout_requests.short_description = "Timeout Requests"
 
     def has_delete_permission(self, request, obj=None):
