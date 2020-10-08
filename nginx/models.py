@@ -1157,7 +1157,7 @@ class WebAppAccessLog(PathParametersMixin,models.Model):
 
     class Meta:
         unique_together = [["log_starttime","webserver","request_path","http_status","path_parameters"]]
-        index_together = [["log_starttime","webapp","webapplocation"],["webapp","webapplocation"]]
+        index_together = [["log_starttime","webapp","webapplocation"],["webapp","webapplocation"],["webapp","http_status"],["webserver","http_status"]]
 
 
 class WebAppAccessDailyLog(PathParametersMixin,models.Model):
