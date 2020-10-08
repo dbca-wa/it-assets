@@ -829,7 +829,7 @@ def update_cronjob(cluster,status,metadata,config):
         ("image_pullpolicy",("spec","jobTemplate","spec","template","spec","containers",0,"imagePullPolicy"),None),
         ("replicas",None,lambda val:0),
         ("cmd",("spec","jobTemplate","spec","template","spec","containers",0,"args"), lambda val:json.dumps(val) if val else None),
-        ("schedule",("spec","jobTemplate","schedule"), None),
+        ("schedule",("spec","schedule"), None),
         ("failedjobshistorylimit", ("spec","failedJobsHistoryLimit"),lambda val:int(val) if val else 0),
         ("successfuljobshistorylimit", ("spec","failedJobsHistoryLimit"),lambda val:int(val) if val else 0),
         ("suspend", ("spec","suspend"),lambda val:True if val else False),

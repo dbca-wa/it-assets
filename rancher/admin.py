@@ -16,6 +16,9 @@ from nginx.models import WebApp
 
 logger = logging.getLogger(__name__)
 
+class LookupAllowedMixin(object):
+    def lookup_allowed(self, lookup, value):
+        return True
 
 class DatetimeMixin(object):
     def _modified(self,obj):
@@ -388,7 +391,7 @@ class DeletedMixin(object):
 
 
 @admin.register(models.Project)
-class ProjectAdmin(ClusterLinkMixin,ProjectLinkMixin,WorkloadsLinkMixin,admin.ModelAdmin):
+class ProjectAdmin(LookupAllowedMixin,ClusterLinkMixin,ProjectLinkMixin,WorkloadsLinkMixin,admin.ModelAdmin):
     list_display = ('_projectid_with_link','_cluster','name','_workloads','_active_workloads','_deleted_workloads')
     readonly_fields = ('_projectid','_cluster','_workloads','_active_workloads','_deleted_workloads')
     fields = ('_projectid','_cluster','name','_workloads','_active_workloads','_deleted_workloads')
@@ -461,7 +464,7 @@ class ExistingStatusFilter(admin.SimpleListFilter):
             return queryset
 
 @admin.register(models.Namespace)
-class NamespaceAdmin(DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
+class NamespaceAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
     list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
     readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
     fields = readonly_fields
@@ -486,7 +489,7 @@ class ConfigMapItemInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
     ordering = ('name',)
 
 @admin.register(models.ConfigMap)
-class ConfigMapAdmin(ClusterLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
+class ConfigMapAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
     list_display = ('name','_cluster',"_namespace","_modified","_created","_refreshed")
     readonly_fields = list_display
     ordering = ('cluster__name','namespace__name','name')
@@ -514,7 +517,7 @@ class WorkloadVolumeInline(DeletedMixin,WorkloadInlineMixin,admin.TabularInline)
 
 
 @admin.register(models.PersistentVolume)
-class PersistentVolumeAdmin(DeletedMixin,ClusterLinkMixin,DatetimeMixin,admin.ModelAdmin):
+class PersistentVolumeAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,DatetimeMixin,admin.ModelAdmin):
     list_display = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity','writable',"_modified",'_deleted')
     readonly_fields = ('name','_cluster', 'kind','storage_class_name','volumepath','_capacity',"volume_mode","uuid",'writable','reclaim_policy','_node_affinity',"_modified","_created",'_deleted')
     ordering = ('cluster','name',)
@@ -665,11 +668,11 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 
 
 @admin.register(models.Workload)
-class WorkloadAdmin(DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,DatetimeMixin, admin.ModelAdmin):
+class WorkloadAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,DatetimeMixin, admin.ModelAdmin):
     list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted',"added_by_log")
     list_display_links = None
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'schedule','_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']
@@ -830,7 +833,7 @@ class RunningStatusFilter(admin.SimpleListFilter):
             return queryset.filter(container_terminated__isnull=False)
 
 @admin.register(models.Container)
-class ContainerAdmin(ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsLinkMixin,admin.ModelAdmin):
+class ContainerAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsLinkMixin,admin.ModelAdmin):
     list_display = ('_containerid','_cluster', '_namespace', '_workload','status','poduid','_started', '_terminated','_last_checked',"_logs")
     readonly_fields = ('containerid','_cluster', '_namespace', '_workload','image','poduid','podip','status','_pod_created','_pod_started','_container_created', '_container_started', '_container_terminated','exitcode','_last_checked',"_logs",'ports','envs')
     ordering = ('cluster__name', 'namespace__name', 'workload__name','workload__kind','-container_started')
@@ -918,7 +921,7 @@ class ContainerAdmin(ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsL
         return False
 
 @admin.register(models.ContainerLog)
-class ContainerLogAdmin(ContainerLinkMixin,admin.ModelAdmin):
+class ContainerLogAdmin(LookupAllowedMixin,ContainerLinkMixin,admin.ModelAdmin):
     list_display = ("_logtime",'_container_short',"level","source","_short_message")
     readonly_fields = ("_logtime",'_container',"level","source","_message")
 

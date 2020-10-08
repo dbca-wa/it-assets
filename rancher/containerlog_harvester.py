@@ -24,17 +24,17 @@ from .podstatus_harvester import get_podstatus_client
 logger = logging.getLogger(__name__)
 
 log_levels = [
-    (re.compile("(^|\s+)TRACE\s+"),(ContainerLog.TRACE,True)),
-    (re.compile("(^|\s+)DEBUG\s+"),(ContainerLog.DEBUG,True)),
-    (re.compile("(^|\s+)INFO\s+"),(ContainerLog.INFO,True)),
-    (re.compile("(^|\s+)WARN(ING)?\s+"),(ContainerLog.WARNING,True)),
-    (re.compile("(^|\s+)ERROR\s+"),(ContainerLog.ERROR,True)),
-    (re.compile("(^|\s+)level\s*=\s*trace\s+",re.IGNORECASE),(ContainerLog.TRACE,True)),
-    (re.compile("(^|\s+)level\s*=\s*debug\s+",re.IGNORECASE),(ContainerLog.DEBUG,True)),
-    (re.compile("(^|\s+)level\s*=\s*info\s+",re.IGNORECASE),(ContainerLog.INFO,True)),
-    (re.compile("(^|\s+)level\s*=\s*warn(ing)?\s+",re.IGNORECASE),(ContainerLog.WARNING,True)),
-    (re.compile("(^|\s+)level\s*=\s*error\s+",re.IGNORECASE),(ContainerLog.ERROR,True)),
-    (re.compile("(exception|error|failed|wrong|err||traceback)\s+",re.IGNORECASE),(ContainerLog.ERROR,False))
+    (re.compile("(^|[^a-zA-Z]+)TRACE[^a-zA-Z]+"),(ContainerLog.TRACE,True)),
+    (re.compile("(^|[^a-zA-Z]+)DEBUG[^a-zA-Z]+"),(ContainerLog.DEBUG,True)),
+    (re.compile("(^|[^a-zA-Z]+)INFO[^a-zA-Z]+"),(ContainerLog.INFO,True)),
+    (re.compile("(^|[^a-zA-Z]+)WARN(ING)?[^a-zA-Z]+"),(ContainerLog.WARNING,True)),
+    (re.compile("(^|[^a-zA-Z]+)ERROR[^a-zA-Z]+"),(ContainerLog.ERROR,True)),
+    (re.compile("(^|\s+)(level|lvl)\s*=\s*trace\s+",re.IGNORECASE),(ContainerLog.TRACE,True)),
+    (re.compile("(^|\s+)(level|lvl)\s*=\s*debug\s+",re.IGNORECASE),(ContainerLog.DEBUG,True)),
+    (re.compile("(^|\s+)(level|lvl)\s*=\s*info\s+",re.IGNORECASE),(ContainerLog.INFO,True)),
+    (re.compile("(^|\s+)(level|lvl)\s*=\s*warn(ing)?\s+",re.IGNORECASE),(ContainerLog.WARNING,True)),
+    (re.compile("(^|\s+)(level|lvl)\s*=\s*error\s+",re.IGNORECASE),(ContainerLog.ERROR,True)),
+    (re.compile("(exception|error|failed|wrong|err|traceback)\s+",re.IGNORECASE),(ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
 def get_containerlog_client():
@@ -189,7 +189,7 @@ def process_status_file(context,metadata,status_file):
                 #containerlog.message = "{}:{}".format(logtime.strftime("%Y-%m-%d %H:%M:%S.%f"),message)
                 containerlog.message = message
                 containerlog.level = level
-            elif newmessage or containerlog.latest_logtime > (logtime + datetime.timedelta(seconds=1)) or containerlog.source != source :
+            elif newmessage or logtime >= (containerlog.latest_logtime + datetime.timedelta(seconds=1)) or containerlog.source != source :
                 records += 1
 
                 containerlog.save()
