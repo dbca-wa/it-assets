@@ -317,6 +317,7 @@ class HostStatus(models.Model):
     class Meta:
         verbose_name_plural = "host statuses"
         get_latest_by = "date"
+        unique_together = ("host", "date")
 
 
 class HostIP(models.Model):
