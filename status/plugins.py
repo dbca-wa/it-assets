@@ -1,6 +1,7 @@
 import datetime
 import re
 import urllib
+import urllib3
 import json
 
 import adal
@@ -14,6 +15,7 @@ from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 from .utils import lookup
 
 TZ = pytz.timezone(settings.TIME_ZONE)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def monitor_prtg(plugin, date):
@@ -26,6 +28,7 @@ def monitor_prtg(plugin, date):
         PRTG_BASE, PRTG_USERNAME, PRTG_PASSHASH
     )
     report = requests.get(PRTG_DEVICES, verify=False).json()
+    print("{} devices in PRTG report".format(len(report["devices"])))
 
     for device in report["devices"]:
         host_status = lookup(device["host"], date)
@@ -57,6 +60,7 @@ def monitor_prtg(plugin, date):
             PRTG_URL, device["objid"]
         )
         host_status.save()
+        print("Updated PRTG status for {}".format(host_status))
 
 
 def vulnerability_nessus(plugin, date):
@@ -98,10 +102,19 @@ def vulnerability_nessus(plugin, date):
         if data["info"]["policy"].startswith("Web"):
             continue
         name = data["info"]["name"]
+        print('Report {} ({})'.format(name, report['id']))
 
-        # print('Report {} ({})'.format(name, report['id']))
         for report_host in data["hosts"]:
-            # print('{}: {} {} {} {} {} - {} {}'.format(host['hostname'], host['critical'], host['high'], host['medium'], host['low'], host['info'], host['severity'], host['score']))
+            print('{}: {} crit, {} high, {} med, {} low, {} info, severity {}, score {}'.format(
+                report_host['hostname'],
+                report_host['critical'],
+                report_host['high'],
+                report_host['medium'],
+                report_host['low'],
+                report_host['info'],
+                report_host['severity'],
+                report_host['score']
+            ))
 
             host_status = lookup(report_host["hostname"], date)
             if host_status is None:
@@ -114,7 +127,7 @@ def vulnerability_nessus(plugin, date):
             ).json()
             if "operating-system" in detail["info"]:
                 os = detail["info"]["operating-system"]
-            # print((report_host['hostname'], os))
+            print((report_host['hostname'], os))
             host_status.vulnerability_info = {
                 "report_id": report["id"],
                 "history_id": history_id,
@@ -152,6 +165,7 @@ def vulnerability_nessus(plugin, date):
                 report["id"], report_host["host_id"], history_id
             )
             host_status.save()
+            print("Updated Nessus status for {}".format(host_status))
 
 
 def backup_phoenix(plugin, date):
@@ -183,7 +197,7 @@ def backup_phoenix(plugin, date):
     )
     admin_id = admin.json()["response"]["accounts"][0]["adminIdentifier"]
 
-    # login with admin ID and password
+    # Login with admin ID and password
     login = sess.post(
         PHOENIX_LOGIN,
         json={
@@ -303,6 +317,7 @@ def backup_phoenix(plugin, date):
             host_status.backup_status = 3
 
         host_status.save()
+        print("Updated Phoenix backup status for {}".format(host_status))
 
 
 def backup_acronis(plugin, date):
@@ -323,7 +338,6 @@ def backup_acronis(plugin, date):
     sess = requests.session()
     base = sess.get(ACRONIS_BASE)
     req_qs = urllib.parse.urlparse(base.url).query
-    # req_id = urllib.parse.parse_qs(req_qs)['req'][0]
 
     req_id = re.search(
         "/idp/authorize/sspi\?req=([a-z0-9]+)", base.content.decode("utf8")
@@ -405,6 +419,7 @@ def backup_acronis(plugin, date):
             host_status.backup_status = 3
 
         host_status.save()
+        print("Updated Acronis backup status for {}".format(host_status))
 
 
 def backup_aws(plugin, date):
@@ -501,6 +516,7 @@ def backup_aws(plugin, date):
             host_status.backup_output = "Daily snapshotting was successful."
             host_status.backup_status = 3
         host_status.save()
+        print("Updated AWS backup status for {}".format(host_status))
 
 
 def _ms_api(verb, url, previous=None, **kwargs):
@@ -616,6 +632,7 @@ def backup_azure(plugin, date):
             )
             host_status.backup_status = 2
         host_status.save()
+        print("Updated Azure backup status for {}".format(host_status))
 
 
 def backup_storagesync(plugin, date):
@@ -771,3 +788,4 @@ def patching_oms(plugin, date):
         host_status.patching_output = "Server has been enrolled in OMS."
         host_status.patching_status = 3
         host_status.save()
+        print("Updated patching status for {}".format(host_status))
