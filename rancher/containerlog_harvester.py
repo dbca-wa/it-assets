@@ -167,10 +167,6 @@ def process_status_file(context,metadata,status_file):
                         continue
                 container_update_fields = []
                 context["containers"][key] = (container,container_update_fields)
-            """
-            if container.workload.namespace.name != 'bfrs' or container.workload.kind != 'Deployment' or container.workload.name != 'prod':
-                continue
-            """
 
             key = (cluster.id,containerid)
             if key in context["containerlogs"]:
@@ -194,7 +190,6 @@ def process_status_file(context,metadata,status_file):
 
                 containerlog.save()
                 update_latest_containers(context,containerlog)
-
                 container_update_fields = set_fields(container,[
                     ("log", True),
                     ("warning", True if containerlog.level == ContainerLog.WARNING else container.warning),
@@ -224,22 +219,30 @@ def process_status_file(context,metadata,status_file):
             raise Exception("Failed to parse pod status record({}).{}".format(record,str(ex)))
 
     #save the last message
-    containerlogs = [o for o in context["containerlogs"].values() if o.logtime]
+    containerlogs = [o for o in context["containerlogs"].values() if o.logtime and o.container]
     containerlogs.sort(key=lambda o:o.logtime)
     for containerlog in containerlogs:
         records += 1
         containerlog.save()
+        container = containerlog.container
         update_latest_containers(context,containerlog)
+        key = (container.cluster.id,container.containerid)
+        if key in context["containers"]:
+            container,container_update_fields = context["containers"][key]
+        else:
+            container_update_fields = []
+            context["containers"][key] = (container,container_update_fields)
         container_update_fields = set_fields(container,[
             ("log", True),
-             ("warning", True if level == ContainerLog.WARNING else container.warning),
-            ("error", True if level == ContainerLog.ERROR else container.error),
+            ("warning", True if containerlog.level == ContainerLog.WARNING else container.warning),
+            ("error", True if containerlog.level == ContainerLog.ERROR else container.error),
         ],container_update_fields)
         containerlog.id = None
         containerlog.logtime = None
         containerlog.level = None
         containerlog.message = None
         containerlog.source = None
+        containerlog.container = None
         containerlog.latest_logtime = None
 
     #save terminated containers
@@ -299,6 +302,7 @@ def process_status(context):
                 container.save()
             elif container_update_fields:
                 container.save(update_fields=container_update_fields)
+                container_update_fields.clear()
 
         #save workload 
         for workload,workload_update_fields in context["workloads"].values():
