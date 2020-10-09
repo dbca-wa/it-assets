@@ -186,6 +186,7 @@ class HostStatusAdmin(ModelAdmin):
 @register(ScanRange)
 class ScanRangeAdmin(ModelAdmin):
     list_display = ("name", "enabled", "range")
+    list_filter = ("enabled",)
     ordering = ("range",)
     actions = ("enable_scan_ranges", "disable_scan_ranges", "ping_sweep")
 

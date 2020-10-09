@@ -59,7 +59,6 @@ class ScanPlugin(models.Model):
             "AZURE_RESOURCE_GROUP",
             "AZURE_STORAGE_SYNC_NAME",
         ),
-        # "backup_phoenix": ("PHOENIX_USERNAME", "PHOENIX_PASSWORD", "PHOENIX_SITE_ID"),
         "patching_oms": (
             "AZURE_TENANT",
             "AZURE_APP_ID",

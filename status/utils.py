@@ -155,7 +155,6 @@ def run_all():
 
     # Ping scan all the enabled ranges
     try:
-        print("Running a full scan")
         scan(ScanRange.objects.filter(enabled=True), today)
     except Exception as e:
         print("Failed to complete scan")
