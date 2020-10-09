@@ -36,6 +36,24 @@
         <td>{{ object.description }}</td>
     </tr>
     {% endif %}
+    {% if object.initiative_name %}
+    <tr>
+        <th>Tactical roadmap initiative</th>
+        <td>{{ object.initiative_name }}</td>
+    </tr>
+    {% endif %}
+    {% if object.initiative_no %}
+    <tr>
+        <th>Initiative number</th>
+        <td>{{ object.initiative_no }}</td>
+    </tr>
+    {% endif %}
+    {% if object.project_no %}
+    <tr>
+        <th>Project number</th>
+        <td>{{ object.project_no }}</td>
+    </tr>
+    {% endif %}
     <tr>
         <th>Test date</th>
         <td>{% if object.test_date %}{{ object.test_date }}{% endif %}</td>

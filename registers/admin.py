@@ -273,7 +273,8 @@ class ChangeRequestAdmin(ModelAdmin):
     raw_id_fields = ('requester', 'endorser', 'implementer')
     search_fields = (
         'id', 'title', 'requester__email', 'endorser__email', 'implementer__email', 'implementation',
-        'communication', 'reference_url')
+        'communication', 'reference_url', 'initiative_name', 'initiative_no', 'project_no',
+    )
 
     def requester_name(self, obj):
         if obj.requester:

@@ -53,8 +53,13 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'title', 'description',
             ),
             Fieldset(
+                'IT Tactical Roadmap',
+                HTML('<p>If this change is part of the IT Tactical Roadmap, please provide the initiative name and number and/or project number.</p>'),
+                'initiative_name', 'initiative_no', 'project_no',
+            ),
+            Fieldset(
                 'Endorsement and Implementer',
-                HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.'),
+                HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.</p>'),
                 'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
@@ -91,7 +96,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
         model = ChangeRequest
         fields = [
             'title', 'description', 'test_date', 'test_result_docs', 'planned_start', 'planned_end', 'implementation',
-            'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems']
+            'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems', 'initiative_name', 'initiative_no', 'project_no',
+        ]
 
     def clean(self):
         if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:

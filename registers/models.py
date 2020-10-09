@@ -408,6 +408,10 @@ class ChangeRequest(models.Model):
         max_length=2048, null=True, blank=True, verbose_name='reference URL', help_text='URL to external reference (discusssion, records, etc.)')
     post_complete_email_date = models.DateField(
         null=True, blank=True, help_text='Date on which the implementer was emailed about completion')
+    # Tactical roadmap-related fields.
+    initiative_name = models.CharField(max_length=255, null=True, blank=True, help_text='Tactical roadmap initiative name')
+    initiative_no = models.CharField(max_length=255, null=True, blank=True, verbose_name='initiative no.', help_text='Tactical roadmap initiative number')
+    project_no = models.CharField(max_length=255, null=True, blank=True, verbose_name='project no.', help_text='Project number (if applicable)')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
