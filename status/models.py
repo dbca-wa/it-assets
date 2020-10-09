@@ -26,9 +26,6 @@ class ScanPlugin(models.Model):
         ("backup_aws", "Backup - AWS snapshots"),
         ("backup_azure", "Backup - Azure snapshots"),
         ("backup_storagesync", "Backup - Azure Storage Sync Services"),
-        # ('backup_veeam', 'Backup - Veeam'),
-        # ('backup_restic', 'Backup - Restic'),
-        ("backup_phoenix", "Backup - Druva Phoenix"),
         ("patching_oms", "Patching - Azure OMS"),
     )
     PLUGIN_PARAMS = {
@@ -62,7 +59,7 @@ class ScanPlugin(models.Model):
             "AZURE_RESOURCE_GROUP",
             "AZURE_STORAGE_SYNC_NAME",
         ),
-        "backup_phoenix": ("PHOENIX_USERNAME", "PHOENIX_PASSWORD", "PHOENIX_SITE_ID"),
+        # "backup_phoenix": ("PHOENIX_USERNAME", "PHOENIX_PASSWORD", "PHOENIX_SITE_ID"),
         "patching_oms": (
             "AZURE_TENANT",
             "AZURE_APP_ID",
