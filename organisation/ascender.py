@@ -46,6 +46,7 @@ FOREIGN_TABLE_FIELDS = (
         else None,
     ),
     "term_reason",
+    "work_phone_no",
     ("manager_emp_no", "manager_employee_no"),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
