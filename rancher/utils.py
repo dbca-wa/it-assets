@@ -28,7 +28,8 @@ def set_fields(obj,fields,update_fields=None):
             setattr(obj,field,val)
         elif getattr(obj,field) != val:
             setattr(obj,field,val)
-            update_fields.append(field)
+            if field not in update_fields:
+                update_fields.append(field)
 
     return update_fields
 
@@ -37,7 +38,8 @@ def set_field(obj,field,val,update_fields):
         setattr(obj,field,val)
     elif getattr(obj,field) != val:
         setattr(obj,field,val)
-        update_fields.append(field)
+        if field not in update_fields:
+            update_fields.append(field)
 
 def set_fields_from_config(obj,config,fields,update_fields=None):
     if update_fields is None:
@@ -48,7 +50,8 @@ def set_fields_from_config(obj,config,fields,update_fields=None):
             setattr(obj,field,val)
         elif getattr(obj,field) != val:
             setattr(obj,field,val)
-            update_fields.append(field)
+            if field not in update_fields:
+                update_fields.append(field)
 
     return update_fields
 
