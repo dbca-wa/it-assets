@@ -866,44 +866,62 @@ def apply_rules(context={}):
         parameter_filters = None
         parameter_filter_map = None
 
+    def _change_dailyreport(log_day,webserver,excluded_records):
+        if not excluded_records:
+            return
+        daily_report  = WebAppAccessDailyReport.objects.filter(log_day=log_day,webserver=webserver).first()
+        if not daily_report:
+            return
+
+        for record in excluded_records:
+            daily_report.requests -= record.requests
+            if record.http_status > 0 and record.http_status < 400:
+                daily_report.success_requests -= record.requests
+            elif record.http_status in (401,403):
+                daily_report.unauthorized_requests -= record.requests
+            elif record.http_status == 408:
+                daily_report.timeout_requests -= record.requests
+            elif record.http_status == 499:
+                daily_report.client_closed_requests -= record.requests
+            elif record.http_status == 0 or record.http_status >= 400:
+                daily_report.error_requests -= record.requests
+        daily_report.save(update_fields=["requests","success_requests","unauthorized_requests","timeout_requests","error_requests","client_closed_requests"])
+        logger.debug("{0} - {1}: daily access reports have been changed.".format(log_day,webserver))
+
     #update WebAppAccessLog
     log_obj = WebAppAccessLog.objects.order_by("log_starttime").first()
     log_starttime = log_obj.log_starttime if log_obj else None
-    records = {}
-    daily_reports = {}
     del_records=[]
     excluded_records=[]
+    webserver_records = {}
     while log_starttime:
-        records.clear()
         del_records.clear()
         excluded_records.clear()
+        webserver_records.clear()
         key = None
         webserver = None
-        not_changed_keys = []
-        webserver_records = None
         for record in WebAppAccessLog.objects.filter(log_starttime = log_starttime).order_by("webserver"):
-            if webserver:
-                if webserver != record.webserver:
-                    not_changed_keys.clear()
-                    for key,log_record in records[webserver].items():
-                        if not log_record._changed:
-                            not_changed_keys.append(key)
+            if webserver and webserver != record.webserver:
+                with transaction.atomic():
+                    changed_records = 0
+                    for log_record in webserver_records.values():
+                        if log_record._changed:
+                            log_record.save()
+                            changed_records += 1
 
-                    for key in not_changed_keys:
-                        del records[webserver][key]
+                    if del_records:
+                        WebAppAccessLog.objects.filter(id__in=del_records).delete()
 
-                    not_changed_keys.clear()
-                    if not records[webserver]:
-                        del records[webserver]
+                    if excluded_records:
+                        WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
 
-                    webserver = record.webserver
-                    records[webserver] = {}
-                    webserver_records = records[webserver]
-            else:
-                webserver = record.webserver
-                records[webserver] = {}
-                webserver_records = records[webserver]
+                if changed_records or del_records or excluded_records:
+                    logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+                del_records.clear()
+                excluded_records.clear()
+                webserver_records.clear()
                     
+            webserver = record.webserver
 
             if path_normalizer_changed:
                 path_changed,request_path = RequestPathNormalizer.normalize_path(
@@ -956,22 +974,26 @@ def apply_rules(context={}):
             else:
                 webserver_records[key] = record
 
-        with transaction.atomic():
-            changed_records = 0
-            for webserver_records in records.values():
+        if webserver:
+            with transaction.atomic():
+                changed_records = 0
                 for log_record in webserver_records.values():
                     if log_record._changed:
                         log_record.save()
                         changed_records += 1
-
-            if del_records:
-                WebAppAccessLog.objects.filter(id__in=del_records).delete()
-
-            if excluded_records:
-                WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
-
+    
+                if del_records:
+                    WebAppAccessLog.objects.filter(id__in=del_records).delete()
+    
+                if excluded_records:
+                    WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
+    
             if changed_records or del_records or excluded_records:
-                logger.debug("{0}: {1} log records have been merged into {2} log records,{3} log records were removed".format(log_starttime,len(del_records),changed_records,len(excluded_records)))
+                logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+
+            del_records.clear()
+            excluded_records.clear()
+            webserver_records.clear()
                     
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
@@ -983,11 +1005,35 @@ def apply_rules(context={}):
     log_day = log_obj.log_day if log_obj else None
     while log_day:
         logger.debug("Apply the new rules on daily log records({})".format(log_day))
-        records.clear()
+        webserver_records.clear()
         del_records.clear()
         excluded_records.clear()
         key = None
-        for record in WebAppAccessDailyLog.objects.filter(log_day = log_day):
+        webserver = None
+        for record in WebAppAccessDailyLog.objects.filter(log_day = log_day).order_by("webserver"):
+            if webserver and webserver != record.webserver:
+                with transaction.atomic():
+                    changed_records = 0
+                    for log_record in webserver_records.values():
+                        if log_record._changed:
+                            log_record.save()
+                            changed_records += 1
+
+                    if del_records:
+                        WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
+
+                    if excluded_records:
+                        WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
+                        _change_dailyreport(log_day,webserver,excluded_records)
+
+                if changed_records or del_records or excluded_records:
+                    logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+                del_records.clear()
+                excluded_records.clear()
+                webserver_records.clear()
+                    
+            webserver = record.webserver
+                    
             if path_normalizer_changed:
                 path_changed,request_path = RequestPathNormalizer.normalize_path(
                     record.webserver,
@@ -1022,9 +1068,9 @@ def apply_rules(context={}):
             else:
                 record._changed = False
 
-            key = (log_starttime,record.webserver,record.request_path,record.http_status,record.path_parameters)
-            if key in records:
-                accesslog = records[key]
+            key = (record.request_path,record.http_status,record.path_parameters)
+            if key in webserver_records:
+                accesslog = webserver_records[key]
                 accesslog.requests += int(record.requests)
                 accesslog.total_response_time += record.total_response_time
                 if accesslog.max_response_time < record.max_response_time:
@@ -1037,58 +1083,29 @@ def apply_rules(context={}):
                 del_records.append(record.id)
                 accesslog._changed = True
             else:
-                records[key] = record
+                webserver_records[key] = record
 
-        with transaction.atomic():
-            changed = False
-            for key,record in records.items():
-                if record._changed:
-                    record.save()
-                    changed = True
-
-            if del_records:
-                WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
-                changed = True
-
-            if excluded_records:
-                WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
-                changed = True
-
-            if changed:
-                logger.debug("{0}: {1} daily log records have been merged into {2} daily log records,{3} log records were removed".format(log_day,len(del_records),len(records),len(excluded_records)))
-
-        if excluded_records:
-            #some records were removed, change the daily report
-            daily_reports.clear()
-            for record in excluded_records:
-                key = (record.log_day,record.webserver)
-                if key not in daily_reports:
-                    daily_report  = WebAppAccessDailyReport.objects.filter(log_day=record.log_day,webserver=record.webserver).first()
-                    if daily_report is None:
-                        #daily report is not populated.
-                        continue
-                    daily_reports[key] = daily_report
-                else:
-                    daily_report = daily_reports[key]
-
-                daily_report.requests -= record.requests
-                if record.http_status > 0 and record.http_status < 400:
-                    daily_report.success_requests -= record.requests
-                elif record.http_status in (401,403):
-                    daily_report.unauthorized_requests -= record.requests
-                elif record.http_status == 408:
-                    daily_report.timeout_requests -= record.requests
-                elif record.http_status == 499:
-                    daily_report.client_closed_requests -= record.requests
-                elif record.http_status == 0 or record.http_status >= 400:
-                    daily_report.error_requests -= record.requests
-
-            if daily_reports:
-                for daily_report in daily_reports.values():
-                    daily_report.save(update_fields=["requests","success_requests","unauthorized_requests","timeout_requests","error_requests"])
-
-                logger.debug("{0}: {1} daily access reports have been changed.".format(log_day,len(daily_reports)))
-
+        if webserver:
+            with transaction.atomic():
+                changed_records = 0
+                for log_record in webserver_records.values():
+                    if log_record._changed:
+                        log_record.save()
+                        changed_records += 1
+    
+                if del_records:
+                    WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
+    
+                if excluded_records:
+                    WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
+                    _change_dailyreport(log_day,webserver,excluded_records)
+    
+            if changed_records or del_records or excluded_records:
+                logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+            del_records.clear()
+            excluded_records.clear()
+            webserver_records.clear()
+                    
         log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
         log_day = log_obj.log_day if log_obj else None
         if context["f_renew_lock"] and context["renew_lock_time"]:
@@ -1180,6 +1197,7 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
 
     @classmethod
     def populate_data(cls,f_renew_lock=None,renew_lock_time=None):
+        ck_time = WebAppAccessDailyLog.populate_data(context["f_renew_lock"],context["renew_lock_time"])
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1205,15 +1223,19 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
             last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day))
 
         populate_log_day = first_populate_log_day
-        daily_records = {}
+        previous_record = None
+        daily_record = WebAppAccessDailyLog(log_day = populate_log_day.date())
+
         while populate_log_day < last_populate_log_day:
             next_populate_log_day = populate_log_day + timedelta(days=1)
             logger.debug("Populate the daily access log({}) from {} to {}".format(populate_log_day.date(),populate_log_day,next_populate_log_day))
-            daily_records.clear()
-            for record in WebAppAccessLog.objects.filter(log_starttime__gte=populate_log_day,log_starttime__lt=next_populate_log_day):
-                key = (record.webserver,record.request_path,record.http_status,record.path_parameters)
-                if key in daily_records:
-                    daily_record = daily_records[key]
+            for record in WebAppAccessLog.objects.filter(log_starttime__gte=populate_log_day,log_starttime__lt=next_populate_log_day).order_by("webserver","request_path","http_status","path_parameter"):
+                if (previous_record and 
+                    previous_record.webserver == record.webserver and 
+                    previous_record.request_path == record.request_path and 
+                    previous_record.http_status == record.http_status and 
+                    previous_record.path_parameter == record.path_parameter):
+
                     daily_record.requests += record.requests
                     daily_record.total_response_time += record.total_response_time
                     if daily_record.max_response_time < record.max_response_time:
@@ -1235,25 +1257,40 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
                         else:
                             daily_record.all_path_parameters = record.all_path_parameters
                 else:
-                    daily_record = WebAppAccessDailyLog(
-                        log_day = populate_log_day.date(),
-                        webserver = record.webserver,
-                        webapp = record.webapp,
-                        request_path = record.request_path,
-                        webapplocation = record.webapplocation,
-                        http_status = record.http_status,
-                        path_parameters = record.path_parameters,
-                        all_path_parameters = record.all_path_parameters,
-                        requests = record.requests,
-                        max_response_time = record.max_response_time,
-                        min_response_time = record.min_response_time,
-                        avg_response_time = record.avg_response_time,
-                        total_response_time = record.total_response_time
-                    )
-                    daily_records[key] = daily_record
-            with transaction.atomic():
-                for daily_record in daily_records.values():
+                    if daily_record.webserver:
+                        try:
+                            daily_record.save()
+                        except:
+                            #already populated before
+                            pass
+
+                        daily_record.id = None
+                        daily_record.webserver = None
+
+                    daily_record.webserver = record.webserver,
+                    daily_record.webapp = record.webapp,
+                    daily_record.request_path = record.request_path,
+                    daily_record.webapplocation = record.webapplocation,
+                    daily_record.http_status = record.http_status,
+                    daily_record.path_parameters = record.path_parameters,
+                    daily_record.all_path_parameters = record.all_path_parameters,
+                    daily_record.requests = record.requests,
+                    daily_record.max_response_time = record.max_response_time,
+                    daily_record.min_response_time = record.min_response_time,
+                    daily_record.avg_response_time = record.avg_response_time,
+                    daily_record.total_response_time = record.total_response_time
+
+                    previous_record = record
+
+            if daily_record.webserver:
+                try:
                     daily_record.save()
+                except:
+                    #already populated before
+                    pass
+                daily_record.id = None
+                daily_record.webserver = None
+
             if f_renew_lock and renew_lock_time:
                 renew_lock_time = f_renew_lock(renew_lock_time)
             populate_log_day = next_populate_log_day
@@ -1261,7 +1298,7 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
 
     class Meta:
         unique_together = [["log_day","webserver","request_path","http_status","path_parameters"]]
-        index_together = [["log_day","webapp","webapplocation"],["webapp","webapplocation"]]
+        index_together = [["log_day","webapp","webapplocation"],["webapp","webapplocation"],["webserver","request_path"]]
 
 
 class WebAppAccessDailyReport(models.Model):
@@ -1300,15 +1337,13 @@ class WebAppAccessDailyReport(models.Model):
         last_populate_log_day += timedelta(days=1)
 
         populate_log_day = first_populate_log_day
-        daily_reports = {}
+        daily_report = WebAppAccessDailyReport(log_day = populate_log_day)
+        previous_record = None
         while populate_log_day < last_populate_log_day:
             next_populate_log_day = populate_log_day + timedelta(days=1)
             logger.debug("Populate the daily report({})".format(populate_log_day))
-            daily_reports.clear()
-            for record in WebAppAccessDailyLog.objects.filter(log_day=populate_log_day):
-                key = (record.webserver,)
-                if key in daily_reports:
-                    daily_report = daily_reports[key]
+            for record in WebAppAccessDailyLog.objects.filter(log_day=populate_log_day).order_by("webserver"):
+                if previous_record and previous_record.webserver == record.webserver:
                     daily_report.requests += record.requests
                     if record.http_status > 0 and record.http_status < 400:
                         daily_report.success_requests += record.requests
@@ -1321,21 +1356,34 @@ class WebAppAccessDailyReport(models.Model):
                     elif record.http_status == 0 or record.http_status >= 400:
                         daily_report.error_requests += record.requests
                 else:
-                    daily_report = WebAppAccessDailyReport(
-                        log_day = populate_log_day,
-                        webserver = record.webserver,
-                        webapp = record.webapp,
-                        requests = record.requests,
-                        success_requests = record.requests if record.http_status > 0 and record.http_status < 400  else 0,
-                        error_requests = record.requests if record.http_status == 0 or (record.http_status >= 400 and record.http_status not in (401,403,408,499)) else 0,
-                        unauthorized_requests = record.requests if record.http_status in (401,403) else 0,
-                        timeout_requests = record.requests if record.http_status == 408 else 0,
-                        client_closed_requests = record.requests if record.http_status == 499 else 0
-                    )
-                    daily_reports[key] = daily_report
-            with transaction.atomic():
-                for daily_report in daily_reports.values():
+                    if daily_report.webserver:
+                        try:
+                            daily_report.save()
+                        except:
+                            #already populated
+                            pass
+                        daily_report.id = None
+                        daily_report.webserver = None
+
+                    daily_report.webserver = record.webserver,
+                    daily_report.webapp = record.webapp,
+                    daily_report.requests = record.requests,
+                    daily_report.success_requests = record.requests if record.http_status > 0 and record.http_status < 400  else 0,
+                    daily_report.error_requests = record.requests if record.http_status == 0 or (record.http_status >= 400 and record.http_status not in (401,403,408,499)) else 0,
+                    daily_report.unauthorized_requests = record.requests if record.http_status in (401,403) else 0,
+                    daily_report.timeout_requests = record.requests if record.http_status == 408 else 0,
+                    daily_report.client_closed_requests = record.requests if record.http_status == 499 else 0
+
+                    previous_record = record
+
+            if daily_report.webserver:
+                try:
                     daily_report.save()
+                except:
+                    #already populated
+                    pass
+                daily_report.id = None
+                daily_report.webserver = None
 
             if f_renew_lock and renew_lock_time:
                 renew_lock_time = f_renew_lock(renew_lock_time)
