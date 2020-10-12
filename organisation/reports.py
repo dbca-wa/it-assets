@@ -2,8 +2,6 @@ from six import BytesIO
 import unicodecsv
 import xlsxwriter
 
-from .alesco import synctask
-
 
 def department_user_export(fileobj, users):
     """Writes a passed-in queryset of DepartmentUser objects to a file-like object as an
@@ -49,34 +47,6 @@ def department_user_export(fileobj, users):
         users_sheet.set_column('J:J', 35)
         users_sheet.set_column('K:K', 45)
         users_sheet.set_column('L:M', 13)
-
-    return fileobj
-
-
-def departmentuser_alesco_descrepancy(fileobj, users):
-    """This function is used to find the data differences between the
-    Alesco database and the IT Assets database.
-    """
-    discrepancies = synctask.departmentuser_alesco_descrepancy(users)
-
-    with xlsxwriter.Workbook(
-        fileobj,
-        {
-            'in_memory': True,
-            'default_date_format': 'dd-mmm-yyyy HH:MM',
-            'remove_timezone': True,
-        },
-    ) as workbook:
-        sheet = workbook.add_worksheet('Discrepancies')
-        sheet.write_row('A1', ('Employee ID', 'Name', 'Discrepancy type', 'Alesco database', 'IT Assets database'))
-        row = 1
-        for k, v in discrepancies.items():
-            for issue in v:
-                sheet.write_row(row, 0, [k, issue[0], issue[1], issue[2], issue[3]])
-                row += 1
-        sheet.set_column('A:A', 12)
-        sheet.set_column('B:C', 25)
-        sheet.set_column('D:E', 60)
 
     return fileobj
 

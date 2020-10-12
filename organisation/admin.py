@@ -11,7 +11,7 @@ from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
 from .utils import deptuser_azure_sync
-from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
+from .views import DepartmentUserExport
 
 LOGGER = logging.getLogger('sync_tasks')
 
@@ -125,7 +125,6 @@ class DepartmentUserAdmin(VersionAdmin):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
-            path('departmentuser-discrepancy-report/', DepartmentUserDiscrepancyReport.as_view(), name='departmentuser_discrepancy_report'),
         ] + urls
         return urls
 

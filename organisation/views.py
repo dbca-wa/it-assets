@@ -9,7 +9,7 @@ from django.views.generic import View, ListView, DetailView, UpdateView
 from itassets.utils import breadcrumbs_list
 
 from .models import DepartmentUser, ADAction
-from .reports import department_user_export, departmentuser_alesco_descrepancy, user_account_export
+from .reports import department_user_export, user_account_export
 
 
 class DepartmentUserExport(View):
@@ -25,20 +25,6 @@ class DepartmentUserExport(View):
             users = DepartmentUser.objects.filter(active=True)
 
         response = department_user_export(response, users)
-        return response
-
-
-class DepartmentUserDiscrepancyReport(View):
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=departmentuser_alesco_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
-        if 'all' in request.GET:  # Return all objects with an Employee ID.
-            users = DepartmentUser.objects.filter(employee_id__isnull=False)
-        else:  # Default to active users only.
-            users = DepartmentUser.objects.filter(active=True, employee_id__isnull=False)
-
-        response = departmentuser_alesco_descrepancy(response, users)
         return response
 
 
