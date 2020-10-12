@@ -9,11 +9,12 @@ DATE_MAX = date(2049, 12, 31)
 FOREIGN_TABLE_FIELDS = (
     ("employee_no", "employee_id"),
     "job_no",
-    "surname",
-    "first_name",
-    "second_name",
-    "gender",
-    ("date_of_birth", lambda record, val: val.isoformat() if val else None),
+    "name_report",
+    #"surname",
+    #"first_name",
+    #"second_name",
+    #"gender",
+    #("date_of_birth", lambda record, val: val.isoformat() if val else None),
     "clevel1_id",
     "clevel1_desc",
     "clevel2_desc",
@@ -26,7 +27,7 @@ FOREIGN_TABLE_FIELDS = (
     "award_desc",
     "emp_status",
     "emp_stat_desc",
-    "location",
+    #"location",
     ("loc_desc", "location_desc"),
     "paypoint",
     "paypoint_desc",
@@ -47,7 +48,7 @@ FOREIGN_TABLE_FIELDS = (
     ),
     "term_reason",
     "work_phone_no",
-    ("manager_emp_no", "manager_employee_no"),
+    #("manager_emp_no", "manager_employee_no"),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
@@ -92,38 +93,32 @@ def ascender_db_fetch():
     )
     cur = None
 
-    try:
-        cur = conn.cursor()
-        cur.execute(FOREIGN_DB_QUERY_SQL)
-        record = None
-        fields = len(FOREIGN_TABLE_FIELDS)
+    cur = conn.cursor()
+    cur.execute(FOREIGN_DB_QUERY_SQL)
+    record = None
+    fields = len(FOREIGN_TABLE_FIELDS)
 
-        while True:
-            row = cur.fetchone()
-            if row is None:
-                break
-            index = 0
-            record = {}
-            while index < fields:
-                column = FOREIGN_TABLE_FIELDS[index]
-                if isinstance(column, (list, tuple)):
-                    if callable(column[-1]):
-                        if len(column) == 2:
-                            record[column[0]] = column[-1](record, row[index])
-                        else:
-                            record[column[1]] = column[-1](record, row[index])
+    while True:
+        row = cur.fetchone()
+        if row is None:
+            break
+        index = 0
+        record = {}
+        while index < fields:
+            column = FOREIGN_TABLE_FIELDS[index]
+            if isinstance(column, (list, tuple)):
+                if callable(column[-1]):
+                    if len(column) == 2:
+                        record[column[0]] = column[-1](record, row[index])
                     else:
-                        record[column[1]] = row[index]
+                        record[column[1]] = column[-1](record, row[index])
                 else:
-                    record[column] = row[index]
+                    record[column[1]] = row[index]
+            else:
+                record[column] = row[index]
 
-                index += 1
-            yield record
-    except:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+            index += 1
+        yield record
 
 
 def ascender_job_sort_key(record):
