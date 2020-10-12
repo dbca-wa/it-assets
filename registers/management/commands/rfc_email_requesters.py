@@ -6,7 +6,7 @@ from registers.models import ChangeRequest, ChangeLog
 
 
 class Command(BaseCommand):
-    help = 'Emails implementers a request to record completion of any outstanding change requests.'
+    help = 'Emails requesters to record completion of any outstanding change requests.'
 
     def handle(self, *args, **options):
         # All changes of status "Ready", where the planned_end datetime has passed and completed datetime is null:
@@ -14,8 +14,8 @@ class Command(BaseCommand):
             status=3, planned_end__lte=datetime.now().astimezone(timezone(settings.TIME_ZONE)), completed__isnull=True)
 
         for rfc in rfcs:
-            if rfc.implementer:
-                msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
-                rfc.email_implementer()
+            if rfc.requester:
+                msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.requester.get_full_name())
+                rfc.email_requester()
                 log = ChangeLog(change_request=rfc, log=msg)
                 log.save()

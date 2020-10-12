@@ -169,19 +169,19 @@ def email_endorser(modeladmin, request, queryset):
 email_endorser.short_description = 'Send email to the endorser requesting endorsement of a change'
 
 
-def email_implementer(modeladmin, request, queryset):
-    """A custom admin action to (re)send email to the implementer requesting that they record completion.
+def email_requester(modeladmin, request, queryset):
+    """A custom admin action to (re)send email to the requester, asking that they record completion.
     """
     for rfc in queryset:
         if rfc.status == 3 and rfc.planned_end <= datetime.now().astimezone(timezone(settings.TIME_ZONE)) and rfc.completed is None:
-            rfc.email_implementer()
-            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.implementer.get_full_name())
+            rfc.email_requester()
+            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.requester.get_full_name())
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
             messages.success(request, msg)
 
 
-email_implementer.short_description = 'Send email to the implementer to record completion of a finished change'
+email_requester.short_description = 'Send email to the requester to record completion of a finished change'
 
 
 def cab_approve(modeladmin, request, queryset):
@@ -260,7 +260,7 @@ cab_reject.short_description = 'Mark selected change requests as rejected at CAB
 
 @register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
-    actions = [cab_approve, cab_reject, email_endorser, email_implementer]
+    actions = [cab_approve, cab_reject, email_endorser, email_requester]
     change_list_template = 'admin/registers/changerequest/change_list.html'
     date_hierarchy = 'planned_start'
     exclude = ('post_complete_email_date',)

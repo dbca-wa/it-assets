@@ -495,9 +495,9 @@ class ChangeRequest(models.Model):
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
 
-    def email_implementer(self):
-        # Send an email to the implementer (if defined) with a link to the change request endorse view.
-        if not self.implementer:
+    def email_requester(self):
+        # Send an email to the requester (if defined) with a link to the change request completion view.
+        if not self.requester:
             return None
         subject = 'Completion of change request {}'.format(self)
         if Site.objects.filter(name='Change Requests').exists():
@@ -511,16 +511,16 @@ class ChangeRequest(models.Model):
             domain = 'https://' + domain
         complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you are recorded as the
-            implementer for change request {}, scheduled to be undertaken on {}.\n
+            requester for change request {}, scheduled to be undertaken on {}.\n
             Please visit the following URL and record the outcome of the change in order to finalise it:\n
             {}\n
             """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
         html_content = """<p>This is an automated message to let you know that you are recorded as the
-            implementer for change request {0}, scheduled to be undertaken on {1}.</p>
+            requester for change request {0}, scheduled to be undertaken on {1}.</p>
             <p>Please visit the following URL and record the outcome of the change in order to finalise it:</p>
             <ul><li><a href="{2}">{2}</a></li></ul>
             """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
-        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.implementer.email])
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.requester.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
         self.post_complete_email_date = date.today()
