@@ -230,7 +230,7 @@ def harvest(reconsume=False):
         #populate daily log
         renew_lock_time = WebAppAccessDailyLog.populate_data(context["f_renew_lock"],context["renew_lock_time"])
         #populate daily report
-        WebAppAccessDailyReport.populate_data(context["f_renew_lock"],renew_lock_time)
+        renew_lock_time = WebAppAccessDailyReport.populate_data(context["f_renew_lock"],renew_lock_time)
 
         now = timezone.localtime()
         if now.hour >= 0 and now.hour <= 2:
@@ -238,10 +238,11 @@ def harvest(reconsume=False):
             if obj:
                 last_log_datetime = timezone.localtime(obj.log_starttime)
                 earliest_log_datetime = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day)) - timedelta(days=settings.NGINXLOG_ACCESSLOG_LIFETIME)
-                sql = "DELETE FROM nginx_webappaccesslog where log_starttime < datetime('{}')".format(earliest_log_datetime.strftime("%Y-%m-%d 00:00:00 +8:00"))
+                sql = "DELETE FROM nginx_webappaccesslog where log_starttime < '{}'".format(earliest_log_datetime.strftime("%Y-%m-%d 00:00:00 +8:00"))
                 with connection.cursor() as cursor:
-                    logger.info("Delete expired web app access log.sql = {}".format(sql))
+                    logger.info("Delete expired web app access log.last_log_datetime={}, sql = {}".format(last_log_datetime,sql))
                     cursor.execute(sql)
+                renew_lock_time = context["f_renew_lock"](renew_lock_time)
 
             obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
             if obj:
@@ -249,13 +250,8 @@ def harvest(reconsume=False):
                 earliest_log_day = last_log_day - timedelta(days=settings.NGINXLOG_ACCESSDAILYLOG_LIFETIME)
                 sql = "DELETE FROM nginx_webappaccessdailylog where log_day < date('{}')".format(earliest_log_day.strftime("%Y-%m-%d"))
                 with connection.cursor() as cursor:
-                    logger.info("Delete expired web app access daily log.sql = {}".format(sql))
+                    logger.info("Delete expired web app access daily log.last_log_day={}, sql = {}".format(last_log_day,sql))
                     cursor.execute(sql)
-
-
-
-
-
 
         return result
 

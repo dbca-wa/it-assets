@@ -1217,12 +1217,12 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
                 first_populate_log_day = None
 
         if not first_populate_log_day:
-            return
+            return renew_lock_time
 
         obj = WebAppAccessLog.objects.all().order_by("-log_starttime").first()
         last_log_datetime = timezone.localtime(obj.log_starttime) if obj else None
         if not last_log_datetime:
-            return
+            return renew_lock_time
         elif last_log_datetime.hour == 23:
             last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day) + timedelta(days=1))
         else:
@@ -1280,12 +1280,12 @@ class WebAppAccessDailyReport(models.Model):
                 first_populate_log_day = None
 
         if not first_populate_log_day:
-            return
+            return renew_lock_time
 
         obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
         last_populate_log_day = obj.log_day if obj else None
         if not last_populate_log_day:
-            return
+            return renew_lock_time
         last_populate_log_day += timedelta(days=1)
 
         populate_log_day = first_populate_log_day
