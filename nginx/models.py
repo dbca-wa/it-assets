@@ -5,7 +5,7 @@ import logging
 from datetime import datetime,timedelta
 
 from django.core.exceptions import ValidationError
-from django.db import models,transaction
+from django.db import models,transaction,connection
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
@@ -685,7 +685,10 @@ class RequestPathNormalizer(models.Model):
         path_normalizer = None
         if path_normalizer_map is not None:
             key = (webserver,request_path)
-            path_normalizer = path_normalizer_map.get(key)
+            if key in path_normalizer_map:
+                path_normalizer = path_normalizer_map.get(key)
+                if not path_normalizer:
+                    return (False,request_path)
 
         if not path_normalizer:
             path_normalizers = path_normalizers or cls.objects.all().order_by("-order")
@@ -805,7 +808,11 @@ class RequestParameterFilter(models.Model):
         parameter_filter = None
         if parameter_filter_map is not None:
             key = (webserver,request_path)
-            parameter_filter = parameter_filter_map.get(key)
+            if key in parameter_filter_map:
+                parameter_filter = parameter_filter_map.get(key)
+                if not parameter_filter:
+                    return (False,path_parameters)
+
 
         if not parameter_filter:
             parameter_filters = parameter_filters or cls.objects.all().order_by("-order")
@@ -1197,7 +1204,6 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
 
     @classmethod
     def populate_data(cls,f_renew_lock=None,renew_lock_time=None):
-        ck_time = WebAppAccessDailyLog.populate_data(context["f_renew_lock"],context["renew_lock_time"])
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1223,73 +1229,19 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
             last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day))
 
         populate_log_day = first_populate_log_day
-        previous_record = None
-        daily_record = WebAppAccessDailyLog(log_day = populate_log_day.date())
 
         while populate_log_day < last_populate_log_day:
             next_populate_log_day = populate_log_day + timedelta(days=1)
             logger.debug("Populate the daily access log({}) from {} to {}".format(populate_log_day.date(),populate_log_day,next_populate_log_day))
-            for record in WebAppAccessLog.objects.filter(log_starttime__gte=populate_log_day,log_starttime__lt=next_populate_log_day).order_by("webserver","request_path","http_status","path_parameter"):
-                if (previous_record and 
-                    previous_record.webserver == record.webserver and 
-                    previous_record.request_path == record.request_path and 
-                    previous_record.http_status == record.http_status and 
-                    previous_record.path_parameter == record.path_parameter):
-
-                    daily_record.requests += record.requests
-                    daily_record.total_response_time += record.total_response_time
-                    if daily_record.max_response_time < record.max_response_time:
-                        daily_record.max_response_time = record.max_response_time
-
-                    if daily_record.min_response_time > record.min_response_time:
-                        daily_record.min_response_time = record.min_response_time
-
-                    daily_record.avg_response_time = daily_record.total_response_time / daily_record.requests
-                    if record.all_path_parameters:
-                        if daily_record.all_path_parameters:
-                            changed = False
-                            for param in record.all_path_parameters:
-                                if param not in daily_record.all_path_parameters:
-                                    daily_record.all_path_parameters.append(param)
-                                    changed = True
-                            if changed:
-                                daily_record.all_path_parameters.sort()
-                        else:
-                            daily_record.all_path_parameters = record.all_path_parameters
-                else:
-                    if daily_record.webserver:
-                        try:
-                            daily_record.save()
-                        except:
-                            #already populated before
-                            pass
-
-                        daily_record.id = None
-                        daily_record.webserver = None
-
-                    daily_record.webserver = record.webserver,
-                    daily_record.webapp = record.webapp,
-                    daily_record.request_path = record.request_path,
-                    daily_record.webapplocation = record.webapplocation,
-                    daily_record.http_status = record.http_status,
-                    daily_record.path_parameters = record.path_parameters,
-                    daily_record.all_path_parameters = record.all_path_parameters,
-                    daily_record.requests = record.requests,
-                    daily_record.max_response_time = record.max_response_time,
-                    daily_record.min_response_time = record.min_response_time,
-                    daily_record.avg_response_time = record.avg_response_time,
-                    daily_record.total_response_time = record.total_response_time
-
-                    previous_record = record
-
-            if daily_record.webserver:
-                try:
-                    daily_record.save()
-                except:
-                    #already populated before
-                    pass
-                daily_record.id = None
-                daily_record.webserver = None
+            sql = """
+INSERT INTO nginx_webappaccessdailylog (log_day,webserver,request_path,http_status,path_parameters,webapp_id,webapplocation_id,requests,min_response_time,max_response_time,total_response_time,avg_response_time)
+SELECT date('{}'),webserver,request_path,http_status,path_parameters,min(webapp_id),min(webapplocation_id),sum(requests),min(min_response_time),max(max_response_time),sum(total_response_time),sum(total_response_time)/sum(requests)
+FROM nginx_webappaccesslog where log_starttime >= '{}' and log_starttime < '{}'
+GROUP BY webserver,request_path,http_status,path_parameters;
+""".format(populate_log_day.strftime("%Y-%m-%d"),populate_log_day.strftime("%Y-%m-%d 00:00:00 +8:00"),next_populate_log_day.strftime("%Y-%m-%d 00:00:00 +8:00"))
+            with connection.cursor() as cursor:
+                logger.info("Populate nginx access daily log.sql = {}".format(sql))
+                cursor.execute(sql)
 
             if f_renew_lock and renew_lock_time:
                 renew_lock_time = f_renew_lock(renew_lock_time)
@@ -1337,53 +1289,27 @@ class WebAppAccessDailyReport(models.Model):
         last_populate_log_day += timedelta(days=1)
 
         populate_log_day = first_populate_log_day
-        daily_report = WebAppAccessDailyReport(log_day = populate_log_day)
         previous_record = None
         while populate_log_day < last_populate_log_day:
             next_populate_log_day = populate_log_day + timedelta(days=1)
             logger.debug("Populate the daily report({})".format(populate_log_day))
-            for record in WebAppAccessDailyLog.objects.filter(log_day=populate_log_day).order_by("webserver"):
-                if previous_record and previous_record.webserver == record.webserver:
-                    daily_report.requests += record.requests
-                    if record.http_status > 0 and record.http_status < 400:
-                        daily_report.success_requests += record.requests
-                    elif record.http_status in (401,403):
-                        daily_report.unauthorized_requests += record.requests
-                    elif record.http_status == 408:
-                        daily_report.timeout_requests += record.requests
-                    elif record.http_status == 499:
-                        daily_report.client_closed_requests += record.requests
-                    elif record.http_status == 0 or record.http_status >= 400:
-                        daily_report.error_requests += record.requests
-                else:
-                    if daily_report.webserver:
-                        try:
-                            daily_report.save()
-                        except:
-                            #already populated
-                            pass
-                        daily_report.id = None
-                        daily_report.webserver = None
-
-                    daily_report.webserver = record.webserver,
-                    daily_report.webapp = record.webapp,
-                    daily_report.requests = record.requests,
-                    daily_report.success_requests = record.requests if record.http_status > 0 and record.http_status < 400  else 0,
-                    daily_report.error_requests = record.requests if record.http_status == 0 or (record.http_status >= 400 and record.http_status not in (401,403,408,499)) else 0,
-                    daily_report.unauthorized_requests = record.requests if record.http_status in (401,403) else 0,
-                    daily_report.timeout_requests = record.requests if record.http_status == 408 else 0,
-                    daily_report.client_closed_requests = record.requests if record.http_status == 499 else 0
-
-                    previous_record = record
-
-            if daily_report.webserver:
-                try:
-                    daily_report.save()
-                except:
-                    #already populated
-                    pass
-                daily_report.id = None
-                daily_report.webserver = None
+            sql = """
+INSERT INTO nginx_webappaccessdailyreport (log_day,webserver,webapp_id,requests,success_requests,unauthorized_requests,timeout_requests,client_closed_requests,error_requests)
+SELECT date('{0}'),webserver,min(webapp_id),sum(requests),sum(success_requests),sum(unauthorized_requests),sum(timeout_requests),sum(client_closed_requests),sum(error_requests)
+FROM (SELECT webserver,webapp_id,
+	  http_status,
+      requests,
+	  CASE WHEN http_status > 0 AND http_status < 400 THEN requests ELSE 0 END AS success_requests,
+	  CASE WHEN http_status in (401,403) THEN requests ELSE 0 END AS unauthorized_requests,
+	  CASE WHEN http_status = 408 THEN requests ELSE 0 END AS timeout_requests,
+	  CASE WHEN http_status = 499 THEN requests ELSE 0 END AS client_closed_requests,
+	  CASE WHEN http_status = 0 OR (http_status >= 400 AND http_status not in (401,403,408,499))THEN requests ELSE 0 END AS error_requests
+	  FROM nginx_webappaccessdailylog where log_day = date('{0}')) as a
+GROUP BY webserver
+""".format(populate_log_day.strftime("%Y-%m-%d"))
+            with connection.cursor() as cursor:
+                logger.info("Populate nginx access daily report.sql = {}".format(sql))
+                cursor.execute(sql)
 
             if f_renew_lock and renew_lock_time:
                 renew_lock_time = f_renew_lock(renew_lock_time)

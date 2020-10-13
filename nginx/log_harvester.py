@@ -207,14 +207,22 @@ def harvest(reconsume=False):
             "f_renew_lock":get_consume_client().renew_lock
         }
         #apply the latest filter change first
+        context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
+        context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
+        context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
+        context["path_normalizer_map"] = {}
+        context["parameter_filter_map"] = {}
+        """
+        don't apply the changed rules in the history data
         applied = False
         while not applied:
-            context["path_normalizers"] = list(RequestPathNormalizer.objects.all().order_by("-order"))
+            context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
             context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
             context["path_normalizer_map"] = {}
             context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
             context["parameter_filter_map"] = {}
             applied = apply_rules(context)
+        """
     
         #consume nginx config file
         result = get_consume_client().consume(process_log(context))
