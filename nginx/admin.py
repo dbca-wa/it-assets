@@ -557,10 +557,15 @@ class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin
     def _requests(self,obj):
         if not obj:
             return ""
-        elif obj.path_parameters is None:
-            return mark_safe("<A href='{}?log_day={}&q={}&request_path={}&http_status={}&path_parameters__isnull=True'>{}</A>".format(reverse(self.log_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.request_path,obj.http_status,obj.requests))
         else:
-            return mark_safe("<A href='{}?log_day={}&q={}&request_path={}&http_status={}&path_parameters={}'>{}</A>".format(reverse(self.log_list_url_name),obj.log_day.strftime("%Y-%m-%d"),obj.webserver,obj.request_path,obj.http_status,urllib.parse.quote(obj.path_parameters),obj.requests))
+            return mark_safe("<A href='{}?log_day={}&{}&request_path={}&http_status={}&{}'>{}</A>".format(
+                reverse(self.log_list_url_name),
+                obj.log_day.strftime("%Y-%m-%d"),
+                "webserver={}".format(obj.webserver) if obj.webserver else "webserver__isnull=True",
+                urllib.parse.quote(obj.request_path),
+                obj.http_status,
+                "path_parameters={}".format(urllib.parse.quote(obj.path_parameters)) if obj.path_parameters else "path_parameters__isnull=True",
+                obj.requests))
     _requests.short_description = "Requests"
 
     def has_delete_permission(self, request, obj=None):
