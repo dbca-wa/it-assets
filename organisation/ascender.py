@@ -6,15 +6,14 @@ from organisation.models import DepartmentUser
 
 TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
+# The list below defines which columns to SELECT from the Ascender view, what to name the object
+# dict key after querying, plus how to parse the returned value of each column (if required).
 FOREIGN_TABLE_FIELDS = (
     ("employee_no", "employee_id"),
     "job_no",
-    "name_report",
-    #"surname",
-    #"first_name",
-    #"second_name",
-    #"gender",
-    #("date_of_birth", lambda record, val: val.isoformat() if val else None),
+    "surname",
+    "first_name",
+    "second_name",
     "clevel1_id",
     "clevel1_desc",
     "clevel2_desc",
@@ -27,34 +26,20 @@ FOREIGN_TABLE_FIELDS = (
     "award_desc",
     "emp_status",
     "emp_stat_desc",
-    #"location",
     ("loc_desc", "location_desc"),
     "paypoint",
     "paypoint_desc",
     "geo_location_desc",
     "occup_type",
-    (
-        "job_start_date",
-        lambda record, val: val.strftime("%Y-%m-%d")
-        if val and val != DATE_MAX
-        else None,
-    ),
-    (
-        "occup_term_date",
-        "job_term_date",
-        lambda record, val: val.strftime("%Y-%m-%d")
-        if val and val != DATE_MAX
-        else None,
-    ),
+    ("job_start_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    ("occup_term_date", "job_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
     "work_phone_no",
     #("manager_emp_no", "manager_employee_no"),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
-        f[0] if isinstance(f, (list, tuple)) else f
-        for f in FOREIGN_TABLE_FIELDS
-        if (f[0] if isinstance(f, (list, tuple)) else f)
+        f[0] if isinstance(f, (list, tuple)) else f for f in FOREIGN_TABLE_FIELDS if (f[0] if isinstance(f, (list, tuple)) else f)
     ),
     settings.FOREIGN_SCHEMA,
     settings.FOREIGN_TABLE,
@@ -131,18 +116,17 @@ def ascender_job_sort_key(record):
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
-    # initial score from occup_term_date
+    # Initial score from occup_term_date
     score = (
         (int(record["job_term_date"].replace("-", "")) * 10000)
         if record["job_term_date"]
         and record["job_term_date"] <= today.strftime("%Y-%m-%d")
         else int(tomorrow.strftime("%Y%m%d0000"))
     )
-    # second score based emp_status
+    # Second score based emp_status
     score += (
         (STATUS_RANKING.index(record["emp_status"]) + 1)
-        if (record["emp_status"] in STATUS_RANKING)
-        else 0
+        if (record["emp_status"] in STATUS_RANKING) else 0
     ) * 100
     return score
 
