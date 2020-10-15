@@ -1,5 +1,6 @@
 from datetime import datetime
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand
 from pytz import timezone
 from registers.models import ChangeRequest, ChangeLog
