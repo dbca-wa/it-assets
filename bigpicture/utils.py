@@ -1,8 +1,16 @@
-from datetime import timedelta
+import calendar
+from data_storage import AzureBlobStorage
+from datetime import datetime, timedelta
+from dbca_utils.utils import env
 from django.contrib.contenttypes.models import ContentType
+import json
+from pytz import timezone
+import tempfile
+
 from rancher.models import Workload
 from registers.models import ITSystem
 from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport, WebAppLocation
+import requests
 from status.models import Host
 from statistics import mean, stdev, StatisticsError
 from .models import Dependency, RiskAssessment
@@ -444,3 +452,86 @@ def itsystem_risks_traffic(it_systems=None):
                         risk.rating = 0
                         risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
                     risk.save()
+
+
+def signal_sciences_extract_feed(outfile, from_date=None, from_time=None):
+    """Extract the Signal Sciences feed for one hour, starting from the given date and time (UTC).
+    If no date & time is passed in, default to the previous hour as of the current moment.
+    Write the feed data to the passed-in file as JSON.
+    """
+    api_host = env('SIGSCI_API_HOST', 'https://dashboard.signalsciences.net')
+    corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+    site_name = env('SIGSCI_SITE_NAME', 'www.dbca.wa.gov.au')
+    ss_email = env('SIGSCI_EMAIL', None)
+    api_token = env('SIGSCI_API_TOKEN', None)
+    if not ss_email and not api_token:
+        return False
+
+    if not from_date and not from_time:
+        # Calculate UTC timestamps for the previous full hour
+        # E.g. if now is 9:05 AM UTC, the timestamps will be 8:00 AM and 9:00 AM
+        until_time = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        from_time = until_time - timedelta(hours=1)
+        until_time = calendar.timegm(until_time.utctimetuple())
+        from_time = calendar.timegm(from_time.utctimetuple())
+    else:
+        from_datetime = datetime.combine(from_date, from_time).astimezone(timezone('UTC'))
+        until_time = from_datetime.replace(minute=0, second=0, microsecond=0)
+        from_time = until_time - timedelta(hours=1)
+        until_time = calendar.timegm(until_time.utctimetuple())
+        from_time = calendar.timegm(from_time.utctimetuple())
+
+    headers = {
+        'x-api-user': ss_email,
+        'x-api-token': api_token,
+        'Content-Type': 'application/json',
+    }
+    url = api_host + ('/api/v0/corps/{}/sites/{}/feed/requests?from={}&until={}'.format(corp_name, site_name, from_time, until_time))
+    first = True
+    outfile.write('{"data": [')
+
+    while True:
+        resp_raw = requests.get(url, headers=headers)
+        response = json.loads(resp_raw.text)
+        for request in response['data']:
+            data = json.dumps(request)
+            if first:
+                first = False
+            else:
+                data = ',' + data
+            outfile.write(data)
+        next_url = response['next']['uri']
+        if next_url == '':
+            outfile.write(']}')
+            break
+        url = api_host + next_url
+
+    return outfile
+
+
+def signal_sciences_write_feed(from_date=None, from_time=None):
+    """For a (optional) given date & time, download the SS feed for that hour and upload
+    the data to the Azure container.
+    If no date & time are supplied, use the current UTC time minus one hour.
+    """
+    connect_string = env('AZURE_CONNECTION_STRING', '')
+    if not connect_string:
+        return None
+
+    if not from_date and not from_time:
+        from_date = datetime.utcnow().date()
+        from_time = datetime.utcnow() - timedelta(hours=1)
+        from_time = from_time.time().replace(minute=0, second=0, microsecond=0)
+
+    tf = signal_sciences_extract_feed(tempfile.NamedTemporaryFile('w'), from_date, from_time)
+    if not tf:
+        return False
+
+    tf.flush()
+    corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+    filename = 'sigsci_feed_{}_{}_{}.json'.format(corp_name, from_date.isoformat(), from_time.isoformat())
+    store = AzureBlobStorage(connect_string, 'signalsciences')
+    store.upload_file(filename, tf.name)
+    tf.close()
+
+    return filename
