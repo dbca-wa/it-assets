@@ -37,3 +37,4 @@ class Command(BaseCommand):
                         '''.format(rfc, rfc.requester.get_full_name(), datetime.now().astimezone().strftime('%d/%b/%Y at %H:%M'))
                     log = ChangeLog(change_request=rfc, log=msg)
                     log.save()
+                    self.stdout.write(self.style.SUCCESS(msg))
