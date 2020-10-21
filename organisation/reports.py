@@ -61,7 +61,7 @@ def departmentuser_csv_report():
         'email', 'username', 'given_name', 'surname', 'name', 'preferred_name', 'title',
         'name_update_reference', 'employee_id', 'active', 'telephone', 'home_phone',
         'mobile_phone', 'other_phone', 'extension', 'expiry_date', 'org_unit',
-        'cost_centre', 'parent', 'executive', 'vip', 'security_clearance',
+        'cost_centre', 'manager', 'executive', 'vip', 'security_clearance',
         'contractor', 'o365_licence', 'shared_account',
         'notes', 'working_hours', 'org_data', 'alesco_data',
         'extra_data', 'date_created', 'date_updated', 'ad_guid',

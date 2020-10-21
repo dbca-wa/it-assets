@@ -6,7 +6,7 @@ from json2html import json2html
 from mptt.models import MPTTModel, TreeForeignKey
 
 
-class DepartmentUser(MPTTModel):
+class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
     """
     ACTIVE_FILTER = {'active': True, 'email__isnull': False, 'cost_centre__isnull': False, 'contractor': False}
@@ -141,11 +141,6 @@ class DepartmentUser(MPTTModel):
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
-    # NOTE: remove parent field after copying data to manager.
-    parent = TreeForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='children', editable=True, verbose_name='Reports to',
-        help_text='Person that this employee reports to')
     cost_centres_secondary = models.ManyToManyField(
         'organisation.CostCentre', related_name='cost_centres_secondary', editable=False,
         blank=True, help_text='NOTE: this provides security group access (e.g. T drives).')
@@ -168,9 +163,6 @@ class DepartmentUser(MPTTModel):
         default=None, editable=False,
         help_text='Account consumes an Office 365 licence.')
     extra_data = JSONField(null=True, blank=True)
-
-    class MPTTMeta:
-        order_insertion_by = ['name']
 
     def __str__(self):
         return self.email
