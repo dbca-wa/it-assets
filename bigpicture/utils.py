@@ -478,7 +478,7 @@ def signal_sciences_extract_feed(outfile, from_datetime=None, minutes=None):
     }
     url = api_host + ('/api/v0/corps/{}/sites/{}/feed/requests?from={}&until={}'.format(corp_name, site_name, from_time, until_time))
     first = True
-    outfile.write('{"data": [')
+    outfile.write('[')
 
     while True:
         resp_raw = requests.get(url, headers=headers)
@@ -492,7 +492,7 @@ def signal_sciences_extract_feed(outfile, from_datetime=None, minutes=None):
             outfile.write(data)
         next_url = response['next']['uri']
         if next_url == '':
-            outfile.write(']}')
+            outfile.write(']')
             break
         url = api_host + next_url
 
