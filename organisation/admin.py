@@ -6,14 +6,11 @@ from django_mptt_admin.admin import DjangoMpttAdmin
 from django_q.brokers import get_broker
 from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
-import logging
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
 from .utils import deptuser_azure_sync
 from .views import DepartmentUserExport
-
-LOGGER = logging.getLogger('sync_tasks')
 
 
 class DepartmentUserForm(forms.ModelForm):
