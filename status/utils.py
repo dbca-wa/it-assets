@@ -16,10 +16,10 @@ def lookup_host(address):
     except Exception:
         return None
     host_qs = Host.objects.filter(host_ips__ip=ip)
-    if not host_qs:
+    if not host_qs.exists():
         return None
-    host = host_qs.first()
-    return host
+    else:
+        return host_qs.first()
 
 
 def lookup(address, date):

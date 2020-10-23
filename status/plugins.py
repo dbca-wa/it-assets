@@ -400,11 +400,6 @@ def backup_azure(plugin, date):
     )
     headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
 
-    #MANAGEMENT_LIST_VMS = "{}/providers/Microsoft.Compute/virtualMachines?api-version=2018-06-01".format(
-    #    MANAGEMENT_SUB
-    #)
-    #vms = _ms_api("GET", MANAGEMENT_LIST_VMS, headers=headers)
-
     # Get the ID of the specified vault.
     MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(
         MANAGEMENT_SUB
