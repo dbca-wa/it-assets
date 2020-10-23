@@ -39,8 +39,6 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
             'org_unit',
             'group_unit',
             'org_unit_chain',
-            'parent',
-            'children',
         )
 
 
@@ -50,8 +48,9 @@ class DepartmentUserViewSet(viewsets.ReadOnlyModelViewSet):
     ).exclude(
         account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
     ).prefetch_related(
-        'location', 'children',
-        'org_unit', 'org_unit__children',
+        'location',
+        'org_unit',
+        'org_unit__children',
     ).order_by('name')
     serializer_class = DepartmentUserSerializer
 
@@ -61,15 +60,14 @@ class DepartmentUserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class DepartmentTreeSerializer(serializers.ModelSerializer):
-    children = serializers.ListField(source='children_filtered', child=RecursiveField())
 
     class Meta:
         model = DepartmentUser
-        fields = ('id', 'name', 'title', 'children')
+        fields = ('id', 'name', 'title')
 
 
 class DepartmentTreeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE).filter(parent__isnull=True)
+    queryset = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
     serializer_class = DepartmentTreeSerializer
 
 

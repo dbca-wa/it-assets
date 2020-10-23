@@ -85,7 +85,7 @@ class OptionResourceTestCase(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         # User 1 will be present in the response.
         self.assertContains(response, self.user1.email)
-        # Make a user inactive to test excludion
+        # Make a user inactive to test exclusion
         self.user1.active = False
         self.user1.save()
         response = self.client.get(url)
@@ -105,7 +105,7 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         r = response.json()
         self.assertTrue(isinstance(r['objects'], list))
         # Response should not contain inactive, contractors or shared accounts.
-        self.assertContains(response, self.user1.email)
+        self.assertContains(response, self.user2.email)
         self.assertNotContains(response, self.del_user.email)
         self.assertNotContains(response, self.contract_user.email)
         self.assertNotContains(response, self.shared.email)
@@ -150,8 +150,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.user2.email)
         self.assertContains(response, self.contract_user.email)
-        self.assertContains(response, self.del_user.email)
-        self.assertNotContains(response, self.user1.email)
         self.assertNotContains(response, self.shared.email)  # Belongs to CC1.
 
     def test_detail(self):

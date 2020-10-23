@@ -7,7 +7,6 @@ from django.http import HttpResponse, HttpResponseForbidden, HttpResponseBadRequ
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 import json
-import logging
 import pytz
 from restless.constants import OK
 from restless.dj import DjangoResource
@@ -21,7 +20,6 @@ from .models import DepartmentUser, Location, OrgUnit, CostCentre
 
 
 ACCOUNT_TYPE_DICT = dict(DepartmentUser.ACCOUNT_TYPE_CHOICES)
-LOGGER = logging.getLogger('sync_tasks')
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 
@@ -283,7 +281,6 @@ class DepartmentUserResource(DjangoResource):
         # objects by Azure AD GUID.
         if 'azure_guid' in self.data and DepartmentUser.objects.filter(azure_guid=self.data['azure_guid']).exists():
             user = DepartmentUser.objects.get(azure_guid=self.data['azure_guid'])
-            LOGGER.warning('POST request sent but existing user {} matched by Azure AD GUID'.format(user.email))
         else:
             user = DepartmentUser()
 
@@ -292,12 +289,6 @@ class DepartmentUserResource(DjangoResource):
             raise BadRequest('Missing email parameter value')
         if 'DisplayName' not in self.data and 'name' not in self.data:
             raise BadRequest('Missing name parameter value')
-
-        # Make an assumption that EmailAddress or email is passed in.
-        if 'EmailAddress' in self.data:
-            LOGGER.info('Creating user {}'.format(self.data['EmailAddress'].lower()))
-        else:
-            LOGGER.info('Creating user {}'.format(self.data['email'].lower()))
 
         if 'EmailAddress' in self.data:
             user.email = self.data['EmailAddress'].lower()
@@ -342,7 +333,6 @@ class DepartmentUserResource(DjangoResource):
         try:
             user.save()
         except Exception as e:
-            LOGGER.exception('Error creating user {}'.format(user.email))
             return self.formatters.format(self.request, {'Error': repr(e)})
 
         # Serialise and return the newly-created DepartmentUser.
@@ -361,8 +351,6 @@ class DepartmentUserResource(DjangoResource):
                 user = DepartmentUser.objects.get(email__iexact=guid.lower())
             except DepartmentUser.DoesNotExist:
                 raise BadRequest('Object not found')
-
-        LOGGER.info('Updating user guid/email {}'.format(guid))
 
         try:
             if 'EmailAddress' in self.data and self.data['EmailAddress']:
@@ -409,10 +397,8 @@ class DepartmentUserResource(DjangoResource):
                 user.active = False
                 user.ad_guid, user.azure_guid = None, None
                 data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
-                LOGGER.info('Set user {} as deleted in AD'.format(user.name))
             user.save()
         except Exception as e:
-            LOGGER.exception('Error updating user {}'.format(user.email))
             return self.formatters.format(self.request, {'Error': repr(e)})
 
         data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
