@@ -12,6 +12,19 @@ class BaseFormHelper(FormHelper):
     field_class = 'col-xs-12 col-sm-8 col-md-7'
 
 
+class ITSystemImportForm(forms.Form):
+    upload_button = Submit('upload', 'Upload', css_class='btn-lg')
+    spreadsheet = forms.FileField(help_text='Excel spreadsheet export from SharePoint IT Systems Register')
+
+    def __init__(self, *args, **kwargs):
+        super(ITSystemImportForm, self).__init__(*args, **kwargs)
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            'spreadsheet',
+            FormActions(self.upload_button),
+        )
+
+
 class UserChoiceField(forms.ChoiceField):
     # A basic ChoiceField that skips validation.
     def validate(self, value):
