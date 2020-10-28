@@ -45,6 +45,7 @@ INSTALLED_APPS = (
     'rest_framework_gis',
     'webtemplate_dbca',
     'bootstrap_pagination',
+    'markdownx',
     # Project applications:
     'organisation',
     'registers',

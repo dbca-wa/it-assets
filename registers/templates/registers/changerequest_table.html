@@ -79,7 +79,7 @@
         <th>Implementation instructions</th>
         <td>
         {% if object.implementation %}
-        <pre>{{ object.implementation }}</pre>
+        {{ object.formatted_markdown_implementation|safe }}
         {% endif %}
         <br>
         {% if object.implementation_docs %}

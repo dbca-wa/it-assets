@@ -8,6 +8,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.template.loader import render_to_string
 from django.urls import reverse
+from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
@@ -460,6 +461,10 @@ class ChangeRequest(models.Model):
     @property
     def broadcast_filename(self):
         return path.basename(self.broadcast.name)
+
+    @property
+    def formatted_markdown_implementation(self):
+        return markdownify(self.implementation)
 
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})

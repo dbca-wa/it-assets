@@ -2,6 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django import forms
+from markdownx.widgets import MarkdownxWidget
 from .models import ChangeRequest
 
 
@@ -51,7 +52,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].label = 'Implementer email'
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
-        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
+        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure (Markdown syntax supported)'
+        self.fields['implementation'].widget = MarkdownxWidget()
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
