@@ -26,6 +26,7 @@ urlpatterns = [
     path('registers/', include(registers_urls)),
     path('organisation/', include(organisation_urls)),
     path('healthcheck/', HealthCheckView.as_view(), name='health_check'),
+    path('markdownx/', include('markdownx.urls')),
     path('favicon.ico', RedirectView.as_view(url='{}favicon.ico'.format(settings.STATIC_URL)), name='favicon'),
     path('', RedirectView.as_view(url='/admin')),
 ]

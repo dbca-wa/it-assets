@@ -2,6 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django import forms
+from markdownx.widgets import MarkdownxWidget
 from .models import ChangeRequest
 
 
@@ -10,6 +11,19 @@ class BaseFormHelper(FormHelper):
     form_method = 'POST'
     label_class = 'col-xs-12 col-sm-4 col-md-3'
     field_class = 'col-xs-12 col-sm-8 col-md-7'
+
+
+class ITSystemImportForm(forms.Form):
+    upload_button = Submit('upload', 'Upload', css_class='btn-lg')
+    spreadsheet = forms.FileField(help_text='Excel spreadsheet export from SharePoint IT Systems Register')
+
+    def __init__(self, *args, **kwargs):
+        super(ITSystemImportForm, self).__init__(*args, **kwargs)
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            'spreadsheet',
+            FormActions(self.upload_button),
+        )
 
 
 class UserChoiceField(forms.ChoiceField):
@@ -32,13 +46,18 @@ class ChangeRequestCreateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
+        self.fields['description'].widget = MarkdownxWidget()
+        self.fields['description'].help_text = 'A brief description of what the change is for and why it is being undertaken (Markdown syntax supported)'
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].label = 'Implementer email'
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
-        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
+        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure (Markdown syntax supported)'
+        self.fields['implementation'].widget = MarkdownxWidget()
+        self.fields['communication'].widget = MarkdownxWidget()
+        self.fields['communication'].help_text = 'Description of all communications to be undertaken (Markdown syntax supported)'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(

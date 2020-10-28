@@ -8,10 +8,11 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.template.loader import render_to_string
 from django.urls import reverse
+from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
-from organisation.models import CommonFields, DepartmentUser, Location
+from organisation.models import CommonFields, DepartmentUser
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
@@ -460,6 +461,12 @@ class ChangeRequest(models.Model):
     @property
     def broadcast_filename(self):
         return path.basename(self.broadcast.name)
+
+    def formatted_markdown(self, field):
+        """From the passed-in field, return the object field value rendered as HTML (assumes that
+        the field value is Markdown-formatted text).
+        """
+        return markdownify(getattr(self, field))
 
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})

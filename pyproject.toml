@@ -48,6 +48,7 @@ webtemplate-dbca = "^1.2.1"
 django-bootstrap-pagination = "^1.7.1"
 pybind11 = "2.5.0"
 pysimdjson = "2.5.1"
+django-markdownx = "3.0.1"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.16.1"
