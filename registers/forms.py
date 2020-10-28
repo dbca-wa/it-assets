@@ -46,6 +46,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
+        self.fields['description'].widget = MarkdownxWidget()
+        self.fields['description'].help_text = 'A brief description of what the change is for and why it is being undertaken (Markdown syntax supported)'
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['endorser_choice'].label = 'Endorser email'

@@ -466,6 +466,10 @@ class ChangeRequest(models.Model):
     def formatted_markdown_implementation(self):
         return markdownify(self.implementation)
 
+    @property
+    def formatted_markdown_description(self):
+        return markdownify(self.description)
+
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 

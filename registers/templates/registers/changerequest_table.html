@@ -33,7 +33,7 @@
     {% if object.description %}
     <tr>
         <th>Description</th>
-        <td>{{ object.description }}</td>
+        <td>{{ object.formatted_markdown_description|safe }}</td>
     </tr>
     {% endif %}
     {% if object.initiative_name %}
