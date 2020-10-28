@@ -12,7 +12,7 @@ from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
-from organisation.models import CommonFields, DepartmentUser, Location
+from organisation.models import CommonFields, DepartmentUser
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
@@ -462,13 +462,11 @@ class ChangeRequest(models.Model):
     def broadcast_filename(self):
         return path.basename(self.broadcast.name)
 
-    @property
-    def formatted_markdown_implementation(self):
-        return markdownify(self.implementation)
-
-    @property
-    def formatted_markdown_description(self):
-        return markdownify(self.description)
+    def formatted_markdown(self, field):
+        """From the passed-in field, return the object field value rendered as HTML (assumes that
+        the field value is Markdown-formatted text).
+        """
+        return markdownify(getattr(self, field))
 
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})

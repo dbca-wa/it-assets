@@ -56,6 +56,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
         self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure (Markdown syntax supported)'
         self.fields['implementation'].widget = MarkdownxWidget()
+        self.fields['communication'].widget = MarkdownxWidget()
+        self.fields['communication'].help_text = 'Description of all communications to be undertaken (Markdown syntax supported)'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
