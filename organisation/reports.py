@@ -84,3 +84,98 @@ def user_account_export(fileobj, users):
         users_sheet.set_column('F:F', 17)
 
     return fileobj
+
+
+def department_user_ascender_discrepancies(fileobj, users):
+    """For the passed in queryset of DepartmentUser objects, return an Excel spreadsheet
+    that contains discrepancies between the user data and their associated Ascender HR data.
+    """
+    with xlsxwriter.Workbook(
+        fileobj,
+        {
+            'in_memory': True,
+            'default_date_format': 'dd-mmm-yyyy HH:MM',
+            'remove_timezone': True,
+        },
+    ) as workbook:
+        users_sheet = workbook.add_worksheet('Discrepancies')
+        users_sheet.write_row('A1', (
+            'NAME', 'IT ASSETS FIELD', 'IT ASSETS VALUE', 'ASCENDER VALUE',
+        ))
+        row = 1
+
+        for i in users:
+            # Employee number is missing:
+            if not i.employee_id:
+                users_sheet.write_row(row, 0, [
+                    i.get_full_name(),
+                    'employee_id',
+                    '',
+                    '',
+                ])
+                row += 1
+                continue  # Skip further checking on this user.
+
+            # If we haven't cached Ascender data for the user yet, skip them.
+            if not i.alesco_data:
+                continue
+
+            # First name.
+            if 'first_name' in i.alesco_data and i.alesco_data['first_name'].upper() != i.given_name.upper():
+                users_sheet.write_row(row, 0, [
+                    i.get_full_name(),
+                    'given_name',
+                    i.given_name,
+                    i.alesco_data['first_name'],
+                ])
+                row += 1
+
+            # Surname.
+            if 'surname' in i.alesco_data and i.alesco_data['surname'].upper() != i.surname.upper():
+                users_sheet.write_row(row, 0, [
+                    i.get_full_name(),
+                    'surname',
+                    i.surname,
+                    i.alesco_data['surname'],
+                ])
+                row += 1
+
+            # Phone number.
+            if 'work_phone_no' in i.alesco_data and i.alesco_data['work_phone_no'] != i.telephone:
+                users_sheet.write_row(row, 0, [
+                    i.get_full_name(),
+                    'telephone',
+                    i.telephone,
+                    i.alesco_data['work_phone_no'],
+                ])
+                row += 1
+
+            # Cost centre
+            if 'paypoint' in i.alesco_data:
+                cc = False
+                if i.alesco_data['paypoint'].startswith('R') and i.alesco_data['paypoint'].replace('R', '') != i.cost_centre.code.replace('RIA-', ''):
+                    cc = True
+                elif i.alesco_data['paypoint'].startswith('Z') and i.alesco_data['paypoint'].replace('Z', '') != i.cost_centre.code.replace('ZPA-', ''):
+                    cc = True
+                elif i.cost_centre.code.startswith('DBCA') and i.alesco_data['paypoint'] != i.cost_centre.code.replace('DBCA-', ''):
+                    cc = True
+                if cc:
+                    users_sheet.write_row(row, 0, [
+                        i.get_full_name(),
+                        'cost_centre',
+                        i.cost_centre.code,
+                        i.alesco_data['paypoint'],
+                    ])
+                    row += 1
+
+            # Title
+            if 'occup_pos_title' in i.alesco_data and i.alesco_data['occup_pos_title'].upper() != i.title.upper():
+                users_sheet.write_row(row, 0, [
+                    i.get_full_name(),
+                    'title',
+                    i.title,
+                    i.alesco_data['occup_pos_title'],
+                ])
+                row += 1
+
+    return fileobj
