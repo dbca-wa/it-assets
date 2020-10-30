@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
+from fuzzywuzzy import fuzz
 import psycopg2
 import pytz
 from organisation.models import DepartmentUser
@@ -185,24 +186,27 @@ def get_deptuser_no_empid():
 
 def get_ascender_matches():
     """Return a list of possible Ascender matches, in the format:
-    [EMPLOYEE ID,ASCENDER NAME,IT ASSETS NAME, IT ASSETS PK]
+    [IT ASSETS PK, IT ASSETS NAME, ASCENDER NAME, EMPLOYEE ID]
     """
-    users = get_deptuser_no_empid()
+    dept_users = get_deptuser_no_empid()
     ascender_data = ascender_employee_fetch()
-    matches_list = []
+    possible_matches = []
     ascender_jobs = []
 
     for eid, jobs in ascender_data:
         ascender_jobs.append(jobs[0])
 
-    for user in users:
+    for user in dept_users:
         for data in ascender_jobs:
-            if user.given_name.upper() == data['first_name'] and user.surname.upper() == data['surname']:
-                matches_list.append([
-                    data['employee_id'],
-                    '{} {}'.format(data['first_name'], data['surname']),
-                    user.get_full_name(),
-                    user.pk,
-                ])
+            if data['first_name'] and data['surname']:
+                sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
+                fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
+                if sn_ratio > 70 and fn_ratio > 50:
+                    possible_matches.append([
+                        user.pk,
+                        user.get_full_name(),
+                        '{} {}'.format(data['first_name'], data['surname']),
+                        data['employee_id'],
+                    ])
 
-    return matches_list
+    return possible_matches
