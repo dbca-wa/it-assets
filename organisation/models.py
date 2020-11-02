@@ -9,7 +9,7 @@ from mptt.models import MPTTModel, TreeForeignKey
 class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
     """
-    ACTIVE_FILTER = {'active': True, 'email__isnull': False, 'cost_centre__isnull': False, 'contractor': False}
+    ACTIVE_FILTER = {'active': True, 'cost_centre__isnull': False, 'contractor': False}
     # The following choices are intended to match options in Alesco.
     ACCOUNT_TYPE_CHOICES = (
         (2, 'L1 User Account - Permanent'),
