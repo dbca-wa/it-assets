@@ -68,6 +68,8 @@ class ADActionList(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         context['page_title'] = 'Active Directory actions'
         # Breadcrumb links:
         links = [(None, 'AD actions')]
@@ -86,6 +88,8 @@ class ADActionDetail(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         context['page_title'] = 'Active Directory action {}'.format(obj.pk)
         # Breadcrumb links:
         links = [(reverse("ad_action_list"), "AD actions"), (None, obj.pk)]
