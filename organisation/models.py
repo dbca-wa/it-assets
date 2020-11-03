@@ -173,7 +173,7 @@ class DepartmentUser(models.Model):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ''):
                 self.employee_id = None
-        if self.account_type in [5, 9]:  # Shared/role-based account types.
+        if self.account_type in [5, 9, 10]:  # Shared/role-based/system account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
 

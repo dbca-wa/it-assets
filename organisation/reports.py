@@ -1,3 +1,4 @@
+from fuzzywuzzy import fuzz
 import xlsxwriter
 
 
@@ -100,15 +101,16 @@ def department_user_ascender_discrepancies(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Discrepancies')
         users_sheet.write_row('A1', (
-            'NAME', 'IT ASSETS FIELD', 'IT ASSETS VALUE', 'ASCENDER VALUE',
+            'NAME', 'ACCOUNT TYPE', 'IT ASSETS FIELD', 'IT ASSETS VALUE', 'ASCENDER VALUE',
         ))
         row = 1
 
-        for i in users:
+        for user in users:
             # Employee number is missing:
-            if not i.employee_id:
+            if not user.employee_id and user.account_type not in [3, 6, 7, 1]:
                 users_sheet.write_row(row, 0, [
-                    i.get_full_name(),
+                    user.get_full_name(),
+                    user.get_account_type_display(),
                     'employee_id',
                     '',
                     '',
@@ -117,65 +119,85 @@ def department_user_ascender_discrepancies(fileobj, users):
                 continue  # Skip further checking on this user.
 
             # If we haven't cached Ascender data for the user yet, skip them.
-            if not i.alesco_data:
+            if not user.alesco_data:
                 continue
 
             # First name.
-            if 'first_name' in i.alesco_data and i.alesco_data['first_name'].upper() != i.given_name.upper():
-                users_sheet.write_row(row, 0, [
-                    i.get_full_name(),
-                    'given_name',
-                    i.given_name,
-                    i.alesco_data['first_name'],
-                ])
-                row += 1
-
-            # Surname.
-            if 'surname' in i.alesco_data and i.alesco_data['surname'].upper() != i.surname.upper():
-                users_sheet.write_row(row, 0, [
-                    i.get_full_name(),
-                    'surname',
-                    i.surname,
-                    i.alesco_data['surname'],
-                ])
-                row += 1
-
-            # Phone number.
-            if 'work_phone_no' in i.alesco_data and i.alesco_data['work_phone_no'] != i.telephone:
-                users_sheet.write_row(row, 0, [
-                    i.get_full_name(),
-                    'telephone',
-                    i.telephone,
-                    i.alesco_data['work_phone_no'],
-                ])
-                row += 1
-
-            # Cost centre
-            if 'paypoint' in i.alesco_data:
-                cc = False
-                if i.alesco_data['paypoint'].startswith('R') and i.alesco_data['paypoint'].replace('R', '') != i.cost_centre.code.replace('RIA-', ''):
-                    cc = True
-                elif i.alesco_data['paypoint'].startswith('Z') and i.alesco_data['paypoint'].replace('Z', '') != i.cost_centre.code.replace('ZPA-', ''):
-                    cc = True
-                elif i.cost_centre.code.startswith('DBCA') and i.alesco_data['paypoint'] != i.cost_centre.code.replace('DBCA-', ''):
-                    cc = True
-                if cc:
+            if 'first_name' in user.alesco_data:
+                r = fuzz.ratio(user.alesco_data['first_name'].upper(), user.given_name.upper())
+                if r < 90:
                     users_sheet.write_row(row, 0, [
-                        i.get_full_name(),
-                        'cost_centre',
-                        i.cost_centre.code,
-                        i.alesco_data['paypoint'],
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'given_name',
+                        user.given_name,
+                        user.alesco_data['first_name'],
                     ])
                     row += 1
 
-            # Title
-            if 'occup_pos_title' in i.alesco_data and i.alesco_data['occup_pos_title'].upper() != i.title.upper():
-                users_sheet.write_row(row, 0, [
-                    i.get_full_name(),
-                    'title',
-                    i.title,
-                    i.alesco_data['occup_pos_title'],
-                ])
-                row += 1
+            # Surname.
+            if 'surname' in user.alesco_data:
+                r = fuzz.ratio(user.alesco_data['surname'].upper(), user.surname.upper())
+                if r < 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'surname',
+                        user.surname,
+                        user.alesco_data['surname'],
+                    ])
+                    row += 1
+
+            # Phone number.
+            if 'work_phone_no' in user.alesco_data and user.alesco_data['work_phone_no'] and user.telephone:
+                # Remove spaces, brackets and 08 prefix from comparison values.
+                t1 = user.alesco_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
+                if t1.startswith('08'):
+                    t1 = t1[2:]
+                t2 = user.telephone.replace('(', '').replace(')', '').replace(' ', '')
+                if t2.startswith('08'):
+                    t2 = t2[2:]
+                ratio = fuzz.ratio(t1, t2)
+                if ratio <= 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'telephone',
+                        user.telephone,
+                        user.alesco_data['work_phone_no'],
+                    ])
+                    row += 1
+
+            # Cost centre
+            if 'paypoint' in user.alesco_data:
+                cc = False
+                if user.alesco_data['paypoint'].startswith('R') and user.alesco_data['paypoint'].replace('R', '') != user.cost_centre.code.replace('RIA-', ''):
+                    cc = True
+                elif user.alesco_data['paypoint'].startswith('Z') and user.alesco_data['paypoint'].replace('Z', '') != user.cost_centre.code.replace('ZPA-', ''):
+                    cc = True
+                elif user.cost_centre.code.startswith('DBCA') and user.alesco_data['paypoint'] != user.cost_centre.code.replace('DBCA-', ''):
+                    cc = True
+                if cc:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'cost_centre',
+                        user.cost_centre.code,
+                        user.alesco_data['paypoint'],
+                    ])
+                    row += 1
+
+            # Title - use fuzzy string matching to find mismatches that are reasonably different.
+            if 'occup_pos_title' in user.alesco_data:
+                ratio = fuzz.ratio(user.alesco_data['occup_pos_title'].upper(), user.title.upper())
+                if ratio <= 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'title',
+                        user.title,
+                        user.alesco_data['occup_pos_title'],
+                    ])
+                    row += 1
 
     return fileobj
