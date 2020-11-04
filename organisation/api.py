@@ -206,18 +206,11 @@ class DepartmentUserResource(DjangoResource):
 
     def list(self):
         """Pass query params to modify the API output.
-        Include `org_structure=true` and `sync_o365=true` to output only
-        OrgUnits with sync_o365 == True.
         """
         FILTERS = {}
-        sync_o365 = True
-        if 'sync_o365' in self.request.GET and self.request.GET['sync_o365'] == 'false':
-            sync_o365 = False
-        else:
-            sync_o365 = True
         # org_structure response.
         if 'org_structure' in self.request.GET:
-            resp = self.org_structure(sync_o365=sync_o365)
+            resp = self.org_structure()
             cache.set(self.request.get_full_path(), resp, timeout=300)
             return resp
         # DepartmentUser object response.
@@ -404,7 +397,7 @@ class DepartmentUserResource(DjangoResource):
         data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
         return self.formatters.format(self.request, data)
 
-    def org_structure(self, sync_o365=False):
+    def org_structure(self):
         """A custom API endpoint to return the organisation structure: a list
         of each organisational unit's metadata (name, manager, members).
         Includes OrgUnits, cost centres, locations and secondary locations.
@@ -413,14 +406,9 @@ class DepartmentUserResource(DjangoResource):
         # Exclude predefined account types:
         qs = qs.exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
         structure = []
-        if sync_o365:  # Exclude certain things from populating O365/AD
-            orgunits = OrgUnit.objects.filter(active=True, unit_type__in=[0, 1], sync_o365=True)
-            costcentres = []
-            locations = Location.objects.filter(active=True)
-        else:
-            orgunits = OrgUnit.objects.filter(active=True)
-            costcentres = CostCentre.objects.filter(active=True)
-            locations = Location.objects.filter(active=True)
+        orgunits = OrgUnit.objects.filter(active=True)
+        costcentres = CostCentre.objects.filter(active=True)
+        locations = Location.objects.filter(active=True)
         defaultowner = None
         for obj in orgunits:
             members = [d[0] for d in qs.filter(org_unit__in=obj.get_descendants(include_self=True)).values_list('email')]

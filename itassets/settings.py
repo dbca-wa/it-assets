@@ -38,7 +38,6 @@ INSTALLED_APPS = (
     'reversion',
     'crispy_forms',
     'mptt',
-    'django_mptt_admin',
     'leaflet',
     'django_q',
     'rest_framework',

@@ -1,6 +1,3 @@
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-
 from rest_framework import viewsets, serializers
 from rest_framework_recursive.fields import RecursiveField
 
@@ -35,10 +32,7 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'preferred_name', 'email', 'username', 'title',
             'telephone', 'extension', 'mobile_phone',
-            'location',
-            'org_unit',
-            'group_unit',
-            'org_unit_chain',
+            'location', 'org_unit', 'group_unit',
         )
 
 
@@ -50,13 +44,8 @@ class DepartmentUserViewSet(viewsets.ReadOnlyModelViewSet):
     ).prefetch_related(
         'location',
         'org_unit',
-        'org_unit__children',
     ).order_by('name')
     serializer_class = DepartmentUserSerializer
-
-    @method_decorator(cache_page(60 * 5))
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
 
 
 class DepartmentTreeSerializer(serializers.ModelSerializer):

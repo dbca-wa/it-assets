@@ -2,7 +2,6 @@ from django import forms
 from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
-from django_mptt_admin.admin import DjangoMpttAdmin
 from django_q.brokers import get_broker
 from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
@@ -203,14 +202,13 @@ class LocationAdmin(LeafletGeoAdmin):
 
 
 @register(OrgUnit)
-class OrgUnitAdmin(DjangoMpttAdmin):
-    tree_auto_open = True
-    tree_load_on_demand = False
+class OrgUnitAdmin(ModelAdmin):
     list_display = (
         'name', 'unit_type', 'users', 'members', 'it_systems', 'cc', 'acronym',
-        'manager')
+        'manager', 'division_unit',
+    )
     search_fields = ('name', 'acronym', 'manager__name', 'location__name')
-    raw_id_fields = ('manager', 'parent', 'location')
+    raw_id_fields = ('manager', 'parent')
     list_filter = ('unit_type', 'active')
 
     def users(self, obj):

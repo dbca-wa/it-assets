@@ -351,17 +351,6 @@ django-js-asset = "*"
 
 [[package]]
 category = "main"
-description = "Django-mptt-admin provides a nice Django Admin interface for Mptt models"
-name = "django-mptt-admin"
-optional = false
-python-versions = "*"
-version = "1.0.2"
-
-[package.dependencies]
-django-mptt = "*"
-
-[[package]]
-category = "main"
 description = "Pickled object field for Django"
 name = "django-picklefield"
 optional = false
@@ -1120,7 +1109,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "c977db6452cf2f901558d37be493969f506e56e95ff4d0ab8da7f1f5979a5842"
+content-hash = "467b09f3402c0fff6d3dbe356d5754354269ecc0ade5f7915d751af37c94aaac"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1286,11 +1275,6 @@ django-markdownx = [
 django-mptt = [
     {file = "django-mptt-0.11.0.tar.gz", hash = "sha256:dfdb3af75ad27cdd4458b0544ec8574174f2b90f99bc2cafab6a15b4bc1895a8"},
     {file = "django_mptt-0.11.0-py2.py3-none-any.whl", hash = "sha256:90eb236eb4f1a92124bd7c37852bbe09c0d21158477cc237556d59842a91c509"},
-]
-django-mptt-admin = [
-    {file = "django-mptt-admin-1.0.2.tar.gz", hash = "sha256:707607cd266f8bae2fd94bc76c3bd4b2f7bc03d9270fd1296d682ca995c551ee"},
-    {file = "django_mptt_admin-1.0.2-py2.py3-none-any.whl", hash = "sha256:7ba4e4e86ac799e8bc71de43d1fba943b86b9bd37f64edb2033a743ac82edf8f"},
-    {file = "django_mptt_admin-1.0.2-py3.8.egg", hash = "sha256:363e14fc62848f425156718169d8c6daedf016d5d7850bf2cc254bdefb36a5f7"},
 ]
 django-picklefield = [
     {file = "django-picklefield-3.0.1.tar.gz", hash = "sha256:15ccba592ca953b9edf9532e64640329cd47b136b7f8f10f2939caa5f9ce4287"},

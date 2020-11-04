@@ -186,17 +186,11 @@ class DepartmentUser(models.Model):
         return self.children_filtered.values_list('id', flat=True)
 
     @property
-    def org_unit_chain(self):
-        return self.org_unit.get_ancestors(ascending=True, include_self=True).values_list('id', flat=True)
-
-    @property
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
         """
-        if self.org_unit is not None:
-            for org in self.org_unit.get_ancestors(ascending=True):
-                if org.unit_type in (0, 1):
-                    return org
+        if self.org_unit and self.org_unit.division_unit:
+            return self.org_unit.division_unit
         return self.org_unit
 
     def get_office_licence(self):
@@ -496,10 +490,6 @@ class OrgUnit(MPTTModel):
     )
     TYPE_CHOICES_DICT = dict(TYPE_CHOICES)
     unit_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES)
-    ad_guid = models.CharField(
-        max_length=48, unique=True, null=True, editable=False)
-    ad_dn = models.CharField(
-        max_length=512, unique=True, null=True, editable=False)
     name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
     manager = models.ForeignKey(
@@ -510,8 +500,11 @@ class OrgUnit(MPTTModel):
     details = JSONField(null=True, blank=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True)
-    sync_o365 = models.BooleanField(
-        default=True, help_text='Sync this to O365 (creates a security group).')
+    division_unit = models.ForeignKey(
+        'self', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='division_orgunits',
+        help_text='Division-level unit to which this unit belongs',
+    )
     active = models.BooleanField(default=True)
 
     class MPTTMeta:
@@ -583,11 +576,6 @@ class CostCentre(models.Model):
 
     def __str__(self):
         return self.code
-
-    def get_division(self):
-        if not self.org_position:
-            return None
-        return self.org_position.get_ancestors(include_self=True).filter(unit_type=1).first()
 
 
 class CommonFields(models.Model):
