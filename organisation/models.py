@@ -178,14 +178,6 @@ class DepartmentUser(models.Model):
         super(DepartmentUser, self).save(*args, **kwargs)
 
     @property
-    def children_filtered(self):
-        return self.children.filter(**self.ACTIVE_FILTER).exclude(account_type__in=self.ACCOUNT_TYPE_EXCLUDE)
-
-    @property
-    def children_filtered_ids(self):
-        return self.children_filtered.values_list('id', flat=True)
-
-    @property
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
         """
@@ -201,15 +193,6 @@ class DepartmentUser(models.Model):
         elif 'OFFICE 365 E1' in self.assigned_licences:
             return 'Cloud'
         return None
-
-    def get_gal_department(self):
-        """Return a string to place into the "Department" field for the Global Address List.
-        """
-        s = ''
-        unit = self.group_unit
-        if unit:
-            s = '{}'.format(unit.name)
-        return s
 
     def get_full_name(self):
         # Return given_name and surname, with a space in between.
