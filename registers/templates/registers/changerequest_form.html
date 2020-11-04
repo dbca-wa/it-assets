@@ -1,23 +1,47 @@
-{% extends "base.html" %}
+{% extends "base_b4.html" %}
 {% load static %}
 {% load crispy_forms_tags %}
 
-{% block extra_head %}
-<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.23.0/moment.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
-<link href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css" rel="stylesheet">
-<script src="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/js/select2.min.js"></script></script>
-<link href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css" rel="stylesheet" />
+{% block extra_style %}
+{{ block.super }}
+<!-- Kind of dumb, but tempusdominus uses the FA v4.7 CSS for its icons. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/css/tempusdominus-bootstrap-4.min.css" integrity="sha512-PMjWzHVtwxdq7m7GIxBot5vdxUY+5aKP9wpKtvnNBZrVv1srI8tU6xvFMzG8crLNcMj/8Xl/WWmo/oAP/40p1g==" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" />
 <link href="{% static 'css/markdownx-preview.css' %}" rel="stylesheet" />
-<script>
+{% endblock %}
+
+{% block page_content_inner %}
+<div class="row">
+    <div class="col">
+        <h1>{{ page_title }}</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col">
+        <h1>{{ title }}</h1>
+        {% if form.errors %}
+            <div class="alert alert-danger" role="alert">Please correct the error(s) below.</div>
+        {% endif %}
+        {% crispy form %}
+    </div>
+</div>
+{% endblock %}
+
+{% block jquery_version %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.1.2/js/tempusdominus-bootstrap-4.min.js" integrity="sha512-2JBCbWoMJPH+Uj7Wq5OLub8E5edWHlTM4ar/YJkZh3plwB2INhhOC3eDoqHm1Za/ZOSksrLlURLoyXVdfQXqwg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js" integrity="sha512-2ImtlRlf2VVmiGZsjm9bEyhjGW4dU7B6TNwh/hx/iSByxNENtj3WVE6o/9Lj4TJeVXPi4bnOIMXFIJJAeufa0A==" crossorigin="anonymous"></script>
+<script type="text/javascript">
     $(function () {
-        $('.dateinput').datetimepicker({
-            format: 'DD-MM-YYYY',
-        });
-        $('.datetimeinput').datetimepicker({
-            format: 'DD-MM-YYYY HH:mm',
-        });
+        $('#id_test_date').datetimepicker({format: 'DD-MM-YYYY'});
+        $('#id_planned_start').datetimepicker({format: 'DD-MM-YYYY HH:mm'});
+        $('#id_planned_end').datetimepicker({format: 'DD-MM-YYYY HH:mm'});
         $('.select-user-choice').select2({
           minimumInputLength: 3,
           ajax: {
@@ -33,17 +57,4 @@
         $('select#id_it_systems').select2();
     });
 </script>
-<title>{{ title }}</title>
-{% endblock %}
-
-{% block body %}
-<div class="row">
-    <div class="col-xs-12">
-        <h1>{{ title }}</h1>
-        {% if form.errors %}
-            <div class="alert alert-danger" role="alert">Please correct the error(s) below.</div>
-        {% endif %}
-        {% crispy form %}
-    </div>
-</div>
 {% endblock %}

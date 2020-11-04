@@ -38,7 +38,6 @@ INSTALLED_APPS = (
     'reversion',
     'crispy_forms',
     'mptt',
-    'django_mptt_admin',
     'leaflet',
     'django_q',
     'rest_framework',
@@ -49,7 +48,7 @@ INSTALLED_APPS = (
     # Project applications:
     'organisation',
     'registers',
-    'tracking',
+    'tracking',  # Still needed due to legacy migrations.
     'assets',
     'status',
     'nginx',
@@ -298,7 +297,7 @@ REST_FRAMEWORK = {
 }
 
 # crispy_forms settings
-CRISPY_TEMPLATE_PACK = 'bootstrap3'
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # status scanning settings
 STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 600)

@@ -1,5 +1,4 @@
-from six import BytesIO
-import unicodecsv
+from fuzzywuzzy import fuzz
 import xlsxwriter
 
 
@@ -51,101 +50,6 @@ def department_user_export(fileobj, users):
     return fileobj
 
 
-def departmentuser_csv_report():
-    """Output data from all DepartmentUser objects to a CSV, unpacking the
-    various JSONField values.
-    Returns a BytesIO object that can be written to a response or file.
-    """
-    from .models import DepartmentUser
-    FIELDS = [
-        'email', 'username', 'given_name', 'surname', 'name', 'preferred_name', 'title',
-        'name_update_reference', 'employee_id', 'active', 'telephone', 'home_phone',
-        'mobile_phone', 'other_phone', 'extension', 'expiry_date', 'org_unit',
-        'cost_centre', 'manager', 'executive', 'vip', 'security_clearance',
-        'contractor', 'o365_licence', 'shared_account',
-        'notes', 'working_hours', 'org_data', 'alesco_data',
-        'extra_data', 'date_created', 'date_updated', 'ad_guid',
-    ]
-
-    # Get any DepartmentUser with non-null alesco_data field.
-    # alesco_data structure should be consistent to all (or null).
-    du = DepartmentUser.objects.filter(alesco_data__isnull=False)[0]
-    alesco_fields = du.alesco_data.keys()
-    org_fields = {
-        'department': ('units', 0, 'name'),
-        'tier_2': ('units', 1, 'name'),
-        'tier_3': ('units', 2, 'name'),
-        'tier_4': ('units', 3, 'name'),
-        'tier_5': ('units', 4, 'name')
-    }
-
-    header = [f for f in FIELDS]
-    # These fields appended manually:
-    header.append('account_type')
-    header.append('position_type')
-    header += org_fields.keys()
-    header += alesco_fields
-
-    # Get any DepartmentUser with non-null org_data field for the keys.
-    if DepartmentUser.objects.filter(org_data__isnull=False).exists():
-        du = DepartmentUser.objects.filter(org_data__isnull=False)[0]
-        cc_keys = du.org_data['cost_centre'].keys()
-        header += ['cost_centre_{}'.format(k) for k in cc_keys]
-        location_keys = du.org_data['location'].keys()
-        header += ['location_{}'.format(k) for k in location_keys]
-        header.append('secondary_location')
-
-    # Write data for all DepartmentUser objects to the CSV
-    stream = BytesIO()
-    wr = unicodecsv.writer(stream, encoding='utf-8')
-    wr.writerow(header)
-    for u in DepartmentUser.objects.all():
-        record = []
-        for f in FIELDS:
-            record.append(getattr(u, f))
-        try:  # Append account_type display value.
-            record.append(u.get_account_type_display())
-        except:
-            record.append('')
-        try:  # Append position_type display value.
-            record.append(u.get_position_type_display())
-        except:
-            record.append('')
-        for o in org_fields:
-            try:
-                src = u.org_data
-                for x in org_fields[o]:
-                    src = src[x]
-                record.append(src)
-            except:
-                record.append('')
-
-        for a in alesco_fields:
-            try:
-                record.append(u.alesco_data[a])
-            except:
-                record.append('')
-        for i in cc_keys:
-            try:
-                record.append(u.org_data['cost_centre'][i])
-            except:
-                record.append('')
-        for i in location_keys:
-            try:
-                record.append(u.org_data['location'][i])
-            except:
-                record.append('')
-        if u.org_data and 'secondary_location' in u.org_data:
-            record.append(u.org_data['secondary_location'])
-        else:
-            record.append('')
-
-        # Write the row to the CSV stream.
-        wr.writerow(record)
-
-    return stream.getvalue()
-
-
 def user_account_export(fileobj, users):
     """Writes a passed-in queryset of DepartmentUser objects to a file-like object as an
     Excel spreadsheet.
@@ -179,5 +83,121 @@ def user_account_export(fileobj, users):
         users_sheet.set_column('D:D', 50)
         users_sheet.set_column('E:E', 29)
         users_sheet.set_column('F:F', 17)
+
+    return fileobj
+
+
+def department_user_ascender_discrepancies(fileobj, users):
+    """For the passed in queryset of DepartmentUser objects, return an Excel spreadsheet
+    that contains discrepancies between the user data and their associated Ascender HR data.
+    """
+    with xlsxwriter.Workbook(
+        fileobj,
+        {
+            'in_memory': True,
+            'default_date_format': 'dd-mmm-yyyy HH:MM',
+            'remove_timezone': True,
+        },
+    ) as workbook:
+        users_sheet = workbook.add_worksheet('Discrepancies')
+        users_sheet.write_row('A1', (
+            'NAME', 'ACCOUNT TYPE', 'IT ASSETS FIELD', 'IT ASSETS VALUE', 'ASCENDER VALUE',
+        ))
+        row = 1
+
+        for user in users:
+            # Employee number is missing:
+            if not user.employee_id and user.account_type not in [3, 6, 7, 1]:
+                users_sheet.write_row(row, 0, [
+                    user.get_full_name(),
+                    user.get_account_type_display(),
+                    'employee_id',
+                    '',
+                    '',
+                ])
+                row += 1
+                continue  # Skip further checking on this user.
+
+            # If we haven't cached Ascender data for the user yet, skip them.
+            if not user.alesco_data:
+                continue
+
+            # First name.
+            if 'first_name' in user.alesco_data:
+                r = fuzz.ratio(user.alesco_data['first_name'].upper(), user.given_name.upper())
+                if r < 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'given_name',
+                        user.given_name,
+                        user.alesco_data['first_name'],
+                    ])
+                    row += 1
+
+            # Surname.
+            if 'surname' in user.alesco_data:
+                r = fuzz.ratio(user.alesco_data['surname'].upper(), user.surname.upper())
+                if r < 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'surname',
+                        user.surname,
+                        user.alesco_data['surname'],
+                    ])
+                    row += 1
+
+            # Phone number.
+            if 'work_phone_no' in user.alesco_data and user.alesco_data['work_phone_no'] and user.telephone:
+                # Remove spaces, brackets and 08 prefix from comparison values.
+                t1 = user.alesco_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
+                if t1.startswith('08'):
+                    t1 = t1[2:]
+                t2 = user.telephone.replace('(', '').replace(')', '').replace(' ', '')
+                if t2.startswith('08'):
+                    t2 = t2[2:]
+                ratio = fuzz.ratio(t1, t2)
+                if ratio <= 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'telephone',
+                        user.telephone,
+                        user.alesco_data['work_phone_no'],
+                    ])
+                    row += 1
+
+            # Cost centre
+            if 'paypoint' in user.alesco_data:
+                cc = False
+                if user.alesco_data['paypoint'].startswith('R') and user.alesco_data['paypoint'].replace('R', '') != user.cost_centre.code.replace('RIA-', ''):
+                    cc = True
+                elif user.alesco_data['paypoint'].startswith('Z') and user.alesco_data['paypoint'].replace('Z', '') != user.cost_centre.code.replace('ZPA-', ''):
+                    cc = True
+                elif user.cost_centre.code.startswith('DBCA') and user.alesco_data['paypoint'] != user.cost_centre.code.replace('DBCA-', ''):
+                    cc = True
+                if cc:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'cost_centre',
+                        user.cost_centre.code,
+                        user.alesco_data['paypoint'],
+                    ])
+                    row += 1
+
+            # Title - use fuzzy string matching to find mismatches that are reasonably different.
+            if 'occup_pos_title' in user.alesco_data:
+                ratio = fuzz.ratio(user.alesco_data['occup_pos_title'].upper(), user.title.upper())
+                if ratio <= 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'title',
+                        user.title,
+                        user.alesco_data['occup_pos_title'],
+                    ])
+                    row += 1
 
     return fileobj

@@ -1,6 +1,13 @@
 {% load static %}
 {% load changerequest_markdown %}
 
+{% block extra-style %}
+<style>
+    td:not(:last-child) {white-space: nowrap}
+    td:last-child {width: 100%}
+</style>
+{% endblock %}
+
 <table class="table table-striped table-bordered table-condensed">
     <tr>
         <th>Change title</th>

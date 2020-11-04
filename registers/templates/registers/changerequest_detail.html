@@ -1,25 +1,15 @@
-{% extends "base.html" %}
+{% extends "base_b4.html" %}
 
-{% block extra_head %}
-<title>Change request #{{ object }}</title>
-{% endblock %}
-
-{% block body %}
+{% block page_content_inner %}
 <div class="row">
-    <div class="col-xs-12">
-        <a class="btn btn-primary" href="{% url 'change_request_list' %}" role="button"><span class="glyphicon glyphicon-backward" aria-hidden="true"></span> All change requests</a></a>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-xs-12">
-        <h1>Change request #{{ object }}</h1>
+    <div class="col">
+        <h1>{{ page_title }}</h1>
     </div>
 </div>
 
 {% if object.is_draft and not object.is_emergency_change and is_requester %}
 <div class="row">
-    <div class="col-xs-12">
+    <div class="col">
         <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit change request</a></a>
     </div>
 </div>
@@ -28,7 +18,7 @@
 
 {% if object.is_submitted and is_endorser %}
 <div class="row">
-    <div class="col-xs-12">
+    <div class="col">
         <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a></a>
     </div>
 </div>
@@ -37,7 +27,7 @@
 
 {% if object.is_scheduled and user_is_cab %}
 <div class="row">
-    <div class="col-xs-12">
+    <div class="col">
         <a class="btn btn-primary" href="{% url 'change_request_approval' object.id %}" role="button"><span  aria-hidden="true"></span>CAB: approve this change</a></a>
     </div>
 </div>
@@ -46,7 +36,7 @@
 
 {% if may_complete %}
 <div class="row">
-    <div class="col-xs-12">
+    <div class="col">
         <a class="btn btn-primary" href="{% url 'change_request_complete' object.pk %}" role="button">Record change request outcome</a></a>
     </div>
 </div>
@@ -55,7 +45,7 @@
 
 {% if object.is_emergency_change and user_authorised and not object.completed %}
 <div class="row">
-    <div class="col-xs-12">
+    <div class="col">
         <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update details</a></a>
     </div>
 </div>
@@ -63,7 +53,7 @@
 {% endif %}
 
 <div class="row">
-    <div class="col-xs-12">
+    <div class="col">
         {% include 'registers/changerequest_table.html' %}
 
         {% if object.changelog_set.exists and user_authorised %}
