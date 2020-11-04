@@ -49,7 +49,7 @@ INSTALLED_APPS = (
     # Project applications:
     'organisation',
     'registers',
-    'tracking',
+    'tracking',  # Still needed due to legacy migrations.
     'assets',
     'status',
     'nginx',

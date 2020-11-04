@@ -8,7 +8,6 @@ from organisation.api import DepartmentUserResource, LocationResource, UserSelec
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
 from registers.api import ITSystemResource
 from registers.models import ITSystem
-# from tracking.api import EC2InstanceResource, FreshdeskTicketResource
 
 
 def recursive_node_to_dict(node):

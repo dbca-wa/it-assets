@@ -4,7 +4,6 @@ from django.test import Client
 from mixer.backend.django import mixer
 from itassets.test_api import ApiTestCase
 
-from tracking.models import Computer
 User = get_user_model()
 
 
@@ -17,9 +16,6 @@ class RegistersAdminTestCase(ApiTestCase):
         self.admin_user = mixer.blend(User, username='admin', is_superuser=True, is_staff=True)
         self.admin_user.set_password('pass')
         self.admin_user.save()
-        # Create some Computers
-        self.com1 = mixer.blend(Computer)
-        self.com2 = mixer.blend(Computer)
         # Log in as admin user by default
         self.client.login(username='admin', password='pass')
 
