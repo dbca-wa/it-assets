@@ -132,18 +132,18 @@ class ITSystem(CommonFields):
         (4, 'Retain 12 months after data migration and decommission (may retain for reference)'),
     )
 
+    system_id = models.CharField(max_length=16, unique=True, verbose_name='system ID')
     name = models.CharField(max_length=128, unique=True)
     acronym = models.CharField(max_length=16, null=True, blank=True)
-    system_id = models.CharField(max_length=16, unique=True, verbose_name='system ID')
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=4)
     link = models.CharField(
         max_length=2048, null=True, blank=True, help_text='URL to web application')
     description = models.TextField(blank=True)
     owner = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True,
+        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
         related_name='systems_owned', help_text='IT system owner')
     technology_custodian = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True,
+        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
         related_name='systems_tech_custodianed', help_text='Technology custodian')
     information_custodian = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
