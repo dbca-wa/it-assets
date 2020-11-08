@@ -9,8 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
-from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, TemplateView, FormView
-import openpyxl
+from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, TemplateView
 from pytz import timezone
 import re
 
@@ -21,7 +20,7 @@ from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
-    EmergencyChangeRequestForm, ChangeRequestApprovalForm, ITSystemImportForm,
+    EmergencyChangeRequestForm, ChangeRequestApprovalForm,
 )
 from .reports import (
     it_system_export, itsr_staff_discrepancies, change_request_export,
@@ -30,176 +29,6 @@ from .reports import (
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
-
-
-class ITSystemImport(LoginRequiredMixin, FormView):
-    """A custom view to allow upload of IT Systems from an Excel spreadsheet export from Sharepoint.
-    """
-    template_name = "registers/itsystem_import.html"
-    form_class = ITSystemImportForm
-
-    def get_success_url(self):
-        return reverse('itsystem_import')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Upload IT System Register spreadsheet'
-        return context
-
-    def form_valid(self, form):
-        wb = openpyxl.load_workbook(form.files['spreadsheet'], read_only=True)
-        sheet = wb['query']
-        cell_has_data = True
-        row = 2
-        prod_systems = ITSystem.objects.filter(status__in=[0, 2])
-
-        while cell_has_data:
-            if sheet['A{}'.format(row)].value:
-                s = sheet['A{}'.format(row)].value
-                system_id = s.split()[0]
-                if ITSystem.objects.filter(system_id=system_id).exists():
-                    it_system = ITSystem.objects.get(system_id=system_id)
-                    prod_systems = prod_systems.exclude(pk=it_system.pk)
-                    update = False
-
-                    # Name
-                    name = s.partition(' - ')[-1]
-                    if name and name != it_system.name:
-                        it_system.name = name
-                        update = True
-                        messages.success(self.request, 'Changing {} name to {}'.format(it_system, name))
-
-                    # Status
-                    s = sheet['B{}'.format(row)].value
-                    if s == 'Production' and s != it_system.get_status_display():
-                        it_system.status = 0
-                        update = True
-                        messages.success(self.request, 'Changing {} status to Production'.format(it_system))
-                    elif s == 'Production (Legacy)' and s != it_system.get_status_display():
-                        it_system.status = 2
-                        update = True
-                        messages.success(self.request, 'Changing {} status to Production (Legacy)'.format(it_system))
-
-                    # System owner
-                    s = sheet['D{}'.format(row)].value
-                    if s:
-                        try:
-                            given_name = s.split()[0]
-                            surname = ' '.join(s.split()[1:])
-                            if DepartmentUser.objects.filter(given_name=given_name, surname=surname).exists():
-                                du = DepartmentUser.objects.filter(given_name=given_name, surname=surname).first()
-                                if du != it_system.owner:
-                                    it_system.owner = du
-                                    update = True
-                                    messages.success(self.request, 'Changing {} owner to {}'.format(it_system, du.name))
-                            elif DepartmentUser.objects.filter(name=s).exists():
-                                du = DepartmentUser.objects.filter(name=s).first()
-                                if du != it_system.owner:
-                                    it_system.owner = du
-                                    update = True
-                                    messages.success(self.request, 'Changing {} owner to {}'.format(it_system, du.name))
-                            else:
-                                messages.warning(self.request, 'Owner {} not found ({})'.format(s, it_system))
-                        except:
-                            messages.warning(self.request, 'Failed to parse owner name {} ({})'.format(s, it_system))
-
-                    # Technology custodian
-                    s = sheet['E{}'.format(row)].value
-                    if s:
-                        try:
-                            given_name = s.split()[0]
-                            surname = ' '.join(s.split()[1:])
-                            if DepartmentUser.objects.filter(given_name=given_name, surname=surname).exists():
-                                du = DepartmentUser.objects.filter(given_name=given_name, surname=surname).first()
-                                if du != it_system.technology_custodian:
-                                    it_system.technology_custodian = du
-                                    update = True
-                                    messages.success(self.request, 'Changing {} tech custodian to {}'.format(it_system, du.name))
-                            elif DepartmentUser.objects.filter(name=s).exists():
-                                du = DepartmentUser.objects.filter(name=s).first()
-                                if du != it_system.technology_custodian:
-                                    it_system.technology_custodian = du
-                                    update = True
-                                    messages.success(self.request, 'Changing {} tech custodian to {}'.format(it_system, du.name))
-                            else:
-                                messages.warning(self.request, 'Tech custodian {} not found ({})'.format(s, it_system))
-                        except:
-                            messages.error(self.request, 'Failed to parse tech custodian name {} ({})'.format(s, it_system))
-
-                    # Information custodian
-                    s = sheet['F{}'.format(row)].value
-                    if s:
-                        try:
-                            given_name = s.split()[0]
-                            surname = ' '.join(s.split()[1:])
-                            if DepartmentUser.objects.filter(given_name=given_name, surname=surname).exists():
-                                du = DepartmentUser.objects.filter(given_name=given_name, surname=surname).first()
-                                if du != it_system.information_custodian:
-                                    it_system.information_custodian = du
-                                    update = True
-                                    messages.success(self.request, 'Changing {} info custodian to {}'.format(it_system, du.name))
-                            elif DepartmentUser.objects.filter(name=s).exists():
-                                du = DepartmentUser.objects.filter(name=s).first()
-                                if du != it_system.information_custodian:
-                                    it_system.information_custodian = du
-                                    update = True
-                                    messages.success(self.request, 'Changing {} info custodian to {}'.format(it_system, du.name))
-                            else:
-                                messages.warning(self.request, 'Info custodian {} not found ({})'.format(s, it_system))
-                        except:
-                            messages.error(self.request, 'Failed to parse info custodian name {} ({})'.format(s, it_system))
-
-                    # Seasonality
-                    s = sheet['G{}'.format(row)].value
-                    if s and s != it_system.get_seasonality_display():
-                        for i in ITSystem.SEASONALITY_CHOICES:
-                            if s == i[1]:
-                                it_system.seasonality = i[0]
-                                update = True
-                                messages.success(self.request, 'Changing {} seasonality to {}'.format(it_system, s))
-
-                    # Availability
-                    s = sheet['H{}'.format(row)].value
-                    if s and s != it_system.get_availability_display():
-                        for i in ITSystem.AVAILABILITY_CHOICES:
-                            if s == i[1]:
-                                it_system.availability = i[0]
-                                update = True
-                                messages.success(self.request, 'Changing {} availability to {}'.format(it_system, s))
-
-                    # Link
-                    s = sheet['I{}'.format(row)].value
-                    if s and s.strip() != it_system.link:
-                        it_system.link = s.strip()
-                        update = True
-                        messages.success(self.request, 'Changing {} link to {}'.format(it_system, s))
-
-                    # Description
-                    s = sheet['J{}'.format(row)].value
-                    if s and s != it_system.description:
-                        it_system.description = s
-                        update = True
-                        messages.success(self.request, 'Changing {} description to {}'.format(it_system, s))
-
-                    # Finally, save any changes.
-                    if update:
-                        it_system.save()
-
-                else:
-                    messages.warning(self.request, 'FAILED TO MATCH: {} (possible new system)'.format(s))
-            else:
-                cell_has_data = False
-            row += 1
-
-        if prod_systems:
-            messages.info(self.request, 'These systems not found in upload (status changed to Unknown): {}'.format(', '.join(i.name for i in prod_systems)))
-            for it_system in prod_systems:
-                it_system.status = 4
-                it_system.save()
-
-        return super().form_valid(form)
 
 
 class ITSystemExport(LoginRequiredMixin, View):
