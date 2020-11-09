@@ -203,12 +203,9 @@ class LocationAdmin(LeafletGeoAdmin):
 
 @register(OrgUnit)
 class OrgUnitAdmin(ModelAdmin):
-    list_display = (
-        'name', 'unit_type', 'users', 'members', 'it_systems', 'cc', 'acronym',
-        'manager', 'division_unit',
-    )
+    list_display = ('name', 'unit_type', 'division_unit', 'users', 'cc', 'manager', 'active')
     search_fields = ('name', 'acronym', 'manager__name', 'location__name')
-    raw_id_fields = ('manager', 'parent')
+    raw_id_fields = ('manager',)
     list_filter = ('unit_type', 'active')
 
     def users(self, obj):
@@ -218,21 +215,6 @@ class OrgUnitAdmin(ModelAdmin):
             '<a href="{}?org_unit={}">{}</a>',
             reverse('admin:organisation_departmentuser_changelist'),
             obj.pk, dusers.count())
-
-    def members(self, obj):
-        return format_html(
-            '<a href="{}?org_unit__in={}">{}</a>',
-            reverse('admin:organisation_departmentuser_changelist'),
-            ','.join([str(o.pk)
-                      for o in obj.get_descendants(include_self=True)]),
-            obj.members().count()
-        )
-
-    def it_systems(self, obj):
-        return format_html(
-            '<a href="{}?org_unit={}">{}</a>',
-            reverse('admin:registers_itsystem_changelist'),
-            obj.pk, obj.itsystem_set.count())
 
 
 @register(CostCentre)

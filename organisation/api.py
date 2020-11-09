@@ -83,8 +83,6 @@ class DepartmentUserResource(DjangoResource):
     """An API Resource class to represent DepartmentUser objects.
     This class is used to create & update synchronised user account data from
     Active Directory.
-    It also includes custom endpoints to return the P&W organisation
-    structure membership.
     """
     COMPACT_ARGS = (
         'pk', 'name', 'title', 'email', 'telephone',
@@ -96,7 +94,8 @@ class DepartmentUserResource(DjangoResource):
         'position_type', 'account_type', 'shared_account', 'org_unit',
     )
     MINIMAL_ARGS = (
-        'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone')
+        'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone',
+    )
 
     formatters = FieldsFormatter(formatters={
         'position_type': format_position_type,
@@ -208,12 +207,6 @@ class DepartmentUserResource(DjangoResource):
         """Pass query params to modify the API output.
         """
         FILTERS = {}
-        # org_structure response.
-        if 'org_structure' in self.request.GET:
-            resp = self.org_structure()
-            cache.set(self.request.get_full_path(), resp, timeout=300)
-            return resp
-        # DepartmentUser object response.
         # Some of the request parameters below are mutually exclusive.
         if 'all' in self.request.GET:
             # Return all objects, including those deleted in AD.
@@ -396,51 +389,6 @@ class DepartmentUserResource(DjangoResource):
 
         data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
         return self.formatters.format(self.request, data)
-
-    def org_structure(self):
-        """A custom API endpoint to return the organisation structure: a list
-        of each organisational unit's metadata (name, manager, members).
-        Includes OrgUnits, cost centres, locations and secondary locations.
-        """
-        qs = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
-        # Exclude predefined account types:
-        qs = qs.exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-        structure = []
-        orgunits = OrgUnit.objects.filter(active=True)
-        costcentres = CostCentre.objects.filter(active=True)
-        locations = Location.objects.filter(active=True)
-        defaultowner = None
-        for obj in orgunits:
-            members = [d[0] for d in qs.filter(org_unit__in=obj.get_descendants(include_self=True)).values_list('email')]
-            # We also need to iterate through DepartmentUsers to add those with
-            # secondary OrgUnits to each OrgUnit.
-            for i in DepartmentUser.objects.filter(org_units_secondary__isnull=False):
-                if obj in i.org_units_secondary.all():
-                    members.append(i.email)
-            structure.append({'id': 'db-org_{}'.format(obj.pk),
-                              'name': str(obj),
-                              'email': slugify(obj.name),
-                              'owner': getattr(obj.manager, 'email', defaultowner),
-                              'members': list(set(members))})
-        for obj in costcentres:
-            members = [d[0] for d in qs.filter(cost_centre=obj).values_list('email')]
-            structure.append({'id': 'db-cc_{}'.format(obj.pk),
-                              'name': str(obj),
-                              'email': slugify(obj.name),
-                              'owner': getattr(obj.manager, 'email', defaultowner),
-                              'members': list(set(members))})
-        for obj in locations:
-            members = [d[0] for d in qs.filter(location=obj).values_list('email')]
-            structure.append({'id': 'db-loc_{}'.format(obj.pk),
-                              'name': str(obj),
-                              'email': slugify(obj.name) + '-location',
-                              'owner': getattr(obj.manager, 'email', defaultowner),
-                              'members': members})
-        for row in structure:
-            if row['members']:
-                row['email'] = '{}@{}'.format(
-                    row['email'], row['members'][0].split('@', 1)[1])
-        return structure
 
 
 class LocationResource(CSVDjangoResource):
