@@ -37,7 +37,7 @@ INSTALLED_APPS = (
     'corsheaders',
     'reversion',
     'crispy_forms',
-    'mptt',
+    'mptt',  # This needs to remain until migrations are reset.
     'leaflet',
     'django_q',
     'rest_framework',

@@ -164,17 +164,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-    def test_org_structure(self):
-        """Test the DepartmentUserResource org_structure response
-        """
-        url = '/api/users/?org_structure=true'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        # User 1 will be present in the response.
-        self.assertContains(response, self.user1.email)
-        # Division 1 will be present in the response.
-        self.assertContains(response, self.div1.name)
-
     def test_create_invalid(self):
         """Test the DepartmentUserResource create response with missing data
         """

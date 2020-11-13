@@ -1,5 +1,4 @@
 from django.conf.urls import include, url
-from mptt.templatetags.mptt_tags import cache_tree_children
 from restless.dj import DjangoResource
 from restless.resources import skip_prepare
 
@@ -10,41 +9,22 @@ from registers.api import ITSystemResource
 from registers.models import ITSystem
 
 
-def recursive_node_to_dict(node):
-    # http://stackoverflow.com/questions/12556268/fastest-way-to-create-json-to-reflect-a-tree-structure-in-python-django-using
-    result = {
-        'name': node.name, 'id': node.pk,
-        'children': [recursive_node_to_dict(c) for c in node._cached_children]
-    }
-    if not result['children']:
-        del result['children']
-    return result
-
-
 class OptionResource(DjangoResource):
     """Returns serialised lists of object data. Request parameter must include
     ``list`` value of a defined function (below), minus the ``data_`` prefix.
     Example:
-    /api/options?list=org_structure
+    /api/options?list=cost_centre
     """
 
     @skip_prepare
     def list(self):
         return getattr(self, 'data_' + self.request.GET['list'])()
 
-    def data_org_structure(self):
-        # Return the current org structure, excluding inactive OrgUnits.
-        return [recursive_node_to_dict(cache_tree_children(dept.get_descendants_active(include_self=True))[0])
-                for dept in OrgUnit.objects.filter(unit_type=0, active=True).order_by('name')]
-
     def data_cost_centre(self):
         return ['CC{} / {}'.format(*c) for c in CostCentre.objects.filter(active=True).exclude(org_position__name__icontains='inactive').values_list('code', 'org_position__name')]
 
     def data_org_unit(self):
-        if 'parent_id' in self.request.GET and self.request.GET['parent_id']:
-            # Filter OrgUnits to those with the specified parent.
-            return [{'name': i.name, 'id': i.pk, 'parent_id': i.parent.pk} for i in OrgUnit.objects.filter(active=True, parent__pk=self.request.GET['parent_id']).order_by('name')]
-        return [{'name': i.name, 'id': i.pk, 'parent_id': i.parent.pk if i.parent else ''} for i in OrgUnit.objects.filter(active=True).order_by('name')]
+        return [{'name': i.name, 'id': i.pk, 'division_unit_id': i.division_unit.pk if i.division_unit else ''} for i in OrgUnit.objects.filter(active=True).order_by('name')]
 
     def data_dept_user(self):
         return [u[0] for u in DepartmentUser.objects.filter(

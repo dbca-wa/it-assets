@@ -163,3 +163,5 @@ class Command(BaseCommand):
             for it_system in prod_systems:
                 it_system.status = 4
                 it_system.save()
+
+        self.stdout.write(self.style.SUCCESS('Completed'))

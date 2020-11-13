@@ -32,18 +32,17 @@ class ApiTestCase(TestCase):
         self.loc1 = mixer.blend(Location, manager=None)
         self.loc2 = mixer.blend(Location, manager=None)
         # Generate a basic org structure.
-        # NOTE: don't use mixer to create OrgUnit objects (it breaks MPTT).
         self.dept = OrgUnit.objects.create(name='Department 1', unit_type=0, acronym='DEPT', active=True)
         self.div1 = OrgUnit.objects.create(
-            name='Divison 1', unit_type=1, parent=self.dept, location=self.loc1, acronym='DIV1', active=True)
+            name='Divison 1', unit_type=1, division_unit=self.dept, location=self.loc1, acronym='DIV1', active=True)
         self.branch1 = OrgUnit.objects.create(
-            name='Branch 1', unit_type=2, parent=self.div1, location=self.loc1, acronym='BRANCH1', active=True)
+            name='Branch 1', unit_type=2, division_unit=self.div1, location=self.loc1, acronym='BRANCH1', active=True)
         self.cc1 = CostCentre.objects.create(
             name='Cost centre 1', code='001', division_name=self.div1.name, org_position=self.div1)
         self.div2 = OrgUnit.objects.create(
-            name='Divison 2', unit_type=1, parent=self.dept, location=self.loc2, acronym='DIV2', active=True)
+            name='Divison 2', unit_type=1, division_unit=self.dept, location=self.loc2, acronym='DIV2', active=True)
         self.branch2 = OrgUnit.objects.create(
-            name='Branch 2', unit_type=2, parent=self.div2, location=self.loc2, acronym='BRANCH2', active=True)
+            name='Branch 2', unit_type=2, division_unit=self.div2, location=self.loc2, acronym='BRANCH2', active=True)
         self.cc2 = CostCentre.objects.create(
             name='Cost centre 2', code='002', division_name=self.div2.name, org_position=self.div2)
         # Give each of the org units some members.

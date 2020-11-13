@@ -3,7 +3,6 @@ from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 from django.utils.html import format_html
 from json2html import json2html
-from mptt.models import MPTTModel, TreeForeignKey
 
 
 class DepartmentUser(models.Model):
@@ -455,7 +454,7 @@ class Location(models.Model):
             'id', 'name', 'address', 'pobox', 'phone', 'fax', 'email') if getattr(self, k)}
 
 
-class OrgUnit(MPTTModel):
+class OrgUnit(models.Model):
     """Represents an element within the Department organisational hierarchy.
     """
     TYPE_CHOICES = (
@@ -477,10 +476,6 @@ class OrgUnit(MPTTModel):
     acronym = models.CharField(max_length=16, null=True, blank=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
-    parent = TreeForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='children', db_index=True)
-    details = JSONField(null=True, blank=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True)
     division_unit = models.ForeignKey(
@@ -490,9 +485,6 @@ class OrgUnit(MPTTModel):
     )
     active = models.BooleanField(default=True)
 
-    class MPTTMeta:
-        order_insertion_by = ['name']
-
     class Meta:
         ordering = ('name',)
 
@@ -501,20 +493,6 @@ class OrgUnit(MPTTModel):
 
     def __str__(self):
         return self.name
-
-    def members(self):
-        return DepartmentUser.objects.filter(org_unit__in=self.get_descendants(
-            include_self=True), **DepartmentUser.ACTIVE_FILTER)
-
-    def children_active(self):
-        return self.children.filter(active=True)
-
-    def get_descendants_active(self, *args, **kwargs):
-        """Exclude 'inactive' OrgUnit objects from get_descendants() queryset.
-        Returns a list of OrgUnits.
-        """
-        descendants = self.get_descendants(*args, **kwargs).exclude(active=False)
-        return descendants
 
 
 DIVISION_CHOICES = (
