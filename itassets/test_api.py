@@ -27,7 +27,7 @@ class ApiTestCase(TestCase):
         mixer.cycle(8).blend(
             DepartmentUser, username=mixer.RANDOM, photo=None, active=True,
             email=random_dbca_email, org_unit=None,
-            cost_centre=None, ad_guid=uuid1, o365_licence=False, in_sync=False)
+            cost_centre=None, ad_guid=uuid1, in_sync=False)
         # Generate some locations.
         self.loc1 = mixer.blend(Location, manager=None)
         self.loc2 = mixer.blend(Location, manager=None)

@@ -35,7 +35,7 @@ CREATE FOREIGN TABLE "{foreign_schema}"."{foreign_table}" (
   occup_term_date DATE,
   position_id VARCHAR(10),
   occup_pos_title VARCHAR(100),
-  clevel1_id VARCHAR(50), 
+  clevel1_id VARCHAR(50),
   clevel1_desc VARCHAR(50),
   clevel5_id VARCHAR(50),
   clevel5_desc VARCHAR(50),
@@ -145,26 +145,6 @@ def update_manager_from_alesco(user):
             user.save()
 
 
-def update_term_date_from_alesco(user):
-    term_date = None
-
-    if user.alesco_data:
-        term_dates = [date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
-        if term_dates:
-            term_date = max(term_dates)
-            term_date = alesco_date_to_dt(term_date) if term_date and term_date != ALESCO_DATE_MAX else None
-
-    if term_date:
-        stored_term_date = TZ.normalize(user.date_hr_term) if user.date_hr_term else None
-        if term_date != stored_term_date:
-
-            if user.hr_auto_expiry:
-                logger.info('Updating expiry for {} from {} to {}'.format(user.email, stored_term_date, term_date))
-                user.expiry_date = term_date
-            user.date_hr_term = term_date
-            user.save()
-
-
 def update_title_from_alesco(user):
     title = None
 
@@ -197,7 +177,6 @@ def update_location_from_alesco(user):
 
 def update_user_from_alesco(user):
     update_manager_from_alesco(user)
-    update_term_date_from_alesco(user)
     update_title_from_alesco(user)
     update_location_from_alesco(user)
 
@@ -240,7 +219,7 @@ def alesco_db_fetch():
             except:
                 logger.error(traceback.format_exc())
 
-                
+
 
 
 
@@ -373,19 +352,6 @@ def departmentuser_alesco_descrepancy(users):
                         'Title mismatch',
                         alesco_record['occup_pos_title'],
                         user.title
-                    )
-                )
-
-        if user.expiry_date:
-            if alesco_record['job_term_date'] != user.expiry_date.date():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Expiry date mismatch',
-                        alesco_record['job_term_date'].strftime('%d/%b/%Y'),
-                        user.expiry_date.strftime('%d/%b/%Y')
                     )
                 )
 

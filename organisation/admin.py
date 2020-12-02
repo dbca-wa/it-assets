@@ -56,7 +56,6 @@ class DepartmentUserAdmin(VersionAdmin):
     list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
-    filter_horizontal = ('secondary_locations',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
         'assigned_licences', 'proxy_addresses',

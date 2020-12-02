@@ -210,7 +210,6 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         data = {
             'email': '{}@dbca.wa.gov.au'.format(username),
             'name': 'John Doe',
-            'expiry_date': datetime.now().isoformat(),
             'active': True,
             'given_name': 'John',
             'surname': 'Doe',
@@ -224,17 +223,14 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         """Test the DepartmentUserResource update response
         """
         tz = pytz.timezone(settings.TIME_ZONE)
-        self.assertFalse(self.user1.o365_licence)
         url = '/api/users/{}/'.format(self.user1.ad_guid)
         data = {
             'Surname': 'Lebowski',
             'title': 'Bean Counter',
-            'o365_licence': True,
             'email': 'l@example.com',
             'name': 'Mike',
             'username': 'MikeLebowski',
             'ad_guid': '123',
-            'expiry_date': '2019-03-12',
             'given_name': 'Mike',
             'active': True,
             'deleted': False,
@@ -248,10 +244,8 @@ class DepartmentUserResourceTestCase(ApiTestCase):
         self.assertEqual(user.email, data['email'])
         self.assertEqual(user.username, data['username'])
         self.assertEqual(user.ad_guid, data['ad_guid'])
-        self.assertEqual(user.expiry_date, tz.localize(parse(data['expiry_date'])))
         self.assertEqual(user.given_name, data['given_name'])
         self.assertEqual(user.active, data['active'])
-        self.assertTrue(user.o365_licence)
 
     def test_disable(self):
         """Test the DepartmentUserResource update response (set user as inactive)

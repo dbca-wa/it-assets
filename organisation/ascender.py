@@ -15,6 +15,7 @@ FOREIGN_TABLE_FIELDS = (
     "surname",
     "first_name",
     "second_name",
+    "preferred_name",
     "clevel1_id",
     "clevel1_desc",
     "clevel2_desc",
@@ -36,7 +37,6 @@ FOREIGN_TABLE_FIELDS = (
     ("occup_term_date", "job_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
     "work_phone_no",
-    #("manager_emp_no", "manager_employee_no"),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(

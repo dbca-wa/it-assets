@@ -93,18 +93,17 @@ class DepartmentUser(models.Model):
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
         help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
-    preferred_name = models.CharField(
-        max_length=256, null=True, blank=True, help_text='Employee-editable preferred name.')
+    preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
     position_type = models.PositiveSmallIntegerField(
         choices=POSITION_TYPE_CHOICES, null=True, blank=True, default=0,
-        help_text='Employee position working arrangement (should match Alesco status)')
+        help_text='Employee position working arrangement (Ascender employment status)')
     employee_id = models.CharField(
         max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
-        help_text='HR Employee ID.')
+        help_text='Ascender employee number')
     name_update_reference = models.CharField(
         max_length=512, null=True, blank=True, verbose_name='update reference',
         help_text='Reference for name/CC change request')
@@ -129,6 +128,10 @@ class DepartmentUser(models.Model):
         default=False, verbose_name='security clearance granted',
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
+    shared_account = models.BooleanField(
+        default=False, editable=False, help_text='Automatically set from account type.')
+    username = models.CharField(
+        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
 
     # Cache of Ascender data
     alesco_data = JSONField(
@@ -136,32 +139,8 @@ class DepartmentUser(models.Model):
     alesco_data_updated = models.DateTimeField(null=True, blank=True)
 
     # Fields below are likely to be deprecated and progressively removed.
-    username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
-    shared_account = models.BooleanField(
-        default=False, editable=False, help_text='Automatically set from account type.')
-    cost_centres_secondary = models.ManyToManyField(
-        'organisation.CostCentre', related_name='cost_centres_secondary', editable=False,
-        blank=True, help_text='NOTE: this provides security group access (e.g. T drives).')
-    org_units_secondary = models.ManyToManyField(
-        'organisation.OrgUnit', related_name='org_units_secondary', blank=True, editable=False,
-        help_text='NOTE: this provides email distribution group access.')
-    org_data = JSONField(null=True, blank=True, editable=False)
-    secondary_locations = models.ManyToManyField(
-        "organisation.Location", blank=True, related_name='departmentuser_secondary',
-        help_text="Only to be used for staff working in additional loactions from their cost centre")
     expiry_date = models.DateTimeField(
         null=True, blank=True, help_text='Date that the AD account will expire.')
-    date_hr_term = models.DateTimeField(
-        null=True, blank=True, editable=False, verbose_name='HR termination date',
-        help_text='Date on file with HR as the job termination date.')
-    hr_auto_expiry = models.BooleanField(
-        default=False, verbose_name='HR auto expiry',
-        help_text='When the HR termination date changes, automatically update the expiry date to match.')
-    o365_licence = models.NullBooleanField(
-        default=None, editable=False,
-        help_text='Account consumes an Office 365 licence.')
-    extra_data = JSONField(null=True, blank=True)
 
     def __str__(self):
         return self.email
@@ -187,10 +166,11 @@ class DepartmentUser(models.Model):
     def get_office_licence(self):
         """Return O365 licence terms familar to the directors.
         """
-        if 'OFFICE 365 E5' in self.assigned_licences:
-            return 'On-premise'
-        elif 'OFFICE 365 E1' in self.assigned_licences:
-            return 'Cloud'
+        if self.assigned_licences:
+            if 'OFFICE 365 E5' in self.assigned_licences:
+                return 'On-premise'
+            elif 'OFFICE 365 E1' in self.assigned_licences:
+                return 'Cloud'
         return None
 
     def get_full_name(self):

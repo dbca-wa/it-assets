@@ -299,10 +299,6 @@ class DepartmentUserResource(DjangoResource):
             user.ad_guid = self.data['ad_guid']
         if 'azure_guid' in self.data:  # Exception to the if/elif rule.
             user.azure_guid = self.data['azure_guid']
-        if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
-            user.expiry_date = parse(self.data['AccountExpirationDate'])
-        elif 'expiry_date' in self.data and self.data['expiry_date']:
-            user.expiry_date = parse(self.data['expiry_date'])
         if 'Title' in self.data:
             user.title = self.data['Title']
         elif 'title' in self.data:
@@ -355,10 +351,6 @@ class DepartmentUserResource(DjangoResource):
                 user.ad_guid = self.data['ObjectGUID']
             elif 'ad_guid' in self.data and self.data['ad_guid']:
                 user.ad_guid = self.data['ad_guid']
-            if 'AccountExpirationDate' in self.data and self.data['AccountExpirationDate']:
-                user.expiry_date = parse(self.data['AccountExpirationDate'])
-            elif 'expiry_date' in self.data and self.data['expiry_date']:
-                user.expiry_date = parse(self.data['expiry_date'])
             if 'Title' in self.data and self.data['Title']:
                 user.title = self.data['Title']
             elif 'title' in self.data and self.data['title']:
@@ -371,8 +363,6 @@ class DepartmentUserResource(DjangoResource):
                 user.surname = self.data['Surname']
             elif 'surname' in self.data and self.data['surname']:
                 user.surname = self.data['surname']
-            if 'o365_licence' in self.data:  # Boolean; don't only work on True!
-                user.o365_licence = self.data['o365_licence']
             if 'azure_guid' in self.data and self.data['azure_guid']:
                 user.azure_guid = self.data['azure_guid']
             if 'Enabled' in self.data:  # Boolean; don't only work on True!

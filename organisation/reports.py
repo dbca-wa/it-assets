@@ -26,14 +26,14 @@ def department_user_export(fileobj, users):
                 i.title,
                 i.get_account_type_display(),
                 i.get_position_type_display(),
-                i.expiry_date if i.expiry_date else '',
+                '',
                 i.cost_centre.code if i.cost_centre else '',
                 i.cost_centre.manager.get_full_name() if i.cost_centre and i.cost_centre.manager else '',
                 i.cost_centre.manager.email if i.cost_centre and i.cost_centre.manager else '',
                 i.cost_centre.business_manager.get_full_name() if i.cost_centre and i.cost_centre.business_manager else '',
                 i.cost_centre.business_manager.email if i.cost_centre and i.cost_centre.business_manager else '',
                 i.active,
-                i.o365_licence,
+                i.get_office_licence(),
             ])
             row += 1
         users_sheet.set_column('A:A', 35)

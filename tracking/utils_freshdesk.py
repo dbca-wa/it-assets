@@ -105,15 +105,6 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
             fd = contacts[user.email.lower()]
             data = {}
             user_sync = False
-            # use extra attributes from org_data, if available
-            cost_centre = user.org_data.get('cost_centre', {}).get('code', '') if user.org_data else None
-            try:
-                cost_centre = int(cost_centre)  # The cost_centre custom field in FD must be an integer.
-            except:
-                cost_centre = None
-            physical_location = user.org_data.get('location', {}).get('name', '') if user.org_data else None
-            department = user.org_data.get('units', []) if user.org_data else []
-            department = department[0].get('name', '') if len(department) > 0 else None
             changes = []
 
             if user.name != fd['name']:
@@ -128,24 +119,6 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
                 user_sync = True
                 data['job_title'] = user.title
                 changes.append('job_title')
-            if department and department in companies and fd['company_id'] != companies[department]['id']:
-                user_sync = True
-                data['company_id'] = companies[department]['id']
-                changes.append('company_id')
-            # Custom fields in Freshdesk: Cost Centre no.
-            if 'custom_fields' in fd:  # Field may not exist in the API obj.
-                if cost_centre and fd['custom_fields']['cost_centre'] != cost_centre:
-                    user_sync = True
-                    data['custom_fields'] = {'cost_centre': cost_centre}
-                    changes.append('cost_centre')
-                # Custom fields in Freshdesk: Physical location
-                if physical_location and fd['custom_fields']['location'] != physical_location:
-                    user_sync = True
-                    if 'custom_fields' in data:
-                        data['custom_fields']['location'] = physical_location
-                    else:
-                        data['custom_fields'] = {'location': physical_location}
-                    changes.append('physical_location')
             if user_sync:  # Sync user details to their Freshdesk contact.
                 r = update_freshdesk_object('contacts', data, fd['id'])
                 if r.status_code == 403:  # Forbidden
@@ -155,11 +128,6 @@ def freshdesk_sync_contacts(contacts=None, companies=None, agents=None):
                     return False
                 LOGGER.info('{} was updated in Freshdesk (status {}), changed: {}'.format(
                     user.email.lower(), r.status_code, ', '.join(changes)))
-        #elif user.email.lower() in agents:
-        #    # The DepartmentUser is an agent; skip (can't update Agent details via the API).
-        #    LOGGER.info('{} is an agent, skipping sync'.format(user.email.lower()))
-        #    continue
-        #    # The DepartmentUser does not exist in Freshdesk; create them as a Contact.
         else:
             data = {'name': user.name, 'email': user.email.lower(),
                     'phone': user.telephone, 'job_title': user.title}
