@@ -345,7 +345,7 @@ def get_gender_from_alesco(jobs):
 
 
 def update_manager_from_alesco(user, update_fields=[], commit=True):
-    manager = get_manager_from_alesco(user, user.alesco_data)
+    manager = get_manager_from_alesco(user, user.ascender_data)
 
     if manager:
         if manager != user.parent:
@@ -374,7 +374,7 @@ def update_manager_from_alesco(user, update_fields=[], commit=True):
 def update_user_data_from_alesco(
     user, property_name, f_get_data, update_fields=[], commit=True
 ):
-    data = f_get_data(user.alesco_data)
+    data = f_get_data(user.ascender_data)
 
     if data:
         if data != getattr(user, property_name):
@@ -523,7 +523,7 @@ def alesco_employee_fetch():
 
 def ascender_db_import(update_dept_user=False):
     """A task to update DepartmentUser field values from Ascender database information.
-    By default, it saves Ascender data in the alesco_data JSON field.
+    By default, it saves Ascender data in the ascender_data JSON field.
     If update_dept_user == True, the function will also update several other field values.
     """
     from organisation.models import DepartmentUser
@@ -535,8 +535,8 @@ def ascender_db_import(update_dept_user=False):
         job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            user.alesco_data = job
-            user.alesco_data_updated = TZ.localize(datetime.now())
+            user.ascender_data = job
+            user.ascender_data_updated = TZ.localize(datetime.now())
             user.save()
 
 

@@ -125,8 +125,8 @@ def update_manager_from_alesco(user):
     from .models import DepartmentUser
     manager = None
 
-    if user.alesco_data:
-        managers = [x['manager_emp_no'] for x in user.alesco_data if x['manager_emp_no']]
+    if user.ascender_data:
+        managers = [x['manager_emp_no'] for x in user.ascender_data if x['manager_emp_no']]
         managers = OrderedDict.fromkeys(managers).keys()
         managers = [DepartmentUser.objects.filter(employee_id=x).first() for x in managers]
         managers = [x for x in managers if x and (user.pk != x.pk)]
@@ -148,8 +148,8 @@ def update_manager_from_alesco(user):
 def update_title_from_alesco(user):
     title = None
 
-    if user.alesco_data:
-        title = next((x['occup_pos_title'] for x in user.alesco_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
+    if user.ascender_data:
+        title = next((x['occup_pos_title'] for x in user.ascender_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
         if title:
             title = alesco_scrub_title(title)
 
@@ -164,8 +164,8 @@ def update_location_from_alesco(user):
     from .models import Location
     location = None
 
-    if user.alesco_data:
-        location = next((x['location'] for x in user.alesco_data if 'location' in x and x['location']), None)
+    if user.ascender_data:
+        location = next((x['location'] for x in user.ascender_data if 'location' in x and x['location']), None)
         location = Location.objects.filter(ascender_code=location).first()
 
     if location:
@@ -225,7 +225,7 @@ def alesco_db_fetch():
 
 def alesco_db_import(update_dept_user=False):
     """A task to update DepartmentUser field values from Alesco database information.
-    By default, it saves Alesco data in the alesco_data JSON field.
+    By default, it saves Alesco data in the ascender_data JSON field.
     If update_dept_user == True, the function will also update several other field values.
     """
     from .models import DepartmentUser
@@ -279,13 +279,7 @@ def alesco_db_import(update_dept_user=False):
                 rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
 
         user = DepartmentUser.objects.get(employee_id=key)
-#        order = lambda obj: tuple([x['position_id'] for x in obj])
-#        if order(user.alesco_data) != order(record):
-#            print('Changing {}'.format(user.email))
-#            print([(x['classification'], x['emp_stat_desc'], x['occup_pos_title'], x['job_term_date']) for x in user.alesco_data])
-#            print([(x['classification'], x['emp_stat_desc'], x['occup_pos_title'], x['job_term_date']) for x in record])
-
-        user.alesco_data = record
+        user.ascender_data = record
         user.save()
 
         if update_dept_user:

@@ -134,9 +134,8 @@ class DepartmentUser(models.Model):
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
 
     # Cache of Ascender data
-    alesco_data = JSONField(
-        null=True, blank=True, help_text='Readonly data from Alesco')
-    alesco_data_updated = models.DateTimeField(null=True, blank=True)
+    ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
+    ascender_data_updated = models.DateTimeField(null=True, editable=False)
 
     # Fields below are likely to be deprecated and progressively removed.
     expiry_date = models.DateTimeField(

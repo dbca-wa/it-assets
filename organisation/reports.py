@@ -119,39 +119,39 @@ def department_user_ascender_discrepancies(fileobj, users):
                 continue  # Skip further checking on this user.
 
             # If we haven't cached Ascender data for the user yet, skip them.
-            if not user.alesco_data:
+            if not user.ascender_data:
                 continue
 
             # First name.
-            if 'first_name' in user.alesco_data:
-                r = fuzz.ratio(user.alesco_data['first_name'].upper(), user.given_name.upper())
+            if 'first_name' in user.ascender_data:
+                r = fuzz.ratio(user.ascender_data['first_name'].upper(), user.given_name.upper())
                 if r < 90:
                     users_sheet.write_row(row, 0, [
                         user.get_full_name(),
                         user.get_account_type_display(),
                         'given_name',
                         user.given_name,
-                        user.alesco_data['first_name'],
+                        user.ascender_data['first_name'],
                     ])
                     row += 1
 
             # Surname.
-            if 'surname' in user.alesco_data:
-                r = fuzz.ratio(user.alesco_data['surname'].upper(), user.surname.upper())
+            if 'surname' in user.ascender_data:
+                r = fuzz.ratio(user.ascender_data['surname'].upper(), user.surname.upper())
                 if r < 90:
                     users_sheet.write_row(row, 0, [
                         user.get_full_name(),
                         user.get_account_type_display(),
                         'surname',
                         user.surname,
-                        user.alesco_data['surname'],
+                        user.ascender_data['surname'],
                     ])
                     row += 1
 
             # Phone number.
-            if 'work_phone_no' in user.alesco_data and user.alesco_data['work_phone_no'] and user.telephone:
+            if 'work_phone_no' in user.ascender_data and user.ascender_data['work_phone_no'] and user.telephone:
                 # Remove spaces, brackets and 08 prefix from comparison values.
-                t1 = user.alesco_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
+                t1 = user.ascender_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
                 if t1.startswith('08'):
                     t1 = t1[2:]
                 t2 = user.telephone.replace('(', '').replace(')', '').replace(' ', '')
@@ -164,18 +164,18 @@ def department_user_ascender_discrepancies(fileobj, users):
                         user.get_account_type_display(),
                         'telephone',
                         user.telephone,
-                        user.alesco_data['work_phone_no'],
+                        user.ascender_data['work_phone_no'],
                     ])
                     row += 1
 
             # Cost centre
-            if 'paypoint' in user.alesco_data:
+            if 'paypoint' in user.ascender_data:
                 cc = False
-                if user.alesco_data['paypoint'].startswith('R') and user.alesco_data['paypoint'].replace('R', '') != user.cost_centre.code.replace('RIA-', ''):
+                if user.ascender_data['paypoint'].startswith('R') and user.ascender_data['paypoint'].replace('R', '') != user.cost_centre.code.replace('RIA-', ''):
                     cc = True
-                elif user.alesco_data['paypoint'].startswith('Z') and user.alesco_data['paypoint'].replace('Z', '') != user.cost_centre.code.replace('ZPA-', ''):
+                elif user.ascender_data['paypoint'].startswith('Z') and user.ascender_data['paypoint'].replace('Z', '') != user.cost_centre.code.replace('ZPA-', ''):
                     cc = True
-                elif user.cost_centre.code.startswith('DBCA') and user.alesco_data['paypoint'] != user.cost_centre.code.replace('DBCA-', ''):
+                elif user.cost_centre.code.startswith('DBCA') and user.ascender_data['paypoint'] != user.cost_centre.code.replace('DBCA-', ''):
                     cc = True
                 if cc:
                     users_sheet.write_row(row, 0, [
@@ -183,20 +183,20 @@ def department_user_ascender_discrepancies(fileobj, users):
                         user.get_account_type_display(),
                         'cost_centre',
                         user.cost_centre.code,
-                        user.alesco_data['paypoint'],
+                        user.ascender_data['paypoint'],
                     ])
                     row += 1
 
             # Title - use fuzzy string matching to find mismatches that are reasonably different.
-            if 'occup_pos_title' in user.alesco_data:
-                ratio = fuzz.ratio(user.alesco_data['occup_pos_title'].upper(), user.title.upper())
+            if 'occup_pos_title' in user.ascender_data:
+                ratio = fuzz.ratio(user.ascender_data['occup_pos_title'].upper(), user.title.upper())
                 if ratio <= 90:
                     users_sheet.write_row(row, 0, [
                         user.get_full_name(),
                         user.get_account_type_display(),
                         'title',
                         user.title,
-                        user.alesco_data['occup_pos_title'],
+                        user.ascender_data['occup_pos_title'],
                     ])
                     row += 1
 
