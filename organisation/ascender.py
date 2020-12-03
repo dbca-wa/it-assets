@@ -15,6 +15,7 @@ FOREIGN_TABLE_FIELDS = (
     "surname",
     "first_name",
     "second_name",
+    "preferred_name",
     "clevel1_id",
     "clevel1_desc",
     "clevel2_desc",
@@ -36,7 +37,6 @@ FOREIGN_TABLE_FIELDS = (
     ("occup_term_date", "job_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
     "work_phone_no",
-    #("manager_emp_no", "manager_employee_no"),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
@@ -158,7 +158,7 @@ def ascender_employee_fetch():
 
 def ascender_db_import():
     """A task to update DepartmentUser field values from Ascender database information.
-    By default, it saves Ascender data in the alesco_data JSON field.
+    By default, it saves Ascender data in the ascender_data JSON field.
     If update_dept_user == True, the function will also update several other field values.
     """
     employee_iter = ascender_employee_fetch()
@@ -168,8 +168,8 @@ def ascender_db_import():
         job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            user.alesco_data = job
-            user.alesco_data_updated = TZ.localize(datetime.now())
+            user.ascender_data = job
+            user.ascender_data_updated = TZ.localize(datetime.now())
             user.save()
 
 

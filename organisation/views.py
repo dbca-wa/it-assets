@@ -29,15 +29,14 @@ class DepartmentUserExport(View):
 
 
 class UserAccountExport(View):
-    """A custom view to return a subset of DepartmentUser data to an Excel spreadsheet,
-    being active accounts that consume an O365 licence and haven't been deleted from AD.
+    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=user_accounts_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
         # TODO: filtering via request params.
-        users = DepartmentUser.objects.filter(active=True, o365_licence=True).order_by('username')
+        users = DepartmentUser.objects.filter(active=True).order_by('username')
         response = user_account_export(response, users)
         return response
 

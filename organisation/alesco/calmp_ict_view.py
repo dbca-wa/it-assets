@@ -35,7 +35,7 @@ CREATE FOREIGN TABLE "{foreign_schema}"."{foreign_table}" (
   occup_term_date DATE,
   position_id VARCHAR(10),
   occup_pos_title VARCHAR(100),
-  clevel1_id VARCHAR(50), 
+  clevel1_id VARCHAR(50),
   clevel1_desc VARCHAR(50),
   clevel5_id VARCHAR(50),
   clevel5_desc VARCHAR(50),
@@ -125,8 +125,8 @@ def update_manager_from_alesco(user):
     from .models import DepartmentUser
     manager = None
 
-    if user.alesco_data:
-        managers = [x['manager_emp_no'] for x in user.alesco_data if x['manager_emp_no']]
+    if user.ascender_data:
+        managers = [x['manager_emp_no'] for x in user.ascender_data if x['manager_emp_no']]
         managers = OrderedDict.fromkeys(managers).keys()
         managers = [DepartmentUser.objects.filter(employee_id=x).first() for x in managers]
         managers = [x for x in managers if x and (user.pk != x.pk)]
@@ -145,31 +145,11 @@ def update_manager_from_alesco(user):
             user.save()
 
 
-def update_term_date_from_alesco(user):
-    term_date = None
-
-    if user.alesco_data:
-        term_dates = [date.fromisoformat(x['job_term_date']) for x in user.alesco_data if x['job_term_date']]
-        if term_dates:
-            term_date = max(term_dates)
-            term_date = alesco_date_to_dt(term_date) if term_date and term_date != ALESCO_DATE_MAX else None
-
-    if term_date:
-        stored_term_date = TZ.normalize(user.date_hr_term) if user.date_hr_term else None
-        if term_date != stored_term_date:
-
-            if user.hr_auto_expiry:
-                logger.info('Updating expiry for {} from {} to {}'.format(user.email, stored_term_date, term_date))
-                user.expiry_date = term_date
-            user.date_hr_term = term_date
-            user.save()
-
-
 def update_title_from_alesco(user):
     title = None
 
-    if user.alesco_data:
-        title = next((x['occup_pos_title'] for x in user.alesco_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
+    if user.ascender_data:
+        title = next((x['occup_pos_title'] for x in user.ascender_data if 'occup_pos_title' in x and x['occup_pos_title']), None)
         if title:
             title = alesco_scrub_title(title)
 
@@ -184,8 +164,8 @@ def update_location_from_alesco(user):
     from .models import Location
     location = None
 
-    if user.alesco_data:
-        location = next((x['location'] for x in user.alesco_data if 'location' in x and x['location']), None)
+    if user.ascender_data:
+        location = next((x['location'] for x in user.ascender_data if 'location' in x and x['location']), None)
         location = Location.objects.filter(ascender_code=location).first()
 
     if location:
@@ -197,7 +177,6 @@ def update_location_from_alesco(user):
 
 def update_user_from_alesco(user):
     update_manager_from_alesco(user)
-    update_term_date_from_alesco(user)
     update_title_from_alesco(user)
     update_location_from_alesco(user)
 
@@ -240,13 +219,13 @@ def alesco_db_fetch():
             except:
                 logger.error(traceback.format_exc())
 
-                
+
 
 
 
 def alesco_db_import(update_dept_user=False):
     """A task to update DepartmentUser field values from Alesco database information.
-    By default, it saves Alesco data in the alesco_data JSON field.
+    By default, it saves Alesco data in the ascender_data JSON field.
     If update_dept_user == True, the function will also update several other field values.
     """
     from .models import DepartmentUser
@@ -300,13 +279,7 @@ def alesco_db_import(update_dept_user=False):
                 rec[field] = rec[field].isoformat() if rec[field] and rec[field] != ALESCO_DATE_MAX else None
 
         user = DepartmentUser.objects.get(employee_id=key)
-#        order = lambda obj: tuple([x['position_id'] for x in obj])
-#        if order(user.alesco_data) != order(record):
-#            print('Changing {}'.format(user.email))
-#            print([(x['classification'], x['emp_stat_desc'], x['occup_pos_title'], x['job_term_date']) for x in user.alesco_data])
-#            print([(x['classification'], x['emp_stat_desc'], x['occup_pos_title'], x['job_term_date']) for x in record])
-
-        user.alesco_data = record
+        user.ascender_data = record
         user.save()
 
         if update_dept_user:
@@ -373,19 +346,6 @@ def departmentuser_alesco_descrepancy(users):
                         'Title mismatch',
                         alesco_record['occup_pos_title'],
                         user.title
-                    )
-                )
-
-        if user.expiry_date:
-            if alesco_record['job_term_date'] != user.expiry_date.date():
-                if key not in discrepancies:
-                    discrepancies[key] = []
-                discrepancies[key].append(
-                    (
-                        user.get_full_name(),
-                        'Expiry date mismatch',
-                        alesco_record['job_term_date'].strftime('%d/%b/%Y'),
-                        user.expiry_date.strftime('%d/%b/%Y')
                     )
                 )
 
