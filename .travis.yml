@@ -1,9 +1,9 @@
-dist: bionic
-sudo: required
 language: python
+os: linux
+dist: bionic
 cache: pip
 python:
-    - 3.7
+  - "3.7"
 services:
     - postgresql
     - docker
