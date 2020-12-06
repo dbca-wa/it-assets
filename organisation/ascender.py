@@ -37,6 +37,7 @@ FOREIGN_TABLE_FIELDS = (
     ("occup_term_date", "job_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
     "work_phone_no",
+    "work_mobile_phone_no",
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
