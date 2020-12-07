@@ -2,7 +2,7 @@ from datetime import date
 from django import forms
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
@@ -12,7 +12,7 @@ from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
-from organisation.models import CommonFields, DepartmentUser
+from organisation.models import DepartmentUser, CostCentre, OrgUnit
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
@@ -59,7 +59,7 @@ class UserGroup(models.Model):
         return '{} ({})'.format(self.name, self.user_count)
 
 
-class ITSystem(CommonFields):
+class ITSystem(models.Model):
     """Represents a named system providing a package of functionality to
     Department staff (normally vendor or bespoke software), which is supported
     by OIM and/or an external vendor.
@@ -132,6 +132,8 @@ class ITSystem(CommonFields):
         (4, 'Retain 12 months after data migration and decommission (may retain for reference)'),
     )
 
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
     system_id = models.CharField(max_length=16, unique=True, verbose_name='system ID')
     name = models.CharField(max_length=128, unique=True)
     acronym = models.CharField(max_length=16, null=True, blank=True)
@@ -139,6 +141,8 @@ class ITSystem(CommonFields):
     link = models.CharField(
         max_length=2048, null=True, blank=True, help_text='URL to web application')
     description = models.TextField(blank=True)
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
     owner = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
         related_name='systems_owned', help_text='IT system owner')
@@ -229,6 +233,7 @@ class ITSystem(CommonFields):
     dependencies = models.ManyToManyField(
         Dependency, blank=True, help_text="Dependencies used by this IT system")
     risks = GenericRelation(RiskAssessment)
+    extra_data = JSONField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'IT System'

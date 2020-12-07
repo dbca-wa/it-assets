@@ -514,16 +514,3 @@ class CostCentre(models.Model):
 
     def __str__(self):
         return self.code
-
-
-class CommonFields(models.Model):
-    """Meta model class used by other apps
-    """
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_updated = models.DateTimeField(auto_now=True)
-    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
-    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
-    extra_data = JSONField(null=True, blank=True)
-
-    class Meta:
-        abstract = True
