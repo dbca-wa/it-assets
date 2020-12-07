@@ -1,8 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
-from django.utils.html import format_html
-from json2html import json2html
 
 
 class DepartmentUser(models.Model):
@@ -526,14 +524,6 @@ class CommonFields(models.Model):
     org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
     cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
     extra_data = JSONField(null=True, blank=True)
-
-    def extra_data_pretty(self):
-        if not self.extra_data:
-            return self.extra_data
-        try:
-            return format_html(json2html.convert(json=self.extra_data))
-        except Exception as e:
-            return repr(e)
 
     class Meta:
         abstract = True
