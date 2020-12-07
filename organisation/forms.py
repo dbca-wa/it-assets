@@ -14,10 +14,10 @@ class BaseFormHelper(FormHelper):
 
 class ConfirmPhoneNosForm(forms.Form):
     work_telephone = forms.ChoiceField(
-        choices=[], widget=forms.RadioSelect,
+        choices=[], widget=forms.RadioSelect, required=True,
         help_text='Teams / landline phone number. If none of these options are correct, contact Service Desk.')
     work_mobile_phone = forms.ChoiceField(
-        choices=[], widget=forms.RadioSelect,
+        choices=[], widget=forms.RadioSelect, required=True,
         help_text='Department-supplied mobile phone number. If none of these options are correct, contact Service Desk.')
     submit = Submit('submit', 'Submit', css_class='btn-lg')
 

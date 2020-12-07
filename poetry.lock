@@ -283,8 +283,8 @@ category = "main"
 description = "Best way to have Django DRY forms"
 name = "django-crispy-forms"
 optional = false
-python-versions = "*"
-version = "1.7.2"
+python-versions = ">=3.5"
+version = "1.10.0"
 
 [[package]]
 category = "main"
@@ -1109,7 +1109,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [metadata]
-content-hash = "467b09f3402c0fff6d3dbe356d5754354269ecc0ade5f7915d751af37c94aaac"
+content-hash = "bc553b3c27abc5918443e55b2ff6d5b49289c37eae868801f61978695f436ec0"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1249,8 +1249,8 @@ django-cors-headers = [
     {file = "django_cors_headers-3.4.0-py3-none-any.whl", hash = "sha256:5240062ef0b16668ce8a5f43324c388d65f5439e1a30e22c38684d5ddaff0d15"},
 ]
 django-crispy-forms = [
-    {file = "django-crispy-forms-1.7.2.tar.gz", hash = "sha256:5952bab971110d0b86c278132dae0aa095beee8f723e625c3d3fa28888f1675f"},
-    {file = "django_crispy_forms-1.7.2-py2.py3-none-any.whl", hash = "sha256:705ededc554ad8736157c666681165fe22ead2dec0d5446d65fc9dd976a5a876"},
+    {file = "django-crispy-forms-1.10.0.tar.gz", hash = "sha256:d3f808d20cafe20fd38a49a47e72db1fd519fcf31bef4f47f008619336a3ebff"},
+    {file = "django_crispy_forms-1.10.0-py3-none-any.whl", hash = "sha256:92ed3fdc52c08d21d60adbb9de24e432c590e66e894f43cee0974fc959209976"},
 ]
 django-dotenv = [
     {file = "django-dotenv-1.4.2.tar.gz", hash = "sha256:3812bb0f4876cf31f902aad140f0645e120e51ee30eb7c40c22050f58a0e4adb"},
