@@ -135,10 +135,6 @@ class DepartmentUser(models.Model):
     ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(null=True, editable=False)
 
-    # Fields below are likely to be deprecated and progressively removed.
-    expiry_date = models.DateTimeField(
-        null=True, blank=True, help_text='Date that the AD account will expire.')
-
     def __str__(self):
         return self.email
 
