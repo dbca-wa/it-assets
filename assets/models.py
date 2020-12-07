@@ -2,7 +2,7 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 import os
 
-from organisation.models import CommonFields, DepartmentUser, Location
+from organisation.models import DepartmentUser, Location, CostCentre, OrgUnit
 from django.urls import reverse
 
 from datetime import date
@@ -27,9 +27,14 @@ class Vendor(models.Model):
         return self.name
 
 
-class Asset(CommonFields):
+class Asset(models.Model):
     """Abstract model class to represent fields common to all asset types.
     """
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
+    extra_data = JSONField(null=True, blank=True)
     vendor = models.ForeignKey(
         Vendor, on_delete=models.PROTECT, help_text='Vendor/reseller from whom this asset was purchased.')
     date_purchased = models.DateField(null=True, blank=True)
