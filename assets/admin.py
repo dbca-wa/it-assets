@@ -48,9 +48,6 @@ class HardwareAssetAdmin(VersionAdmin):
                 'cost_centre', 'location', 'assigned_user', 'date_purchased',
                 'purchased_value', 'is_asset', 'local_property', 'warranty_end')
         }),
-        ('Extra data (history)', {
-            'fields': ('extra_data_ro',)
-        }),
     )
     list_display = (
         'asset_tag', 'vendor', 'model_type', 'hardware_model', 'serial', 'status',
@@ -61,7 +58,6 @@ class HardwareAssetAdmin(VersionAdmin):
         'asset_tag', 'vendor__name', 'serial', 'hardware_model__model_type',
         'hardware_model__vendor__name', 'hardware_model__model_no', 'service_request_url',
         'location__name', 'assigned_user__email', 'cost_centre__code')
-    readonly_fields = ['extra_data_ro']
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/assets/hardwareasset/change_list.html'
 
@@ -75,10 +71,6 @@ class HardwareAssetAdmin(VersionAdmin):
         # d = date.today() - obj.date_purchased
         return obj.age
     age.admin_order_field = 'date_purchased'
-
-    def extra_data_ro(self, obj):
-        return obj.get_extra_data_html()
-    extra_data_ro.short_description = 'extra data'
 
     def get_urls(self):
         urls = super(HardwareAssetAdmin, self).get_urls()

@@ -1,7 +1,5 @@
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.utils.safestring import mark_safe
-from json2html import json2html
 import os
 
 from organisation.models import CommonFields, DepartmentUser, Location
@@ -160,11 +158,6 @@ class HardwareAsset(Asset):
 
     def __str__(self):
         return self.asset_tag
-
-    def get_extra_data_html(self):
-        if not self.extra_data:
-            return mark_safe('')
-        return mark_safe(json2html.convert(json=self.extra_data))
 
     def clean(self):
         if self.serial:
