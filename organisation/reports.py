@@ -148,6 +148,19 @@ def department_user_ascender_discrepancies(fileobj, users):
                     ])
                     row += 1
 
+            # Preferred name.
+            if 'preferred_name' in user.ascender_data and user.preferred_name:
+                r = fuzz.ratio(user.ascender_data['preferred_name'].upper(), user.preferred_name.upper())
+                if r < 90:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'preferred_name',
+                        user.preferred_name,
+                        user.ascender_data['preferred_name'],
+                    ])
+                    row += 1
+
             # Phone number.
             if 'work_phone_no' in user.ascender_data and user.ascender_data['work_phone_no'] and user.telephone:
                 # Remove spaces, brackets and 08 prefix from comparison values.
