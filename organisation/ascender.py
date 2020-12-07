@@ -169,7 +169,9 @@ def ascender_db_import():
         job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            user.ascender_data = job
+            # Don't just replace the ascender_data dict; we also use it for audit purposes.
+            for key, val in job.items():
+                user.ascender_data[key] = val
             user.ascender_data_updated = TZ.localize(datetime.now())
             user.save()
 
