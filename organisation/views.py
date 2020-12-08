@@ -141,12 +141,12 @@ class ConfirmPhoneNos(LoginRequiredMixin, FormView):
         user = self.get_department_user()
         if user.telephone:
             options['work_telephone'].append((user.telephone, user.telephone))
-        if 'work_phone_no' in user.ascender_data and user.ascender_data['work_phone_no'] and user.ascender_data['work_phone_no'] != user.telephone:
+        if user.ascender_data and 'work_phone_no' in user.ascender_data and user.ascender_data['work_phone_no'] and user.ascender_data['work_phone_no'] != user.telephone:
             options['work_telephone'].append((user.ascender_data['work_phone_no'], user.ascender_data['work_phone_no']))
         options['work_telephone'].append(('NA', 'Not applicable (no work telephone in use)'))
         if user.mobile_phone:
             options['work_mobile_phone'].append((user.mobile_phone, user.mobile_phone))
-        if 'work_mobile_phone_no' in user.ascender_data and user.ascender_data['work_mobile_phone_no'] and user.ascender_data['work_mobile_phone_no'] != user.mobile_phone:
+        if user.ascender_data and 'work_mobile_phone_no' in user.ascender_data and user.ascender_data['work_mobile_phone_no'] and user.ascender_data['work_mobile_phone_no'] != user.mobile_phone:
             options['work_mobile_phone'].append((user.ascender_data['work_mobile_phone_no'], user.ascender_data['work_mobile_phone_no']))
         options['work_mobile_phone'].append(('NA', 'Not applicable (no work mobile phone in use)'))
         kwargs['options'] = options
@@ -158,7 +158,7 @@ class ConfirmPhoneNos(LoginRequiredMixin, FormView):
         context['site_acronym'] = 'OIM'
         context['page_title'] = '{} - DBCA telephone numbers'.format(self.request.user.get_full_name())
         user = self.get_department_user()
-        if 'audit_confirm_phone_nos' in user.ascender_data:
+        if user.ascender_data and 'audit_confirm_phone_nos' in user.ascender_data:
             context['completed_form'] = True
         else:
             context['completed_form'] = False
