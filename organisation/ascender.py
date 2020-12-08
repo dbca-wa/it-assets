@@ -169,6 +169,8 @@ def ascender_db_import():
         job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
+            if not user.ascender_data:
+                user.ascender_data = {}
             # Don't just replace the ascender_data dict; we also use it for audit purposes.
             for key, val in job.items():
                 user.ascender_data[key] = val
