@@ -40,13 +40,13 @@ steps:
       print('Found Django project in', project_location)
       print('##vso[task.setvariable variable=projectRoot]{}'.format(project_location))
 
-- script: 
+- script: |
     apt update
     apt install --no-install-recommends -y postgis postgresql-12-postgis-3
-    #psql -U postgres -c "create extension postgis"
-    #psql -U postgres -c "create extension citext"
-    #psql -U postgres -c "create database ci_test"
-    #psql -U postgres -c "create database test_ci_test"
+    psql -U postgres -c "create extension postgis"
+    psql -U postgres -c "create extension citext"
+    psql -U postgres -c "create database ci_test"
+    psql -U postgres -c "create database test_ci_test"
   displayName: 'Install PostreSQL and PostGIS'
 
 - script: |
