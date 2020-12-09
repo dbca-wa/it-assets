@@ -16,7 +16,7 @@ strategy:
 
 variables:
   secret_key: SecretKeyForAzurePipeline
-  database_url: postgis://postgres@localhost:5432/ci_test
+  database_url: postgis://postgres@localhost:5433/ci_test
 
 steps:
 - task: UsePythonVersion@0
@@ -43,19 +43,17 @@ steps:
 - script: |
     sudo apt update
     sudo apt install --no-install-recommends -y postgis postgresql-12-postgis-3
-  displayName: 'Install PostreSQL and PostGIS'
+  displayName: 'Install PostreSQL 12 and PostGIS 3'
 
 - script: |
-    sudo service postgresql start
-    pg_lsclusters
-    sudo psql -h localhost -U postgres -c "create extension postgis"
-    sudo psql -h localhost -U postgres -c "create extension citext"
-    sudo psql -h localhost -U postgres -c "create database ci_test"
-    sudo psql -h localhost -U postgres -c "create database test_ci_test"
+    sudo psql -h localhost -p 5433 -U postgres -c "create extension postgis"
+    sudo psql -h localhost -p 5433 -U postgres -c "create extension citext"
+    sudo psql -h localhost -p 5433 -U postgres -c "create database ci_test"
+    sudo psql -h localhost -p 5433 -U postgres -c "create database test_ci_test"
   displayName: 'Create test database'
 
 - script: |
-    python -m pip install --upgrade pip
+    pip install --upgrade pip
     pip install poetry
     poetry config virtualenvs.create false
     poetry install --no-interaction --no-ansi
