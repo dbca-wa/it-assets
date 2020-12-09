@@ -43,6 +43,7 @@ steps:
 - script: |
     sudo apt update
     sudo apt install --no-install-recommends -y postgis postgresql-12-postgis-3
+    sudo pg_ctlcluster 12 main start
     psql -U postgres -c "create extension postgis"
     psql -U postgres -c "create extension citext"
     psql -U postgres -c "create database ci_test"
