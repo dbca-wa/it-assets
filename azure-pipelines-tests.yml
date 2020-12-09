@@ -46,10 +46,11 @@ steps:
   displayName: 'Install PostreSQL 12 and PostGIS 3'
 
 - script: |
-    sudo psql -h localhost -p 5433 -U postgres -c "create extension postgis"
-    sudo psql -h localhost -p 5433 -U postgres -c "create extension citext"
-    sudo psql -h localhost -p 5433 -U postgres -c "create database ci_test"
-    sudo psql -h localhost -p 5433 -U postgres -c "create database test_ci_test"
+    pg_lsclusters
+#    sudo psql -h localhost -p 5433 -U postgres -c "create extension postgis"
+#    sudo psql -h localhost -p 5433 -U postgres -c "create extension citext"
+#    sudo psql -h localhost -p 5433 -U postgres -c "create database ci_test"
+#    sudo psql -h localhost -p 5433 -U postgres -c "create database test_ci_test"
   displayName: 'Create test database'
 
 - script: |
