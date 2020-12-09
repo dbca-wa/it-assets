@@ -42,11 +42,11 @@ steps:
 
 - script: 
     apt update
-    apt install postgis postgresql-12-postgis-3
-    psql -U postgres -c "create extension postgis"
-    psql -U postgres -c "create extension citext"
-    psql -U postgres -c "create database ci_test"
-    psql -U postgres -c "create database test_ci_test"
+    apt install --no-install-recommends -y postgis postgresql-12-postgis-3
+    #psql -U postgres -c "create extension postgis"
+    #psql -U postgres -c "create extension citext"
+    #psql -U postgres -c "create database ci_test"
+    #psql -U postgres -c "create database test_ci_test"
   displayName: 'Install PostreSQL and PostGIS'
 
 - script: |
