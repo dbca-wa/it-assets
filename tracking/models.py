@@ -1,7 +1,7 @@
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 
-from organisation.models import CommonFields, DepartmentUser, Location
+from organisation.models import DepartmentUser, Location
 
 
 class LicensingRule(models.Model):
@@ -22,10 +22,12 @@ class LicensingRule(models.Model):
         return '{}: {}'.format(self.publisher_name, self.product_name)
 
 
-class Computer(CommonFields):
+class Computer(models.Model):
     """Represents a non-mobile computing device. Maps to an object managed by Active Directory.
     All information should be auto-generated from scans and scripted tasks.
     """
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
     hostname = models.CharField(max_length=2048)
     sam_account_name = models.CharField(
         max_length=32, unique=True, null=True, blank=True, verbose_name='sAMAccountName')
@@ -77,9 +79,11 @@ class Computer(CommonFields):
         return self.hostname
 
 
-class Mobile(CommonFields):
+class Mobile(models.Model):
     """Represents a mobile computing device. Maps to an object managed by Active Directory.
     """
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
     ad_guid = models.CharField(max_length=48, null=True, unique=True)
     ad_dn = models.CharField(max_length=512, null=True, unique=True)
     registered_to = models.ForeignKey(
@@ -96,9 +100,11 @@ class Mobile(CommonFields):
         return self.identity
 
 
-class EC2Instance(CommonFields):
+class EC2Instance(models.Model):
     """Represents an Amazon EC2 instance.
     """
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
     name = models.CharField("Instance Name", max_length=200)
     ec2id = models.CharField("EC2 Instance ID", max_length=200, unique=True)
     launch_time = models.DateTimeField(editable=False, null=True, blank=True)

@@ -20,8 +20,12 @@ RUN apt-get update -y \
 # Install Python libs from requirements.txt.
 FROM builder_trivy_itassets as python_libs_itassets
 WORKDIR /app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+ENV POETRY_VERSION=1.0.5
+RUN pip install "poetry==$POETRY_VERSION"
+RUN python -m venv /venv
+COPY poetry.lock pyproject.toml /app/
+RUN poetry config virtualenvs.create false \
+  && poetry install --no-dev --no-interaction --no-ansi
 
 # Install the project.
 FROM python_libs_itassets

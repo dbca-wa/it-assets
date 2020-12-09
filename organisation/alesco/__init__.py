@@ -27,6 +27,8 @@ def aleso_db_init():
     """
     create the foreign server and foreign table in postgresql database
     """
+    if not synctask:
+        return None
     conn = synctask.alesco_db_connection()
     cur = None
     try:

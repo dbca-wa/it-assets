@@ -1,8 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
-from django.utils.html import format_html
-from json2html import json2html
 
 
 class DepartmentUser(models.Model):
@@ -136,10 +134,6 @@ class DepartmentUser(models.Model):
     # Cache of Ascender data
     ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(null=True, editable=False)
-
-    # Fields below are likely to be deprecated and progressively removed.
-    expiry_date = models.DateTimeField(
-        null=True, blank=True, help_text='Date that the AD account will expire.')
 
     def __str__(self):
         return self.email
@@ -516,24 +510,3 @@ class CostCentre(models.Model):
 
     def __str__(self):
         return self.code
-
-
-class CommonFields(models.Model):
-    """Meta model class used by other apps
-    """
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_updated = models.DateTimeField(auto_now=True)
-    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
-    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
-    extra_data = JSONField(null=True, blank=True)
-
-    def extra_data_pretty(self):
-        if not self.extra_data:
-            return self.extra_data
-        try:
-            return format_html(json2html.convert(json=self.extra_data))
-        except Exception as e:
-            return repr(e)
-
-    class Meta:
-        abstract = True

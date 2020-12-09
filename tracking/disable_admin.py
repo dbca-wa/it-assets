@@ -11,7 +11,7 @@ from .models import Computer, Mobile, EC2Instance, FreshdeskTicket, LicensingRul
 @register(LicensingRule)
 class LicensingRule(ModelAdmin):
     list_display = ('product_name', 'publisher_name', 'regex', 'license')
-    ordering = ('publisher_name', 'product_name') 
+    ordering = ('publisher_name', 'product_name')
 
 @register(Computer)
 class ComputerAdmin(ModelAdmin):
@@ -78,7 +78,7 @@ class EC2InstanceAdmin(ModelAdmin):
         "aws_tag_values",
     )
     search_fields = ("name", "ec2id", "launch_time")
-    readonly_fields = ["extra_data_pretty", "extra_data", "agent_version"]
+    readonly_fields = ["extra_data", "agent_version"]
 
     def aws_tag_values(self, obj):
         return obj.aws_tag_values()

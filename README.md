@@ -6,9 +6,19 @@ and analytics.
 
 # Installation
 
-Create a new virtualenv and install required libraries using `pip`:
+The recommended way to set up this project for development is using
+[Poetry](https://python-poetry.org/docs/) to install and manage a virtual Python
+environment. With Poetry installed, change into the project directory and run:
 
-    pip install -r requirements.txt
+    poetry install
+
+To run Python commands in the virtualenv, thereafter run them like so:
+
+    poetry run python manage.py
+
+Manage new or updating project dependencies with Poetry also, like so:
+
+    poetry add newpackage==1.0
 
 # Environment variables
 
@@ -18,9 +28,25 @@ The following variables are required for the project to run:
     DATABASE_URL="postgis://USER:PASSWORD@HOST:PORT/DATABASE_NAME"
     SECRET_KEY="ThisIsASecretKey"
 
+# Running
+
+Use `runserver` to run a local copy of the application:
+
+    poetry run python manage.py runserver 0:8080
+
+Run console commands manually:
+
+    poetry run python manage.py shell_plus
+
 # Unit tests
 
 Start with `pip install coverage`. Run unit tests and obtain test coverage as follows:
 
-    coverage run --source='.' manage.py test -k
-    coverage report -m
+    poetry run coverage run --source='.' manage.py test -k
+    poetry run coverage report -m
+
+# Docker image
+
+To build a new Docker image from the `Dockerfile`:
+
+    docker image build -t dbcawa/it-assets .
