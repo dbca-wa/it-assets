@@ -44,11 +44,14 @@ steps:
     sudo apt update
     sudo apt install --no-install-recommends -y postgis postgresql-12-postgis-3
     sudo pg_ctlcluster 12 main start
-    psql -U postgres -c "create extension postgis"
-    psql -U postgres -c "create extension citext"
-    psql -U postgres -c "create database ci_test"
-    psql -U postgres -c "create database test_ci_test"
   displayName: 'Install PostreSQL and PostGIS'
+
+- script: |
+    sudo psql -U postgres -c "create extension postgis"
+    sudo psql -U postgres -c "create extension citext"
+    sudo psql -U postgres -c "create database ci_test"
+    sudo psql -U postgres -c "create database test_ci_test"
+  displayName: 'Create test database'
 
 - script: |
     python -m pip install --upgrade pip
@@ -61,9 +64,3 @@ steps:
     pushd '$(projectRoot)'
     python manage.py test --no-input
   displayName: 'Run tests'
-
-- task: PublishTestResults@2
-  inputs:
-    testResultsFiles: "**/TEST-*.xml"
-    testRunTitle: 'Python $(PYTHON_VERSION)'
-  condition: succeededOrFailed()
