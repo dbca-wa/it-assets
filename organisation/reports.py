@@ -16,7 +16,8 @@ def department_user_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'CC MANAGER', 'CC MANAGER EMAIL', 'CC BMANAGER', 'CC BMANAGER EMAIL', 'ACTIVE', 'O365 LICENCE',
+            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'CC MANAGER', 'CC MANAGER EMAIL', 'CC BMANAGER', 'CC BMANAGER EMAIL',
+            'ACTIVE', 'O365 LICENCE', 'TELEPHONE', 'MOBILE PHONE',
         ))
         row = 1
         for i in users:
@@ -34,6 +35,8 @@ def department_user_export(fileobj, users):
                 i.cost_centre.business_manager.email if i.cost_centre and i.cost_centre.business_manager else '',
                 i.active,
                 i.get_office_licence(),
+                i.telephone,
+                i.mobile_phone,
             ])
             row += 1
         users_sheet.set_column('A:A', 35)
@@ -46,6 +49,7 @@ def department_user_export(fileobj, users):
         users_sheet.set_column('J:J', 35)
         users_sheet.set_column('K:K', 45)
         users_sheet.set_column('L:M', 13)
+        users_sheet.set_column('N:O', 20)
 
     return fileobj
 

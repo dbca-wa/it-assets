@@ -23,7 +23,7 @@ class DepartmentUserExport(View):
         if 'all' in request.GET:  # Return all objects.
             users = DepartmentUser.objects.all()
         else:  # Default to active users only.
-            users = DepartmentUser.objects.filter(active=True)
+            users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
 
         response = department_user_export(response, users)
         return response
