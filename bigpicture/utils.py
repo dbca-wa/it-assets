@@ -4,12 +4,12 @@ from datetime import timedelta
 from dbca_utils.utils import env
 from django.contrib.contenttypes.models import ContentType
 import json
+import requests
 import tempfile
 
 from rancher.models import Workload
 from registers.models import ITSystem
-from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport, WebAppLocation
-import requests
+from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport
 from status.models import Host
 from statistics import mean, stdev, StatisticsError
 from .models import Dependency, RiskAssessment
@@ -453,9 +453,9 @@ def itsystem_risks_traffic(it_systems=None):
                     risk.save()
 
 
-def signal_sciences_extract_feed(outfile, from_datetime=None, minutes=None):
+def signal_sciences_extract_feed(from_datetime=None, minutes=None):
     """Extract the Signal Sciences feed for ``minutes`` duration from the passed-in timestamp (UTC).
-    Write the feed data to the passed-in file-like object as JSON.
+    Returns the feed JSON as a string.
     """
     if not from_datetime or not minutes:
         return False
@@ -478,7 +478,7 @@ def signal_sciences_extract_feed(outfile, from_datetime=None, minutes=None):
     }
     url = api_host + ('/api/v0/corps/{}/sites/{}/feed/requests?from={}&until={}'.format(corp_name, site_name, from_time, until_time))
     first = True
-    outfile.write('[')
+    feed_str = '['
 
     while True:
         resp_raw = requests.get(url, headers=headers)
@@ -489,14 +489,14 @@ def signal_sciences_extract_feed(outfile, from_datetime=None, minutes=None):
                 first = False
             else:
                 data = ',' + data
-            outfile.write(data)
+            feed_str += (data)
         next_url = response['next']['uri']
         if next_url == '':
-            outfile.write(']')
+            feed_str += ']'
             break
         url = api_host + next_url
 
-    return outfile
+    return feed_str
 
 
 def signal_sciences_write_feed(from_datetime=None, minutes=None):
@@ -509,9 +509,8 @@ def signal_sciences_write_feed(from_datetime=None, minutes=None):
     if not connect_string:
         return False
 
-    tf = signal_sciences_extract_feed(tempfile.NamedTemporaryFile('w'), from_datetime, minutes)
-    if not tf:
-        return False
+    feed_str = signal_sciences_extract_feed(from_datetime, minutes)
+    tf = tempfile.NamedTemporaryFile('w').write(feed_str)
 
     # Upload the returned feed data to blob storage.
     tf.flush()
