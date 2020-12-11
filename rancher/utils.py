@@ -1,7 +1,7 @@
 import datetime
 from data_storage.utils import get_property
-
 from django.utils import timezone
+
 
 def to_datetime(data):
     if not data:
@@ -17,8 +17,8 @@ def to_datetime(data):
     if len(data) == 2:
         d += datetime.timedelta(milliseconds=int(data[1]))
 
-
     return timezone.localtime(d.replace(tzinfo=datetime.timezone.utc))
+
 
 def set_fields(obj,fields,update_fields=None):
     if update_fields is None:
@@ -32,6 +32,7 @@ def set_fields(obj,fields,update_fields=None):
                 update_fields.append(field)
 
     return update_fields
+
 
 def set_field(obj,field,val,update_fields):
     if obj.pk is None:

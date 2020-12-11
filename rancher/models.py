@@ -12,6 +12,7 @@ from django.dispatch import receiver
 
 logger = logging.getLogger(__name__)
 
+
 class Cluster(models.Model):
     name = models.CharField(max_length=64,unique=True)
     clusterid = models.CharField(max_length=64,null=True,editable=False)
@@ -26,7 +27,6 @@ class Cluster(models.Model):
     succeed_resources = models.PositiveIntegerField(editable=False,default=0)
     failed_resources = models.PositiveIntegerField(editable=False,default=0)
     refresh_message = models.TextField(null=True,blank=True,editable=False)
-
 
     @classmethod
     def populate_workloads_4_all(cls):
@@ -150,7 +150,7 @@ class Namespace(DeletedMixin,models.Model):
     def save(self,*args,**kwargs):
         with transaction.atomic():
             return super().save(*args,**kwargs)
-    
+
     def __str__(self):
         return "{}:{}".format(self.cluster.name,self.name)
 
@@ -365,7 +365,7 @@ class Workload(DeletedMixin,models.Model):
     def save(self,*args,**kwargs):
         with transaction.atomic():
             return super().save(*args,**kwargs)
-    
+
     def __str__(self):
         return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
 
@@ -714,7 +714,7 @@ class WorkloadListener(object):
             else:
                 def update_workloads(obj):
                     obj.__class__.objects.filter(pk=obj.pk).update(active_workloads=models.F("active_workloads") + 1)
-        
+
         for obj in [instance.namespace,instance.project,instance.cluster]:
             if not obj:
                 continue
@@ -734,7 +734,7 @@ class WorkloadListener(object):
             if not obj:
                 continue
             update_workloads(obj)
-        
+
 class NamespaceListener(object):
     @staticmethod
     @receiver(pre_save,sender=Namespace)
@@ -968,7 +968,7 @@ def sync_latestcontainers():
                 if "latest_containers" not in workload_update_fields:
                     workload_update_fields.append("latest_containers")
 
-    
+
     for workload,workload_update_fields in workloads.values():
         if not workload_update_fields:
             continue
