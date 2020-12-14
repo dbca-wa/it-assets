@@ -119,7 +119,7 @@
 
 {% if sig_sci_tags %}
 <h2>Signal Science system tag count</h2>
-<p><a href="https://docs.signalsciences.net/faq/system-tags/" target="_blank">Link to documentation</a>.</p>
+<p><a href="https://docs.signalsciences.net/faq/system-tags/" target="_blank">Link to documentation</a>. Tags for <a href="{% url 'signal_science_tags' %}">all IT systems</a>.</p>
 <ul>
 {% for k, v in sig_sci_tags.items %}
 <li>{{ k }}: {{ v }}</li>
