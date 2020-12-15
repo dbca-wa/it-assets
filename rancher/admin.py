@@ -1,15 +1,13 @@
-import traceback
 import logging
 
 from django.contrib import admin
 from django.contrib import messages
-from django.utils.html import format_html, mark_safe
+from django.utils.html import mark_safe
 from django.urls import reverse
 from django.utils import timezone
 
 from django_q.tasks import async_task
 
-# Register your models here.
 from . import models
 from . import rancher_harvester
 from nginx.models import WebApp
@@ -953,7 +951,6 @@ class ContainerLogAdmin(LookupAllowedMixin,ContainerLinkMixin,admin.ModelAdmin):
             return timezone.localtime(obj.logtime).strftime("%Y-%m-%d %H:%M:%S.%f")
     _logtime.short_description = "Logtime"
 
-
     def has_change_permission(self, request, obj=None):
         return False
 
@@ -962,4 +959,3 @@ class ContainerLogAdmin(LookupAllowedMixin,ContainerLinkMixin,admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-

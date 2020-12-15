@@ -698,6 +698,10 @@ class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
         context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
         context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
         context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
+        if obj.extra_data and 'signal_science_tags' in obj.extra_data:
+            context['sig_sci_tags'] = obj.extra_data['signal_science_tags']
+        else:
+            context['sig_sci_tags'] = None
         # Breadcrumb links:
         links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, obj.system_id)]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
@@ -775,3 +779,32 @@ class DependencyExport(LoginRequiredMixin, View):
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         response = dependency_export(response, it_systems)
         return response
+
+
+class SignalScienceTags(LoginRequiredMixin, TemplateView):
+    """A static template to display a glossary of what each risk assessment means, per category.
+    """
+    template_name = 'registers/signal_science_tags.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context["page_title"] = "Signal Science system tags"
+        # Breadcrumb links:
+        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Signal Science tags")]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
+        tags = {}
+        for it in ITSystem.objects.all():
+            if it.extra_data and 'signal_science_tags' in it.extra_data:
+                for tag_type, count in it.extra_data['signal_science_tags'].items():
+                    if tag_type not in tags:
+                        tags[tag_type] = []
+                    tags[tag_type].append((count, it.name, reverse("riskassessment_itsystem_detail", args=(it.pk,))))
+        for val in tags.values():
+            val.sort(reverse=True)
+        tags_top5 = {}
+        for k, v in tags.items():
+            tags_top5[k] = v[0:5]
+        context['tags'] = tags_top5
+        return context

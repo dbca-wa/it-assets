@@ -1,24 +1,19 @@
-import os
 import simdjson
 import traceback
 import logging
-import datetime
-from collections import OrderedDict
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models,transaction
-from django.utils import timezone
-from django.http import QueryDict
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
 from .models import Cluster,Namespace,Workload,Container
 from itassets.utils import LogRecordIterator
-from .utils import to_datetime,set_fields,set_field
+from .utils import to_datetime,set_fields
 
 logger = logging.getLogger(__name__)
-
 _podstatus_client = None
+
+
 def get_podstatus_client(cache=True):
     """
     Return the blob resource client
@@ -37,6 +32,7 @@ def get_podstatus_client(cache=True):
             return client
 
     return _podstatus_client
+
 
 workload_kind_mapping = {
     "replicaset":"Deployment",
@@ -98,7 +94,7 @@ def process_status_file(context,metadata,status_file):
                     namespace = Namespace(cluster=cluster,name=namespace_name,added_by_log=True,created=pod_created,modified=pod_created)
                     namespace.save()
                 context["namespaces"][key] = namespace
-                
+
             poduid = record["poduid"].strip()
             containerid = record["containerid"].strip()
             container_name = record["container_name"].split("/")
@@ -131,7 +127,7 @@ def process_status_file(context,metadata,status_file):
                     workload.save()
                 workload_update_fields = []
                 context["workloads"][key] = (workload,workload_update_fields)
-            
+
             try:
                 container = Container.objects.get(cluster=cluster,containerid=containerid)
                 previous_workload = container.workload
@@ -170,7 +166,7 @@ def process_status_file(context,metadata,status_file):
             raise Exception("Failed to parse pod status record({}).{}".format(record,str(ex)))
 
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
-            
+
 
 def process_status(context,max_harvest_files):
     def _func(status,metadata,status_file):
@@ -178,7 +174,7 @@ def process_status(context,max_harvest_files):
             if context["harvested_files"] >= max_harvest_files:
                 raise Exception("Already harvested {} files".format(context["harvested_files"]))
             context["harvested_files"] += 1
-            
+
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but currently consumed histroy data's status is {},metadata={}".format(
                 get_podstatus_client().get_consume_status_name(status),
@@ -186,7 +182,7 @@ def process_status(context,max_harvest_files):
             ))
         process_status_file(context,metadata,status_file)
 
-        #save workload 
+        #save workload
         for workload,workload_update_fields in context["workloads"].values():
             if workload_update_fields:
                 workload.save(update_fields=workload_update_fields)
@@ -207,19 +203,19 @@ def process_status(context,max_harvest_files):
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     return _func
-                        
+
 def harvest(reconsume=False,max_harvest_files=None):
     try:
         renew_lock_time = get_podstatus_client().acquire_lock(expired=settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG)
-    except exceptions.AlreadyLocked as ex: 
+    except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-        
+
     try:
         if reconsume and get_podstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
             get_podstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-    
+
         context = {
             "reconsume":reconsume,
             "renew_lock_time":renew_lock_time,
@@ -239,6 +235,6 @@ def harvest(reconsume=False,max_harvest_files=None):
 
     finally:
         get_podstatus_client().release_lock()
-        
+
 
 

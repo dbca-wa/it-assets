@@ -4,24 +4,22 @@ import simdjson
 import traceback
 import logging
 import datetime
-from collections import OrderedDict
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models,transaction
 from django.utils import timezone
-from django.http import QueryDict
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
 from .models import Cluster,Namespace,Workload,Container
 from itassets.utils import LogRecordIterator
 
 from .podstatus_harvester import get_podstatus_client
-from .utils import to_datetime,set_fields,set_field
+from .utils import to_datetime,set_fields
 
 logger = logging.getLogger(__name__)
-
 _containerstatus_client = None
+
+
 def get_containerstatus_client(cache=True):
     """
     Return the blob resource client
@@ -124,7 +122,7 @@ def process_status_file(context,metadata,status_file):
             if any(not (record.get(key) or "").strip() for key in ("computer","containerid","image","name")):
                 #data is incomplete,ignore
                 continue
-            
+
             created = to_datetime(record["created"])
             started = to_datetime(record["started"])
             finished = to_datetime(record.get("finished"))
@@ -163,7 +161,7 @@ def process_status_file(context,metadata,status_file):
                     cluster.save()
 
                 context["clusters"][clustername] = cluster
-            
+
             workload = None
             container = None
             key = (cluster.id,containerid)
@@ -212,7 +210,7 @@ def process_status_file(context,metadata,status_file):
                             except ObjectDoesNotExist as ex:
                                 namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True,created=created or timezone.now(),modified=created or timezone.now())
                                 namespace.save()
-    
+
                             context["namespaces"][namespace_key] = namespace
 
                         workload = Workload.objects.filter(cluster=cluster,namespace=namespace,name=new_workload_name,kind=kind).first()
@@ -261,7 +259,7 @@ def process_status_file(context,metadata,status_file):
                 ("status",container_status),
                 ("last_checked",to_datetime(record["max_timegenerated"]))
             ])
-            
+
             if container.pk is None:
                 container.save()
             elif update_fields:
@@ -279,7 +277,7 @@ def process_status_file(context,metadata,status_file):
 
     context["last_archive_time"] = metadata["archive_endtime"]
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
-            
+
 
 def process_status(context,max_harvest_files):
     def _func(status,metadata,status_file):
@@ -287,7 +285,7 @@ def process_status(context,max_harvest_files):
             if context["harvested_files"] >= max_harvest_files:
                 raise Exception("Already harvested {} files".format(context["harvested_files"]))
             context["harvested_files"] += 1
-            
+
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but currently consumed histroy data's status is {},metadata={}".format(
                 get_containerstatus_client().get_consume_status_name(status),
@@ -317,7 +315,7 @@ def process_status(context,max_harvest_files):
 
         process_status_file(context,metadata,status_file)
 
-        #save workload 
+        #save workload
         for workload,workload_update_fields in context["workloads"].values():
             if workload_update_fields:
                 workload.save(update_fields=workload_update_fields)
@@ -327,19 +325,19 @@ def process_status(context,max_harvest_files):
 
 
     return _func
-                        
+
 def harvest(reconsume=False,max_harvest_files=None):
     try:
         renew_lock_time = get_containerstatus_client().acquire_lock(expired=settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG)
-    except exceptions.AlreadyLocked as ex: 
+    except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-        
+
     try:
         if reconsume and get_containerstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
             get_containerstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-    
+
         context = {
             "reconsume":reconsume,
             "renew_lock_time":renew_lock_time,
@@ -362,7 +360,7 @@ def harvest(reconsume=False,max_harvest_files=None):
                 container.save(update_fields=["status"])
                 update_latest_containers(context,container)
 
-        #save workload 
+        #save workload
         for workload,workload_update_fields in context["workloads"].values():
             if workload_update_fields:
                 workload.save(update_fields=workload_update_fields)
@@ -371,6 +369,6 @@ def harvest(reconsume=False,max_harvest_files=None):
 
     finally:
         get_containerstatus_client().release_lock()
-        
+
 
 
