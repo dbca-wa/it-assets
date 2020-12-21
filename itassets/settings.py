@@ -268,19 +268,13 @@ CORS_ALLOW_CREDENTIALS = True
 
 # django-q configuration
 Q_CLUSTER = {
-    'name': env('REDIS_QUEUE_NAME', 'itassets'),
-    'workers': 16,
-    'recycle': 500,
-    'timeout': 7200,
-    'compress': True,
-    'save_limit': 250,
-    'queue_limit': 500,
-    'cpu_affinity': 1,
-    'label': 'Django Q',
-    'redis': {
-        'host': env('REDIS_HOST', 'localhost'),
-        'port': 6379,
-        'db': 0, }
+    'name': 'DjangoORM',
+    'workers': 4,
+    'timeout': 120,
+    'retry': 180,
+    'queue_limit': 50,
+    'bulk': 10,
+    'orm': 'default',
 }
 
 
