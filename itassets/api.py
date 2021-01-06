@@ -2,7 +2,6 @@ from django.conf.urls import include, url
 from restless.dj import DjangoResource
 from restless.resources import skip_prepare
 
-from assets.api import HardwareAssetResource, HardwareAssetCSV
 from organisation.api import DepartmentUserResource, LocationResource, UserSelectResource, profile
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
 from registers.api import ITSystemResource
@@ -62,8 +61,6 @@ class OptionResource(DjangoResource):
 
 
 api_urlpatterns = [
-    url(r'^hardware-assets/csv/', HardwareAssetCSV.as_view()),
-    url(r'^hardware-assets/', include(HardwareAssetResource.urls())),
     url(r'^itsystems/', include(ITSystemResource.urls())),
     url(r'^itsystems.csv', ITSystemResource.as_csv),
     url(r'^locations/', include(LocationResource.urls())),
