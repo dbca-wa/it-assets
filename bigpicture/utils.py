@@ -510,7 +510,8 @@ def signal_sciences_write_feed(from_datetime=None, minutes=None):
         return False
 
     feed_str = signal_sciences_extract_feed(from_datetime, minutes)
-    tf = tempfile.NamedTemporaryFile('w').write(feed_str)
+    tf = tempfile.NamedTemporaryFile('w')
+    tf.write(feed_str)
 
     # Upload the returned feed data to blob storage.
     tf.flush()
