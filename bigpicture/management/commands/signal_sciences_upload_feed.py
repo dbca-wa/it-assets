@@ -18,7 +18,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from_datetime = datetime.utcnow().replace(second=0, microsecond=0) - timedelta(minutes=options['min_ago'])
-        self.stdout.write('Extracting Signal Sciences feed starting from {}'.format(from_datetime.isoformat()))
+        self.stdout.write('Extracting Signal Sciences feed starting from {}, duration {} minutes'.format(from_datetime.isoformat(), options['duration']))
         filename = utils.signal_sciences_write_feed(from_datetime=from_datetime, minutes=options['duration'])
         if filename:
             self.stdout.write(self.style.SUCCESS('{} uploaded to Azure container'.format(filename)))

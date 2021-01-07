@@ -1,8 +1,7 @@
-from django.conf.urls import include, url
+from django.urls import path, include
 from restless.dj import DjangoResource
 from restless.resources import skip_prepare
 
-from assets.api import HardwareAssetResource, HardwareAssetCSV
 from organisation.api import DepartmentUserResource, LocationResource, UserSelectResource, profile
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
 from registers.api import ITSystemResource
@@ -62,14 +61,12 @@ class OptionResource(DjangoResource):
 
 
 api_urlpatterns = [
-    url(r'^hardware-assets/csv/', HardwareAssetCSV.as_view()),
-    url(r'^hardware-assets/', include(HardwareAssetResource.urls())),
-    url(r'^itsystems/', include(ITSystemResource.urls())),
-    url(r'^itsystems.csv', ITSystemResource.as_csv),
-    url(r'^locations/', include(LocationResource.urls())),
-    url(r'^locations.csv', LocationResource.as_csv),
-    url(r'^users/', include(DepartmentUserResource.urls())),
-    url(r'^user-select/', include(UserSelectResource.urls())),
-    url(r'^profile/', profile, name='api_profile'),
-    url(r'^options/', include(OptionResource.urls())),
+    path('itsystems/', include(ITSystemResource.urls())),
+    path('itsystems.csv', ITSystemResource.as_csv),
+    path('locations/', include(LocationResource.urls())),
+    path('locations.csv', LocationResource.as_csv),
+    path('users/', include(DepartmentUserResource.urls())),
+    path('user-select/', include(UserSelectResource.urls())),
+    path('profile/', profile, name='api_profile'),
+    path('options/', include(OptionResource.urls())),
 ]

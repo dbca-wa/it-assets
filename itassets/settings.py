@@ -278,11 +278,6 @@ Q_CLUSTER = {
 }
 
 
-# Sentry configuration
-if env('SENTRY_DSN', ''):
-    SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
-
-
 # default REST API permissions
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
