@@ -3,6 +3,7 @@ from data_storage import AzureBlobStorage
 from datetime import timedelta
 from dbca_utils.utils import env
 from django.contrib.contenttypes.models import ContentType
+import gzip
 import json
 import requests
 import tempfile
@@ -499,9 +500,9 @@ def signal_sciences_extract_feed(from_datetime=None, minutes=None):
     return feed_str
 
 
-def signal_sciences_write_feed(from_datetime=None, minutes=None):
+def signal_sciences_write_feed(from_datetime=None, minutes=None, compress=False):
     """For the given datetime and duration, download the Signal Sciences feed and upload the data
-    to blob storage.
+    to blob storage (optionally compress the file using gzip).
     """
     if not from_datetime or not minutes:
         return False
@@ -510,13 +511,20 @@ def signal_sciences_write_feed(from_datetime=None, minutes=None):
         return False
 
     feed_str = signal_sciences_extract_feed(from_datetime, minutes)
-    tf = tempfile.NamedTemporaryFile('w')
-    tf.write(feed_str)
+    corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+    if compress:
+        # Conditionally gzip the file.
+        tf = tempfile.NamedTemporaryFile('wb')
+        gzfile = gzip.open(tf, 'wb')
+        gzfile.write(feed_str.encode('utf-8'))
+        filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.isoformat())
+    else:
+        tf = tempfile.NamedTemporaryFile('w')
+        tf.write(feed_str)
+        filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.isoformat())
 
     # Upload the returned feed data to blob storage.
     tf.flush()
-    corp_name = env('SIGSCI_CORP_NAME', 'dbca')
-    filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.isoformat())
     store = AzureBlobStorage(connect_string, 'signalsciences')
     store.upload_file(filename, tf.name)
     tf.close()

@@ -48,11 +48,12 @@ django-markdownx = "3.0.1"
 webtemplate-dbca = "1.3.0"
 fuzzywuzzy = "0.18.0"
 python-Levenshtein = "0.12.0"
+mixer = "6.1.3"
+ipython = "^7.19.0"
 
 [tool.poetry.dev-dependencies]
-ipython = "^7.16.1"
+ipython = "^7.19.0"
 ipdb = "^0.13.3"
-mixer = "6.1.3"
 
 [build-system]
 requires = ["poetry>=0.12"]
