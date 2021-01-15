@@ -38,13 +38,13 @@ class ApiTestCase(TestCase):
         self.branch1 = OrgUnit.objects.create(
             name='Branch 1', unit_type=2, division_unit=self.div1, location=self.loc1, acronym='BRANCH1', active=True)
         self.cc1 = CostCentre.objects.create(
-            name='Cost centre 1', code='001', division_name=self.div1.name, org_position=self.div1)
+            code='001', division_name=self.div1.name, org_position=self.div1)
         self.div2 = OrgUnit.objects.create(
             name='Divison 2', unit_type=1, division_unit=self.dept, location=self.loc2, acronym='DIV2', active=True)
         self.branch2 = OrgUnit.objects.create(
             name='Branch 2', unit_type=2, division_unit=self.div2, location=self.loc2, acronym='BRANCH2', active=True)
         self.cc2 = CostCentre.objects.create(
-            name='Cost centre 2', code='002', division_name=self.div2.name, org_position=self.div2)
+            code='002', division_name=self.div2.name, org_position=self.div2)
         # Give each of the org units some members.
         users = DepartmentUser.objects.all()
         self.user1 = users[0]

@@ -85,7 +85,7 @@ class OrgUnitViewSet(viewsets.ReadOnlyModelViewSet):
 class CostCentreSerializer(serializers.ModelSerializer):
     class Meta:
         model = CostCentre
-        fields = ('name', 'code', 'chart_acct_name', 'manager', 'business_manager', 'admin', 'tech_contact')
+        fields = ('code', 'chart_acct_name', 'manager', 'business_manager', 'admin', 'tech_contact')
 
 
 class CostCentreViewSet(viewsets.ReadOnlyModelViewSet):
