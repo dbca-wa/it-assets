@@ -483,7 +483,6 @@ DIVISION_CHOICES = (
 class CostCentre(models.Model):
     """Models the details of a Department cost centre / chart of accounts.
     """
-    name = models.CharField(max_length=128, unique=True, editable=False)
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
