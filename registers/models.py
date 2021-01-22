@@ -131,6 +131,12 @@ class ITSystem(models.Model):
         (3, 'Destroy datasets when superseded, migrate records and maintain for life of agency'),
         (4, 'Retain 12 months after data migration and decommission (may retain for reference)'),
     )
+    INFRASTRUCTURE_LOCATION_CHOICES = (
+        (1, 'On premises'),
+        (2, 'Azure cloud'),
+        (3, 'AWS cloud'),
+        (4, 'Other provider cloud'),
+    )
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -232,6 +238,9 @@ class ITSystem(models.Model):
         help_text="The primary platform used to provide this IT system")
     dependencies = models.ManyToManyField(
         Dependency, blank=True, help_text="Dependencies used by this IT system")
+    infrastructure_location = models.PositiveSmallIntegerField(
+        choices=INFRASTRUCTURE_LOCATION_CHOICES, null=True, blank=True,
+        help_text='The primary location of the infrastructure on which this system runs')
     risks = GenericRelation(RiskAssessment)
     extra_data = JSONField(null=True, blank=True)
 
