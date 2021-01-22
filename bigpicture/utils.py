@@ -250,6 +250,38 @@ def workload_risks_vulns():
                     risk.save()
 
 
+def itsystem_risks_infra_location(it_systems=None):
+    """Set automatic risk assessment for IT systems based on whether they have an infrastructure location recorded.
+    """
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+
+    for it in it_systems:
+        # First, check if an auto assessment has been created OR if no assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location').exists()
+        ):
+            location_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location').first()
+            if it.infrastructure_location:
+                if not location_risk:
+                    location_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location')
+                if it.infrastructure_location in [2, 3, 4]:  # Azure / AWS / other provider cloud.
+                    location_risk.rating = 0
+                elif it.infrastructure_location == 1:  # On-premises.
+                    location_risk.rating = 3
+                location_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_infrastructure_location_display())
+                location_risk.save()
+            else:
+                # If infrastructure_location is not recorded for the IT system but there is a risk of this type, delete the risk.
+                location_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location').first()
+                if location_risk:
+                    location_risk.delete()
+
+
 def itsystem_risks_critical_function(it_systems=None):
     """Set automatic risk assessment for IT systems based on whether they are noted as used for a critical function.
     """
@@ -258,7 +290,7 @@ def itsystem_risks_critical_function(it_systems=None):
     itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
 
     for it in it_systems:
-        # First, check if an auto assessment has been created OR if not assessment exists.
+        # First, check if an auto assessment has been created OR if no assessment exists.
         # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
         # which we don't want to overwrite).
         if (
