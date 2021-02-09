@@ -160,7 +160,9 @@ class DepartmentUser(models.Model):
         """Return O365 licence terms familar to the directors.
         """
         if self.assigned_licences:
-            if 'OFFICE 365 E5' in self.assigned_licences:
+            if 'MICROSOFT 365 E5' in self.assigned_licences:
+                return 'On-premise'
+            elif 'OFFICE 365 E5' in self.assigned_licences:
                 return 'On-premise'
             elif 'OFFICE 365 E1' in self.assigned_licences:
                 return 'Cloud'
@@ -393,6 +395,12 @@ class ADAction(models.Model):
 class Location(models.Model):
     """A model to represent a physical location.
     """
+    #VOIP_PLATFORM_CHOICES = (
+    #    ('3CX', '3CX'),
+    #    ('CUCM', 'CUCM'),
+    #    ('Teams', 'Teams'),
+    #)
+
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
@@ -415,6 +423,8 @@ class Location(models.Model):
         blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
     active = models.BooleanField(default=True)
+    #voip_platform = models.CharField(
+    #    max_length=128, null=True, blank=True, choices=VOIP_PLATFORM_CHOICES)
 
     class Meta:
         ordering = ('name',)
