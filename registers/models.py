@@ -45,7 +45,7 @@ class ChoiceArrayField(ArrayField):
         return super(ArrayField, self).formfield(**defaults)
 
 
-class UserGroup(models.Model):
+class ITSystemUserGroup(models.Model):
     """A model to represent an arbitrary group of users for an IT System.
     E.g. 'All department staff', 'External govt agency staff', etc.
     """
@@ -175,7 +175,7 @@ class ITSystem(models.Model):
         choices=AVAILABILITY_CHOICES, null=True, blank=True,
         help_text='Expected availability for this system')
     user_groups = models.ManyToManyField(
-        UserGroup, blank=True, help_text='User group(s) that use this system')
+        ITSystemUserGroup, blank=True, help_text='User group(s) that use this system')
     application_server = models.TextField(
         blank=True, help_text='Application server(s) that host this system')
     database_server = models.TextField(
