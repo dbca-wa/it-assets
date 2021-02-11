@@ -6,7 +6,6 @@ from django.contrib.contenttypes.models import ContentType
 import gzip
 import json
 import requests
-import tempfile
 
 from rancher.models import Workload
 from registers.models import ITSystem
@@ -534,7 +533,7 @@ def signal_sciences_extract_feed(from_datetime=None, minutes=None):
 
 def signal_sciences_write_feed(from_datetime=None, minutes=None, compress=False):
     """For the given datetime and duration, download the Signal Sciences feed and upload the data
-    to blob storage (optionally compress the file using gzip).
+    to Azure blob storage (optionally compress the file using gzip).
     """
     if not from_datetime or not minutes:
         return False
@@ -546,19 +545,17 @@ def signal_sciences_write_feed(from_datetime=None, minutes=None, compress=False)
     corp_name = env('SIGSCI_CORP_NAME', 'dbca')
     if compress:
         # Conditionally gzip the file.
-        tf = tempfile.NamedTemporaryFile('wb')
-        gzfile = gzip.open(tf, 'wb')
-        gzfile.write(feed_str.encode('utf-8'))
         filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.isoformat())
+        tf = gzip.open('/tmp/{}'.format(filename), 'wb')
+        tf.write(feed_str.encode('utf-8'))
     else:
-        tf = tempfile.NamedTemporaryFile('w')
-        tf.write(feed_str)
         filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.isoformat())
+        tf = open('/tmp/{}'.format(filename), 'w')
+        tf.write(feed_str)
 
     # Upload the returned feed data to blob storage.
-    tf.flush()
+    tf.close()
     store = AzureBlobStorage(connect_string, 'signalsciences')
     store.upload_file(filename, tf.name)
-    tf.close()
 
     return filename
