@@ -7,7 +7,7 @@ class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
     """
     ACTIVE_FILTER = {'active': True, 'cost_centre__isnull': False, 'contractor': False}
-    # The following choices are intended to match options in Alesco.
+    # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, 'L1 User Account - Permanent'),
         (3, 'L1 User Account - Agency contract'),
@@ -75,7 +75,7 @@ class DepartmentUser(models.Model):
     org_unit = models.ForeignKey(
         'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
         verbose_name='organisational unit',
-        help_text="The organisational unit to which the employee belongs.")
+        help_text="The organisational unit to which the employee belongs.")  # NOTE: no AAD field mapping.
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
         help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
