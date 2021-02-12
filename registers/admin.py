@@ -52,7 +52,9 @@ class ITSystemAdmin(VersionAdmin):
         'platform',
     )
     list_filter = (
-        'status', 'system_type', 'availability', 'seasonality', 'recovery_category', PlatformFilter)
+        'status', 'system_type', 'availability', 'seasonality', 'recovery_category', PlatformFilter,
+        'infrastructure_location',
+    )
     search_fields = (
         'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
         'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation',
@@ -76,6 +78,7 @@ class ITSystemAdmin(VersionAdmin):
         }),
         ('Technical information', {
             'fields': (
+                'infrastructure_location',
                 ('backups', 'recovery_category'),
                 ('emergency_operations', 'online_bookings', 'visitor_safety'),
                 'user_notification',

@@ -2,7 +2,10 @@
 
 {% block object-tools-items %}
     <li>
-        <a href="{% url 'admin:departmentuser_export' %}">Download Department Users</a>
+        <a href="{% url 'admin:departmentuser_export' %}?all=true">Download all Department Users</a>
+    </li>
+    <li>
+        <a href="{% url 'admin:departmentuser_export' %}">Download active Department Users</a>
     </li>
     {{ block.super }}
 {% endblock %}

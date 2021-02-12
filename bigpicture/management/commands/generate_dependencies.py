@@ -44,6 +44,7 @@ class Command(BaseCommand):
             it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
         else:
             it_systems = ITSystem.objects.all()
+        utils.itsystem_risks_infra_location(it_systems)
         utils.itsystem_risks_critical_function(it_systems)
         utils.itsystem_risks_backups(it_systems)
         utils.itsystem_risks_support(it_systems)

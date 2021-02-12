@@ -4,8 +4,9 @@ from bigpicture import utils
 
 
 class Command(BaseCommand):
-    help = '''Extracts the Signal Science feed for the defined duration and upload it to blob storage.
+    help = '''Extracts the Signal Science feed for the defined duration and upload it to Azure blob storage.
     Defaults to querying the most-recent 15 minutes of data (offset by a 5 minute delay).
+    Optionally also records a summary of tags to CSV and uploads to blob storage.
     '''
 
     def add_arguments(self, parser):
@@ -18,11 +19,19 @@ class Command(BaseCommand):
         parser.add_argument(
             '--compress', action='store', dest='compress', type=bool, default=False,
             help='Compress the uploaded feed using gzip (boolean, optional)')
+        parser.add_argument(
+            '--csv', action='store', dest='csv', type=bool, default=False,
+            help='Summarise tags to CSV and upload to Azure (boolean, optional)')
 
     def handle(self, *args, **options):
         from_datetime = datetime.utcnow().replace(second=0, microsecond=0) - timedelta(minutes=options['min_ago'])
         self.stdout.write('Extracting Signal Sciences feed starting from {}, duration {} minutes'.format(from_datetime.isoformat(), options['duration']))
-        filename = utils.signal_sciences_write_feed(from_datetime=from_datetime, minutes=options['duration'], compress=options['compress'])
+        filename = utils.signal_sciences_upload_feed(
+            from_datetime=from_datetime,
+            minutes=options['duration'],
+            compress=options['compress'],
+            csv=options['csv']
+        )
         if filename:
             self.stdout.write(self.style.SUCCESS('{} uploaded to Azure container'.format(filename)))
         else:

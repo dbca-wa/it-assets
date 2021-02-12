@@ -140,7 +140,9 @@ class DepartmentUserResource(DjangoResource):
         # Return active users having an E5 or E1 licence assigned.
         users = DepartmentUser.objects.filter(active=True)
         users = users.filter(
-            Q(assigned_licences__contains=['OFFICE 365 E5']) | Q(assigned_licences__contains=['OFFICE 365 E1'])
+            Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E1'])
         )
         users = users.order_by('name')
         user_values = []
