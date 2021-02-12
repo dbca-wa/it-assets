@@ -1,4 +1,5 @@
 import calendar
+import csv
 from data_storage import AzureBlobStorage
 from datetime import timedelta
 from dbca_utils.utils import env
@@ -508,7 +509,7 @@ def signal_sciences_extract_feed(from_datetime=None, minutes=None):
         'x-api-token': api_token,
         'Content-Type': 'application/json',
     }
-    url = api_host + ('/api/v0/corps/{}/sites/{}/feed/requests?from={}&until={}'.format(corp_name, site_name, from_time, until_time))
+    url = api_host + '/api/v0/corps/{}/sites/{}/feed/requests?from={}&until={}'.format(corp_name, site_name, from_time, until_time)
     first = True
     feed_str = '['
 
@@ -531,18 +532,19 @@ def signal_sciences_extract_feed(from_datetime=None, minutes=None):
     return feed_str
 
 
-def signal_sciences_write_feed(from_datetime=None, minutes=None, compress=False):
+def signal_sciences_upload_feed(from_datetime=None, minutes=None, compress=False, upload=True, csv=False):
     """For the given datetime and duration, download the Signal Sciences feed and upload the data
     to Azure blob storage (optionally compress the file using gzip).
+    Optionally also upload a CSV summary of tagged requests to blob storage.
     """
     if not from_datetime or not minutes:
         return False
-    connect_string = env('AZURE_CONNECTION_STRING', None)
-    if not connect_string:
-        return False
-
     feed_str = signal_sciences_extract_feed(from_datetime, minutes)
     corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+
+    if upload and csv:
+        signal_sciences_feed_csv(feed_str, corp_name, from_datetime.isoformat())
+
     if compress:
         # Conditionally gzip the file.
         filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.isoformat())
@@ -552,10 +554,35 @@ def signal_sciences_write_feed(from_datetime=None, minutes=None, compress=False)
         filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.isoformat())
         tf = open('/tmp/{}'.format(filename), 'w')
         tf.write(feed_str)
-
-    # Upload the returned feed data to blob storage.
     tf.close()
-    store = AzureBlobStorage(connect_string, 'signalsciences')
-    store.upload_file(filename, tf.name)
+
+    if upload:
+        # Upload the returned feed data to blob storage.
+        connect_string = env('AZURE_CONNECTION_STRING')
+        store = AzureBlobStorage(connect_string, 'signalsciences')
+        store.upload_file(filename, tf.name)
 
     return filename
+
+
+def signal_sciences_feed_csv(feed_str, corp_name, timestamp, upload=True):
+    """For a given passed-in Signal Sciences feed string, summarise it to a CSV for analysis.
+    Upload the CSV to Azure blob storage.
+    """
+    filename = 'sigsci_request_tags_{}_{}.csv'.format(corp_name, timestamp)
+    tf = open('/tmp/{}'.format(filename), 'w')
+    writer = csv.writer(tf)
+    feed_json = json.loads(feed_str)
+
+    for entry in feed_json:
+        for tag in entry['tags']:
+            writer.writerow([entry['timestamp'], entry['serverName'], tag['type']])
+
+    tf.close()
+
+    if upload:
+        connect_string = env('AZURE_CONNECTION_STRING')
+        store = AzureBlobStorage(connect_string, 'http-requests-tagged')
+        store.upload_file(filename, tf.name)
+
+    return
