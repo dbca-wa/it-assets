@@ -547,11 +547,11 @@ def signal_sciences_upload_feed(from_datetime=None, minutes=None, compress=False
 
     if compress:
         # Conditionally gzip the file.
-        filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.isoformat())
+        filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.strftime('%Y-%m-%dT%H%M%S'))
         tf = gzip.open('/tmp/{}'.format(filename), 'wb')
         tf.write(feed_str.encode('utf-8'))
     else:
-        filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.isoformat())
+        filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.strftime('%Y-%m-%dT%H%M%S'))
         tf = open('/tmp/{}'.format(filename), 'w')
         tf.write(feed_str)
     tf.close()
