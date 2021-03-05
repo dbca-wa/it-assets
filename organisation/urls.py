@@ -2,6 +2,7 @@ from django.urls import path
 from organisation import views
 
 urlpatterns = [
+    path('address-book/', views.AddressBook.as_view(), name='address_book'),
     path('user-account/export/', views.UserAccountExport.as_view(), name='user_account_export'),
     path('ascender-discrepancies/export/', views.AscenderDiscrepanciesExport.as_view(), name='ascender_discrepancies_export'),
     path('adaction/', views.ADActionList.as_view(), name='ad_action_list'),
