@@ -49,10 +49,9 @@ webtemplate-dbca = "1.3.0"
 fuzzywuzzy = "0.18.0"
 python-Levenshtein = "0.12.0"
 mixer = "6.1.3"
-ipython = "^7.19.0"
 
 [tool.poetry.dev-dependencies]
-ipython = "^7.19.0"
+ipython = "^7.20.0"
 ipdb = "^0.13.3"
 
 [build-system]

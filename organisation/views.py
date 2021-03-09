@@ -5,12 +5,16 @@ from django.contrib.auth.models import Group
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.urls import reverse
 from django.utils import timezone
-from django.views.generic import View, ListView, DetailView, UpdateView, FormView
+from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
 from itassets.utils import breadcrumbs_list
 
 from .forms import ConfirmPhoneNosForm
 from .models import DepartmentUser, ADAction
 from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
+
+
+class AddressBook(TemplateView):
+    template_name = 'organisation/address_book.html'
 
 
 class DepartmentUserExport(View):
