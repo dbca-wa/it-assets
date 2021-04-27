@@ -1,6 +1,5 @@
 import re
-import os
-import imp
+import types
 import logging
 from datetime import datetime,timedelta
 
@@ -10,7 +9,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
-from django.conf import settings
 
 from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
@@ -651,7 +649,7 @@ class RequestPathNormalizer(models.Model):
     def normalize(self,request_path):
         if not self._f_normalize:
             module_name = "{}_{}".format(self.__class__.__name__,self.id)
-            self._module = imp.new_module(module_name)
+            self._module = types.ModuleType(module_name)
             exec(self.normalize_code,self._module.__dict__)
             if not hasattr(self._module,"normalize"):
                 #method 'normalize' not found
@@ -903,7 +901,7 @@ def apply_rules(context={}):
                 webserver = record.webserver
                 records[webserver] = {}
                 webserver_records = records[webserver]
-                    
+
 
             if path_normalizer_changed:
                 path_changed,request_path = RequestPathNormalizer.normalize_path(
@@ -972,7 +970,7 @@ def apply_rules(context={}):
 
             if changed_records or del_records or excluded_records:
                 logger.debug("{0}: {1} log records have been merged into {2} log records,{3} log records were removed".format(log_starttime,len(del_records),changed_records,len(excluded_records)))
-                    
+
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
         if context["f_renew_lock"] and context["renew_lock_time"]:
