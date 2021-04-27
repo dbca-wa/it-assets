@@ -2,19 +2,73 @@ from datetime import date, datetime
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
-from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
 from itassets.utils import breadcrumbs_list
 
 from .forms import ConfirmPhoneNosForm
-from .models import DepartmentUser, ADAction
+from .models import DepartmentUser, Location, ADAction
 from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
 
 
 class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
+
+
+class DepartmentUserAPIResource(View):
+    """A basic view that returns JSON of active department staff accounts, for API calls.
+    """
+    def get(self, request, *args, **kwargs):
+        queryset = DepartmentUser.objects.filter(
+            **DepartmentUser.ACTIVE_FILTER
+        ).exclude(
+            account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+        ).prefetch_related(
+            'location',
+            'org_unit',
+        ).order_by('name')
+
+        users = [
+            {
+                'id': user.pk,
+                'name': user.name,
+                'preferred_name': user.preferred_name,
+                'email': user.email,
+                'title': user.title,
+                'telephone': user.telephone,
+                'extension': user.extension,
+                'mobile_phone': user.mobile_phone,
+                'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
+                'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
+                'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
+            } for user in queryset
+        ]
+
+        return JsonResponse(users, safe=False)
+
+
+class LocationAPIResource(View):
+    """A basic view that returns JSON of active physical locations, for API calls.
+    """
+    def get(self, request, *args, **kwargs):
+        queryset = Location.objects.filter(active=True)
+        print(queryset)
+
+        locations = [
+            {
+                'id': location.pk,
+                'name': location.name,
+                'point': {'type': 'Point', 'coordinates': location.point.coords} if location.point else {},
+                'address': location.address,
+                'pobox': location.pobox,
+                'phone': location.phone,
+                'fax': location.fax,
+            } for location in queryset
+        ]
+
+        return JsonResponse(locations, safe=False)
 
 
 class DepartmentUserExport(View):
