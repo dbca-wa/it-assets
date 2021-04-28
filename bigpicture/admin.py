@@ -1,21 +1,8 @@
 from django.contrib import admin
 from reversion.admin import VersionAdmin
+
+from itassets.utils import ModelDescMixin
 from .models import Dependency, Platform, RiskAssessment
-
-
-class ModelDescMixin(object):
-    """A small mixin for the ModelAdmin class to add a description of the model to the
-    admin changelist view context.
-
-    In order to then display this description above the list view, you then need to
-    override the relevant change_list.html template.
-    """
-
-    def changelist_view(self, request, extra_context=None):
-        extra_context = extra_context or {}
-        if hasattr(self, "model_description"):
-            extra_context["model_description"] = self.model_description
-        return super().changelist_view(request, extra_context=extra_context)
 
 
 @admin.register(Dependency)

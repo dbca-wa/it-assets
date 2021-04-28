@@ -10,7 +10,7 @@ from .models import Vendor, HardwareModel, HardwareAsset, HardwareInvoice
 from .views import HardwareAssetExport
 
 
-@register(Vendor)
+#@register(Vendor)
 class VendorAdmin(VersionAdmin):
     list_display = (
         'name', 'account_rep', 'contact_email', 'contact_phone', 'website',
@@ -21,7 +21,7 @@ class VendorAdmin(VersionAdmin):
         return obj.hardwareasset_set.count()
 
 
-@register(HardwareModel)
+#@register(HardwareModel)
 class HardwareModelAdmin(VersionAdmin):
     list_display = ('model_no', 'model_type', 'vendor')
     list_filter = ('model_type',)
@@ -33,7 +33,7 @@ class HardwareInvoiceInline(TabularInline):
     extra = 1
 
 
-@register(HardwareAsset)
+#@register(HardwareAsset)
 class HardwareAssetAdmin(VersionAdmin):
     date_hierarchy = 'date_purchased'
     inlines = [HardwareInvoiceInline]

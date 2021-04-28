@@ -45,7 +45,7 @@
         $('.select-user-choice').select2({
           minimumInputLength: 3,
           ajax: {
-            url: '/api/user-select/',
+            url: '/api/v3/departmentuser/?selectlist=',
             delay: 250,
             processResults: function (data) {
               return {
