@@ -9,7 +9,7 @@ from django.views.generic import View, ListView, DetailView, UpdateView, FormVie
 from itassets.utils import breadcrumbs_list
 
 from .forms import ConfirmPhoneNosForm
-from .models import DepartmentUser, Location, ADAction
+from .models import DepartmentUser, Location, OrgUnit, ADAction
 from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
 
 
@@ -59,22 +59,54 @@ class LocationAPIResource(View):
     """A basic view that returns JSON of active physical locations, for API calls.
     """
     def get(self, request, *args, **kwargs):
-        queryset = Location.objects.filter(active=True)
-        print(queryset)
+        queryset = Location.objects.filter(active=True).order_by('name')
 
-        locations = [
-            {
-                'id': location.pk,
-                'name': location.name,
-                'point': {'type': 'Point', 'coordinates': location.point.coords} if location.point else {},
-                'address': location.address,
-                'pobox': location.pobox,
-                'phone': location.phone,
-                'fax': location.fax,
-            } for location in queryset
-        ]
+        if 'q' in self.request.GET:  # Allow basic filtering on name.
+            queryset = queryset.filter(name__icontains=self.request.GET['q'])
+
+        if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
+            locations = {'objects': [{'id': location.pk, 'text': location.name} for location in queryset]}
+        else:
+            locations = [
+                {
+                    'id': location.pk,
+                    'name': location.name,
+                    'point': {'type': 'Point', 'coordinates': location.point.coords} if location.point else {},
+                    'address': location.address,
+                    'pobox': location.pobox,
+                    'phone': location.phone,
+                    'fax': location.fax,
+                } for location in queryset
+            ]
 
         return JsonResponse(locations, safe=False)
+
+
+class OrgUnitAPIResource(View):
+    """A basic view that returns JSON of active organisation units, for API calls.
+    """
+    def get(self, request, *args, **kwargs):
+        queryset = OrgUnit.objects.filter(active=True).order_by('name')
+
+        if 'q' in self.request.GET:  # Allow basic filtering on name.
+            queryset = queryset.filter(name__icontains=self.request.GET['q'])
+        if 'division' in self.request.GET:  # Allow filtering to divisions only.
+            queryset = queryset.filter(unit_type=1)
+        if 'division_id' in self.request.GET and self.request.GET['division_id']:  # Allow filtering to org units belonging to a division.
+            queryset = queryset.filter(division_unit__pk=self.request.GET['division_id'])
+
+        if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
+            org_units = {'objects': [{'id': ou.pk, 'text': ou.name} for ou in queryset]}
+        else:
+            org_units = [
+                {
+                    'id': ou.pk,
+                    'name': ou.name,
+                    'division_id': ou.division_unit.pk if ou.division_unit else None,
+                } for ou in queryset
+            ]
+
+        return JsonResponse(org_units, safe=False)
 
 
 class DepartmentUserExport(View):
