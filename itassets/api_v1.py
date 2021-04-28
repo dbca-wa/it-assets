@@ -2,9 +2,9 @@ from django.urls import path, include
 from restless.dj import DjangoResource
 from restless.resources import skip_prepare
 
-from organisation.api import DepartmentUserResource, LocationResource, UserSelectResource, profile
+from organisation.api_v1 import DepartmentUserResource, LocationResource, UserSelectResource, profile
 from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
-from registers.api import ITSystemResource
+from registers.api_v1 import ITSystemResource
 from registers.models import ITSystem
 
 
