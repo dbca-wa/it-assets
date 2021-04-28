@@ -30,21 +30,27 @@ class DepartmentUserAPIResource(View):
             'org_unit',
         ).order_by('name')
 
-        users = [
-            {
-                'id': user.pk,
-                'name': user.name,
-                'preferred_name': user.preferred_name,
-                'email': user.email,
-                'title': user.title,
-                'telephone': user.telephone,
-                'extension': user.extension,
-                'mobile_phone': user.mobile_phone,
-                'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
-                'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
-                'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
-            } for user in queryset
-        ]
+        if 'q' in self.request.GET:  # Allow basic filtering on email.
+            queryset = queryset.filter(email__icontains=self.request.GET['q'])
+
+        if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
+            users = {'objects': [{'id': user.pk, 'text': user.email} for user in queryset]}
+        else:  # Normal API response.
+            users = [
+                {
+                    'id': user.pk,
+                    'name': user.name,
+                    'preferred_name': user.preferred_name,
+                    'email': user.email,
+                    'title': user.title,
+                    'telephone': user.telephone,
+                    'extension': user.extension,
+                    'mobile_phone': user.mobile_phone,
+                    'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
+                    'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
+                    'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
+                } for user in queryset
+            ]
 
         return JsonResponse(users, safe=False)
 
