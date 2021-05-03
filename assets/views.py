@@ -1,13 +1,10 @@
 from datetime import date, datetime
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
-from django.views.generic import View
+from django.views.generic import View, ListView, DetailView
 import xlsxwriter
 
-from django.views.generic import View, ListView, DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
 from registers.utils import search_filter
-from django.core.paginator import Paginator
-
 from .models import HardwareAsset
 
 
@@ -68,10 +65,10 @@ class HardwareAssetExport(View):
 
         return response
 
+
 class HardwareAssetList(LoginRequiredMixin, ListView):
     model = HardwareAsset
     paginate_by = 50
-
 
     def get_queryset(self):
         from .admin import HardwareAssetAdmin
@@ -91,12 +88,10 @@ class HardwareAssetList(LoginRequiredMixin, ListView):
             context['query_string'] = self.request.GET['q']
         return context
 
+
 class HardwareAssetDetail(LoginRequiredMixin, DetailView):
     model = HardwareAsset
 
     def get_context_data(self, **kwargs):
         context = super(HardwareAssetDetail, self).get_context_data(**kwargs)
         return context
-
-
-
