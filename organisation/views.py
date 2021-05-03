@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
@@ -18,7 +19,7 @@ class AddressBook(TemplateView):
 
 
 class DepartmentUserAPIResource(View):
-    """A basic view that returns JSON of active department staff accounts, for API calls.
+    """An API view that returns JSON of active department staff accounts.
     """
     def get(self, request, *args, **kwargs):
         queryset = DepartmentUser.objects.filter(
@@ -49,6 +50,7 @@ class DepartmentUserAPIResource(View):
                     'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
                     'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
                     'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
+                    'cost_centre': user.cost_centre.code if user.cost_centre else None,
                 } for user in queryset
             ]
 
@@ -56,7 +58,7 @@ class DepartmentUserAPIResource(View):
 
 
 class LocationAPIResource(View):
-    """A basic view that returns JSON of active physical locations, for API calls.
+    """An API view that returns JSON of active physical locations.
     """
     def get(self, request, *args, **kwargs):
         queryset = Location.objects.filter(active=True).order_by('name')
@@ -83,7 +85,7 @@ class LocationAPIResource(View):
 
 
 class OrgUnitAPIResource(View):
-    """A basic view that returns JSON of active organisation units, for API calls.
+    """An API view that returns JSON of active organisation units.
     """
     def get(self, request, *args, **kwargs):
         queryset = OrgUnit.objects.filter(active=True).order_by('name')
@@ -107,6 +109,37 @@ class OrgUnitAPIResource(View):
             ]
 
         return JsonResponse(org_units, safe=False)
+
+
+class LicenseAPIResource(View):
+    """An API view that returns a list of Microsoft-licensed accounts.
+    """
+
+    def get(self, request, *args, **kwargs):
+        # Return active users having an E5 or E1 licence assigned.
+        queryset = DepartmentUser.objects.filter(
+            active=True,
+        ).filter(
+            Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E1'])
+        ).order_by('name')
+
+        if 'q' in self.request.GET:  # Allow basic filtering on email.
+            queryset = queryset.filter(email__icontains=self.request.GET['q'])
+
+        licenses = [
+            {
+                'name': user.name,
+                'email': user.email,
+                'cost_centre': user.cost_centre.code if user.cost_centre else None,
+                'microsoft_365_licence': user.get_office_licence(),
+                'active': user.active,
+                'shared': user.shared_account,
+            } for user in queryset
+        ]
+
+        return JsonResponse(licenses, safe=False)
 
 
 class DepartmentUserExport(View):
