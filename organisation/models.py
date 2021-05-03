@@ -157,7 +157,7 @@ class DepartmentUser(models.Model):
         return self.org_unit
 
     def get_office_licence(self):
-        """Return O365 licence terms familar to the directors.
+        """Return Microsoft 365 licence description consistent with other OIM communications.
         """
         if self.assigned_licences:
             if 'MICROSOFT 365 E5' in self.assigned_licences:
