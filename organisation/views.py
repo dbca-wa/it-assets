@@ -50,6 +50,7 @@ class DepartmentUserAPIResource(View):
                     'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
                     'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
                     'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
+                    'cost_centre': user.cost_centre.code if user.cost_centre else None,
                 } for user in queryset
             ]
 
