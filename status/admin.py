@@ -21,7 +21,7 @@ class HostIPInline(TabularInline):
 
 @register(Host)
 class HostAdmin(ModelAdmin):
-    list_display = ("name", "active", "ip_list")
+    list_display = ("name", "description", "active", "ip_list")
     ordering = ("name",)
     inlines = (HostIPInline,)
     list_filter = ("active", "type")
