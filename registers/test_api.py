@@ -1,7 +1,4 @@
 from itassets.test_api import ApiTestCase
-import json
-
-from django.urls import reverse
 
 
 class ITSystemResourceTestCase(ApiTestCase):
@@ -33,35 +30,3 @@ class ITSystemResourceTestCase(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.it1.name)
         self.assertNotContains(response, self.it2.name)
-
-
-class ChangeRequestViewSetTestCase(ApiTestCase):
-
-    def test_list(self):
-        url = '/api/v2/changerequest/'
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-    def test_create(self):
-        url = reverse('change_request_create')
-
-        data = {
-            'title': 'Test',
-            'requester': 'John Doe',
-            'endorser': 'Doe1',
-            'implementor': 'Doe2',
-            'status': 0,
-            'unexpected_issues': False,
-            'caused_issues': False
-        }
-
-        response = self.client.post(url, json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 200)
-
-
-class StandardChangeViewSetTestCase(ApiTestCase):
-
-    def test_list(self):
-        url = reverse('standardchange-list')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)

@@ -2,7 +2,7 @@ from django.urls import reverse
 from mixer.backend.django import mixer
 
 from itassets.test_api import ApiTestCase
-from organisation.models import DepartmentUser, Location, OrgUnit
+from organisation.models import Location, OrgUnit
 
 
 class OptionResourceTestCase(ApiTestCase):
@@ -175,18 +175,3 @@ class LicenseAPIResourceTestCase(ApiTestCase):
         self.assertContains(response, self.user1.email)
         self.assertNotContains(response, self.user2.email)
         self.assertNotContains(response, self.contractor.email)
-
-
-class DepartmentUserExportTestCase(ApiTestCase):
-
-    def setUp(self):
-        super(DepartmentUserExportTestCase, self).setUp()
-        mixer.cycle(10).blend(DepartmentUser)
-
-    def test_get(self):
-        url = reverse('admin:departmentuser_export')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-        self.assertTrue(response.has_header("Content-Disposition"))
-        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

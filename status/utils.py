@@ -1,11 +1,8 @@
 import datetime
+from django.conf import settings
 import multiprocessing
 import nmap
 import socket
-#import uuid
-
-from django.conf import settings
-#from django_q import tasks
 
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 

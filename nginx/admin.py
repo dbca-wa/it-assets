@@ -1,10 +1,10 @@
 import os
 import urllib
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 
 from django.contrib import admin
-from django.urls import path,reverse
+from django.urls import path, reverse
 from django.utils.html import format_html, mark_safe
 from django.utils import timezone
 from django.shortcuts import redirect
@@ -17,7 +17,6 @@ from . import models
 from rancher.models import Workload
 
 
-@admin.register(models.Domain)
 class DomainAdmin(admin.ModelAdmin):
     list_display = ('name', 'parent')
     ordering = ('-score',)
@@ -29,7 +28,6 @@ class DomainAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(models.SystemAlias)
 class SystemAliasAdmin(admin.ModelAdmin):
     list_display = ('name', 'system')
     ordering = ('name',)
@@ -42,7 +40,6 @@ class SystemAliasAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(models.SystemEnv)
 class SystemEnvAdmin(admin.ModelAdmin):
     list_display = ('name', )
     ordering = ('name',)
@@ -54,7 +51,6 @@ class SystemEnvAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(models.WebServer)
 class WebServerAdmin(admin.ModelAdmin):
     list_display = ('name', 'category', 'other_names', 'host')
     readonly_fields = ('other_names', '_apps')
@@ -152,7 +148,6 @@ class WebAppLocationInline(ConfigureTxtMixin,WebAppLocationMixin,admin.TabularIn
         return False
 
 
-@admin.register(models.WebApp)
 class WebAppAdmin(ConfigureTxtMixin, admin.ModelAdmin):
 
     class RedirectToFilter(admin.SimpleListFilter):
@@ -178,7 +173,6 @@ class WebAppAdmin(ConfigureTxtMixin, admin.ModelAdmin):
     list_filter = ('system_env','auth_domain','clientip_subnet', RedirectToFilter, ("system_alias__system", admin.RelatedOnlyFieldListFilter))
     readonly_fields = ('name','auth_domain','clientip_subnet','_configure_txt','_redirect',"config_modified","config_changed_columns","_daily_access_report")
     fields = ("name", "domain", "system_alias", "system_env", "auth_domain","clientip_subnet", "_redirect", 'config_modified', 'config_changed_columns', "_configure_txt","_daily_access_report")
-
     search_fields = ['name']
     inlines = [WebAppListenInline, WebAppLocationInline]
 
@@ -191,11 +185,13 @@ class WebAppAdmin(ConfigureTxtMixin, admin.ModelAdmin):
     _listens.short_description = "Listen"
 
     dailyreport_list_url_name = 'admin:{}_{}_changelist'.format(models.WebAppAccessDailyReport._meta.app_label,models.WebAppAccessDailyReport._meta.model_name)
+
     def _daily_access_report(self,obj):
         if not obj :
             return ""
         else:
             return mark_safe("<A href='{0}?log_day=7d&q={1}'>7 days</A><A style='margin-left:20px' href='{0}?log_day=4w&q={1}'>4 weeks</A>".format(reverse(self.dailyreport_list_url_name),obj.name))
+
     _daily_access_report.short_description = "Daily Access Report"
 
     def _redirect(self,obj):
@@ -239,7 +235,6 @@ class WebAppLocationServerInline(admin.TabularInline):
         return True
 
 
-@admin.register(models.WebAppLocation)
 class WebAppLocationAdmin(ConfigureTxtMixin,WebAppLocationMixin,admin.ModelAdmin):
     list_display = ('app', 'location','location_type','auth_type','cors_enabled',"_process_handler","config_modified")
     readonly_fields = ('app','location','location_type','auth_type','refuse','_configure_txt',"_process_handler","config_modified","config_changed_columns")
@@ -252,18 +247,18 @@ class WebAppLocationAdmin(ConfigureTxtMixin,WebAppLocationMixin,admin.ModelAdmin
     def has_delete_permission(self, request, obj=None):
         return False
 
-@admin.register(models.RequestPathNormalizer)
+
 class RequestPathNormalizerAdmin(admin.ModelAdmin):
     list_display = ('filter_code','order','changed','applied')
     readonly_fields = ('changed','applied')
     ordering = ('-order','filter_code')
 
 
-@admin.register(models.RequestParameterFilter)
 class RequestParameterFilterAdmin(admin.ModelAdmin):
     list_display = ('filter_code','included_parameters','excluded_parameters','case_insensitive','order','changed','applied')
     readonly_fields = ('changed','applied')
     ordering = ('-order','filter_code')
+
 
 class LogDayFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
@@ -281,7 +276,7 @@ class LogDayFilter(admin.SimpleListFilter):
         human-readable name for the option that will appear
         in the right sidebar.
         """
-        
+
         obj = models.WebAppAccessLog.objects.all().order_by("-log_starttime").first()
         if not obj:
             return []
@@ -302,6 +297,7 @@ class LogDayFilter(admin.SimpleListFilter):
             return queryset.filter(log_starttime__gte=timezone.make_aware(datetime.strptime(self.value(),"%Y-%m-%d")),log_starttime__lt=timezone.make_aware(datetime.strptime(self.value(),"%Y-%m-%d")) + timedelta(days=1))
         else:
             return queryset
+
 
 class DailyLogDayFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
@@ -330,7 +326,6 @@ class DailyLogDayFilter(admin.SimpleListFilter):
         result.append(("4w","Last 4 weeks"))
         return result
 
-
     def queryset(self, request, queryset):
         """
         Returns the filtered queryset based on the value
@@ -355,6 +350,7 @@ class DailyLogDayFilter(admin.SimpleListFilter):
             return queryset.filter(log_day__gte=start_day)
         else:
             return queryset.filter(log_day=timezone.make_aware(datetime.strptime(self.value(),"%Y-%m-%d")).date())
+
 
 class HttpStatusGroupFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
@@ -404,6 +400,7 @@ class HttpStatusGroupFilter(admin.SimpleListFilter):
         else:
             return queryset
 
+
 class WebServerMixin(object):
     app_change_url_name = 'admin:{}_{}_change'.format(models.WebApp._meta.app_label,models.WebApp._meta.model_name)
     def _webserver(self,obj):
@@ -416,7 +413,6 @@ class WebServerMixin(object):
     _webserver.short_description = "Webserver"
 
 
-@admin.register(models.WebAppAccessDailyReport)
 class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
     list_display = ('log_day','_webserver','_requests','_success_requests','_error_requests','_unauthorized_requests','_timeout_requests','_client_closed_requests')
     readonly_fields = list_display
@@ -490,6 +486,7 @@ class WebAppAccessDailyReportAdmin(WebServerMixin,admin.ModelAdmin):
     def has_add_permission(self, request, obj=None):
         return False
 
+
 class ResponseTimeMixin(object):
     def _max_response_time(self,obj):
         if not obj:
@@ -531,6 +528,7 @@ class RequestPathMixin(object):
             return mark_safe("<A href='{}'>{}</A>".format(reverse(self.location_change_url_name,args=(obj.webapplocation.id,)),obj.request_path))
     _request_path.short_description = "Request path"
 
+
 class HttpStatusMixin(object):
     def _http_status(self,obj):
         if not obj:
@@ -542,18 +540,14 @@ class HttpStatusMixin(object):
     _http_status.short_description = "Http Status"
 
 
-
-@admin.register(models.WebAppAccessDailyLog)
 class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,RequestPathMixin,admin.ModelAdmin):
     list_display = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time')
     readonly_fields = ('log_day','_webserver','_request_path','path_parameters','_http_status','_requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_day','webserver','request_path',)
-
     list_filter = (DailyLogDayFilter,HttpStatusGroupFilter)
-
     search_fields = ['webserver']
-
     log_list_url_name = 'admin:{}_{}_changelist'.format(models.WebAppAccessLog._meta.app_label,models.WebAppAccessLog._meta.model_name)
+
     def _requests(self,obj):
         if not obj:
             return ""
@@ -569,19 +563,14 @@ class WebAppAccessDailyLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin
     def has_change_permission(self, request, obj=None):
         return False
 
-
     def has_add_permission(self, request, obj=None):
         return False
 
 
-
-
-@admin.register(models.WebAppAccessLog)
 class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,RequestPathMixin,admin.ModelAdmin):
     list_display = ('_log_starttime','_webserver','_request_path','path_parameters','_http_status','requests','_max_response_time','_min_response_time','_avg_response_time')
     readonly_fields = ('_log_starttime','_log_endtime','_webserver','_request_path','path_parameters','_http_status','requests','_max_response_time','_min_response_time','_avg_response_time','all_path_parameters')
     ordering = ('-log_starttime','webserver','request_path',)
-
     search_fields = ['webserver']
 
     list_filter = (LogDayFilter,HttpStatusGroupFilter)
@@ -594,6 +583,7 @@ class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,Requ
         return urls
 
     log_list_url_name = 'admin:{}_{}_changelist'.format(models.WebAppAccessLog._meta.app_label,models.WebAppAccessLog._meta.model_name)
+
     def run_log_harvesting(self,request):
         try:
             async_task("nginx.log_harvester.harvest")
@@ -621,7 +611,6 @@ class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,Requ
 
     def has_change_permission(self, request, obj=None):
         return False
-
 
     def has_add_permission(self, request, obj=None):
         return False
