@@ -117,7 +117,7 @@ class Host(models.Model):
     )
     name = models.CharField(max_length=256, unique=True)
     type = models.SmallIntegerField(choices=TYPE_CHOICES, default=0)
-
+    description = models.TextField(null=True, blank=True)
     active = models.BooleanField(default=True)
 
     def ip_list(self):
