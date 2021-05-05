@@ -198,7 +198,7 @@ def change_request_export(fileobj, rfcs):
         changes.write_row('A1', (
             'Change ref.', 'Title', 'Change type', 'Requester', 'Endorser', 'Implementer', 'Status',
             'Test date', 'Planned start', 'Planned end', 'Completed', 'Outage duration',
-            'System(s) affected', 'Incident URL', 'Unexpected issues',
+            'System(s) affected', 'Incident URL', 'Unexpected issues', 'Created timestamp',
         ))
         row = 1
         for i in rfcs:
@@ -212,7 +212,7 @@ def change_request_export(fileobj, rfcs):
                 i.planned_end.astimezone(TZ) if i.planned_end else '',
                 i.completed.astimezone(TZ) if i.completed else '',
                 str(i.outage) if i.outage else '', i.systems_affected, i.incident_url,
-                i.unexpected_issues,
+                i.unexpected_issues, i.created.astimezone(TZ),
             ])
             row += 1
         changes.set_column('A:A', 11)
@@ -223,7 +223,7 @@ def change_request_export(fileobj, rfcs):
         changes.set_column('H:K', 18)
         changes.set_column('L:L', 15)
         changes.set_column('M:N', 30)
-        changes.set_column('O:O', 17)
+        changes.set_column('O:P', 18)
 
     return fileobj
 
