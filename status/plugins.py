@@ -1,13 +1,12 @@
 import datetime
 import re
 import urllib3
-import json
 
 import adal
 import boto3
 import requests
-from bs4 import BeautifulSoup
 import pytz
+import socket
 
 from django.conf import settings
 from .utils import lookup
@@ -28,9 +27,65 @@ def monitor_prtg(plugin, date):
     report = requests.get(PRTG_DEVICES, verify=False).json()
     print("{} devices in PRTG report".format(len(report["devices"])))
 
+    from .models import Host, HostIP
+
     for device in report["devices"]:
         host_status = lookup(device["host"], date)
-        if host_status is None:
+        if host_status is None:  # We found a device in PRTG not recorded in IT Assets.
+            if device["host"].strip():
+                host = device["host"].strip().lower()
+
+                if host in ["127.0.0.1"]:
+                    continue
+
+                # List of domains for which to skip (these are websites, not hosts).
+                skip_domains = [
+                    '.bgpa.local',
+                    'rottnest.local',
+                    '.dbca.wa.gov.au',
+                    '.dpaw.wa.gov.au',
+                    '.rottnestislandonline.com',
+                    '.perthzoo.wa.gov.au',
+                ]
+                skiphost = False
+                for s in skip_domains:
+                    if host.find(s) >= 0:
+                        skiphost = True
+                        continue
+                if skiphost:
+                    print("Skipping {}".format(host))
+                    continue
+
+                try:
+                    ip = socket.gethostbyname(host)
+                except Exception:
+                    print("Exception thrown for socket.gethostbyname('{}'), skipping".format(host))
+                    continue
+
+                qs_host = Host.objects.filter(name__istartswith=host)
+                qs_hostip = HostIP.objects.filter(ip=ip)
+
+                if qs_host.exists():
+                    if qs_hostip.exists():
+                        hostip = qs_hostip.first()
+                        hostip.host = qs_host.first()
+                        hostip.save()
+                        print("Existing HostIP {} reassigned to Host {}".format(ip, host))
+                    else:
+                        hostip = HostIP.objects.create(ip=ip, host=qs_host.first())
+                        print("New HostIP {} created and assigned to Host {}".format(ip, host))
+                else:
+                    if qs_hostip.exists():
+                        new_host = Host.objects.create(name=host)
+                        hostip = qs_hostip.first()
+                        hostip.host = new_host
+                        hostip.save()
+                        print("Host {} created and existing HostIP {} reassigned to it".format(host, ip))
+                    else:
+                        new_host = Host.objects.create(name=host)
+                        hostip = HostIP.objects.create(ip=ip, host=new_host)
+                        print("New Host {} and HostIP {} created and associated".format(host, ip))
+
             continue
 
         host_status.monitor_info = {
@@ -59,6 +114,20 @@ def monitor_prtg(plugin, date):
         )
         host_status.save()
         print("Updated PRTG status for {}".format(host_status))
+
+    # Update Host metadata from PRTG report.
+    for host in Host.objects.all():
+        devices = [d for d in report["devices"] if d["host"] == host.name]
+        if not devices:  # Host is not output in the PRTG report, set to "No record".
+            host.monitor_status = 1
+            host.save()
+            print("Updated PRTG monitor status for {}".format(host))
+        else:
+            device = devices[0]
+            if host.description != device['device']:
+                host.description = device['device']
+                host.save()
+                print("Updated host description for {}".format(host))
 
 
 def vulnerability_nessus(plugin, date):
