@@ -1,10 +1,7 @@
-from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from mixer.backend.django import mixer
-from random import randint
 
 from organisation.models import DepartmentUser
 
@@ -28,3 +25,5 @@ class DepartmentUserAdminTestCase(TestCase):
         url = reverse('admin:departmentuser_export')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

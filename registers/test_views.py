@@ -112,6 +112,11 @@ class RegistersViewsTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Create a draft standard change request')
 
+    def test_std_changerequest_list(self):
+        url = reverse('standard_change_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
     def test_change_calendar(self):
         url = reverse('change_request_calendar')
         resp = self.client.get(url)
