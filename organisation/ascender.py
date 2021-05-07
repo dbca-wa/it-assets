@@ -1,19 +1,21 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
+from fuzzywuzzy import fuzz
 import psycopg2
 import pytz
 from organisation.models import DepartmentUser
 
 TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
+# The list below defines which columns to SELECT from the Ascender view, what to name the object
+# dict key after querying, plus how to parse the returned value of each column (if required).
 FOREIGN_TABLE_FIELDS = (
     ("employee_no", "employee_id"),
     "job_no",
     "surname",
     "first_name",
     "second_name",
-    "gender",
-    ("date_of_birth", lambda record, val: val.isoformat() if val else None),
+    "preferred_name",
     "clevel1_id",
     "clevel1_desc",
     "clevel2_desc",
@@ -26,33 +28,20 @@ FOREIGN_TABLE_FIELDS = (
     "award_desc",
     "emp_status",
     "emp_stat_desc",
-    "location",
     ("loc_desc", "location_desc"),
     "paypoint",
     "paypoint_desc",
     "geo_location_desc",
     "occup_type",
-    (
-        "job_start_date",
-        lambda record, val: val.strftime("%Y-%m-%d")
-        if val and val != DATE_MAX
-        else None,
-    ),
-    (
-        "occup_term_date",
-        "job_term_date",
-        lambda record, val: val.strftime("%Y-%m-%d")
-        if val and val != DATE_MAX
-        else None,
-    ),
+    ("job_start_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    ("occup_term_date", "job_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
-    ("manager_emp_no", "manager_employee_no"),
+    "work_phone_no",
+    "work_mobile_phone_no",
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
-        f[0] if isinstance(f, (list, tuple)) else f
-        for f in FOREIGN_TABLE_FIELDS
-        if (f[0] if isinstance(f, (list, tuple)) else f)
+        f[0] if isinstance(f, (list, tuple)) else f for f in FOREIGN_TABLE_FIELDS if (f[0] if isinstance(f, (list, tuple)) else f)
     ),
     settings.FOREIGN_SCHEMA,
     settings.FOREIGN_TABLE,
@@ -91,38 +80,32 @@ def ascender_db_fetch():
     )
     cur = None
 
-    try:
-        cur = conn.cursor()
-        cur.execute(FOREIGN_DB_QUERY_SQL)
-        record = None
-        fields = len(FOREIGN_TABLE_FIELDS)
+    cur = conn.cursor()
+    cur.execute(FOREIGN_DB_QUERY_SQL)
+    record = None
+    fields = len(FOREIGN_TABLE_FIELDS)
 
-        while True:
-            row = cur.fetchone()
-            if row is None:
-                break
-            index = 0
-            record = {}
-            while index < fields:
-                column = FOREIGN_TABLE_FIELDS[index]
-                if isinstance(column, (list, tuple)):
-                    if callable(column[-1]):
-                        if len(column) == 2:
-                            record[column[0]] = column[-1](record, row[index])
-                        else:
-                            record[column[1]] = column[-1](record, row[index])
+    while True:
+        row = cur.fetchone()
+        if row is None:
+            break
+        index = 0
+        record = {}
+        while index < fields:
+            column = FOREIGN_TABLE_FIELDS[index]
+            if isinstance(column, (list, tuple)):
+                if callable(column[-1]):
+                    if len(column) == 2:
+                        record[column[0]] = column[-1](record, row[index])
                     else:
-                        record[column[1]] = row[index]
+                        record[column[1]] = column[-1](record, row[index])
                 else:
-                    record[column] = row[index]
+                    record[column[1]] = row[index]
+            else:
+                record[column] = row[index]
 
-                index += 1
-            yield record
-    except:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+            index += 1
+        yield record
 
 
 def ascender_job_sort_key(record):
@@ -135,18 +118,17 @@ def ascender_job_sort_key(record):
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
-    # initial score from occup_term_date
+    # Initial score from occup_term_date
     score = (
         (int(record["job_term_date"].replace("-", "")) * 10000)
         if record["job_term_date"]
         and record["job_term_date"] <= today.strftime("%Y-%m-%d")
         else int(tomorrow.strftime("%Y%m%d0000"))
     )
-    # second score based emp_status
+    # Second score based emp_status
     score += (
         (STATUS_RANKING.index(record["emp_status"]) + 1)
-        if (record["emp_status"] in STATUS_RANKING)
-        else 0
+        if (record["emp_status"] in STATUS_RANKING) else 0
     ) * 100
     return score
 
@@ -177,7 +159,7 @@ def ascender_employee_fetch():
 
 def ascender_db_import():
     """A task to update DepartmentUser field values from Ascender database information.
-    By default, it saves Ascender data in the alesco_data JSON field.
+    By default, it saves Ascender data in the ascender_data JSON field.
     If update_dept_user == True, the function will also update several other field values.
     """
     employee_iter = ascender_employee_fetch()
@@ -187,42 +169,38 @@ def ascender_db_import():
         job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            user.alesco_data = job
-            user.alesco_data_updated = TZ.localize(datetime.now())
+            if not user.ascender_data:
+                user.ascender_data = {}
+            # Don't just replace the ascender_data dict; we also use it for audit purposes.
+            for key, val in job.items():
+                user.ascender_data[key] = val
+            user.ascender_data_updated = TZ.localize(datetime.now())
             user.save()
 
 
-def get_deptuser_no_empid():
-    """Return a QS of DepartmentUsers with no employee_id value.
-    """
-    users = DepartmentUser.objects.filter(
-        **DepartmentUser.ACTIVE_FILTER,
-        employee_id__isnull=True,
-        account_type__in=[2, 0, 8],  # Permanent, fixed contract, seasonal.
-    )
-    return users
-
-
 def get_ascender_matches():
-    """Return a list of possible Ascender matches, in the format:
-    [EMPLOYEE ID,ASCENDER NAME,IT ASSETS NAME, IT ASSETS PK]
+    """For users with no employee ID, return a list of lists of possible Ascender matches in the format:
+    [IT ASSETS PK, IT ASSETS NAME, ASCENDER NAME, EMPLOYEE ID]
     """
-    users = get_deptuser_no_empid()
+    dept_users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER, employee_id__isnull=True)
     ascender_data = ascender_employee_fetch()
-    matches_list = []
+    possible_matches = []
     ascender_jobs = []
 
     for eid, jobs in ascender_data:
         ascender_jobs.append(jobs[0])
 
-    for user in users:
+    for user in dept_users:
         for data in ascender_jobs:
-            if user.given_name.upper() == data['first_name'] and user.surname.upper() == data['surname']:
-                matches_list.append([
-                    data['employee_id'],
-                    '{} {}'.format(data['first_name'], data['surname']),
-                    user.get_full_name(),
-                    user.pk,
-                ])
+            if data['first_name'] and data['surname']:
+                sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
+                fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
+                if sn_ratio > 70 and fn_ratio > 50:
+                    possible_matches.append([
+                        user.pk,
+                        user.get_full_name(),
+                        '{} {}'.format(data['first_name'], data['surname']),
+                        data['employee_id'],
+                    ])
 
-    return matches_list
+    return possible_matches

@@ -2,16 +2,17 @@ from datetime import date
 from django import forms
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.template.loader import render_to_string
 from django.urls import reverse
+from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
-from organisation.models import CommonFields, DepartmentUser, Location
+from organisation.models import DepartmentUser, CostCentre, OrgUnit
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
@@ -44,7 +45,7 @@ class ChoiceArrayField(ArrayField):
         return super(ArrayField, self).formfield(**defaults)
 
 
-class UserGroup(models.Model):
+class ITSystemUserGroup(models.Model):
     """A model to represent an arbitrary group of users for an IT System.
     E.g. 'All department staff', 'External govt agency staff', etc.
     """
@@ -58,7 +59,7 @@ class UserGroup(models.Model):
         return '{} ({})'.format(self.name, self.user_count)
 
 
-class ITSystem(CommonFields):
+class ITSystem(models.Model):
     """Represents a named system providing a package of functionality to
     Department staff (normally vendor or bespoke software), which is supported
     by OIM and/or an external vendor.
@@ -130,19 +131,29 @@ class ITSystem(CommonFields):
         (3, 'Destroy datasets when superseded, migrate records and maintain for life of agency'),
         (4, 'Retain 12 months after data migration and decommission (may retain for reference)'),
     )
+    INFRASTRUCTURE_LOCATION_CHOICES = (
+        (1, 'On premises'),
+        (2, 'Azure cloud'),
+        (3, 'AWS cloud'),
+        (4, 'Other provider cloud'),
+    )
 
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+    system_id = models.CharField(max_length=16, unique=True, verbose_name='system ID')
     name = models.CharField(max_length=128, unique=True)
     acronym = models.CharField(max_length=16, null=True, blank=True)
-    system_id = models.CharField(max_length=16, unique=True, verbose_name='system ID')
     status = models.PositiveSmallIntegerField(choices=STATUS_CHOICES, default=4)
     link = models.CharField(
         max_length=2048, null=True, blank=True, help_text='URL to web application')
     description = models.TextField(blank=True)
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
     owner = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True,
+        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
         related_name='systems_owned', help_text='IT system owner')
     technology_custodian = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True,
+        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
         related_name='systems_tech_custodianed', help_text='Technology custodian')
     information_custodian = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
@@ -164,7 +175,7 @@ class ITSystem(CommonFields):
         choices=AVAILABILITY_CHOICES, null=True, blank=True,
         help_text='Expected availability for this system')
     user_groups = models.ManyToManyField(
-        UserGroup, blank=True, help_text='User group(s) that use this system')
+        ITSystemUserGroup, blank=True, help_text='User group(s) that use this system')
     application_server = models.TextField(
         blank=True, help_text='Application server(s) that host this system')
     database_server = models.TextField(
@@ -227,7 +238,11 @@ class ITSystem(CommonFields):
         help_text="The primary platform used to provide this IT system")
     dependencies = models.ManyToManyField(
         Dependency, blank=True, help_text="Dependencies used by this IT system")
+    infrastructure_location = models.PositiveSmallIntegerField(
+        choices=INFRASTRUCTURE_LOCATION_CHOICES, null=True, blank=True,
+        help_text='The primary location of the infrastructure on which this system runs')
     risks = GenericRelation(RiskAssessment)
+    extra_data = JSONField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'IT System'
@@ -408,6 +423,10 @@ class ChangeRequest(models.Model):
         max_length=2048, null=True, blank=True, verbose_name='reference URL', help_text='URL to external reference (discusssion, records, etc.)')
     post_complete_email_date = models.DateField(
         null=True, blank=True, help_text='Date on which the implementer was emailed about completion')
+    # Tactical roadmap-related fields.
+    initiative_name = models.CharField(max_length=255, null=True, blank=True, help_text='Tactical roadmap initiative name')
+    initiative_no = models.CharField(max_length=255, null=True, blank=True, verbose_name='initiative no.', help_text='Tactical roadmap initiative number')
+    project_no = models.CharField(max_length=255, null=True, blank=True, verbose_name='project no.', help_text='Project number (if applicable)')
 
     def __str__(self):
         return '{}: {}'.format(self.pk, smart_truncate(self.title))
@@ -457,6 +476,12 @@ class ChangeRequest(models.Model):
     def broadcast_filename(self):
         return path.basename(self.broadcast.name)
 
+    def formatted_markdown(self, field):
+        """From the passed-in field, return the object field value rendered as HTML (assumes that
+        the field value is Markdown-formatted text).
+        """
+        return markdownify(getattr(self, field))
+
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
@@ -491,9 +516,9 @@ class ChangeRequest(models.Model):
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
 
-    def email_implementer(self):
-        # Send an email to the implementer (if defined) with a link to the change request endorse view.
-        if not self.implementer:
+    def email_requester(self):
+        # Send an email to the requester (if defined) with a link to the change request completion view.
+        if not self.requester:
             return None
         subject = 'Completion of change request {}'.format(self)
         if Site.objects.filter(name='Change Requests').exists():
@@ -507,16 +532,16 @@ class ChangeRequest(models.Model):
             domain = 'https://' + domain
         complete_url = '{}{}'.format(domain, reverse('change_request_complete', kwargs={'pk': self.pk}))
         text_content = """This is an automated message to let you know that you are recorded as the
-            implementer for change request {}, scheduled to be undertaken on {}.\n
+            requester for change request {}, scheduled to be undertaken on {}.\n
             Please visit the following URL and record the outcome of the change in order to finalise it:\n
             {}\n
             """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
         html_content = """<p>This is an automated message to let you know that you are recorded as the
-            implementer for change request {0}, scheduled to be undertaken on {1}.</p>
+            requester for change request {0}, scheduled to be undertaken on {1}.</p>
             <p>Please visit the following URL and record the outcome of the change in order to finalise it:</p>
             <ul><li><a href="{2}">{2}</a></li></ul>
             """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
-        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.implementer.email])
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.requester.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()
         self.post_complete_email_date = date.today()

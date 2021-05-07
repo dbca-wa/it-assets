@@ -1,9 +1,4 @@
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-
 from rest_framework import viewsets, serializers
-from rest_framework_recursive.fields import RecursiveField
-
 from organisation.models import Location, OrgUnit, DepartmentUser, CostCentre
 
 
@@ -35,12 +30,7 @@ class DepartmentUserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'preferred_name', 'email', 'username', 'title',
             'telephone', 'extension', 'mobile_phone',
-            'location',
-            'org_unit',
-            'group_unit',
-            'org_unit_chain',
-            'parent',
-            'children',
+            'location', 'org_unit', 'group_unit',
         )
 
 
@@ -50,26 +40,21 @@ class DepartmentUserViewSet(viewsets.ReadOnlyModelViewSet):
     ).exclude(
         account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
     ).prefetch_related(
-        'location', 'children',
-        'org_unit', 'org_unit__children',
+        'location',
+        'org_unit',
     ).order_by('name')
     serializer_class = DepartmentUserSerializer
 
-    @method_decorator(cache_page(60 * 5))
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
-
 
 class DepartmentTreeSerializer(serializers.ModelSerializer):
-    children = serializers.ListField(source='children_filtered', child=RecursiveField())
 
     class Meta:
         model = DepartmentUser
-        fields = ('id', 'name', 'title', 'children')
+        fields = ('id', 'name', 'title')
 
 
 class DepartmentTreeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE).filter(parent__isnull=True)
+    queryset = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
     serializer_class = DepartmentTreeSerializer
 
 
@@ -89,7 +74,7 @@ class OrgUnitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrgUnit
-        fields = ('id', 'name', 'acronym', 'unit_type', 'manager', 'parent', 'children', 'location')
+        fields = ('id', 'name', 'acronym', 'unit_type', 'manager', 'location', 'division_unit')
 
 
 class OrgUnitViewSet(viewsets.ReadOnlyModelViewSet):
@@ -97,23 +82,10 @@ class OrgUnitViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrgUnitSerializer
 
 
-class OrgTreeSerializer(serializers.ModelSerializer):
-    children = serializers.ListField(source='children_active', child=RecursiveField())
-
-    class Meta:
-        model = OrgUnit
-        fields = ('id', 'name', 'acronym', 'children')
-
-
-class OrgTreeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = OrgUnit.objects.filter(active=True, parent__isnull=True)
-    serializer_class = OrgTreeSerializer
-
-
 class CostCentreSerializer(serializers.ModelSerializer):
     class Meta:
         model = CostCentre
-        fields = ('name', 'code', 'chart_acct_name', 'manager', 'business_manager', 'admin', 'tech_contact')
+        fields = ('code', 'chart_acct_name', 'manager', 'business_manager', 'admin', 'tech_contact')
 
 
 class CostCentreViewSet(viewsets.ReadOnlyModelViewSet):

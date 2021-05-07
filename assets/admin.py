@@ -10,7 +10,7 @@ from .models import Vendor, HardwareModel, HardwareAsset, HardwareInvoice
 from .views import HardwareAssetExport
 
 
-@register(Vendor)
+#@register(Vendor)
 class VendorAdmin(VersionAdmin):
     list_display = (
         'name', 'account_rep', 'contact_email', 'contact_phone', 'website',
@@ -21,7 +21,7 @@ class VendorAdmin(VersionAdmin):
         return obj.hardwareasset_set.count()
 
 
-@register(HardwareModel)
+#@register(HardwareModel)
 class HardwareModelAdmin(VersionAdmin):
     list_display = ('model_no', 'model_type', 'vendor')
     list_filter = ('model_type',)
@@ -33,7 +33,7 @@ class HardwareInvoiceInline(TabularInline):
     extra = 1
 
 
-@register(HardwareAsset)
+#@register(HardwareAsset)
 class HardwareAssetAdmin(VersionAdmin):
     date_hierarchy = 'date_purchased'
     inlines = [HardwareInvoiceInline]
@@ -48,9 +48,6 @@ class HardwareAssetAdmin(VersionAdmin):
                 'cost_centre', 'location', 'assigned_user', 'date_purchased',
                 'purchased_value', 'is_asset', 'local_property', 'warranty_end')
         }),
-        ('Extra data (history)', {
-            'fields': ('extra_data_ro',)
-        }),
     )
     list_display = (
         'asset_tag', 'vendor', 'model_type', 'hardware_model', 'serial', 'status',
@@ -61,7 +58,6 @@ class HardwareAssetAdmin(VersionAdmin):
         'asset_tag', 'vendor__name', 'serial', 'hardware_model__model_type',
         'hardware_model__vendor__name', 'hardware_model__model_no', 'service_request_url',
         'location__name', 'assigned_user__email', 'cost_centre__code')
-    readonly_fields = ['extra_data_ro']
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/assets/hardwareasset/change_list.html'
 
@@ -75,10 +71,6 @@ class HardwareAssetAdmin(VersionAdmin):
         # d = date.today() - obj.date_purchased
         return obj.age
     age.admin_order_field = 'date_purchased'
-
-    def extra_data_ro(self, obj):
-        return obj.get_extra_data_html()
-    extra_data_ro.short_description = 'extra data'
 
     def get_urls(self):
         urls = super(HardwareAssetAdmin, self).get_urls()

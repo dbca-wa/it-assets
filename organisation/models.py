@@ -1,16 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
-from django.utils.html import format_html
-from json2html import json2html
-from mptt.models import MPTTModel, TreeForeignKey
 
 
-class DepartmentUser(MPTTModel):
+class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
     """
-    ACTIVE_FILTER = {'active': True, 'email__isnull': False, 'cost_centre__isnull': False, 'contractor': False}
-    # The following choices are intended to match options in Alesco.
+    ACTIVE_FILTER = {'active': True, 'cost_centre__isnull': False, 'contractor': False}
+    # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, 'L1 User Account - Permanent'),
         (3, 'L1 User Account - Agency contract'),
@@ -78,7 +75,7 @@ class DepartmentUser(MPTTModel):
     org_unit = models.ForeignKey(
         'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
         verbose_name='organisational unit',
-        help_text="The organisational unit to which the employee belongs.")
+        help_text="The organisational unit to which the employee belongs.")  # NOTE: no AAD field mapping.
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
         help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
@@ -94,18 +91,17 @@ class DepartmentUser(MPTTModel):
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
         help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
-    preferred_name = models.CharField(
-        max_length=256, null=True, blank=True, help_text='Employee-editable preferred name.')
+    preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
     position_type = models.PositiveSmallIntegerField(
         choices=POSITION_TYPE_CHOICES, null=True, blank=True, default=0,
-        help_text='Employee position working arrangement (should match Alesco status)')
+        help_text='Employee position working arrangement (Ascender employment status)')
     employee_id = models.CharField(
         max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
-        help_text='HR Employee ID.')
+        help_text='Ascender employee number')
     name_update_reference = models.CharField(
         max_length=512, null=True, blank=True, verbose_name='update reference',
         help_text='Reference for name/CC change request')
@@ -130,47 +126,14 @@ class DepartmentUser(MPTTModel):
         default=False, verbose_name='security clearance granted',
         help_text='''Security clearance approved by CC Manager (confidentiality
         agreement, referee check, police clearance, etc.''')
-
-    # Cache of Ascender data
-    alesco_data = JSONField(
-        null=True, blank=True, help_text='Readonly data from Alesco')
-    alesco_data_updated = models.DateTimeField(null=True, blank=True)
-
-    # Fields below are likely to be deprecated and progressively removed.
-    username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
-    # NOTE: remove parent field after copying data to manager.
-    parent = TreeForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='children', editable=True, verbose_name='Reports to',
-        help_text='Person that this employee reports to')
-    cost_centres_secondary = models.ManyToManyField(
-        'organisation.CostCentre', related_name='cost_centres_secondary', editable=False,
-        blank=True, help_text='NOTE: this provides security group access (e.g. T drives).')
-    org_units_secondary = models.ManyToManyField(
-        'organisation.OrgUnit', related_name='org_units_secondary', blank=True, editable=False,
-        help_text='NOTE: this provides email distribution group access.')
-    org_data = JSONField(null=True, blank=True, editable=False)
-    secondary_locations = models.ManyToManyField(
-        "organisation.Location", blank=True, related_name='departmentuser_secondary',
-        help_text="Only to be used for staff working in additional loactions from their cost centre")
-    expiry_date = models.DateTimeField(
-        null=True, blank=True, help_text='Date that the AD account will expire.')
-    date_hr_term = models.DateTimeField(
-        null=True, blank=True, editable=False, verbose_name='HR termination date',
-        help_text='Date on file with HR as the job termination date.')
-    hr_auto_expiry = models.BooleanField(
-        default=False, verbose_name='HR auto expiry',
-        help_text='When the HR termination date changes, automatically update the expiry date to match.')
-    o365_licence = models.NullBooleanField(
-        default=None, editable=False,
-        help_text='Account consumes an Office 365 licence.')
-    extra_data = JSONField(null=True, blank=True)
+    username = models.CharField(
+        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
 
-    class MPTTMeta:
-        order_insertion_by = ['name']
+    # Cache of Ascender data
+    ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
+    ascender_data_updated = models.DateTimeField(null=True, editable=False)
 
     def __str__(self):
         return self.email
@@ -181,49 +144,29 @@ class DepartmentUser(MPTTModel):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ''):
                 self.employee_id = None
-        if self.account_type in [5, 9]:  # Shared/role-based account types.
+        if self.account_type in [5, 9, 10]:  # Shared/role-based/system account types.
             self.shared_account = True
         super(DepartmentUser, self).save(*args, **kwargs)
-
-    @property
-    def children_filtered(self):
-        return self.children.filter(**self.ACTIVE_FILTER).exclude(account_type__in=self.ACCOUNT_TYPE_EXCLUDE)
-
-    @property
-    def children_filtered_ids(self):
-        return self.children_filtered.values_list('id', flat=True)
-
-    @property
-    def org_unit_chain(self):
-        return self.org_unit.get_ancestors(ascending=True, include_self=True).values_list('id', flat=True)
 
     @property
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
         """
-        if self.org_unit is not None:
-            for org in self.org_unit.get_ancestors(ascending=True):
-                if org.unit_type in (0, 1):
-                    return org
+        if self.org_unit and self.org_unit.division_unit:
+            return self.org_unit.division_unit
         return self.org_unit
 
     def get_office_licence(self):
-        """Return O365 licence terms familar to the directors.
+        """Return Microsoft 365 licence description consistent with other OIM communications.
         """
-        if 'OFFICE 365 E5' in self.assigned_licences:
-            return 'On-premise (E5)'
-        elif 'OFFICE 365 E1' in self.assigned_licences:
-            return 'Cloud (E1)'
+        if self.assigned_licences:
+            if 'MICROSOFT 365 E5' in self.assigned_licences:
+                return 'On-premise'
+            elif 'OFFICE 365 E5' in self.assigned_licences:
+                return 'On-premise'
+            elif 'OFFICE 365 E1' in self.assigned_licences:
+                return 'Cloud'
         return None
-
-    def get_gal_department(self):
-        """Return a string to place into the "Department" field for the Global Address List.
-        """
-        s = ''
-        unit = self.group_unit
-        if unit:
-            s = '{}'.format(unit.name)
-        return s
 
     def get_full_name(self):
         # Return given_name and surname, with a space in between.
@@ -452,6 +395,12 @@ class ADAction(models.Model):
 class Location(models.Model):
     """A model to represent a physical location.
     """
+    #VOIP_PLATFORM_CHOICES = (
+    #    ('3CX', '3CX'),
+    #    ('CUCM', 'CUCM'),
+    #    ('Teams', 'Teams'),
+    #)
+
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
@@ -474,6 +423,8 @@ class Location(models.Model):
         blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
     active = models.BooleanField(default=True)
+    #voip_platform = models.CharField(
+    #    max_length=128, null=True, blank=True, choices=VOIP_PLATFORM_CHOICES)
 
     class Meta:
         ordering = ('name',)
@@ -486,7 +437,7 @@ class Location(models.Model):
             'id', 'name', 'address', 'pobox', 'phone', 'fax', 'email') if getattr(self, k)}
 
 
-class OrgUnit(MPTTModel):
+class OrgUnit(models.Model):
     """Represents an element within the Department organisational hierarchy.
     """
     TYPE_CHOICES = (
@@ -504,26 +455,18 @@ class OrgUnit(MPTTModel):
     )
     TYPE_CHOICES_DICT = dict(TYPE_CHOICES)
     unit_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES)
-    ad_guid = models.CharField(
-        max_length=48, unique=True, null=True, editable=False)
-    ad_dn = models.CharField(
-        max_length=512, unique=True, null=True, editable=False)
     name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
-    parent = TreeForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='children', db_index=True)
-    details = JSONField(null=True, blank=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True)
-    sync_o365 = models.BooleanField(
-        default=True, help_text='Sync this to O365 (creates a security group).')
+    division_unit = models.ForeignKey(
+        'self', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='division_orgunits',
+        help_text='Division-level unit to which this unit belongs',
+    )
     active = models.BooleanField(default=True)
-
-    class MPTTMeta:
-        order_insertion_by = ['name']
 
     class Meta:
         ordering = ('name',)
@@ -533,20 +476,6 @@ class OrgUnit(MPTTModel):
 
     def __str__(self):
         return self.name
-
-    def members(self):
-        return DepartmentUser.objects.filter(org_unit__in=self.get_descendants(
-            include_self=True), **DepartmentUser.ACTIVE_FILTER)
-
-    def children_active(self):
-        return self.children.filter(active=True)
-
-    def get_descendants_active(self, *args, **kwargs):
-        """Exclude 'inactive' OrgUnit objects from get_descendants() queryset.
-        Returns a list of OrgUnits.
-        """
-        descendants = self.get_descendants(*args, **kwargs).exclude(active=False)
-        return descendants
 
 
 DIVISION_CHOICES = (
@@ -564,7 +493,6 @@ DIVISION_CHOICES = (
 class CostCentre(models.Model):
     """Models the details of a Department cost centre / chart of accounts.
     """
-    name = models.CharField(max_length=128, unique=True, editable=False)
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
@@ -591,29 +519,3 @@ class CostCentre(models.Model):
 
     def __str__(self):
         return self.code
-
-    def get_division(self):
-        if not self.org_position:
-            return None
-        return self.org_position.get_ancestors(include_self=True).filter(unit_type=1).first()
-
-
-class CommonFields(models.Model):
-    """Meta model class used by other apps
-    """
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_updated = models.DateTimeField(auto_now=True)
-    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
-    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
-    extra_data = JSONField(null=True, blank=True)
-
-    def extra_data_pretty(self):
-        if not self.extra_data:
-            return self.extra_data
-        try:
-            return format_html(json2html.convert(json=self.extra_data))
-        except Exception as e:
-            return repr(e)
-
-    class Meta:
-        abstract = True

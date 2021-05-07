@@ -2,18 +2,14 @@ from django import forms
 from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
-from django_mptt_admin.admin import DjangoMpttAdmin
 from django_q.brokers import get_broker
 from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
-import logging
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
 from .utils import deptuser_azure_sync
-from .views import DepartmentUserExport, DepartmentUserDiscrepancyReport
-
-LOGGER = logging.getLogger('sync_tasks')
+from .views import DepartmentUserExport
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -41,6 +37,7 @@ class DepartmentUserAdmin(VersionAdmin):
 
         def lookups(self, request, model_admin):
             return (
+                ('MICROSOFT 365 E5', 'MICROSOFT 365 E5'),
                 ('OFFICE 365 E5', 'OFFICE 365 E5'),
                 ('OFFICE 365 E3', 'OFFICE 365 E3'),
                 ('OFFICE 365 E1', 'OFFICE 365 E1'),
@@ -60,7 +57,6 @@ class DepartmentUserAdmin(VersionAdmin):
     list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
-    filter_horizontal = ('secondary_locations',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
         'assigned_licences', 'proxy_addresses',
@@ -125,7 +121,6 @@ class DepartmentUserAdmin(VersionAdmin):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
-            path('departmentuser-discrepancy-report/', DepartmentUserDiscrepancyReport.as_view(), name='departmentuser_discrepancy_report'),
         ] + urls
         return urls
 
@@ -207,14 +202,10 @@ class LocationAdmin(LeafletGeoAdmin):
 
 
 @register(OrgUnit)
-class OrgUnitAdmin(DjangoMpttAdmin):
-    tree_auto_open = True
-    tree_load_on_demand = False
-    list_display = (
-        'name', 'unit_type', 'users', 'members', 'it_systems', 'cc', 'acronym',
-        'manager')
+class OrgUnitAdmin(ModelAdmin):
+    list_display = ('name', 'unit_type', 'division_unit', 'users', 'cc', 'manager', 'active')
     search_fields = ('name', 'acronym', 'manager__name', 'location__name')
-    raw_id_fields = ('manager', 'parent', 'location')
+    raw_id_fields = ('manager',)
     list_filter = ('unit_type', 'active')
 
     def users(self, obj):
@@ -224,21 +215,6 @@ class OrgUnitAdmin(DjangoMpttAdmin):
             '<a href="{}?org_unit={}">{}</a>',
             reverse('admin:organisation_departmentuser_changelist'),
             obj.pk, dusers.count())
-
-    def members(self, obj):
-        return format_html(
-            '<a href="{}?org_unit__in={}">{}</a>',
-            reverse('admin:organisation_departmentuser_changelist'),
-            ','.join([str(o.pk)
-                      for o in obj.get_descendants(include_self=True)]),
-            obj.members().count()
-        )
-
-    def it_systems(self, obj):
-        return format_html(
-            '<a href="{}?org_unit={}">{}</a>',
-            reverse('admin:registers_itsystem_changelist'),
-            obj.pk, obj.itsystem_set.count())
 
 
 @register(CostCentre)

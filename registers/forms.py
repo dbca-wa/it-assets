@@ -1,15 +1,16 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Fieldset, Submit, Div, HTML
+from crispy_forms.layout import Layout, Fieldset, Field, Submit, Div, HTML
 from crispy_forms.bootstrap import FormActions
 from django import forms
+from markdownx.widgets import MarkdownxWidget
 from .models import ChangeRequest
 
 
 class BaseFormHelper(FormHelper):
     form_class = 'form-horizontal'
     form_method = 'POST'
-    label_class = 'col-xs-12 col-sm-4 col-md-3'
-    field_class = 'col-xs-12 col-sm-8 col-md-7'
+    label_class = 'col-xs-12 col-sm-3 col-md-2'
+    field_class = 'col-xs-12 col-sm-9 col-md-10'
 
 
 class UserChoiceField(forms.ChoiceField):
@@ -25,6 +26,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
     saved to the model after form validation.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
+    cancel_button = Submit('cancel', 'Cancel', css_class='btn-info')
     endorser_choice = UserChoiceField(
         required=False, label='Endorser', help_text='The person who will endorse this change prior to CAB')
     implementer_choice = UserChoiceField(
@@ -32,13 +34,18 @@ class ChangeRequestCreateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
+        self.fields['description'].widget = MarkdownxWidget()
+        self.fields['description'].help_text = 'A brief description of what the change is for and why it is being undertaken (Markdown syntax supported)'
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].label = 'Implementer email'
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
-        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure'
+        self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure (Markdown syntax supported)'
+        self.fields['implementation'].widget = MarkdownxWidget()
+        self.fields['communication'].widget = MarkdownxWidget()
+        self.fields['communication'].help_text = 'Description of all communications to be undertaken (Markdown syntax supported)'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -53,14 +60,24 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'title', 'description',
             ),
             Fieldset(
+                'IT Tactical Roadmap',
+                HTML('<p>If this change is part of the IT Tactical Roadmap, please provide the initiative name and number and/or project number.</p>'),
+                'initiative_name', 'initiative_no', 'project_no',
+            ),
+            Fieldset(
                 'Endorsement and Implementer',
-                HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.'),
+                HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.</p>'),
                 'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
                 'Testing and Implementation',
                 HTML('<p>Test and implementation dates & times must be supplied prior to submission for endorsement.'),
-                'test_date', 'test_result_docs', 'planned_start', 'planned_end', 'outage',
+                # We need to add some data attributes to the date[time] fields for the tempusdominus JS lib.
+                Field('test_date', data_toggle='datetimepicker', data_target='#id_test_date'),
+                'test_result_docs',
+                Field('planned_start', data_toggle='datetimepicker', data_target='#id_planned_start'),
+                Field('planned_end', data_toggle='datetimepicker', data_target='#id_planned_end'),
+                'outage',
                 Div(
                     HTML('''<p>Please note that implementation instructions must be supplied prior to submission for endorsement.
                          Text instructions or an uploaded document (e.g. Word, PDF) are acceptable. Implemenation instructions
@@ -84,14 +101,15 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 ),
                 'it_systems',
             ),
-            FormActions(self.save_button),
+            FormActions(self.save_button, self.cancel_button),
         )
 
     class Meta:
         model = ChangeRequest
         fields = [
             'title', 'description', 'test_date', 'test_result_docs', 'planned_start', 'planned_end', 'implementation',
-            'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems']
+            'implementation_docs', 'outage', 'communication', 'broadcast', 'it_systems', 'initiative_name', 'initiative_no', 'project_no',
+        ]
 
     def clean(self):
         if self.cleaned_data['planned_start'] and self.cleaned_data['planned_end']:
@@ -107,6 +125,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
     See notes on ChangeRequestCreateForm about implementer field.
     """
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
+    cancel_button = Submit('cancel', 'Cancel', css_class='btn-info')
     implementer_choice = UserChoiceField(
         required=False, label='Implementer', help_text='The person who will implement this change')
 
@@ -142,7 +161,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
                 ),
                 'communication', 'broadcast',
             ),
-            FormActions(self.save_button),
+            FormActions(self.save_button, self.cancel_button),
         )
 
     class Meta:
@@ -211,7 +230,11 @@ class ChangeRequestCompleteForm(forms.ModelForm):
         self.helper.layout = Layout(
             Fieldset(
                 'Change request outcome',
-                'outcome', 'completed', 'unexpected_issues', 'notes',
+                'outcome',
+                # We need to add some data attributes to the date[time] fields for the tempusdominus JS lib.
+                Field('completed', data_toggle='datetimepicker', data_target='#id_completed'),
+                'unexpected_issues',
+                'notes',
             ),
             FormActions(self.save_button),
         )
@@ -262,7 +285,7 @@ class EmergencyChangeRequestForm(forms.ModelForm):
 
 class ChangeRequestApprovalForm(forms.Form):
     approve_button = Submit('approve', 'Approve', css_class='btn-lg')
-    cancel_button = Submit('cancel', 'Cancel')
+    cancel_button = Submit('cancel', 'Cancel', css_class='btn-info')
 
     def __init__(self, instance, *args, **kwargs):
         # NOTE: we've added instance to the args above to pretend that this is a ModelForm.
@@ -273,8 +296,8 @@ class ChangeRequestApprovalForm(forms.Form):
                 'CAB member instructions',
                 Div(
                     HTML('''
-                    <p><strong>Please record your approval for this change request to proceed by clicking on the "Approve" button.</strong></p>
-                    <p>Do not record approval prior to discussion and assessment being completed.</p>'''),
+                    <p><strong>Please record CAB approval for this change request to proceed by clicking on the "Approve" button.</strong></p>
+                    <p>Do not record approval prior to discussion and assessment being completed at CAB.</p>'''),
                     css_id='div_id_instructions'
                 ),
             ),

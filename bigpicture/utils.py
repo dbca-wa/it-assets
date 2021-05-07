@@ -1,8 +1,16 @@
+import calendar
+import csv
+from data_storage import AzureBlobStorage
 from datetime import timedelta
+from dbca_utils.utils import env
 from django.contrib.contenttypes.models import ContentType
+import gzip
+import json
+import requests
+
 from rancher.models import Workload
 from registers.models import ITSystem
-from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport, WebAppLocation
+from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport
 from status.models import Host
 from statistics import mean, stdev, StatisticsError
 from .models import Dependency, RiskAssessment
@@ -242,6 +250,38 @@ def workload_risks_vulns():
                     risk.save()
 
 
+def itsystem_risks_infra_location(it_systems=None):
+    """Set automatic risk assessment for IT systems based on whether they have an infrastructure location recorded.
+    """
+    if not it_systems:
+        it_systems = ITSystem.objects.all()
+    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+
+    for it in it_systems:
+        # First, check if an auto assessment has been created OR if no assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location').exists()
+        ):
+            location_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location').first()
+            if it.infrastructure_location:
+                if not location_risk:
+                    location_risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location')
+                if it.infrastructure_location in [2, 3, 4]:  # Azure / AWS / other provider cloud.
+                    location_risk.rating = 0
+                elif it.infrastructure_location == 1:  # On-premises.
+                    location_risk.rating = 3
+                location_risk.notes = '[AUTOMATED ASSESSMENT] {}'.format(it.get_infrastructure_location_display())
+                location_risk.save()
+            else:
+                # If infrastructure_location is not recorded for the IT system but there is a risk of this type, delete the risk.
+                location_risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Infrastructure location').first()
+                if location_risk:
+                    location_risk.delete()
+
+
 def itsystem_risks_critical_function(it_systems=None):
     """Set automatic risk assessment for IT systems based on whether they are noted as used for a critical function.
     """
@@ -250,7 +290,7 @@ def itsystem_risks_critical_function(it_systems=None):
     itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
 
     for it in it_systems:
-        # First, check if an auto assessment has been created OR if not assessment exists.
+        # First, check if an auto assessment has been created OR if no assessment exists.
         # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
         # which we don't want to overwrite).
         if (
@@ -355,7 +395,7 @@ def itsystem_risks_access(it_systems=None):
                 for alias in it.alias.all():
                     webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
                     for webapp in webapps:
-                        root_location = webapp.locations.filter(location='/', location_type=WebAppLocation.PREFIX_LOCATION).first()
+                        root_location = webapp.locations.filter(location='/', redirect__isnull=True).first()
                         if root_location:
                             # Create an access risk
                             risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
@@ -444,3 +484,105 @@ def itsystem_risks_traffic(it_systems=None):
                         risk.rating = 0
                         risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
                     risk.save()
+
+
+def signal_sciences_extract_feed(from_datetime=None, minutes=None):
+    """Extract the Signal Sciences feed for ``minutes`` duration from the passed-in timestamp (UTC).
+    Returns the feed JSON as a string.
+    """
+    if not from_datetime or not minutes:
+        return False
+    ss_email = env('SIGSCI_EMAIL', None)
+    api_token = env('SIGSCI_API_TOKEN', None)
+    if not ss_email and not api_token:
+        return False
+
+    api_host = env('SIGSCI_API_HOST', 'https://dashboard.signalsciences.net')
+    corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+    site_name = env('SIGSCI_SITE_NAME', 'www.dbca.wa.gov.au')
+    from_datetime = from_datetime.replace(second=0, microsecond=0)  # Ensure lowest precision is minutes.
+    from_time = calendar.timegm(from_datetime.utctimetuple())
+    until_datetime = from_datetime + timedelta(minutes=minutes)
+    until_time = calendar.timegm(until_datetime.utctimetuple())
+    headers = {
+        'x-api-user': ss_email,
+        'x-api-token': api_token,
+        'Content-Type': 'application/json',
+    }
+    url = api_host + '/api/v0/corps/{}/sites/{}/feed/requests?from={}&until={}'.format(corp_name, site_name, from_time, until_time)
+    first = True
+    feed_str = '['
+
+    while True:
+        resp_raw = requests.get(url, headers=headers)
+        response = json.loads(resp_raw.text)
+        for request in response['data']:
+            data = json.dumps(request)
+            if first:
+                first = False
+            else:
+                data = ',' + data
+            feed_str += (data)
+        next_url = response['next']['uri']
+        if next_url == '':
+            feed_str += ']'
+            break
+        url = api_host + next_url
+
+    return feed_str
+
+
+def signal_sciences_upload_feed(from_datetime=None, minutes=None, compress=False, upload=True, csv=False):
+    """For the given datetime and duration, download the Signal Sciences feed and upload the data
+    to Azure blob storage (optionally compress the file using gzip).
+    Optionally also upload a CSV summary of tagged requests to blob storage.
+    """
+    if not from_datetime or not minutes:
+        return False
+    feed_str = signal_sciences_extract_feed(from_datetime, minutes)
+    corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+
+    if upload and csv:
+        signal_sciences_feed_csv(feed_str, corp_name, from_datetime.isoformat())
+
+    if compress:
+        # Conditionally gzip the file.
+        filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.strftime('%Y-%m-%dT%H%M%S'))
+        tf = gzip.open('/tmp/{}'.format(filename), 'wb')
+        tf.write(feed_str.encode('utf-8'))
+    else:
+        filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.strftime('%Y-%m-%dT%H%M%S'))
+        tf = open('/tmp/{}'.format(filename), 'w')
+        tf.write(feed_str)
+    tf.close()
+
+    if upload:
+        # Upload the returned feed data to blob storage.
+        connect_string = env('AZURE_CONNECTION_STRING')
+        store = AzureBlobStorage(connect_string, 'signalsciences')
+        store.upload_file(filename, tf.name)
+
+    return filename
+
+
+def signal_sciences_feed_csv(feed_str, corp_name, timestamp, upload=True):
+    """For a given passed-in Signal Sciences feed string, summarise it to a CSV for analysis.
+    Upload the CSV to Azure blob storage.
+    """
+    filename = 'sigsci_request_tags_{}_{}.csv'.format(corp_name, timestamp)
+    tf = open('/tmp/{}'.format(filename), 'w')
+    writer = csv.writer(tf)
+    feed_json = json.loads(feed_str)
+
+    for entry in feed_json:
+        for tag in entry['tags']:
+            writer.writerow([entry['timestamp'], entry['serverName'], tag['type']])
+
+    tf.close()
+
+    if upload:
+        connect_string = env('AZURE_CONNECTION_STRING')
+        store = AzureBlobStorage(connect_string, 'http-requests-tagged')
+        store.upload_file(filename, tf.name)
+
+    return

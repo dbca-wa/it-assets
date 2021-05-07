@@ -2,6 +2,8 @@ from django.db.models import Q
 from django.utils.encoding import smart_text
 from django.utils.text import smart_split
 from functools import reduce
+import os
+import requests
 
 
 def smart_truncate(content, length=100, suffix='....(more)'):
@@ -42,3 +44,90 @@ def search_filter(search_fields, query_string):
         filters.append(reduce(Q.__or__, queries))
 
     return reduce(Q.__and__, filters) if len(filters) else null_filter
+
+
+def sharepoint_access_token():
+    """Query the Sharepoint REST API for a dict containing an access token.
+    """
+    tenant_id = os.environ["SHAREPOINT_TENANT_ID"]
+    client_id = os.environ["SHAREPOINT_CLIENT_ID"]
+    client_secret = os.environ["SHAREPOINT_CLIENT_SECRET"]
+
+    # Get an access token for further requests.
+    token_url = "https://accounts.accesscontrol.windows.net/{}/tokens/OAuth/2".format(tenant_id)
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    params = {
+        "grant_type": "client_credentials",
+        "resource": "00000003-0000-0ff1-ce00-000000000000/dpaw.sharepoint.com@{}".format(tenant_id),
+        "client_id": "{}@{}".format(client_id, tenant_id),
+        "client_secret": client_secret,
+    }
+    return requests.post(token_url, params, headers=headers).json()
+
+
+def sharepoint_user_information_list():
+    """Query Sharepoint for details of all users in our tenancy.
+    """
+    token_resp = sharepoint_access_token()
+
+    # Get the User Information List details (we need the GUID).
+    url = "https://dpaw.sharepoint.com/_api/web/lists"
+    headers = {
+        "Accept": "application/json;odata=verbose",
+        "Authorization": "{} {}".format(token_resp["token_type"], token_resp["access_token"])
+    }
+    resp_json = requests.get(url, headers=headers).json()
+    lists = resp_json['d']['results']
+    for l in lists:
+        if l['Title'] == 'User Information List':
+            uil = l
+            break
+
+    # Get the list of users.
+    url = "https://dpaw.sharepoint.com/_api/web/lists(guid'{}')/items".format(uil['Id'])
+    users = []
+    more_users = True
+
+    while more_users:
+        resp_json = requests.get(url, headers=headers).json()
+        users += resp_json['d']['results']
+        if '__next' in resp_json['d']:
+            url = resp_json['d']['__next']
+        else:
+            more_users = False
+
+    return users
+
+
+def sharepoint_it_system_register_list():
+    """Query Sharepoint for the IT System Register list contents.
+    """
+    token_resp = sharepoint_access_token()
+
+    # Get the IT Systems Register list details (we need the GUID).
+    url = "https://dpaw.sharepoint.com/Divisions/corporate/oim/_api/Web/lists"
+    headers = {
+        "Accept": "application/json;odata=verbose",
+        "Authorization": "{} {}".format(token_resp["token_type"], token_resp["access_token"])
+    }
+    resp_json = requests.get(url, headers=headers).json()
+    lists = resp_json['d']['results']
+    for l in lists:
+        if l['Title'] == 'IT Systems Register':
+            register_list = l
+            break
+
+    # IT System register
+    url = "https://dpaw.sharepoint.com/Divisions/corporate/oim/_api/Web/lists(guid'{}')/items".format(register_list['Id'])
+    it_systems = []
+    more_systems = True
+
+    while more_systems:
+        resp_json = requests.get(url, headers=headers).json()
+        it_systems += resp_json['d']['results']
+        if '__next' in resp_json['d']:
+            url = resp_json['d']['__next']
+        else:
+            more_systems = False
+
+    return it_systems

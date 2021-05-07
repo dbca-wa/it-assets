@@ -1,23 +1,18 @@
-{% extends "base.html" %}
+{% extends "base_b4.html" %}
 
-{% block extra_head %}
-<title>Standard change register</title>
-{% endblock %}
-
-{% block body %}
+{% block page_content_inner %}
 <div class="row">
-    <div class="col-xs-12">
-        <h1>Standard change register</h1>
+    <div class="col">
+        <h1>{{ page_title }}</h1>
         <p>
-            <a href="{% url 'change_request_list' %}" class="btn btn-primary" role="button"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Change request register</a>
-            <a href="{% url 'change_request_calendar' %}" class="btn btn-success"><span class="glyphicon glyphicon-calendar" aria-hidden="true"></span> Change calendar</a>
+            <a href="{% url 'change_request_list' %}" class="btn btn-info"><i class="fas fa-list"></i> Change request register</a>
+            <a href="{% url 'change_request_calendar' %}" class="btn btn-success"><i class="far fa-calendar"></i> Change calendar</a>
         </p>
     </div>
 </div>
 
 <div class="row">
-  <div class="col-xs-12">
-
+  <div class="col">
     <table class="table table-striped table-bordered table-condensed table-hover">
         <thead>
             <tr>
@@ -36,5 +31,4 @@
     </table>
   </div>
 </div>
-
 {% endblock %}

@@ -94,6 +94,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
         '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RMSBASIC',
         '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECT ONLINE PROFESSIONAL',  # PROJECTPROFESSIONAL
         '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1',  # STANDARDPACK
+        '06ebc4ee-1bb5-47dd-8120-11324bc54e06': 'MICROSOFT 365 E5',
     }
     for sku in skus:
         if sku in ms_licence_skus:

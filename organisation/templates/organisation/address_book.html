@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>DBCA Address Book</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js"></script>
+    </head>
+
+    <body>
+        <div class="container">
+            <noscript>
+                <strong>We're sorry but Address Book doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+            </noscript>
+            <div id="app"></div>
+            <script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.3/js/chunk-vendors.js"></script>
+            <script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.3/js/addressbook.js"></script>
+            <script>
+            var addressbook = null;
+            window.onload = function () {
+                addressbook = addressbookApp('#app', {
+                    baseUrl: 'https://static.dbca.wa.gov.au/sites/address-book/0.3.3',
+                    itAssetsUrl: 'https://itassets.dbca.wa.gov.au',
+                    kmiUrl: 'https://kmi.dpaw.wa.gov.au/geoserver/gwc/service/wmts',
+                });
+            };
+            </script>
+        </div>
+    </body>
+</html>

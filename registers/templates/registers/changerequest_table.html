@@ -1,4 +1,13 @@
 {% load static %}
+{% load changerequest_markdown %}
+
+{% block extra-style %}
+<style>
+    td:not(:last-child) {white-space: nowrap}
+    td:last-child {width: 100%}
+</style>
+{% endblock %}
+
 <table class="table table-striped table-bordered table-condensed">
     <tr>
         <th>Change title</th>
@@ -33,7 +42,25 @@
     {% if object.description %}
     <tr>
         <th>Description</th>
-        <td>{{ object.description }}</td>
+        <td>{{ object|change_markdown:"description"|safe }}</td>
+    </tr>
+    {% endif %}
+    {% if object.initiative_name %}
+    <tr>
+        <th>Tactical roadmap initiative</th>
+        <td>{{ object.initiative_name }}</td>
+    </tr>
+    {% endif %}
+    {% if object.initiative_no %}
+    <tr>
+        <th>Initiative number</th>
+        <td>{{ object.initiative_no }}</td>
+    </tr>
+    {% endif %}
+    {% if object.project_no %}
+    <tr>
+        <th>Project number</th>
+        <td>{{ object.project_no }}</td>
     </tr>
     {% endif %}
     <tr>
@@ -61,7 +88,7 @@
         <th>Implementation instructions</th>
         <td>
         {% if object.implementation %}
-        <pre>{{ object.implementation }}</pre>
+        {{ object|change_markdown:"implementation"|safe }}
         {% endif %}
         <br>
         {% if object.implementation_docs %}
@@ -73,7 +100,7 @@
         <th>Communication instructions</th>
         <td>
         {% if object.communication %}
-        <pre>{{ object.communication }}</pre>
+        {{ object|change_markdown:"communication"|safe }}
         {% endif %}
         <br>
         {% if object.broadcast %}

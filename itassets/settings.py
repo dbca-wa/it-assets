@@ -37,18 +37,18 @@ INSTALLED_APPS = (
     'corsheaders',
     'reversion',
     'crispy_forms',
-    'mptt',
-    'django_mptt_admin',
+    'mptt',  # This needs to remain until migrations are reset.
     'leaflet',
     'django_q',
     'rest_framework',
     'rest_framework_gis',
     'webtemplate_dbca',
     'bootstrap_pagination',
+    'markdownx',
     # Project applications:
     'organisation',
     'registers',
-    'tracking',
+    'tracking',  # Still needed due to legacy migrations.
     'assets',
     'status',
     'nginx',
@@ -270,25 +270,14 @@ CORS_ALLOW_CREDENTIALS = True
 
 # django-q configuration
 Q_CLUSTER = {
-    'name': env('REDIS_QUEUE_NAME', 'itassets'),
-    'workers': 16,
-    'recycle': 500,
-    'timeout': 7200,
-    'compress': True,
-    'save_limit': 250,
-    'queue_limit': 500,
-    'cpu_affinity': 1,
-    'label': 'Django Q',
-    'redis': {
-        'host': env('REDIS_HOST', 'localhost'),
-        'port': 6379,
-        'db': 0, }
+    'name': 'DjangoORM',
+    'workers': 4,
+    'timeout': 120,
+    'retry': 180,
+    'queue_limit': 50,
+    'bulk': 10,
+    'orm': 'default',
 }
-
-
-# Sentry configuration
-if env('SENTRY_DSN', ''):
-    SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
 
 
 # default REST API permissions
@@ -299,7 +288,7 @@ REST_FRAMEWORK = {
 }
 
 # crispy_forms settings
-CRISPY_TEMPLATE_PACK = 'bootstrap3'
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # status scanning settings
 STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 600)

@@ -10,17 +10,17 @@ from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, TemplateView
-from organisation.models import DepartmentUser
 from pytz import timezone
 import re
 
 from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
 from itassets.utils import breadcrumbs_list
+from organisation.models import DepartmentUser
 from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
-    EmergencyChangeRequestForm, ChangeRequestApprovalForm
+    EmergencyChangeRequestForm, ChangeRequestApprovalForm,
 )
 from .reports import (
     it_system_export, itsr_staff_discrepancies, change_request_export,
@@ -101,6 +101,12 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Pass in any query string
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Change request register'
+        # Breadcrumb links:
+        links = [(None, 'Change request register')]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
         return context
@@ -109,6 +115,16 @@ class ChangeRequestList(LoginRequiredMixin, ListView):
 class StandardChangeList(LoginRequiredMixin, ListView):
     model = StandardChange
     paginate_by = 100
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Standard change register'
+        # Breadcrumb links:
+        links = [(reverse("change_request_list"), "Change request register"), (None, 'Standard changes')]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
+        return context
 
 
 class StandardChangeDetail(LoginRequiredMixin, DetailView):
@@ -121,6 +137,14 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         rfc = self.get_object()
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Change request #{}'.format(rfc)
+        # Breadcrumb links:
+        links = [(None, 'Change request register'), ()]
+        links = [(reverse("change_request_list"), "Change request register"), (None, rfc.pk)]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
+
         context['may_complete'] = (
             rfc.is_ready and
             self.request.user.email.lower() in [rfc.requester.email.lower(), rfc.implementer.email.lower()] and
@@ -158,13 +182,25 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         if 'std' in self.kwargs and self.kwargs['std']:
-            context['title'] = 'Create a draft standard change request'
+            context['page_title'] = 'Create a draft standard change request'
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
-            context['title'] = 'Create an emergency change request'
+            context['page_title'] = 'Create an emergency change request'
         else:
-            context['title'] = 'Create a draft change request'
+            context['page_title'] = 'Create a draft change request'
+        # Breadcrumb links:
+        links = [(None, 'Change request register'), ()]
+        links = [(reverse("change_request_list"), "Change request register"), (None, context['page_title'])]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
         return context
+
+    def post(self, request, *args, **kwargs):
+        # If the user clicked Cancel, redirect back to the RFC list view.
+        if request.POST.get("cancel"):
+            return HttpResponseRedirect(reverse('change_request_list'))
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         rfc = form.save(commit=False)
@@ -191,6 +227,7 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         else:
             rfc.change_type = 0
         rfc.save()
+        messages.success(self.request, 'Change request {} has been created.'.format(rfc.pk))
         if 'std' in self.kwargs and self.kwargs['std']:
             # Must be carried out after save()
             rfc.it_systems.set(rfc.standard_change.it_systems.all())
@@ -229,15 +266,30 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         rfc = self.get_object()
         if rfc.is_standard_change:
-            context['title'] = 'Update draft standard change request {}'.format(rfc.pk)
+            context['page_title'] = 'Update draft standard change request {}'.format(rfc.pk)
         else:
-            context['title'] = 'Update draft change request {}'.format(rfc.pk)
+            context['page_title'] = 'Update draft change request {}'.format(rfc.pk)
+        # Breadcrumb links:
+        links = [
+            (reverse("change_request_list"), "Change request register"),
+            (reverse("change_request_detail", args=(rfc.pk,)), rfc.pk),
+            (None, "Update")
+        ]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
         return context
 
     def get_success_url(self):
         return self.get_object().get_absolute_url()
+
+    def post(self, request, *args, **kwargs):
+        # If the user clicked Cancel, redirect back to the RFC detail view.
+        if request.POST.get("cancel"):
+            return HttpResponseRedirect(self.get_object().get_absolute_url())
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         rfc = form.save(commit=False)
@@ -326,7 +378,17 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Endorse change request {}'.format(self.get_object().pk)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        rfc = self.get_object()
+        context['page_title'] = 'Endorse change request {}'.format(rfc.pk)
+        # Breadcrumb links:
+        links = [
+            (reverse("change_request_list"), "Change request register"),
+            (reverse("change_request_detail", args=(rfc.pk,)), rfc.pk),
+            (None, "Endorse")
+        ]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
         return context
 
     def get(self, request, *args, **kwargs):
@@ -411,25 +473,53 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
     template_name = 'registers/changerequest_approval.html'
     model = ChangeRequest
 
-    def form_valid(self, form):
-        obj = self.get_object()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        rfc = self.get_object()
+        context['page_title'] = 'Approve change request {}'.format(rfc.pk)
+        # Breadcrumb links:
+        links = [
+            (reverse("change_request_list"), "Change request register"),
+            (reverse("change_request_detail", args=(rfc.pk,)), rfc.pk),
+            (None, "Approve")
+        ]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
+        return context
 
+    def get_success_url(self):
+        return reverse('change_request_list')
+
+    def get(self, request, *args, **kwargs):
+        # Validate that the RFC may be approved at CAB.
+        rfc = self.get_object()
+        if not rfc.is_scheduled:
+            # Redirect to the object detail view.
+            messages.warning(self.request, 'Change request {} is not ready for approval.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
         if not self.request.user.groups.filter(name='CAB members').exists():
             msg = 'You are not logged in as a member of CAB, The action has been cancelled.'
             messages.warning(self.request, msg)
-            return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
-        else:
-            if 'approve' in self.request.POST:
-                logText = 'CAB member approval: change request has been approved by {}.'.format(self.request.user.get_full_name())
-                changelog = ChangeLog(change_request=self.object, log=logText)
-                changelog.save()
-                msg = 'You have approved this change on behalf of CAB'
-                messages.success(self.request, msg)
-                return HttpResponseRedirect(reverse('change_request_list'))
-            elif 'cancel' in self.request.POST:
-                return HttpResponseRedirect(reverse('change_request_detail', args=(obj.pk,)))
-            else:
-                return super().form_valid(form)
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        # If the user clicked Cancel, redirect back to the RFC detail view.
+        if request.POST.get("cancel"):
+            return HttpResponseRedirect(self.get_object().get_absolute_url())
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        obj = self.get_object()
+        obj.status = 3
+        obj.save()
+        logText = 'CAB member approval: change request has been approved by {}.'.format(self.request.user.get_full_name())
+        changelog = ChangeLog(change_request=obj, log=logText)
+        changelog.save()
+        msg = 'You have approved this change on behalf of CAB'
+        messages.success(self.request, msg)
+        return HttpResponseRedirect(obj.get_absolute_url())
 
 
 class ChangeRequestExport(LoginRequiredMixin, View):
@@ -460,6 +550,8 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         cal, d = self.get_date_param()
         context['start'] = d
         context['today'] = date.today()
@@ -471,6 +563,12 @@ class ChangeRequestCalendar(LoginRequiredMixin, ListView):
             context['format'] = 'Monthly'
             context['date_last'] = (d + relativedelta(months=-1)).strftime('%Y-%m')
             context['date_next'] = (d + relativedelta(months=1)).strftime('%Y-%m')
+        # Breadcrumb links:
+        links = [
+            (reverse("change_request_list"), "Change request register"),
+            (None, "Calendar")
+        ]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
         return context
 
     def get_queryset(self):
@@ -512,7 +610,17 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Complete/finalise change request {}'.format(self.get_object().pk)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        rfc = self.get_object()
+        context['page_title'] = 'Complete/finalise change request {}'.format(rfc.pk)
+        # Breadcrumb links:
+        links = [
+            (reverse("change_request_list"), "Change request register"),
+            (reverse("change_request_detail", args=(rfc.pk,)), rfc.pk),
+            (None, "Complete")
+        ]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
         return context
 
     def get_success_url(self):
@@ -527,15 +635,15 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         if d['outcome'] == 'complete':
             rfc.status = 4
             log.log = 'Change {} was marked "Completed successfully" by {}.'.format(rfc.pk, self.request.user.get_full_name())
-            messages.success(self.request, 'Change request {} was been marked as completed.'.format(rfc.pk))
+            messages.success(self.request, 'Change request {} has been marked as completed.'.format(rfc.pk))
         elif d['outcome'] == 'rollback':
             rfc.status = 5
             log.log = 'Change {} was marked "Undertaken and rolled back" by {}.'.format(rfc.pk, self.request.user.get_full_name())
-            messages.info(self.request, 'Change request {} was been marked as rolled back.'.format(rfc.pk))
+            messages.info(self.request, 'Change request {} has been marked as rolled back.'.format(rfc.pk))
         elif d['outcome'] == 'cancelled':
             rfc.status = 6
             log.log = 'Change {} was marked "Cancelled" by {}.'.format(rfc.pk, self.request.user.get_full_name())
-            messages.info(self.request, 'Change request {} was been marked as cancelled.'.format(rfc.pk))
+            messages.info(self.request, 'Change request {} has been marked as cancelled.'.format(rfc.pk))
         rfc.save()
         log.save()
 
@@ -551,6 +659,8 @@ class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         context['page_title'] = 'Risk Assessment - IT Systems'
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
@@ -581,11 +691,17 @@ class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         context['page_title'] = 'Risk Assessment - {}'.format(obj)
         context['obj_dependencies'] = obj.dependencies.order_by('category')
         context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
         context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
         context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
+        if obj.extra_data and 'signal_science_tags' in obj.extra_data:
+            context['sig_sci_tags'] = obj.extra_data['signal_science_tags']
+        else:
+            context['sig_sci_tags'] = None
         # Breadcrumb links:
         links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, obj.system_id)]
         context["breadcrumb_trail"] = breadcrumbs_list(links)
@@ -599,6 +715,8 @@ class RiskAssessmentGlossary(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         context["page_title"] = "Glossary"
         # Breadcrumb links:
         links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Glossary")]
@@ -628,6 +746,8 @@ class DependencyITSystemList(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
         context['page_title'] = 'Dependencies - IT Systems'
         if 'q' in self.request.GET:
             context['query_string'] = self.request.GET['q']
@@ -659,3 +779,32 @@ class DependencyExport(LoginRequiredMixin, View):
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         response = dependency_export(response, it_systems)
         return response
+
+
+class SignalScienceTags(LoginRequiredMixin, TemplateView):
+    """A static template to display a glossary of what each risk assessment means, per category.
+    """
+    template_name = 'registers/signal_science_tags.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context["page_title"] = "Signal Science system tags"
+        # Breadcrumb links:
+        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Signal Science tags")]
+        context["breadcrumb_trail"] = breadcrumbs_list(links)
+        tags = {}
+        for it in ITSystem.objects.all():
+            if it.extra_data and 'signal_science_tags' in it.extra_data:
+                for tag_type, count in it.extra_data['signal_science_tags'].items():
+                    if tag_type not in tags:
+                        tags[tag_type] = []
+                    tags[tag_type].append((count, it.name, reverse("riskassessment_itsystem_detail", args=(it.pk,))))
+        for val in tags.values():
+            val.sort(reverse=True)
+        tags_top5 = {}
+        for k, v in tags.items():
+            tags_top5[k] = v[0:5]
+        context['tags'] = tags_top5
+        return context

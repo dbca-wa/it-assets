@@ -6,6 +6,7 @@ class Command(BaseCommand):
     help = 'Runs a full scan of all plugins in the status application'
 
     def handle(self, *args, **options):
+        self.stdout.write(self.style.SUCCESS('Running a full scan'))
         try:
             run_all()
             self.stdout.write(self.style.SUCCESS('Completed'))

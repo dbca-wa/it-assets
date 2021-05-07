@@ -1,5 +1,6 @@
 import importlib
 import logging
+import os
 import traceback
 from django.conf import settings
 
@@ -10,7 +11,10 @@ def _import_synctask():
     if not settings.FOREIGN_TABLE:
         return None
     table_name = settings.FOREIGN_TABLE
-    return importlib.import_module("organisation.alesco.{}".format(table_name))
+    if os.path.exists(os.path.join("organisation", "alesco", "{}.py".format(table_name))):
+        return importlib.import_module("organisation.alesco.{}".format(table_name))
+    else:
+        return None
 
 
 if settings.FOREIGN_TABLE:
@@ -23,6 +27,8 @@ def aleso_db_init():
     """
     create the foreign server and foreign table in postgresql database
     """
+    if not synctask:
+        return None
     conn = synctask.alesco_db_connection()
     cur = None
     try:

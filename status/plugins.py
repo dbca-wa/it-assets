@@ -1,19 +1,18 @@
 import datetime
 import re
-import urllib
-import json
+import urllib3
 
 import adal
 import boto3
 import requests
-from bs4 import BeautifulSoup
 import pytz
+import socket
 
 from django.conf import settings
-from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
 from .utils import lookup
 
 TZ = pytz.timezone(settings.TIME_ZONE)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def monitor_prtg(plugin, date):
@@ -26,10 +25,67 @@ def monitor_prtg(plugin, date):
         PRTG_BASE, PRTG_USERNAME, PRTG_PASSHASH
     )
     report = requests.get(PRTG_DEVICES, verify=False).json()
+    print("{} devices in PRTG report".format(len(report["devices"])))
+
+    from .models import Host, HostIP
 
     for device in report["devices"]:
         host_status = lookup(device["host"], date)
-        if host_status is None:
+        if host_status is None:  # We found a device in PRTG not recorded in IT Assets.
+            if device["host"].strip():
+                host = device["host"].strip().lower()
+
+                if host in ["127.0.0.1"]:
+                    continue
+
+                # List of domains for which to skip (these are websites, not hosts).
+                skip_domains = [
+                    '.bgpa.local',
+                    'rottnest.local',
+                    '.dbca.wa.gov.au',
+                    '.dpaw.wa.gov.au',
+                    '.rottnestislandonline.com',
+                    '.perthzoo.wa.gov.au',
+                ]
+                skiphost = False
+                for s in skip_domains:
+                    if host.find(s) >= 0:
+                        skiphost = True
+                        continue
+                if skiphost:
+                    print("Skipping {}".format(host))
+                    continue
+
+                try:
+                    ip = socket.gethostbyname(host)
+                except Exception:
+                    print("Exception thrown for socket.gethostbyname('{}'), skipping".format(host))
+                    continue
+
+                qs_host = Host.objects.filter(name__istartswith=host)
+                qs_hostip = HostIP.objects.filter(ip=ip)
+
+                if qs_host.exists():
+                    if qs_hostip.exists():
+                        hostip = qs_hostip.first()
+                        hostip.host = qs_host.first()
+                        hostip.save()
+                        print("Existing HostIP {} reassigned to Host {}".format(ip, host))
+                    else:
+                        hostip = HostIP.objects.create(ip=ip, host=qs_host.first())
+                        print("New HostIP {} created and assigned to Host {}".format(ip, host))
+                else:
+                    if qs_hostip.exists():
+                        new_host = Host.objects.create(name=host)
+                        hostip = qs_hostip.first()
+                        hostip.host = new_host
+                        hostip.save()
+                        print("Host {} created and existing HostIP {} reassigned to it".format(host, ip))
+                    else:
+                        new_host = Host.objects.create(name=host)
+                        hostip = HostIP.objects.create(ip=ip, host=new_host)
+                        print("New Host {} and HostIP {} created and associated".format(host, ip))
+
             continue
 
         host_status.monitor_info = {
@@ -57,6 +113,21 @@ def monitor_prtg(plugin, date):
             PRTG_URL, device["objid"]
         )
         host_status.save()
+        print("Updated PRTG status for {}".format(host_status))
+
+    # Update Host metadata from PRTG report.
+    for host in Host.objects.all():
+        devices = [d for d in report["devices"] if d["host"] == host.name]
+        if not devices:  # Host is not output in the PRTG report, set to "No record".
+            host.monitor_status = 1
+            host.save()
+            print("Updated PRTG monitor status for {}".format(host))
+        else:
+            device = devices[0]
+            if host.description != device['device']:
+                host.description = device['device']
+                host.save()
+                print("Updated host description for {}".format(host))
 
 
 def vulnerability_nessus(plugin, date):
@@ -75,21 +146,23 @@ def vulnerability_nessus(plugin, date):
     }
     NESSUS_SCAN_FOLDER = 3
     NESSUS_SCANS = "{}/scans?folder_id={}".format(NESSUS_BASE, NESSUS_SCAN_FOLDER)
-    NESSUS_REPORT = lambda scan_id: "{}/scans/{}".format(NESSUS_BASE, scan_id)
-    NESSUS_VULNS = lambda scan_id, host_id, history_id: "{}/scans/{}/hosts/{}?history_id={}".format(
-        NESSUS_BASE, scan_id, host_id, history_id
-    )
-    NESSUS_RESULT_URL = lambda scan_id, host_id, history_id: "{}/#/scans/reports/{}/hosts/{}/vulnerabilities".format(
-        NESSUS_URL, scan_id, host_id, history_id
-    )
-    requests.packages.urllib3.disable_warnings()
 
+    def nessus_report(report_id):
+        return "{}/scans/{}".format(NESSUS_BASE, report_id)
+
+    def nessus_vulns(scan_id, host_id, history_id):
+        return "{}/scans/{}/hosts/{}?history_id={}".format(NESSUS_BASE, scan_id, host_id, history_id)
+
+    def nessus_result_url(scan_id, host_id, history_id):
+        return "{}/#/scans/reports/{}/hosts/{}/vulnerabilities".format(NESSUS_URL, scan_id, host_id, history_id)
+
+    requests.packages.urllib3.disable_warnings()
     reports = requests.get(NESSUS_SCANS, headers=NESSUS_HEADERS, verify=False).json()
 
     for report in reports["scans"]:
 
         data = requests.get(
-            NESSUS_REPORT(report["id"]), headers=NESSUS_HEADERS, verify=False
+            nessus_report(report["id"]), headers=NESSUS_HEADERS, verify=False
         ).json()
         if len(data["history"]) == 0:
             continue
@@ -98,23 +171,31 @@ def vulnerability_nessus(plugin, date):
         if data["info"]["policy"].startswith("Web"):
             continue
         name = data["info"]["name"]
+        print('Report {} ({})'.format(name, report['id']))
 
-        # print('Report {} ({})'.format(name, report['id']))
         for report_host in data["hosts"]:
-            # print('{}: {} {} {} {} {} - {} {}'.format(host['hostname'], host['critical'], host['high'], host['medium'], host['low'], host['info'], host['severity'], host['score']))
+            print('{}: {} crit, {} high, {} med, {} low, {} info, severity {}, score {}'.format(
+                report_host['hostname'],
+                report_host['critical'],
+                report_host['high'],
+                report_host['medium'],
+                report_host['low'],
+                report_host['info'],
+                report_host['severity'],
+                report_host['score']
+            ))
 
             host_status = lookup(report_host["hostname"], date)
             if host_status is None:
                 continue
             os = None
             detail = requests.get(
-                NESSUS_VULNS(report["id"], report_host["host_id"], history_id),
+                nessus_vulns(report["id"], report_host["host_id"], history_id),
                 headers=NESSUS_HEADERS,
                 verify=False,
             ).json()
             if "operating-system" in detail["info"]:
                 os = detail["info"]["operating-system"]
-            # print((report_host['hostname'], os))
             host_status.vulnerability_info = {
                 "report_id": report["id"],
                 "history_id": history_id,
@@ -148,161 +229,11 @@ def vulnerability_nessus(plugin, date):
                 else:
                     host_status.vulnerability_output = "Device has been scanned, no critical or high vulnerabilities were found."
                     host_status.vulnerability_status = 3
-            host_status.vulnerability_url = NESSUS_RESULT_URL(
+            host_status.vulnerability_url = nessus_result_url(
                 report["id"], report_host["host_id"], history_id
             )
             host_status.save()
-
-
-def backup_phoenix(plugin, date):
-    PHOENIX_USERNAME = plugin.params.get(name="PHOENIX_USERNAME").value
-    PHOENIX_PASSWORD = plugin.params.get(name="PHOENIX_PASSWORD").value
-    PHOENIX_SITE_ID = plugin.params.get(name="PHOENIX_SITE_ID").value
-
-    PHOENIX_BASE = "https://phoenix.druva.com"
-    PHOENIX_LOGIN_ADMIN = "https://login.druva.com/api/commonlogin/admin"
-    PHOENIX_LOGIN_SESSION = "https://login.druva.com/api/commonlogin/session"
-    PHOENIX_LOGIN = "https://login.druva.com/api/commonlogin/login"
-    PHOENIX_ADMIN = "{}/admin/".format(PHOENIX_BASE)
-    PHOENIX_DATA = "{}/server/loadpage".format(PHOENIX_BASE)
-    PHOENIX_URL = PHOENIX_ADMIN + "#op=server-details/id={}/siteid={}"
-    backup_limit = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(
-        days=1
-    )
-
-    sess = requests.session()
-
-    # convert email address into admin ID
-    admin = sess.get(
-        PHOENIX_LOGIN_ADMIN,
-        params={
-            "input": json.dumps(
-                {"request": {"method": "GetAuthType", "args": [PHOENIX_USERNAME], }}
-            )
-        },
-    )
-    admin_id = admin.json()["response"]["accounts"][0]["adminIdentifier"]
-
-    # login with admin ID and password
-    login = sess.post(
-        PHOENIX_LOGIN,
-        json={
-            "request": {
-                "kwargs": {
-                    "auth_input": {
-                        "admin_identifier": admin_id,
-                        "password": PHOENIX_PASSWORD,
-                    },
-                    "caller_product_id": 4097,
-                    "redirect_on_success": False,
-                    "source_url": "{}/admin".format(PHOENIX_BASE),
-                },
-                "method": "LoginUsingPassword",
-            }
-        },
-    )
-
-    # get an OTP to activate cross-domain session cookie
-    phoenix_session = sess.get(
-        PHOENIX_LOGIN_SESSION,
-        params={
-            "input": json.dumps(
-                {
-                    "request": {
-                        "method": "CheckGlobalSession",
-                        "kwargs": {
-                            "caller_product_id": "12289",
-                            "source_url": "{}/".format(PHOENIX_BASE),
-                            "is_dashboard_url": "True",
-                            "redirect_on_success": False,
-                        },
-                    }
-                }
-            )
-        },
-    )
-    redirect_url = phoenix_session.json()["response"]["redirectURL"]
-    login_phoenix = sess.get(redirect_url)
-
-    # rip the CSRF token from the page
-    phoenix_page = sess.get(PHOENIX_ADMIN)
-    phoenix_soup = BeautifulSoup(phoenix_page.content, "html.parser")
-    csrf = phoenix_soup.find_all(id="csrf_token")[0].attrs["value"]
-
-    # request all of the backup information
-    data = sess.post(
-        PHOENIX_DATA,
-        params={
-            "csrf_token": csrf,
-            "op": "server-manage",
-            "tabName": "file_backupsets",
-            "stype": "storage",
-            "siteid": PHOENIX_SITE_ID,
-            "pageSize": 300,
-        },
-    )
-    backup_sets = data.json()["result"]["file_backupsets"]
-
-    for backup in backup_sets:
-        name = None
-        is_connected = False
-        os_version = None
-        device_id = None
-        if "device_info" in backup:
-            name = backup["device_info"].get("name", None)
-            is_connected = backup["device_info"].get("is_connected", False)
-            os_version = backup["device_info"].get("os_version", None)
-            device_id = backup["device_info"].get("id", None)
-
-        host_status = lookup(name, date)
-        if not host_status:
-            continue
-
-        last_backup_id = None
-        last_backup_time = None
-        last_backup_status = None
-        if "last_backup_info" in backup:
-            last_backup = backup["last_backup_info"]
-            last_backup_id = last_backup["job_id"]
-            last_backup_time = datetime.datetime.fromtimestamp(
-                last_backup["time_stamp"], tz=TZ
-            )
-            last_backup_status = last_backup["status"]
-
-        host_status.backup_plugin = plugin
-        if device_id:
-            host_status.backup_url = PHOENIX_URL.format(device_id, PHOENIX_SITE_ID)
-        host_status.backup_info = {
-            "id": backup["id"],
-            "device_id": device_id,
-            "job_id": last_backup_id,
-            "last_backup": last_backup_time.isoformat(),
-            "os": os_version,
-        }
-
-        if not is_connected:
-            host_status.backup_output = (
-                "Device is present, automatic backups are disabled."
-            )
-            host_status.backup_status = 2
-        elif last_backup_id is None:
-            host_status.backup_output = "Device is present, awaiting first backup."
-            host_status.backup_status = 2
-        elif last_backup_time and last_backup_time < backup_limit:
-            host_status.backup_output = (
-                "Device is present, last backup older than 24 hours."
-            )
-            host_status.backup_status = 2
-        elif last_backup_status != 1:
-            host_status.backup_output = (
-                "Device is present, last backup wasn't successful."
-            )
-            host_status.backup_status = 2
-        else:
-            host_status.backup_output = "Device is present, last backup was successful."
-            host_status.backup_status = 3
-
-        host_status.save()
+            print("Updated Nessus status for {}".format(host_status))
 
 
 def backup_acronis(plugin, date):
@@ -322,14 +253,11 @@ def backup_acronis(plugin, date):
 
     sess = requests.session()
     base = sess.get(ACRONIS_BASE)
-    req_qs = urllib.parse.urlparse(base.url).query
-    # req_id = urllib.parse.parse_qs(req_qs)['req'][0]
-
     req_id = re.search(
         "/idp/authorize/sspi\?req=([a-z0-9]+)", base.content.decode("utf8")
     ).group(1)
 
-    auth = sess.post(
+    sess.post(
         ACRONIS_AUTH + "?req_id={}".format(req_id),
         {"req": req_id, "login": ACRONIS_USERNAME, "password": ACRONIS_PASSWORD},
     )
@@ -405,6 +333,7 @@ def backup_acronis(plugin, date):
             host_status.backup_status = 3
 
         host_status.save()
+        print("Updated Acronis backup status for {}".format(host_status))
 
 
 def backup_aws(plugin, date):
@@ -501,6 +430,7 @@ def backup_aws(plugin, date):
             host_status.backup_output = "Daily snapshotting was successful."
             host_status.backup_status = 3
         host_status.save()
+        print("Updated AWS backup status for {}".format(host_status))
 
 
 def _ms_api(verb, url, previous=None, **kwargs):
@@ -538,11 +468,6 @@ def backup_azure(plugin, date):
         MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY
     )
     headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
-
-    MANAGEMENT_LIST_VMS = "{}/providers/Microsoft.Compute/virtualMachines?api-version=2018-06-01".format(
-        MANAGEMENT_SUB
-    )
-    vms = _ms_api("GET", MANAGEMENT_LIST_VMS, headers=headers)
 
     # Get the ID of the specified vault.
     MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(
@@ -616,6 +541,7 @@ def backup_azure(plugin, date):
             )
             host_status.backup_status = 2
         host_status.save()
+        print("Updated Azure backup status for {}".format(host_status))
 
 
 def backup_storagesync(plugin, date):
@@ -771,3 +697,4 @@ def patching_oms(plugin, date):
         host_status.patching_output = "Server has been enrolled in OMS."
         host_status.patching_status = 3
         host_status.save()
+        print("Updated patching status for {}".format(host_status))

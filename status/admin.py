@@ -21,7 +21,7 @@ class HostIPInline(TabularInline):
 
 @register(Host)
 class HostAdmin(ModelAdmin):
-    list_display = ("name", "active", "ip_list")
+    list_display = ("name", "description", "active", "ip_list")
     ordering = ("name",)
     inlines = (HostIPInline,)
     list_filter = ("active", "type")
@@ -186,6 +186,7 @@ class HostStatusAdmin(ModelAdmin):
 @register(ScanRange)
 class ScanRangeAdmin(ModelAdmin):
     list_display = ("name", "enabled", "range")
+    list_filter = ("enabled",)
     ordering = ("range",)
     actions = ("enable_scan_ranges", "disable_scan_ranges", "ping_sweep")
 

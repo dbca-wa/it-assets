@@ -1,0 +1,85 @@
+{% extends "base_b4.html" %}
+
+{% block page_content_inner %}
+<h1>{{ page_title }}</h1>
+
+<p>
+    IT Systems most-commonly having HTTP requests flagged in some categories of Signal Sciences system tag.
+    <a href="https://docs.signalsciences.net/faq/system-tags/" target="_blank">Link to documentation</a> for tag categories.
+</p>
+
+<h2>Attacks</h2>
+
+{% if 'USERAGENT' in tags %}
+<h4>Attack Tooling (USERAGENT)</h4>
+<p>Attack Tooling is the use of automated software to identify security vulnerabilities or to attempt to exploit a discovered vulnerability.</p>
+<ul>
+    {% for system in tags.USERAGENT %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if 'BACKDOOR' in tags %}
+<h4>Backdoor</h4>
+<p>A backdoor signal is a request which attempts to determine if a common backdoor file is present on the system.</p>
+<ul>
+    {% for system in tags.BACKDOOR %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if 'CMDEXE' in tags %}
+<h4>Command Execution (CMDEXE)</h4>
+<p>Command Execution is the attempt to gain control or damage a target system through arbitrary system commands by means of user input.</p>
+<ul>
+    {% for system in tags.CMDEXE %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if 'XSS' in tags %}
+<h4>Cross Site Scripting (XSS)</h4>
+<p>Cross-Site Scripting is the attempt to hijack a user's account or web-browsing session through malicious JavaScript code.</p>
+<ul>
+    {% for system in tags.XSS %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if 'TRAVERSAL' in tags %}
+<h4>Directory Traversal (TRAVERSAL)</h4>
+<p>Directory Traversal is the attempt to navigate privileged folders throughout a system in hopes of obtaining sensitive information.</p>
+<ul>
+    {% for system in tags.TRAVERSAL %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if 'SQLI' in tags %}
+<h4>SQL Injection (SQLI)</h4>
+<p>SQL Injection is the attempt to gain access to an application or obtain privileged information by executing arbitrary database queries.</p>
+<ul>
+    {% for system in tags.SQLI %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<hr>
+<p>All SS tag categories:</p>
+
+{% for tag, systems in tags.items %}
+<p><strong>{{ tag }}:</strong></p>
+<ul>
+    {% for system in systems %}
+    <li><a href="{{ system.2 }}">{{ system.1 }}</a>: {{ system.0 }}</li>
+    {% endfor %}
+</ul>
+{% endfor %}
+
+{% endblock %}

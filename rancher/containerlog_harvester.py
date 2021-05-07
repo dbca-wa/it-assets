@@ -1,23 +1,17 @@
-import os
-import json
 import simdjson
 import traceback
 import logging
 import datetime
-from collections import OrderedDict
 import re
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models,transaction
-from django.utils import timezone
-from django.http import QueryDict
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
-from .models import Cluster,Namespace,Workload,Container,ContainerLog,clean_containerlogs
+from .models import Cluster,Workload,Container,ContainerLog,clean_containerlogs
 from itassets.utils import LogRecordIterator
 
-from .utils import to_datetime,set_fields,set_field
+from .utils import to_datetime,set_fields
 from .containerstatus_harvester import get_containerstatus_client
 from .podstatus_harvester import get_podstatus_client
 
@@ -105,7 +99,7 @@ def process_status_file(context,metadata,status_file):
             if any(not (record.get(key) or "").strip() for key in ("computer","containerid","logentry","logtime")):
                 #data is incomplete,ignore
                 continue
-            
+
             logtime = to_datetime(record["logtime"])
             containerid = record["containerid"].strip()
             message = record["logentry"].strip()
@@ -129,7 +123,7 @@ def process_status_file(context,metadata,status_file):
             computer = record["computer"].strip()
             cluster = None
             clustername = None
-            
+
             if computer in context["clusters"]:
                 cluster = context["clusters"][computer]
             elif record.get("resourceid"):
@@ -294,7 +288,7 @@ def process_status(context):
                 context["clients"][key] = last_consume
 
         ContainerLog.objects.filter(archiveid=metadata["resource_id"]).delete()
-        
+
         process_status_file(context,metadata,status_file)
 
         for container,container_update_fields  in context["containers"].values():
@@ -304,7 +298,7 @@ def process_status(context):
                 container.save(update_fields=container_update_fields)
                 container_update_fields.clear()
 
-        #save workload 
+        #save workload
         for workload,workload_update_fields in context["workloads"].values():
             if not workload.id:
                 workload.save()
@@ -332,22 +326,22 @@ def process_status(context):
         context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
 
     return _func
-                        
+
 def harvest(reconsume=False):
     try:
         renew_lock_time = get_containerlog_client().acquire_lock(expired=settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG)
-    except exceptions.AlreadyLocked as ex: 
+    except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-        
+
     try:
         if reconsume:
             if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
                 get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
             clean_containerlogs()
 
-    
+
         context = {
             "reconsume":reconsume,
             "renew_lock_time":renew_lock_time,
@@ -367,6 +361,6 @@ def harvest(reconsume=False):
 
     finally:
         get_containerlog_client().release_lock()
-        
+
 
 

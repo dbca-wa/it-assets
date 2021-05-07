@@ -1,13 +1,24 @@
 # IT Assets System
 
 This project consists of a Django application used by the Department of
-Biodiversity, Conservation and Attractions to record and manage IT assets.
+Biodiversity, Conservation and Attractions to record and manage IT assets
+and analytics.
 
 # Installation
 
-Create a new virtualenv and install required libraries using `pip`:
+The recommended way to set up this project for development is using
+[Poetry](https://python-poetry.org/docs/) to install and manage a virtual Python
+environment. With Poetry installed, change into the project directory and run:
 
-    pip install -r requirements.txt
+    poetry install
+
+To run Python commands in the virtualenv, thereafter run them like so:
+
+    poetry run python manage.py
+
+Manage new or updating project dependencies with Poetry also, like so:
+
+    poetry add newpackage==1.0
 
 # Environment variables
 
@@ -17,22 +28,25 @@ The following variables are required for the project to run:
     DATABASE_URL="postgis://USER:PASSWORD@HOST:PORT/DATABASE_NAME"
     SECRET_KEY="ThisIsASecretKey"
 
-Download of Freshdesk API data requires the following variables:
+# Running
 
-    FRESHDESK_ENDPOINT="https://dpaw.freshdesk.com/api/v2"
-    FRESHDESK_API_KEY="VALID_API_KEY"
+Use `runserver` to run a local copy of the application:
 
-A link to the Alesco database table requires the following variables:
+    poetry run python manage.py runserver 0:8080
 
-    ALESCO_DB_HOST
-    ALESCO_DB_NAME
-    ALESCO_DB_TABLE
-    ALESCO_DB_USERNAME
-    ALESCO_DB_PASSWORD
+Run console commands manually:
+
+    poetry run python manage.py shell_plus
 
 # Unit tests
 
 Start with `pip install coverage`. Run unit tests and obtain test coverage as follows:
 
-    coverage run --source='.' manage.py test -k
-    coverage report -m
+    poetry run coverage run --source='.' manage.py test -k
+    poetry run coverage report -m
+
+# Docker image
+
+To build a new Docker image from the `Dockerfile`:
+
+    docker image build -t dbcawa/it-assets .

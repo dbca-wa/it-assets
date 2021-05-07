@@ -1,6 +1,5 @@
 import re
-import os
-import imp
+import types
 import logging
 from datetime import datetime,timedelta
 
@@ -10,7 +9,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
-from django.conf import settings
 
 from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
@@ -651,7 +649,7 @@ class RequestPathNormalizer(models.Model):
     def normalize(self,request_path):
         if not self._f_normalize:
             module_name = "{}_{}".format(self.__class__.__name__,self.id)
-            self._module = imp.new_module(module_name)
+            self._module = types.ModuleType(module_name)
             exec(self.normalize_code,self._module.__dict__)
             if not hasattr(self._module,"normalize"):
                 #method 'normalize' not found

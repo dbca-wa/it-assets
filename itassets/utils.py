@@ -7,7 +7,21 @@ import re
 from restless.dj import DjangoResource
 import subprocess
 import simdjson
-import re
+
+
+class ModelDescMixin(object):
+    """A small mixin for the ModelAdmin class to add a description of the model to the
+    admin changelist view context.
+
+    In order to then display this description above the list view, you then need to
+    override the relevant change_list.html template.
+    """
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        if hasattr(self, "model_description"):
+            extra_context["model_description"] = self.model_description
+        return super().changelist_view(request, extra_context=extra_context)
 
 
 def logger_setup(name):
@@ -222,8 +236,9 @@ class LogRecordIterator(object):
     """
     for azlog dump file
     """
-    block_size = 1024 * 512 #read 512 k
-    def __init__(self,input_file):
+    block_size = 1024 * 512  # Read 512k
+
+    def __init__(self, input_file):
         self._input_file = input_file
         self._f = None
         self._index = None
@@ -234,7 +249,7 @@ class LogRecordIterator(object):
         try:
             if self._f:
                 self._f.close()
-        except :
+        except:
             pass
         finally:
             self._f = None
@@ -242,10 +257,11 @@ class LogRecordIterator(object):
     first_record_start_re = re.compile("^\s*\[\s*\{\s*\n")
     record_sep_re = re.compile("\n\s*}\s*,\s*{\s*\n")
     last_record_end_re = re.compile("\n\s*}\s*\,?\s*\]\s*$")
+
     def _next_record(self):
         if not self._f:
             raise StopIteration("No more records")
-        
+
         while (self._f):
             if self._read:
                 data = self._f.read(self.block_size)
@@ -297,9 +313,8 @@ class LogRecordIterator(object):
         self._data_block = None
         self._read = True
 
-        self._f = open(self._input_file,'r')
+        self._f = open(self._input_file, 'r')
         return self
 
     def __next__(self):
         return self._next_record()
-
