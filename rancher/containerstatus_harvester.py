@@ -321,54 +321,47 @@ def process_status(context,max_harvest_files):
                 workload.save(update_fields=workload_update_fields)
                 workload_update_fields.clear()
 
-        context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+        context["lock_session"].renew()
 
 
     return _func
 
 def harvest(reconsume=False,max_harvest_files=None):
     try:
-        renew_lock_time = get_containerstatus_client().acquire_lock(expired=settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG)
+        with LockSession(get_containerstatus_client(),settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            if reconsume and get_containerstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                get_containerstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+    
+            context = {
+                "reconsume":reconsume,
+                "lock_session":lock_session,
+                "clusters":{},
+                "clients":{},
+                "namespaces":{},
+                "workloads":{},
+                "containers":{},
+                "terminated_containers":set()
+            }
+            if max_harvest_files:
+                context["harvested_files"] = 0
+            #consume nginx config file
+            result = get_containerstatus_client().consume(process_status(context,max_harvest_files))
+            #change the status of containers which has no status data harvested in recent half an hour
+            if "last_archive_time" in context:
+                for container in Container.objects.filter(status__in=("Waiting",'Running'),last_checked__lt=context["last_archive_time"] - datetime.timedelta(minutes=30)):
+                    container.status="LostHeartbeat"
+                    container.save(update_fields=["status"])
+                    update_latest_containers(context,container)
+    
+            #save workload
+            for workload,workload_update_fields in context["workloads"].values():
+                if workload_update_fields:
+                    workload.save(update_fields=workload_update_fields)
+    
+            return result
     except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-
-    try:
-        if reconsume and get_containerstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-            get_containerstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-
-        context = {
-            "reconsume":reconsume,
-            "renew_lock_time":renew_lock_time,
-            "f_renew_lock":get_containerstatus_client().renew_lock,
-            "clusters":{},
-            "clients":{},
-            "namespaces":{},
-            "workloads":{},
-            "containers":{},
-            "terminated_containers":set()
-        }
-        if max_harvest_files:
-            context["harvested_files"] = 0
-        #consume nginx config file
-        result = get_containerstatus_client().consume(process_status(context,max_harvest_files))
-        #change the status of containers which has no status data harvested in recent half an hour
-        if "last_archive_time" in context:
-            for container in Container.objects.filter(status__in=("Waiting",'Running'),last_checked__lt=context["last_archive_time"] - datetime.timedelta(minutes=30)):
-                container.status="LostHeartbeat"
-                container.save(update_fields=["status"])
-                update_latest_containers(context,container)
-
-        #save workload
-        for workload,workload_update_fields in context["workloads"].values():
-            if workload_update_fields:
-                workload.save(update_fields=workload_update_fields)
-
-        return result
-
-    finally:
-        get_containerstatus_client().release_lock()
-
 
 

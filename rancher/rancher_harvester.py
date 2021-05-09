@@ -11,7 +11,7 @@ from django.db import models
 from django.utils import timezone
 from django.db import transaction
 
-from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions
+from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions,LockSession
 from .models import (Cluster,Namespace,Project,
         PersistentVolume,PersistentVolumeClaim,
         ConfigMap,ConfigMapItem,
@@ -1584,7 +1584,6 @@ def resource_filter(resource_id):
     return True if RANCHER_FILE_RE.search(resource_id) else False
 
 def harvest(cluster,reconsume=False):
-    renew_lock_time = None
     try:
         if isinstance(cluster,Cluster):
             pass
@@ -1596,62 +1595,60 @@ def harvest(cluster,reconsume=False):
             return ([],[])
         
         try:
-            renew_lock_time = get_consume_client(cluster.name).acquire_lock(expired=3000)
+            with LockSession(get_consume_client(cluster.name),3000,2000) as lock_session:
+                now = timezone.now()
+                result = get_consume_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
+                #analysis the workload env.
+                analysis_workloadenv(cluster,None)
+                cluster.refreshed = timezone.now()
+                cluster.succeed_resources = len(result[0])
+                cluster.failed_resources = len(result[1])
+                if result[1]:
+                    if result[0]:
+                        message = """Failed to refresh cluster({}),
+        {} configuration files were consumed successfully.
+        {}
+        {} configuration files were consumed failed
+        {}"""
+                        message = message.format(
+                            cluster.name,
+                            len(result[0]),
+                            "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                            len(result[1]),
+                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        )
+                    else:
+                        message = """Failed to refresh cluster({}),{} configuration files were consumed failed
+        {}"""
+                        message = message.format(
+                            cluster.name,
+                            len(result[1]),
+                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        )
+                elif result[0]:
+                    message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
+        {}"""
+                    message = message.format(
+                        cluster.name,
+                        len(result[0]),
+                        "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
+                    )
+                else:
+                    message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
+        
+                cluster.refresh_message = message
+                if cluster.succeed_resources or cluster.failed_resources:
+                    cluster.added_by_log = False
+                cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message","added_by_log"])
+        
+                return result
         except exceptions.AlreadyLocked as ex: 
             msg = "The previous harvest process is still running.{}".format(str(ex))
             logger.info(msg)
             return ([],[(None,None,None,msg)])
         
-        now = timezone.now()
-        result = get_consume_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
-        #analysis the workload env.
-        analysis_workloadenv(cluster,None)
-        cluster.refreshed = timezone.now()
-        cluster.succeed_resources = len(result[0])
-        cluster.failed_resources = len(result[1])
-        if result[1]:
-            if result[0]:
-                message = """Failed to refresh cluster({}),
-{} configuration files were consumed successfully.
-{}
-{} configuration files were consumed failed
-{}"""
-                message = message.format(
-                    cluster.name,
-                    len(result[0]),
-                    "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
-                    len(result[1]),
-                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
-                )
-            else:
-                message = """Failed to refresh cluster({}),{} configuration files were consumed failed
-{}"""
-                message = message.format(
-                    cluster.name,
-                    len(result[1]),
-                    "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
-                )
-        elif result[0]:
-            message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
-{}"""
-            message = message.format(
-                cluster.name,
-                len(result[0]),
-                "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
-            )
-        else:
-            message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
-
-        cluster.refresh_message = message
-        if cluster.succeed_resources or cluster.failed_resources:
-            cluster.added_by_log = False
-        cluster.save(update_fields=["refreshed","succeed_resources","failed_resources","refresh_message","added_by_log"])
-
-        return result
     finally:
         WebAppLocationServer.refresh_rancher_workload(cluster)
-        if renew_lock_time:
-            get_consume_client(cluster.name).release_lock()
 
 def harvest_all(reconsume=False):
     consume_results = []

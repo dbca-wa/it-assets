@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 
-from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
+from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions,LockSession
 from .models import Cluster,Namespace,Workload,Container
 from itassets.utils import LogRecordIterator
 from .utils import to_datetime,set_fields
@@ -200,41 +200,34 @@ def process_status(context,max_harvest_files):
                 namespace.delete()
         context["orphan_namespaces"].clear()
 
-        context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+        context["lock_session"].renew()
 
     return _func
 
 def harvest(reconsume=False,max_harvest_files=None):
     try:
-        renew_lock_time = get_podstatus_client().acquire_lock(expired=settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG)
+        with LockSession(get_podstatus_client(),settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            if reconsume and get_podstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                get_podstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+    
+            context = {
+                "reconsume":reconsume,
+                "lock_session":lock_session,
+                "clusters":{},
+                "namespaces":{},
+                "workloads":{},
+                "orphan_workloads":set(),
+                "orphan_namespaces":set()
+            }
+            if max_harvest_files:
+                context["harvested_files"] = 0
+            #consume nginx config file
+            result = get_podstatus_client().consume(process_status(context,max_harvest_files))
+    
+            return result
+
     except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-
-    try:
-        if reconsume and get_podstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-            get_podstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-
-        context = {
-            "reconsume":reconsume,
-            "renew_lock_time":renew_lock_time,
-            "f_renew_lock":get_podstatus_client().renew_lock,
-            "clusters":{},
-            "namespaces":{},
-            "workloads":{},
-            "orphan_workloads":set(),
-            "orphan_namespaces":set()
-        }
-        if max_harvest_files:
-            context["harvested_files"] = 0
-        #consume nginx config file
-        result = get_podstatus_client().consume(process_status(context,max_harvest_files))
-
-        return result
-
-    finally:
-        get_podstatus_client().release_lock()
-
-
 

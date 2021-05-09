@@ -323,44 +323,37 @@ def process_status(context):
                 workload_update_fields.clear()
                 delattr(workload,"new_latest_containers")
 
-        context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+        context["lock_session"].renew()
 
     return _func
 
 def harvest(reconsume=False):
     try:
-        renew_lock_time = get_containerlog_client().acquire_lock(expired=settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG)
+        with LockSession(get_containerlog_client(),settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            if reconsume:
+                if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                    get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+                clean_containerlogs()
+    
+    
+            context = {
+                "reconsume":reconsume,
+                "lock_session":lock_session,
+                "clients":{},
+                "clusters":{},
+                "namespaces":{},
+                "workloads":{},
+                "containers":{},
+                "containerlogs":{},
+                "terminated_containers":set()
+            }
+            #consume nginx config file
+            result = get_containerlog_client().consume(process_status(context))
+    
+            return result
     except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-
-    try:
-        if reconsume:
-            if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-                get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-            clean_containerlogs()
-
-
-        context = {
-            "reconsume":reconsume,
-            "renew_lock_time":renew_lock_time,
-            "f_renew_lock":get_containerlog_client().renew_lock,
-            "clients":{},
-            "clusters":{},
-            "namespaces":{},
-            "workloads":{},
-            "containers":{},
-            "containerlogs":{},
-            "terminated_containers":set()
-        }
-        #consume nginx config file
-        result = get_containerlog_client().consume(process_status(context))
-
-        return result
-
-    finally:
-        get_containerlog_client().release_lock()
-
 
 

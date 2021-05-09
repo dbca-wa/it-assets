@@ -10,7 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import timezone
 
-from data_storage import ResourceConsumeClient,AzureBlobStorage
+from data_storage import ResourceConsumeClient,AzureBlobStorage,LockSession
 from .models import (Domain,SystemAlias,SystemEnv,WebApp,WebAppLocation,WebAppListen,WebServer,WebAppLocationServer)
 
 from rancher.models import Cluster
@@ -910,14 +910,15 @@ def parse_server_config(server,server_config,upstream_servers):
 
 
 def harvest(reconsume=False):
-    if not reconsume:
-        #check whether some nginx configuration has been changed after last consuming.
-        if get_resource_consume_client().is_behind(resources=["nginx-config.yml","nginx.yml"]):
-            reconsume = True
-        else:
-            return 0
-
-    #consume nginx config file
-    return get_resource_consume_client().consume(process_nginx,resources=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
+    with LockSession(get_resource_consume_client(),3000) as lock_session:
+        if not reconsume:
+            #check whether some nginx configuration has been changed after last consuming.
+            if get_resource_consume_client().is_behind(resources=["nginx-config.yml","nginx.yml"]):
+                reconsume = True
+            else:
+                return 0
+    
+        #consume nginx config file
+        return get_resource_consume_client().consume(process_nginx,resources=["nginx-config.yml","nginx.yml"],reconsume=reconsume)
 
 

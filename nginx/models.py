@@ -1002,8 +1002,8 @@ def apply_rules(context={}):
                     
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
-        if context["f_renew_lock"] and context["renew_lock_time"]:
-            context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+        if context.get("lock_session"):
+            context["lock_session"].renew()
 
     #update WebAppAccessDaiyLog
     log_obj = WebAppAccessDailyLog.objects.order_by("log_day").first()
@@ -1113,8 +1113,8 @@ def apply_rules(context={}):
                     
         log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
         log_day = log_obj.log_day if log_obj else None
-        if context["f_renew_lock"] and context["renew_lock_time"]:
-            context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+        if context.get("lock_session"):
+            context["lock_session"].renew()
 
     #already applied the latest filter
     all_applied = True
@@ -1201,7 +1201,7 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
     total_response_time = models.FloatField(null=False,editable=False)
 
     @classmethod
-    def populate_data(cls,f_renew_lock=None,renew_lock_time=None):
+    def populate_data(cls,lock_session=None):
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1215,12 +1215,12 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
                 first_populate_log_day = None
 
         if not first_populate_log_day:
-            return renew_lock_time
+            return 
 
         obj = WebAppAccessLog.objects.all().order_by("-log_starttime").first()
         last_log_datetime = timezone.localtime(obj.log_starttime) if obj else None
         if not last_log_datetime:
-            return renew_lock_time
+            return 
         elif last_log_datetime.hour == 23:
             last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day) + timedelta(days=1))
         else:
@@ -1241,10 +1241,9 @@ GROUP BY webserver,request_path,http_status,path_parameters;
                 logger.info("Populate nginx access daily log.sql = {}".format(sql))
                 cursor.execute(sql)
 
-            if f_renew_lock and renew_lock_time:
-                renew_lock_time = f_renew_lock(renew_lock_time)
+            if lock_session:
+                lock_session.renew()
             populate_log_day = next_populate_log_day
-        return renew_lock_time
 
     class Meta:
         unique_together = [["log_day","webserver","request_path","http_status","path_parameters"]]
@@ -1265,7 +1264,7 @@ class WebAppAccessDailyReport(models.Model):
     timeout_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
 
     @classmethod
-    def populate_data(cls,f_renew_lock=None,renew_lock_time=None):
+    def populate_data(cls,lock_session=None):
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1278,12 +1277,12 @@ class WebAppAccessDailyReport(models.Model):
                 first_populate_log_day = None
 
         if not first_populate_log_day:
-            return renew_lock_time
+            return 
 
         obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
         last_populate_log_day = obj.log_day if obj else None
         if not last_populate_log_day:
-            return renew_lock_time
+            return 
         last_populate_log_day += timedelta(days=1)
 
         populate_log_day = first_populate_log_day
@@ -1309,10 +1308,9 @@ GROUP BY webserver
                 logger.info("Populate nginx access daily report.sql = {}".format(sql))
                 cursor.execute(sql)
 
-            if f_renew_lock and renew_lock_time:
-                renew_lock_time = f_renew_lock(renew_lock_time)
+            if lock_session:
+                lock_session.renew()
             populate_log_day += timedelta(days=1)
-        return renew_lock_time
 
     class Meta:
         unique_together = [["log_day","webserver"]]

@@ -11,7 +11,7 @@ from django.db import models,transaction,connection
 from django.utils import timezone
 from django.http import QueryDict
 
-from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions
+from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions,LockSession
 from .models import WebAppAccessLog,WebApp,WebAppLocation,RequestParameterFilter,WebAppAccessDailyLog,RequestPathNormalizer,apply_rules,WebAppAccessDailyReport
 from itassets.utils import LogRecordIterator
 
@@ -182,81 +182,73 @@ def process_log(context):
         WebAppAccessLog.objects.filter(log_starttime = metadata["archive_starttime"]).delete()
         process_log_file(context,metadata,log_file)
 
-        context["renew_lock_time"] = context["f_renew_lock"](context["renew_lock_time"])
+        context["lock_session"].renew()
 
     return _func
                         
 def harvest(reconsume=False):
     try:
-        renew_lock_time = get_consume_client().acquire_lock(expired=settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG)
+        with LockSession(get_consume_client(),settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            if reconsume and get_consume_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                get_consume_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+        
+            if reconsume:
+                WebAppAccessLog.objects.all().delete()
+                WebAppAccessDailyLog.objects.all().delete()
+        
+            context = {
+                "reconsume":reconsume,
+                "lock_session":lock_session
+            }
+            #apply the latest filter change first
+            context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
+            context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
+            context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
+            context["path_normalizer_map"] = {}
+            context["parameter_filter_map"] = {}
+            """
+            don't apply the changed rules in the history data
+            applied = False
+            while not applied:
+                context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
+                context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
+                context["path_normalizer_map"] = {}
+                context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
+                context["parameter_filter_map"] = {}
+                applied = apply_rules(context)
+            """
+        
+            #consume nginx config file
+            result = get_consume_client().consume(process_log(context))
+            #populate daily log
+            lock_session.renew()
+            #populate daily report
+            WebAppAccessDailyReport.populate_data(lock_session)
+    
+            now = timezone.localtime()
+            if now.hour >= 0 and now.hour <= 2:
+                obj = WebAppAccessLog.objects.all().order_by("-log_starttime").first()
+                if obj:
+                    last_log_datetime = timezone.localtime(obj.log_starttime)
+                    earliest_log_datetime = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day)) - timedelta(days=settings.NGINXLOG_ACCESSLOG_LIFETIME)
+                    sql = "DELETE FROM nginx_webappaccesslog where log_starttime < '{}'".format(earliest_log_datetime.strftime("%Y-%m-%d 00:00:00 +8:00"))
+                    with connection.cursor() as cursor:
+                        logger.info("Delete expired web app access log.last_log_datetime={}, sql = {}".format(last_log_datetime,sql))
+                        cursor.execute(sql)
+                    lock_session.renew()
+    
+                obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
+                if obj:
+                    last_log_day = obj.log_day
+                    earliest_log_day = last_log_day - timedelta(days=settings.NGINXLOG_ACCESSDAILYLOG_LIFETIME)
+                    sql = "DELETE FROM nginx_webappaccessdailylog where log_day < date('{}')".format(earliest_log_day.strftime("%Y-%m-%d"))
+                    with connection.cursor() as cursor:
+                        logger.info("Delete expired web app access daily log.last_log_day={}, sql = {}".format(last_log_day,sql))
+                        cursor.execute(sql)
+    
+            return result
     except exceptions.AlreadyLocked as ex: 
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
         
-    try:
-        if reconsume and get_consume_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-            get_consume_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-    
-        if reconsume:
-            WebAppAccessLog.objects.all().delete()
-            WebAppAccessDailyLog.objects.all().delete()
-    
-        context = {
-            "reconsume":reconsume,
-            "renew_lock_time":renew_lock_time,
-            "f_renew_lock":get_consume_client().renew_lock
-        }
-        #apply the latest filter change first
-        context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
-        context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
-        context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
-        context["path_normalizer_map"] = {}
-        context["parameter_filter_map"] = {}
-        """
-        don't apply the changed rules in the history data
-        applied = False
-        while not applied:
-            context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
-            context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
-            context["path_normalizer_map"] = {}
-            context["parameter_filters"] = list(RequestParameterFilter.objects.all().order_by("-order"))
-            context["parameter_filter_map"] = {}
-            applied = apply_rules(context)
-        """
-    
-        #consume nginx config file
-        result = get_consume_client().consume(process_log(context))
-        #populate daily log
-        renew_lock_time = WebAppAccessDailyLog.populate_data(context["f_renew_lock"],context["renew_lock_time"])
-        #populate daily report
-        renew_lock_time = WebAppAccessDailyReport.populate_data(context["f_renew_lock"],renew_lock_time)
-
-        now = timezone.localtime()
-        if now.hour >= 0 and now.hour <= 2:
-            obj = WebAppAccessLog.objects.all().order_by("-log_starttime").first()
-            if obj:
-                last_log_datetime = timezone.localtime(obj.log_starttime)
-                earliest_log_datetime = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day)) - timedelta(days=settings.NGINXLOG_ACCESSLOG_LIFETIME)
-                sql = "DELETE FROM nginx_webappaccesslog where log_starttime < '{}'".format(earliest_log_datetime.strftime("%Y-%m-%d 00:00:00 +8:00"))
-                with connection.cursor() as cursor:
-                    logger.info("Delete expired web app access log.last_log_datetime={}, sql = {}".format(last_log_datetime,sql))
-                    cursor.execute(sql)
-                renew_lock_time = context["f_renew_lock"](renew_lock_time)
-
-            obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
-            if obj:
-                last_log_day = obj.log_day
-                earliest_log_day = last_log_day - timedelta(days=settings.NGINXLOG_ACCESSDAILYLOG_LIFETIME)
-                sql = "DELETE FROM nginx_webappaccessdailylog where log_day < date('{}')".format(earliest_log_day.strftime("%Y-%m-%d"))
-                with connection.cursor() as cursor:
-                    logger.info("Delete expired web app access daily log.last_log_day={}, sql = {}".format(last_log_day,sql))
-                    cursor.execute(sql)
-
-        return result
-
-    finally:
-        get_consume_client().release_lock()
-        
-
-
