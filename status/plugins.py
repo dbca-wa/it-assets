@@ -40,10 +40,12 @@ def monitor_prtg(plugin, date):
 
                 # List of domains for which to skip (these are websites, not hosts).
                 skip_domains = [
-                    '.dbca.wa.gov.au',
-                    '.dpaw.wa.gov.au',
-                    '.rottnestislandonline.com',
-                    '.perthzoo.wa.gov.au',
+                    'dbca.wa.gov.au',
+                    'dpaw.wa.gov.au',
+                    'perthzoo.wa.gov.au',
+                    'rottnestislandonline.com',
+                    'rottnestisland.com',
+                    'worldwidewattle.com',
                 ]
                 skiphost = False
                 for s in skip_domains:
