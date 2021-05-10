@@ -12,7 +12,6 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('tracking', '0001_initial'),
         ('organisation', '0001_initial'),
     ]
 

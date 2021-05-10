@@ -37,7 +37,6 @@ INSTALLED_APPS = (
     'corsheaders',
     'reversion',
     'crispy_forms',
-    'mptt',  # This needs to remain until migrations are reset.
     'leaflet',
     'django_q',
     'rest_framework',
@@ -48,7 +47,6 @@ INSTALLED_APPS = (
     # Project applications:
     'organisation',
     'registers',
-    'tracking',  # Still needed due to legacy migrations.
     'assets',
     'status',
     'nginx',

@@ -15,7 +15,6 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('organisation', '0007_auto_20180829_1733'),
-        ('tracking', '0001_initial'),
         ('organisation', '0009_location_ascender_code'),
         ('organisation', '0001_initial'),
         ('bigpicture', '0002_auto_20200709_1224'),
