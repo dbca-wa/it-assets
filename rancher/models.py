@@ -322,7 +322,7 @@ class Workload(DeletedMixin,models.Model):
     image_scan_json = JSONField(default=dict, editable=False, blank=True)
     image_scan_timestamp = models.DateTimeField(editable=False, null=True, blank=True)
     cmd = models.CharField(max_length=2048, editable=False, null=True)
-    schedule = models.CharField(max_length=32, editable=False, null=True)
+    schedule = models.CharField(max_length=128, editable=False, null=True)
     suspend = models.NullBooleanField(editable=False)
     failedjobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
     successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
