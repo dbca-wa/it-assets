@@ -313,7 +313,6 @@ class WebApp(OriginalConfigMixin, models.Model):
         for app in cls.objects.all():
             app.set_location_score()
 
-
     def __str__(self):
         return self.name
 
@@ -605,6 +604,7 @@ class WebAppLocationServer(models.Model):
     class Meta:
         unique_together = [["location","server","port"]]
 
+
 class RequestPathNormalizer(models.Model):
     _f_filter = None
     _f_normalize = None
@@ -666,7 +666,6 @@ class RequestPathNormalizer(models.Model):
                 #no change
                 return self
         return super().save(*args,**kwargs)
-
 
     @classmethod
     def normalize_path(cls,webserver,request_path,path_normalizers = None,path_normalizer_map = None,path_filter=None):
@@ -745,7 +744,6 @@ class RequestParameterFilter(models.Model):
                 return self
         return super().save(*args,**kwargs)
 
-
     def filter(self,webserver,request_path):
         """
         Return True if this rule can be applied on the webserver and request_path;otherwise return False
@@ -821,6 +819,7 @@ class RequestParameterFilter(models.Model):
         changed,path_parameter_list = parameter_filter.get_parameters(path_parameter_list)
 
         return (changed,WebAppAccessLog.to_path_parameters(path_parameter_list) if changed else path_parameters)
+
 
 def apply_rules(context={}):
     """
@@ -901,7 +900,6 @@ def apply_rules(context={}):
                 webserver = record.webserver
                 records[webserver] = {}
                 webserver_records = records[webserver]
-
 
             if path_normalizer_changed:
                 path_changed,request_path = RequestPathNormalizer.normalize_path(
@@ -1109,6 +1107,7 @@ def apply_rules(context={}):
                 all_applied = False
 
     return all_applied
+
 
 class PathParametersMixin(object):
     @property

@@ -40,12 +40,20 @@ class Command(BaseCommand):
             week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
             week_end = week_start + timedelta(days=7)
             rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+            if Site.objects.filter(name='Change Requests').exists():
+                domain = Site.objects.get(name='Change Requests').domain
+            else:
+                domain = Site.objects.get_current().domain
+            if domain.startswith('http://'):
+                domain = domain.replace('http', 'https')
+            if not domain.startswith('https://'):
+                domain = 'https://' + domain
 
-            # Construct the HTML / plaintext email content to send.
+            # Construct the HTML and plaintext email content to send.
             context = {
                 'start': week_start,
                 'object_list': rfcs,
-                'domain': Site.objects.get_current().domain,
+                'domain': domain,
             }
             html_content = render_to_string('registers/email_cab_rfc_calendar.html', context)
 

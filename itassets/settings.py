@@ -37,7 +37,6 @@ INSTALLED_APPS = (
     'corsheaders',
     'reversion',
     'crispy_forms',
-    'mptt',  # This needs to remain until migrations are reset.
     'leaflet',
     'django_q',
     'rest_framework',
@@ -48,7 +47,6 @@ INSTALLED_APPS = (
     # Project applications:
     'organisation',
     'registers',
-    'tracking',  # Still needed due to legacy migrations.
     'assets',
     'status',
     'nginx',
@@ -96,12 +94,13 @@ TEMPLATES = [
 
 ADMINS = env('ADMIN_EMAILS', 'asi@dbca.wa.gov.au').split(',')
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', None)
-FRESHDESK_ENDPOINT = env('FRESHDESK_ENDPOINT', None)
-FRESHDESK_API_KEY = env('FRESHDESK_API_KEY', None)
+FRESHSERVICE_ENDPOINT = env('FRESHSERVICE_ENDPOINT', None)
+FRESHSERVICE_API_KEY = env('FRESHSERVICE_API_KEY', None)
+FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env('FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID', 75000272223)  # Unlikely to ever change.
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.2'
+VERSION_NO = '2.2.45'
 
 # Alesco binding information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
