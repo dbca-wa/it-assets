@@ -3,6 +3,7 @@ import dj_database_url
 import os
 import sys
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
@@ -162,6 +163,12 @@ CONTAINERLOG_MAX_SAVED_CONSUMED_RESOURCES = env("CONTAINERLOG_MAX_SAVED_CONSUMED
 CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG = env("CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG", default=1800)
 CONTAINERLOG_STREAMING_PARSE = env("CONTAINERLOG_STREAMING_PARSE",True)
 CONTAINERLOG_FAILED_IF_CONTAINER_NOT_FOUND = env("CONTAINERLOG_FAILED_IF_CONTAINER_NOT_FOUND",True)
+
+
+ENABLE_ADDED_BY_CONTAINERLOG = env("ENABLE_ADDED_BY_CONTAINERLOG",False)
+DELETED_RANCHER_OBJECT_EXPIRED = timedelta(days=env("DELETED_RANCHER_OBJECT_EXPIRED",90)) #days
+RANCHER_CONTAINER_EXPIRED = timedelta(days=env("RANCHER_CONTAINER_EXPIRED",7)) #days
+RANCHER_CONTAINERLOG_EXPIRED = timedelta(days=env("RANCHER_CONTAINERLOG_EXPIRED",30)) #days
 
 # Database configuration
 DATABASES = {

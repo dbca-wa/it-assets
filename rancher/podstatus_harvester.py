@@ -78,8 +78,11 @@ def process_status_file(context,metadata,status_file):
                 try:
                     cluster = Cluster.objects.get(name=cluster_name)
                 except ObjectDoesNotExist as ex:
-                    cluster = Cluster(name=cluster_name,added_by_log=True)
-                    cluster.save()
+                    if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                        cluster = Cluster(name=cluster_name,added_by_log=True)
+                        cluster.save()
+                    else
+                        continue
                 context["clusters"][cluster_name] = cluster
 
             namespace_name = record["namespace"].strip()
@@ -91,8 +94,11 @@ def process_status_file(context,metadata,status_file):
                 try:
                     namespace = Namespace.objects.get(cluster=cluster,name=namespace_name)
                 except ObjectDoesNotExist as ex:
-                    namespace = Namespace(cluster=cluster,name=namespace_name,added_by_log=True,created=pod_created,modified=pod_created)
-                    namespace.save()
+                    if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                        namespace = Namespace(cluster=cluster,name=namespace_name,added_by_log=True,created=pod_created,modified=pod_created)
+                        namespace.save()
+                    else:
+                        continue
                 context["namespaces"][key] = namespace
 
             poduid = record["poduid"].strip()
@@ -121,10 +127,13 @@ def process_status_file(context,metadata,status_file):
                     #logger.debug("find workload, cluster={}, project={}, namespace={},name={},kind={}".format(cluster,namespace.project,namespace,workload_name,workload_kind))
                     workload = Workload.objects.get(cluster=cluster,namespace=namespace,name=workload_name,kind=workload_kind)
                 except ObjectDoesNotExist as ex:
-                    workload = Workload(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind,image="",api_version="",modified=pod_created,created=pod_created,added_by_log=True)
-                    #if pod_created.date() < timezone.now().date():
-                    #    workload.deleted = max_timegenerated
-                    workload.save()
+                    if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                        workload = Workload(cluster=cluster,project=namespace.project,namespace=namespace,name=workload_name,kind=workload_kind,image="",api_version="",modified=pod_created,created=pod_created,added_by_log=True)
+                        #if pod_created.date() < timezone.now().date():
+                        #    workload.deleted = max_timegenerated
+                        workload.save()
+                    else:
+                        continue
                 workload_update_fields = []
                 context["workloads"][key] = (workload,workload_update_fields)
 

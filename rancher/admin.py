@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
 from django.utils.html import mark_safe
@@ -339,10 +340,13 @@ class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,W
 
 @admin.register(models.Cluster)
 class ClusterAdmin(WorkloadsLinkMixin,DatetimeMixin,admin.ModelAdmin):
-    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','added_by_log')
-    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','_created','added_by_log','_refresh_message')
+    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','added_by_log') if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified')
+
+    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','_created','added_by_log','_refresh_message') if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','_created','_refresh_message')
+
     ordering = ('name',)
     actions = ('refresh','enforce_refresh')
+
 
     def _refresh_message(self,obj):
         if not obj :
@@ -463,8 +467,10 @@ class ExistingStatusFilter(admin.SimpleListFilter):
 
 @admin.register(models.Namespace)
 class NamespaceAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
-    readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
+    list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else  ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted')
+
+    readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted')
+
     fields = readonly_fields
     ordering = ('cluster__name','project__name','name')
     list_filter = ('project',ExistingStatusFilter)
@@ -667,10 +673,14 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 
 @admin.register(models.Workload)
 class WorkloadAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,DatetimeMixin, admin.ModelAdmin):
-    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted',"added_by_log")
+    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted')
+
     list_display_links = None
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'schedule','_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
+
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend")
+
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'schedule','_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'schedule','_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted')
+
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']

@@ -139,8 +139,11 @@ def process_status_file(context,metadata,status_file):
                 try:
                     cluster = Cluster.objects.get(name=clustername)
                 except ObjectDoesNotExist as ex:
-                    cluster = Cluster(name=clustername,added_by_log=True)
-                    cluster.save()
+                    if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                        cluster = Cluster(name=clustername,added_by_log=True)
+                        cluster.save()
+                    else:
+                        continue
 
                 context["clusters"][clustername] = cluster
             """

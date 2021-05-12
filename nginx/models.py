@@ -593,7 +593,7 @@ class WebAppLocationServer(models.Model):
         ).filter(
             models.Q(server__name__startswith=cluster.name)
             | models.Q(server__name=cluster.ip)
-        ):
+        ).filter(rancher_workload__isnull=True):
             rancher_workload = location_server.locate_rancher_workload()
             if location_server.rancher_workload != rancher_workload:
                 location_server.rancher_workload = rancher_workload

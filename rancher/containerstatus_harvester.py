@@ -157,8 +157,11 @@ def process_status_file(context,metadata,status_file):
                 try:
                     cluster = Cluster.objects.get(name=clustername)
                 except ObjectDoesNotExist as ex:
-                    cluster = Cluster(name=clustername,added_by_log=True)
-                    cluster.save()
+                    if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                        cluster = Cluster(name=clustername,added_by_log=True)
+                        cluster.save()
+                    else:
+                        continue
 
                 context["clusters"][clustername] = cluster
 
@@ -208,30 +211,36 @@ def process_status_file(context,metadata,status_file):
                             try:
                                 namespace = Namespace.objects.get(cluster=cluster,name="unknown")
                             except ObjectDoesNotExist as ex:
-                                namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True,created=created or timezone.now(),modified=created or timezone.now())
-                                namespace.save()
+                                if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                                    namespace = Namespace(cluster=cluster,name="unknown",added_by_log=True,created=created or timezone.now(),modified=created or timezone.now())
+                                    namespace.save()
+                                else:
+                                    continue
 
                             context["namespaces"][namespace_key] = namespace
 
                         workload = Workload.objects.filter(cluster=cluster,namespace=namespace,name=new_workload_name,kind=kind).first()
 
                         if not workload:
-                            image = "{}:{}".format(record["image"].strip(),record["imagetag"].strip())
-                            workload = Workload(
-                                cluster=namespace.cluster,
-                                project=namespace.project,
-                                namespace=namespace,
-                                name=new_workload_name,
-                                image=image,
-                                kind=kind,
-                                api_version="",
-                                added_by_log=True,
-                                modified=created or timezone.now(),
-                                created=created or timezone.now()
-                            )
-                            #if finished and finished.date() < timezone.now().date():
-                            #    workload.deleted = finished
-                            workload.save()
+                            if settings.ENABLE_ADDED_BY_CONTAINERLOG:
+                                image = "{}:{}".format(record["image"].strip(),record["imagetag"].strip())
+                                workload = Workload(
+                                    cluster=namespace.cluster,
+                                    project=namespace.project,
+                                    namespace=namespace,
+                                    name=new_workload_name,
+                                    image=image,
+                                    kind=kind,
+                                    api_version="",
+                                    added_by_log=True,
+                                    modified=created or timezone.now(),
+                                    created=created or timezone.now()
+                                )
+                                #if finished and finished.date() < timezone.now().date():
+                                #    workload.deleted = finished
+                                workload.save()
+                            else:
+                                continue
 
                     workload_key = (cluster.id,workload.namespace.name,workload.name,workload.kind)
                     workload_update_fields = []

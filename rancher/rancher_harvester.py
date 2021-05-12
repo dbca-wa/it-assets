@@ -134,8 +134,9 @@ def update_namespace(cluster,status,metadata,config):
 def delete_namespace(cluster,status,metadata,config):
     name = config["metadata"]["name"]
     
-    del_rows = Namespace.objects.filter(cluster=cluster,name=name).update(deleted=timezone.now())
-    if del_rows:
+    obj = Namespace.objects.filter(cluster=cluster,name=name).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete namespace({}.{})".format(cluster,name))
 
     """
@@ -288,8 +289,9 @@ def delete_ingress(cluster,status,metadata,config):
     if not namespace:
         return
     name = config["metadata"]["name"]
-    del_rows = Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).update(deleted=timezone.now())
-    if del_rows:
+    obj = Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).first() 
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete Ingress({}.{})".format(namespace,name))
     """
     del_objs = Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
@@ -372,8 +374,9 @@ def update_volume(cluster,status,metadata,config):
 
 def delete_volume(cluster,status,metadata,config):
     name = config["metadata"]["name"]
-    del_rows = PersistentVolume.objects.filter(cluster=cluster,name=name).update(deleted=timezone.now())
-    if del_rows:
+    obj = PersistentVolume.objects.filter(cluster=cluster,name=name).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically Delete PersistentVolume({}.{})".format(cluster,name))
     """
     del_objs = PersistentVolume.objects.filter(cluster=cluster,name=name).delete()
@@ -415,8 +418,9 @@ def delete_volume_claim(cluster,status,metadata,config):
     if not namespace:
         return
     name = config["metadata"]["name"]
-    del_rows = PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).update(deleted=timezone.now())
-    if del_rows:
+    obj = PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete PersistentVolumeClaim({}.{})".format(namespace,name))
     """
     del_objs = PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
@@ -800,8 +804,9 @@ def delete_deployment(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
-    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
-    if del_rows:
+    obj = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete the deployment workload({2}:{0}.{1})".format(namespace,name,kind))
     """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
@@ -868,8 +873,9 @@ def delete_cronjob(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
-    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
-    if del_rows:
+    obj = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete the cronjob workload({2}:{0}.{1})".format(namespace,name,kind))
     """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
@@ -937,8 +943,9 @@ def delete_daemonset(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
-    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
-    if del_rows:
+    obj = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete the daemonset workload({2}:{0}.{1})".format(namespace,name,kind))
     """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
@@ -1036,8 +1043,9 @@ def delete_statefulset(cluster,status,metadata,config):
         return
     name = config["metadata"]["name"]
     kind = config["kind"]
-    del_rows = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).update(deleted=timezone.now())
-    if del_rows:
+    obj = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
+    if obj:
+        obj.logically_delete()
         logger.info("Logically delete the statefulset workload({2}:{0}.{1})".format(namespace,name,kind))
     """
     del_objs = Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
@@ -1184,6 +1192,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
     if refresh_time:
         qs = qs.filter(workload__refreshed__gte = refresh_time)
 
+    logger.debug("Begin to find postgres database connection string from single environment variable")
     qs = qs.order_by("workload","name")
     processed_envs = {}
     for env_obj in qs:
@@ -1216,10 +1225,11 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
         workload_database = update_workloaddatabase(env_obj.workload,database,database_user,password,env_obj.name,env_obj.modified)
         processed_envs[env_obj.id] = workload_database.id
 
+    logger.debug("Begin to find database connection string from multiple environment variables")
     previous_workload = None
-    databases = [[],[],[],[],[],[],[]]
-    config_values = [None,None,None,None,None,None,None]
-    config_items = [None,None,None,None,None,None]
+    databases = [[],[],[],[],[],[],[]] #[hosts, ports, dbnames,schemas,users,passwords, envs] ;  each env is a tuple (env,prefix,sufix,processed?)
+    config_values = [None,None,None,None,None,None,None] #host, port, dbname,schema,user,password, last modified
+    config_items = [None,None,None,None,None,None] #host, port, dbname,schema,user,password, last modified
     existing_workload_databases = []
 
     for env_obj in itertools.chain(qs,[WorkloadEnv(workload=Workload(id=-1),name='test',value=None)]):
@@ -1233,8 +1243,10 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                     run_times += 1
                     for user_config in databases[4]:
                         if user_config[3]:
+                            #this database user is already processed
                             continue
                         kind = None
+                        
                         config_values[4] = user_config[0].value
                         config_items[4] = user_config[0].name
                         config_values[6] = user_config[0].modified
@@ -1257,6 +1269,7 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                     (user_config[1] and server_config[1] and (user_config[1].startswith(server_config[1]) or server_config[1].startswith(user_config[1])))
                                     or (user_config[2] and server_config[2] and (user_config[2].startswith(server_config[2]) or server_config[2].startswith(user_config[2])))
                                 ):
+                                    #server env variable has the same prefix or sufix as the user variable name
                                     config_values[0] = server_config[0].value
                                     config_items[0] = server_config[0].name
                                     if config_values[6] < server_config[0].modified:
@@ -1284,15 +1297,27 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                         for server_config in databases[6]:
                                             if server_config[3]:
                                                 continue
-                                            matched = False
-                                            if oracle_connection_re.search(server_config[0].value):
+                                            m = oracle_connection_re.search(server_config[0].value)
+                                            if m:
                                                 #is a oracle connection
                                                 matched = True
-                                            if not matched:
-                                                hostname,ip = parse_host(server_config[0].value)
-                                                if DatabaseServer.objects.filter(host=hostname).exists():
-                                                    #is a database host
-                                                    matched = True
+                                                kind = DatabaseServer.ORACLE
+                                                config_values[1] = int(m.group("port") or 1521)
+                                                config_items[1] = None
+                                                config_values[2] = m.group("dbname")
+                                                config_items[2] = None
+                                                config_values[0] = m.group("host")
+                                                if config_values[6] < server_config[0].modified:
+                                                    config_values[6] = server_config[0].modified
+                                                server_config[3] = True
+                                                break
+
+                                            matched = False
+                                            hostname,ip = parse_host(server_config[0].value)
+                                            if DatabaseServer.objects.filter(host=hostname).exists():
+                                                #is a database host
+                                                matched = True
+
                                             if not matched:
                                                  try:
                                                      if socket.gethostbyname(server_config[0].value):
@@ -1308,16 +1333,6 @@ def analysis_workloadenv(cluster=None,refresh_time=None):
                                                 config_values[6] = server_config[0].modified
                                             server_config[3] = True
                                             break
-
-                        m = oracle_connection_re.search(config_values[0])
-                        if m:
-                            kind = DatabaseServer.ORACLE
-                            config_values[1] = int(m.group("port") or 1521)
-                            config_items[1] = None
-                            config_values[2] = m.group("dbname")
-                            config_items[2] = None
-                            config_values[0] = m.group("host")
-
 
                         #try to find the schema
                         if config_values[3]:
@@ -1599,7 +1614,8 @@ def harvest(cluster,reconsume=False):
                 now = timezone.now()
                 result = get_consume_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False)
                 #analysis the workload env.
-                analysis_workloadenv(cluster,None)
+                logger.debug("Begin to analysis workload env")
+                analysis_workloadenv(cluster,now)
                 cluster.refreshed = timezone.now()
                 cluster.succeed_resources = len(result[0])
                 cluster.failed_resources = len(result[1])
@@ -1648,7 +1664,9 @@ def harvest(cluster,reconsume=False):
             return ([],[(None,None,None,msg)])
         
     finally:
-        WebAppLocationServer.refresh_rancher_workload(cluster)
+        #logger.debug("Begin to refresh rancher workload in web app locaion")
+        #WebAppLocationServer.refresh_rancher_workload(cluster)
+        pass
 
 def harvest_all(reconsume=False):
     consume_results = []

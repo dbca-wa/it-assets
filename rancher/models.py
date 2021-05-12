@@ -109,6 +109,11 @@ class DeletedMixin(models.Model):
     def is_deleted(self):
         return True if self.deleted else False
 
+    def logically_delete(self):
+        self.deleted = timezone.now()
+        self.save(update_fields=["deleted"])
+    
+
     class Meta:
         abstract = True
 
@@ -493,8 +498,8 @@ class WorkloadVolume(models.Model):
     mountpath = models.CharField(max_length=128,editable=False)
     subpath = models.CharField(max_length=128,editable=False,null=True)
 
-    volume_claim = models.ForeignKey(PersistentVolumeClaim, on_delete=models.PROTECT, related_name='+',editable=False,null=True)
-    volume = models.ForeignKey(PersistentVolume, on_delete=models.PROTECT, related_name='+',editable=False,null=True)
+    volume_claim = models.ForeignKey(PersistentVolumeClaim, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
+    volume = models.ForeignKey(PersistentVolume, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
     volumepath = models.CharField(max_length=612,editable=False,null=True)
     other_config = models.TextField(null=True)
 
@@ -645,7 +650,7 @@ class Container(models.Model):
     pod_started = models.DateTimeField(editable=False,null=True)
     container_created = models.DateTimeField(editable=False,null=True)
     container_started = models.DateTimeField(editable=False,null=True)
-    container_terminated = models.DateTimeField(editable=False,null=True)
+    container_terminated = models.DateTimeField(editable=False,null=True,db_index=True)
     last_checked = models.DateTimeField(editable=False)
 
     @property
@@ -670,7 +675,7 @@ class ContainerLog(models.Model):
         (ERROR,"Error"),
     ]
     container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name='logs',editable=False)
-    logtime = models.DateTimeField(editable=False)
+    logtime = models.DateTimeField(editable=False,db_index=True)
     level = models.PositiveSmallIntegerField(choices=LOG_LEVELS)
     source = models.CharField(max_length=32,null=True,editable=False)
     message = models.TextField(editable=False)
@@ -766,31 +771,43 @@ class NamespaceListener(object):
 
 
 def sync_project():
+    """
+    Synchronize namespace's project with the project of workload, ingress and PersistentVolumeClaim
+    """
+    #assign namespace's project to workload's project
     for obj in Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
         obj.project = obj.namespace.project
         obj.save(update_fields=["project"])
 
+    #set workload's project to None if namespace's project is none
     for obj in Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False):
         obj.project = None
         obj.save(update_fields=["project"])
 
+    #assign namespace's project to ingress's project
     for obj in Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
         obj.project = obj.namespace.project
         obj.save(update_fields=["project"])
 
+    #set ingress's project to None if namespace's project is none
     for obj in Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
         obj.project = None
         obj.save(update_fields=["project"])
 
+    #assign namespace's project to persistentvolumeclaim's project
     for obj in PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
         obj.project = obj.namespace.project
         obj.save(update_fields=["project"])
 
+    #set persistentvolumeclaim's project to None if namespace's project is none
     for obj in PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
         obj.project = None
         obj.save(update_fields=["project"])
 
 def check_project():
+    """
+    Check whether the namespace's project is the same as the project of workload, ingress and PersistentVolumeClaim, and print the result
+    """
     objs = list(Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
     objs += list(Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False))
     if objs:
@@ -807,6 +824,9 @@ def check_project():
         print("The following PersistentVolumeClaims'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
 
 def check_workloads():
+    """
+    Check whether the active and deleted workloads is the same as the value of column 'active_workloads' and 'deleted_workloads' in model 'Namespace','Project' and 'Cluster' and print the result
+    """
     for obj in Namespace.objects.all():
         active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
         deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
@@ -848,6 +868,10 @@ def check_workloads():
             ))
 
 def sync_workloads():
+    """
+    Update the column 'active_workoads' and 'deleted_workloads' in model 'Namespace', 'Project' and 'Cluster' to the active workloads and deleted workloads
+
+    """
     for obj in Namespace.objects.all():
         active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
         deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
@@ -898,6 +922,10 @@ def sync_workloads():
             obj.save(update_fields=["active_workloads","deleted_workloads"])
 
 def clean_containers():
+    """
+    clean all containers and container logs,
+    sync projects and workloads
+    """
     sync_workloads()
     ContainerLog.objects.all().delete()
     Container.objects.all().delete()
@@ -909,6 +937,9 @@ def clean_containers():
     sync_workloads()
 
 def clean_containerlogs():
+    """
+    Clear all container logs
+    """
     ContainerLog.objects.all().delete()
     Container.objects.all().update(log=False,warning=False,error=False)
     for workload in Workload.objects.all():
@@ -917,7 +948,113 @@ def clean_containerlogs():
                 container[2] = 0
             workload.save(update_fields=["latest_containers"])
 
+def clean_added_by_log_data():
+    """
+    Clean all the data which is added by log
+    """
+    deleted_rows = ContainerLog.objects.filter(container__workload__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Container.objects.filter(workload__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Ingress.objects.filter(namespace__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Workload.objects.filter(added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = PersistentVolume.objects.filter(cluster__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = PersistentVolumeClaim.objects.filter(cluster__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = ConfigMap.objects.filter(namespace__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Namespace.objects.filter(added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Project.objects.filter(cluster__added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Cluster.objects.filter(added_by_log=True).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+
+def clean_expired_deleted_data():
+    expired_time = timezone.now() - settings.DELETED_RANCHER_OBJECT_EXPIRED
+    deleted_rows = ContainerLog.objects.filter(container__workload__deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Container.objects.filter(workload__deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Ingress.objects.filter(deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Workload.objects.filter(deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+
+    deleted_rows = PersistentVolumeClaim.objects.filter(volume__deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = PersistentVolume.objects.filter(deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Namespace.objects.filter(deleted__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+
+def clean_expired_containers():
+    expired_time = timezone.now() - settings.RANCHER_CONTAINER_EXPIRED
+
+    deleted_rows = ContainerLog.objects.filter(container__container_terminated__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Container.objects.filter(container_terminated__lt = expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+
+def clean_expired_containerlogs():
+    expired_time = timezone.now() - settings.RANCHER_CONTAINERLOG_EXPIRED
+    
+    deleted_rows = ContainerLog.objects.filter(logtime__lt=expired_time).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+
+def delete_cluster(idorname):
+    """
+    delete cluster
+    """
+    try:
+        cluster = Cluster.objects.get(id=int(idorname))
+    except:
+        cluster = Cluster.objects.get(name=str(idorname))
+
+    deleted_rows = ContainerLog.objects.filter(container__cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Container.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Workload.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Ingress.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = PersistentVolumeClaim.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = PersistentVolume.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = ConfigMap.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = Namespace.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = Project.objects.filter(cluster=cluster).delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+    deleted_rows = cluster.delete()
+    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    
+
 def sync_latestcontainers():
+    """
+    Reset the latest containers
+    """
     Workload.objects.all().update(latest_containers=None)
     workloads = {}
     for container in Container.objects.all().order_by("id"):
