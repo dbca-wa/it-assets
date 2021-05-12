@@ -89,15 +89,10 @@ def scan(range_qs=None, date=None):
     if range_qs is None:
         range_qs = ScanRange.objects.filter(enabled=True)
 
-    #group = "status_scan_{}".format(uuid.uuid4())
-
     count = 0
     for scan_range in range_qs:
-        #tasks.async_task("status.utils.scan_single", scan_range.id, date, group=group)
         scan_single(scan_range.id, date)
         count += 1
-    #results = tasks.result_group(group, failures=True, count=count)
-    #return results
 
 
 def run_plugin(plugin_id):

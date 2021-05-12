@@ -40,12 +40,12 @@ def monitor_prtg(plugin, date):
 
                 # List of domains for which to skip (these are websites, not hosts).
                 skip_domains = [
-                    '.bgpa.local',
-                    'rottnest.local',
-                    '.dbca.wa.gov.au',
-                    '.dpaw.wa.gov.au',
-                    '.rottnestislandonline.com',
-                    '.perthzoo.wa.gov.au',
+                    'dbca.wa.gov.au',
+                    'dpaw.wa.gov.au',
+                    'perthzoo.wa.gov.au',
+                    'rottnestislandonline.com',
+                    'rottnestisland.com',
+                    'worldwidewattle.com',
                 ]
                 skiphost = False
                 for s in skip_domains:
@@ -97,13 +97,13 @@ def monitor_prtg(plugin, date):
             "sensors_up": device["upsens_raw"],
         }
         host_status.monitor_plugin = plugin
-        if device["active"] and device["upsens_raw"]:
+        if device["active"] and device["upsens_raw"] > 0:
             host_status.monitor_status = 3
-            host_status.monitor_output = "Device is monitored."
-        elif device["active"] and not device["upsens_raw"]:
+            host_status.monitor_output = "Device is monitored and sensor(s) are green."
+        elif device["active"] and device["upsens_raw"] <= 0:
             host_status.monitor_status = 2
             host_status.monitor_output = "Device is monitored, but no sensors are up."
-        else:
+        elif not device["active"]:
             host_status.monitor_status = 2
             host_status.monitor_output = (
                 "Device has been added to monitoring, but is deactivated."
