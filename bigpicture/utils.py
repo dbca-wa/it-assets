@@ -7,12 +7,11 @@ from django.contrib.contenttypes.models import ContentType
 import gzip
 import json
 import requests
+from urllib.parse import urlparse
 
 from rancher.models import Workload
 from registers.models import ITSystem
-from nginx.models import SystemEnv, WebServer, WebAppAccessDailyReport
 from status.models import Host
-from statistics import mean, stdev, StatisticsError
 from .models import Dependency, RiskAssessment
 
 
@@ -28,39 +27,51 @@ def audit_dependencies():
             dep.delete()
 
 
-def webserver_dependencies():
-    # Create/update WebServer dependencies for IT systems as 'proxy targets'.
-    # These are derived from Nginx proxy rule scans.
-    prod = SystemEnv.objects.get(name='prod')
-    webserver_ct = ContentType.objects.get_for_model(WebServer.objects.first())
+def host_dependencies():
+    # Download the list of Nginx host proxy targets.
+    connect_string = env('AZURE_CONNECTION_STRING')
+    store = AzureBlobStorage(connect_string, 'analytics')
+    store.download('nginx_host_proxy_targets.json', 'nginx_host_proxy_targets.json')
+    f = open('nginx_host_proxy_targets.json')
+    targets = json.loads(f.read())
+    host_ct = ContentType.objects.get(app_label='status', model='host')
 
-    for it in ITSystem.objects.all():
-        # Remove any existing webserver dependencies.
-        for dep in it.dependencies.filter(content_type=webserver_ct):
+    # Production / Production (legacy) systems only.
+    for it in ITSystem.objects.filter(link__isnull=False, status__in=[0, 2]).exclude(link=''):
+        # Remove any existing IT System Host dependencies.
+        for dep in it.dependencies.filter(content_type=host_ct):
             it.dependencies.remove(dep)
-        # Link current webserver dependencies.
-        if it.alias.exists():
-            for alias in it.alias.all():
-                alias = it.alias.first()
-                webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-                for webapp in webapps:
-                    locations = webapp.locations.all()
-                    for loc in locations:
-                        loc_servers = loc.servers.all()
-                        for loc_server in loc_servers:
-                            webserver = loc_server.server
-                            dep, created = Dependency.objects.get_or_create(
-                                content_type=webserver_ct,
-                                object_id=webserver.pk,
-                                category='Proxy target',
-                            )
-                            it.dependencies.add(dep)
+
+        if 'url_synonyms' not in it.extra_data or not it.extra_data['url_synonyms']:
+            # Skip this IT System (no known URL or synonyms).
+            continue
+
+    # Create/update Host dependencies for IT systems as 'proxy targets'.
+    target = None
+    for syn in it.extra_data['url_synonyms']:
+        for t in targets:
+            if syn == t['host']:
+                target = t
+                break
+        if target:
+            for p in target["proxy_pass"]:
+                u = urlparse(p)
+                host = u.netloc.split(':')[0]
+                if Host.objects.filter(name=host).exists():
+                    h = Host.objects.filter(name=host).first()
+                    host_dep, created = Dependency.objects.get_or_create(
+                        content_type=host_ct,
+                        object_id=h.pk,
+                        category='Proxy target',
+                    )
+                    # Add the dependency to the IT System.
+                    it.dependencies.add(host_dep)
 
 
 def workload_dependencies():
     # Create/update k3s Workload dependencies for IT systems as 'services'.
     # These are derived from scans of Kubernetes clusters.
-    workload_ct = ContentType.objects.get_for_model(Workload.objects.first())
+    workload_ct = ContentType.objects.get(app_label='rancher', model='workload')
 
     # Remove any existing IT System workload dependencies.
     for it in ITSystem.objects.all():
@@ -79,43 +90,9 @@ def workload_dependencies():
                 webapp.system_alias.system.dependencies.add(dep)
 
 
-def host_dependencies():
-    # Match webservers to hosts (based on name), and thereby set up host dependencies for
-    # IT systems as 'compute' dependencies.
-    host_ct = ContentType.objects.get_for_model(Host.objects.first())
-    webserver_ct = ContentType.objects.get_for_model(WebServer.objects.first())
-
-    # First, try to match webservers to hosts based on their name.
-    for i in WebServer.objects.filter(host__isnull=True):
-        if Host.objects.filter(name__istartswith=i.name).exists():
-            host = Host.objects.filter(name__istartswith=i.name).first()
-            i.host = host
-            i.save()
-        elif i.other_names:  # Fall back to trying the other names for the Webserver (if applicable).
-            for name in i.other_names:
-                if Host.objects.filter(name__istartswith=name).exists():
-                    host = Host.objects.filter(name__istartswith=name).first()
-                    i.host = host
-                    i.save()
-
-    for i in WebServer.objects.filter(host__isnull=False):
-        if Dependency.objects.filter(content_type=webserver_ct, object_id=i.pk, category='Proxy target').exists():
-            webserver_dep = Dependency.objects.get(content_type=webserver_ct, object_id=i.pk, category='Proxy target')
-            it_systems = ITSystem.objects.filter(dependencies__in=[webserver_dep])
-            # Create a Host dependency
-            host_dep, created = Dependency.objects.get_or_create(
-                content_type=host_ct,
-                object_id=i.host.pk,
-                category='Compute',
-            )
-            # Add the Host dependency to IT Systems.
-            for system in it_systems:
-                system.dependencies.add(host_dep)
-
-
 def host_risks_vulns():
     # Set automatic risk assessment for Host objects that have a Nessus vulnerability scan result.
-    host_ct = ContentType.objects.get_for_model(Host.objects.first())
+    host_ct = ContentType.objects.get(app_label='status', model='host')
 
     for host in Host.objects.all():
         if host.statuses.exists():
@@ -125,11 +102,10 @@ def host_risks_vulns():
         if status and status.vulnerability_info:
             # Our Host has been scanned by Nessus, so find that Host's matching Dependency
             # object, and create/update a RiskAssessment on it.
-            # TODO: delete this risk if applicable.
             host_dep, created = Dependency.objects.get_or_create(
                 content_type=host_ct,
                 object_id=host.pk,
-                category='Compute'
+                category='Proxy target'
             )
             dep_ct = ContentType.objects.get_for_model(host_dep)
 
@@ -165,7 +141,7 @@ OS_EOL = [
 
 def host_os_risks():
     # Set auto risk assessment for Host risk based on the host OS.
-    host_ct = ContentType.objects.get_for_model(Host.objects.first())
+    host_ct = ContentType.objects.get(app_label='status', model='host')
 
     for host in Host.objects.all():
         if host.statuses.exists():
@@ -174,7 +150,7 @@ def host_os_risks():
                 host_dep, created = Dependency.objects.get_or_create(
                     content_type=host_ct,
                     object_id=host.pk,
-                    category='Compute'
+                    category='Proxy target'
                 )
                 dep_ct = ContentType.objects.get_for_model(host_dep)
                 risky_os = None
@@ -206,8 +182,8 @@ def host_os_risks():
 
 def workload_risks_vulns():
     # Set automatic risk assessment for Workload objects that have a trivy vulnerability scan.
-    workload_ct = ContentType.objects.get_for_model(Workload.objects.first())
-    dep_ct = ContentType.objects.get_for_model(Dependency.objects.first())
+    workload_ct = ContentType.objects.get(app_label='rancher', model='workload')
+    dep_ct = ContentType.objects.get(app_label='bigpicture', model='dependency')
 
     for workload in Workload.objects.filter(image_scan_timestamp__isnull=False):
         if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
@@ -255,7 +231,7 @@ def itsystem_risks_infra_location(it_systems=None):
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
-    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+    itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
     for it in it_systems:
         # First, check if an auto assessment has been created OR if no assessment exists.
@@ -287,7 +263,7 @@ def itsystem_risks_critical_function(it_systems=None):
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
-    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+    itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
     for it in it_systems:
         # First, check if an auto assessment has been created OR if no assessment exists.
@@ -319,7 +295,7 @@ def itsystem_risks_backups(it_systems=None):
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
-    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+    itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
     for it in it_systems:
         # First, check if an auto assessment has been created OR if not assessment exists.
@@ -351,7 +327,7 @@ def itsystem_risks_support(it_systems=None):
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
-    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
+    itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
     for it in it_systems:
         # First, check if an auto assessment has been created OR if not assessment exists.
@@ -380,43 +356,60 @@ def itsystem_risks_access(it_systems=None):
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
-    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
-    prod = SystemEnv.objects.get(name='prod')
+
+    # Download the list of Nginx host proxy targets.
+    connect_string = env('AZURE_CONNECTION_STRING')
+    store = AzureBlobStorage(connect_string, 'analytics')
+    store.download('nginx_host_proxy_targets.json', 'nginx_host_proxy_targets.json')
+    f = open('nginx_host_proxy_targets.json')
+    targets = json.loads(f.read())
+    itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
     for it in it_systems:
-        if it.alias.exists():
-            # First, check if an auto assessment has been created OR if not assessment exists.
-            # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
-            # which we don't want to overwrite).
-            if (
-                RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access', notes__contains='[AUTOMATED ASSESSMENT]').exists()
-                or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists()
-            ):
-                for alias in it.alias.all():
-                    webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-                    for webapp in webapps:
-                        root_location = webapp.locations.filter(location='/', redirect__isnull=True).first()
-                        if root_location:
-                            # Create an access risk
-                            risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                            if not risk:
-                                risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
-                            if root_location.auth_type == 0:
-                                if webapp.clientip_subnet:
-                                    risk.rating = 1
-                                    risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO, but is restricted to internal subnets'
-                                else:
-                                    risk.rating = 2
-                                    risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO and is not restricted to internal subnets'
-                            else:
-                                risk.rating = 0
-                                risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
-                            risk.save()
+        # First, check if an auto assessment has been created OR if no assessment exists.
+        # If so, carry on. If not, skip automated assessment (assumes that a manual assessment exists,
+        # which we don't want to overwrite).
+        if (
+            RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access', notes__contains='[AUTOMATED ASSESSMENT]').exists()
+            or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists()
+        ):
+            if 'url_synonyms' not in it.extra_data or not it.extra_data['url_synonyms']:
+                # Skip this IT System (no known URL or synonyms).
+                continue
+
+            target = None
+
+            # Get/create an access risk
+            risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+            if not risk:
+                risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Access')
+
+            for syn in it.extra_data['url_synonyms']:
+                for t in targets:
+                    if syn == t['host']:
+                        target = t
+                        break
+                if target:
+                    if 'sso_locations' in target:
+                        if '/' in target['sso_locations'] or '^~ /' in target['sso_locations'] or '= /' in target['sso_locations']:
+                            risk.rating = 0
+                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location requires SSO'
                         else:
-                            # If any access risk exists, delete it.
-                            if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
-                                risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
-                                risk.delete()
+                            risk.rating = 1
+                            risk.notes = '[AUTOMATED ASSESSMENT] Web application locations configured to require SSO'
+                    else:
+                        if 'custom/dpaw_subnets' in target['includes']:
+                            risk.rating = 1
+                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO, but is restricted to internal subnets'
+                        else:
+                            risk.rating = 2
+                            risk.notes = '[AUTOMATED ASSESSMENT] Web application root location does not require SSO and is not restricted to internal subnets'
+                    risk.save()
+                else:
+                    # If any access risk exists, delete it.
+                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').exists():
+                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Access').first()
+                        risk.delete()
 
 
 def itsystem_risks_traffic(it_systems=None):
@@ -424,8 +417,20 @@ def itsystem_risks_traffic(it_systems=None):
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
-    itsystem_ct = ContentType.objects.get_for_model(it_systems.first())
-    prod = SystemEnv.objects.get(name='prod')
+    # Download the report of HTTP requests.
+    connect_string = env('AZURE_CONNECTION_STRING')
+    store = AzureBlobStorage(connect_string, 'analytics')
+    store.download('host_requests_7_day_count.csv', 'host_requests_7_day_count.csv')
+    counts = csv.reader(open('host_requests_7_day_count.csv'))
+    next(counts)  # Skip the header.
+    report = {}
+    for row in counts:
+        try:
+            report[row[0]] = int(row[1])
+        except:
+            # Sometimes the report contains junk rows; just ignore these.
+            pass
+    itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
     for it in it_systems:
         # First, check if an auto assessment has been created OR if not assessment exists.
@@ -435,39 +440,18 @@ def itsystem_risks_traffic(it_systems=None):
             RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic', notes__contains='[AUTOMATED ASSESSMENT]').exists()
             or not RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').exists()
         ):
-            if it.alias.exists():
-                requests = []
-                for alias in it.alias.all():
-                    webapps = alias.webapps.filter(redirect_to__isnull=True, system_env=prod)
-                    for webapp in webapps:
-                        if not webapp.dailyreports.exists():
-                            continue
-                        report = webapp.dailyreports.latest()
-                        # Statistics mangling alert: due to the number of requests being 'bursty', we take
-                        # the daily count of requests for the last 28 days, calculate the Z-score for each,
-                        # discard any that are greater than 2 or less than -2, then calculate the mean of
-                        # the remaining values.
-                        # This is completely arbitrary and subject to change.
-                        last_log_day = report.log_day
-                        start_date = (last_log_day - timedelta(days=27))
-                        reports = WebAppAccessDailyReport.objects.filter(webapp=webapp, log_day__gte=start_date)
-                        for i in reports:
-                            requests.append(i.requests)
-                if requests:
-                    try:
-                        μ = mean(requests)
-                        σ = stdev(requests)
-                        if σ:  # Avoid a ZeroDivisionError.
-                            requests_filter = []
-                            for i in requests:
-                                if -2.0 <= ((i - μ) / σ) <= 2.0:
-                                    requests_filter.append(i)
-                            requests_mean = int(mean(requests_filter))
-                        else:
-                            requests_mean = int(mean(requests))
-                    except StatisticsError:
-                        requests_mean = int(mean(requests))
+            if 'url_synonyms' not in it.extra_data or not it.extra_data['url_synonyms']:
+                # Skip this IT System (no known URL or synonyms).
+                continue
 
+            # Get/create a Traffic risk
+            risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
+            if not risk:
+                risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
+
+            for syn in it.extra_data['url_synonyms']:
+                if syn in report and report[syn] >= 100:
+                    requests_mean = report[syn] / 7
                     risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
                     if not risk:
                         risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
@@ -484,6 +468,11 @@ def itsystem_risks_traffic(it_systems=None):
                         risk.rating = 0
                         risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
                     risk.save()
+                else:  # Volume of HTTP traffic is too small to assess.
+                    # If any Traffic risk exists, delete it.
+                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').exists():
+                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
+                        risk.delete()
 
 
 def signal_sciences_extract_feed(from_datetime=None, minutes=None):
