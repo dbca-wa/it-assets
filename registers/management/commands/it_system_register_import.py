@@ -50,6 +50,10 @@ class Command(BaseCommand):
                 it_system.status = 2
                 update = True
                 self.stdout.write(self.style.SUCCESS('Changing {} status to Production (Legacy)'.format(it_system)))
+            elif status == 'Decommissioned' and status != it_system.get_status_display():
+                it_system.status = 3
+                update = True
+                self.stdout.write(self.style.SUCCESS('Changing {} status to Decommissioned'.format(it_system)))
 
             # System owner
             if system['SystemOwnerId']:
