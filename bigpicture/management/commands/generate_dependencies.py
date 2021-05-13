@@ -27,8 +27,6 @@ class Command(BaseCommand):
         self.stdout.write('Auditing existing risk and dependency objects')
         utils.audit_risks()
         utils.audit_dependencies()
-        self.stdout.write('Creating/updating web server dependencies from Nginx proxy rules')
-        utils.webserver_dependencies()
         self.stdout.write('Creating/updating Kubernetes workload dependencies')
         utils.workload_dependencies()
         self.stdout.write('Creating/updating host dependencies')
