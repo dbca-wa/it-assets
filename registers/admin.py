@@ -50,8 +50,15 @@ class ITSystemAdmin(ModelDescMixin, VersionAdmin):
     model_description = ITSystem.__doc__
     filter_horizontal = ('user_groups', 'dependencies')
     list_display = (
-        'system_id', 'name', 'status', 'cost_centre', 'owner', 'technology_custodian', 'bh_support',
-        'platform',
+        'system_id',
+        'name',
+        'status',
+        'cost_centre',
+        'owner',
+        'technology_custodian',
+        'information_custodian',
+        'seasonality',
+        'availability',
     )
     list_filter = (
         'status', 'system_type', 'availability', 'seasonality', 'recovery_category', PlatformFilter,
