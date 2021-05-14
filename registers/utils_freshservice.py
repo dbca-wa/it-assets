@@ -2,7 +2,6 @@ from django.conf import settings
 import requests
 
 
-HEADERS_JSON = {'Content-Type': 'application/json'}
 FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, 'X')
 
 

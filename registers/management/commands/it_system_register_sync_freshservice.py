@@ -29,25 +29,26 @@ class Command(BaseCommand):
                 system.extra_data = {}
             if 'freshservice_api_url' not in system.extra_data:  # Not linked to a Freshservice object.
                 # Is there already a matching asset in Freshservice?
+                existing = False
                 for asset in it_systems_fs:
                     if asset['name'] == name:  # Match.
+                        existing = True
                         url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
                         self.stdout.write('Linking {} to {}'.format(name, url))
                         system.extra_data['freshservice_api_url'] = url
                         system.save()
                         break  # Break out of the for loop.
 
-                self.stdout.write('Unable to find {} in Freshservice, creating a new asset'.format(name))
-                data = {
-                    'asset_type_id': settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID,
-                    'name': name,
-                }
-                asset = create_freshservice_object('assets', data).json()['asset']
-                url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
-                self.stdout.write('Linking {} to {}'.format(name, url))
-                system.extra_data['freshservice_api_url'] = url
-                system.save()
-            else:
-                self.stdout.write('{} linked to {}'.format(name, system.extra_data['freshservice_api_url']))
+                if not existing:
+                    self.stdout.write('Unable to find {} in Freshservice, creating a new asset'.format(name))
+                    data = {
+                        'asset_type_id': settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID,
+                        'name': name,
+                    }
+                    asset = create_freshservice_object('assets', data).json()['asset']
+                    url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
+                    self.stdout.write('Linking {} to {}'.format(name, url))
+                    system.extra_data['freshservice_api_url'] = url
+                    system.save()
 
         self.stdout.write(self.style.SUCCESS('Completed'))
