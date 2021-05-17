@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from registers.models import ITSystem
-from registers.utils_freshservice import get_freshservice_objects, create_freshservice_object
+from registers.utils_freshservice import get_freshservice_objects_curl, create_freshservice_object
 
 
 class Command(BaseCommand):
@@ -9,7 +9,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Querying Freshservice for IT Systems')
-        it_systems_fs = get_freshservice_objects('assets', query='asset_type_id:{}'.format(settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID))
+        it_systems_fs = get_freshservice_objects_curl('assets', query='asset_type_id:{}'.format(settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID))
 
         self.stdout.write('Comparing Freshservice IT Systems to IT System Register')
         it_systems = ITSystem.objects.filter(status__in=[0, 2]).order_by('system_id')
@@ -31,7 +31,8 @@ class Command(BaseCommand):
                 # Is there already a matching asset in Freshservice?
                 existing = False
                 for asset in it_systems_fs:
-                    if asset['name'] == name:  # Match.
+                    system_id = asset['name'].split()[0]  # Match on System ID.
+                    if system_id == system.system_id:
                         existing = True
                         url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
                         self.stdout.write('Linking {} to {}'.format(name, url))
@@ -40,7 +41,7 @@ class Command(BaseCommand):
                         break  # Break out of the for loop.
 
                 if not existing:
-                    self.stdout.write('Unable to find {} in Freshservice, creating a new asset'.format(name))
+                    self.stdout.write('Unable to find {} in Freshservice, creating a new asset there'.format(name))
                     data = {
                         'asset_type_id': settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID,
                         'name': name,
