@@ -32,7 +32,7 @@ def host_dependencies():
     connect_string = env('AZURE_CONNECTION_STRING')
     store = AzureBlobStorage(connect_string, 'analytics')
     store.download('nginx_host_proxy_targets.json', '/tmp/nginx_host_proxy_targets.json')
-    f = open('nginx_host_proxy_targets.json')
+    f = open('/tmp/nginx_host_proxy_targets.json')
     targets = json.loads(f.read())
     host_ct = ContentType.objects.get(app_label='status', model='host')
 
@@ -361,7 +361,7 @@ def itsystem_risks_access(it_systems=None):
     connect_string = env('AZURE_CONNECTION_STRING')
     store = AzureBlobStorage(connect_string, 'analytics')
     store.download('nginx_host_proxy_targets.json', '/tmp/nginx_host_proxy_targets.json')
-    f = open('nginx_host_proxy_targets.json')
+    f = open('/tmp/nginx_host_proxy_targets.json')
     targets = json.loads(f.read())
     itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
@@ -421,7 +421,7 @@ def itsystem_risks_traffic(it_systems=None):
     connect_string = env('AZURE_CONNECTION_STRING')
     store = AzureBlobStorage(connect_string, 'analytics')
     store.download('host_requests_7_day_count.csv', '/tmp/host_requests_7_day_count.csv')
-    counts = csv.reader(open('host_requests_7_day_count.csv'))
+    counts = csv.reader(open('/tmp/host_requests_7_day_count.csv'))
     next(counts)  # Skip the header.
     report = {}
     for row in counts:
