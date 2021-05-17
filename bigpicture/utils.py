@@ -46,26 +46,26 @@ def host_dependencies():
             # Skip this IT System (no known URL or synonyms).
             continue
 
-    # Create/update Host dependencies for IT systems as 'proxy targets'.
-    target = None
-    for syn in it.extra_data['url_synonyms']:
-        for t in targets:
-            if syn == t['host']:
-                target = t
-                break
-        if target:
-            for p in target["proxy_pass"]:
-                u = urlparse(p)
-                host = u.netloc.split(':')[0]
-                if Host.objects.filter(name=host).exists():
-                    h = Host.objects.filter(name=host).first()
-                    host_dep, created = Dependency.objects.get_or_create(
-                        content_type=host_ct,
-                        object_id=h.pk,
-                        category='Proxy target',
-                    )
-                    # Add the dependency to the IT System.
-                    it.dependencies.add(host_dep)
+        # Create/update Host dependencies for IT systems as 'proxy targets'.
+        target = None
+        for syn in it.extra_data['url_synonyms']:
+            for t in targets:
+                if syn == t['host']:
+                    target = t
+                    break
+            if target:
+                for p in target["proxy_pass"]:
+                    u = urlparse(p)
+                    host = u.netloc.split(':')[0]
+                    if Host.objects.filter(name=host).exists():
+                        h = Host.objects.filter(name=host).first()
+                        host_dep, created = Dependency.objects.get_or_create(
+                            content_type=host_ct,
+                            object_id=h.pk,
+                            category='Proxy target',
+                        )
+                        # Add the dependency to the IT System.
+                        it.dependencies.add(host_dep)
 
 
 def workload_dependencies():
