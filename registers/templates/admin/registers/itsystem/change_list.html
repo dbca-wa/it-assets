@@ -1,11 +1,16 @@
 {% extends "reversion/change_list.html" %}
 
+{% block object-tools %}
+{{ block.super }}
+<p>Please note that the source of truth for IT Systems Register information is <a href="https://dpaw.sharepoint.com/Divisions/corporate/oim/SitePages/IT-System-Register.aspx">SharePoint</a>.</p>
+{% endblock %}
+
 {% block object-tools-items %}
-    <li>
-        <a href="{% url 'admin:itsystem_export' %}?all=true">Export IT Systems</a>
-    </li>
-    <li>
-        <a href="{% url 'admin:itsystem_discrepancies' %}">Discrepancy report</a>
-    </li>
-    {{ block.super }}
+<li>
+    <a href="{% url 'admin:itsystem_export' %}?all=true">Export IT Systems</a>
+</li>
+<li>
+    <a href="{% url 'admin:itsystem_discrepancies' %}">Discrepancy report</a>
+</li>
+{{ block.super }}
 {% endblock %}
