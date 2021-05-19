@@ -41,16 +41,17 @@ class DepartmentUserAPIResource(View):
                 {
                     'id': user.pk,
                     'name': user.name,
-                    'preferred_name': user.preferred_name,
+                    'preferred_name': user.preferred_name if user.preferred_name else None,
                     'email': user.email,
-                    'title': user.title,
-                    'telephone': user.telephone,
-                    'extension': user.extension,
-                    'mobile_phone': user.mobile_phone,
+                    'title': user.title if user.title else None,
+                    'telephone': user.telephone if user.telephone else None,
+                    'extension': user.extension if user.extension else None,
+                    'mobile_phone': user.mobile_phone if user.mobile_phone else None,
                     'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
                     'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
                     'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
                     'cost_centre': user.cost_centre.code if user.cost_centre else None,
+                    'employee_id': user.employee_id if user.employee_id else None,  # NOTE: employee ID is used in the Moodle employee sync process.
                 } for user in queryset
             ]
 
