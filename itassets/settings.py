@@ -289,3 +289,8 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # status scanning settings
 STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 600)
+
+# django-basicauth config
+BASICAUTH_USERS = {
+    env('BASICAUTH_USER', 'SystemUser'): env('BASICAUTH_USER_PW', None)
+}
