@@ -22,7 +22,6 @@ class ScanPlugin(models.Model):
     PLUGIN_CHOICES = (
         ("monitor_prtg", "Monitor - PRTG"),
         ("vulnerability_nessus", "Vulnerability - Nessus"),
-        ("backup_acronis", "Backup - Acronis"),
         ("backup_aws", "Backup - AWS snapshots"),
         ("backup_azure", "Backup - Azure snapshots"),
         ("backup_storagesync", "Backup - Azure Storage Sync Services"),
@@ -36,12 +35,6 @@ class ScanPlugin(models.Model):
             "NESSUS_SECRET_KEY",
             "NESSUS_SCAN_FOLDER",
             "NESSUS_URL",
-        ),
-        "backup_acronis": (
-            "ACRONIS_BASE",
-            "ACRONIS_USERNAME",
-            "ACRONIS_PASSWORD",
-            "ACRONIS_URL",
         ),
         "backup_aws": ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"),
         "backup_azure": (

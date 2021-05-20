@@ -1,3 +1,4 @@
+from basicauth.decorators import basic_auth_required
 from datetime import date, datetime
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -6,6 +7,7 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
 from itassets.utils import breadcrumbs_list
 
@@ -18,6 +20,7 @@ class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
 
 
+@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class DepartmentUserAPIResource(View):
     """An API view that returns JSON of active department staff accounts.
     """
@@ -41,22 +44,24 @@ class DepartmentUserAPIResource(View):
                 {
                     'id': user.pk,
                     'name': user.name,
-                    'preferred_name': user.preferred_name,
+                    'preferred_name': user.preferred_name if user.preferred_name else None,
                     'email': user.email,
-                    'title': user.title,
-                    'telephone': user.telephone,
-                    'extension': user.extension,
-                    'mobile_phone': user.mobile_phone,
+                    'title': user.title if user.title else None,
+                    'telephone': user.telephone if user.telephone else None,
+                    'extension': user.extension if user.extension else None,
+                    'mobile_phone': user.mobile_phone if user.mobile_phone else None,
                     'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
                     'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
                     'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
                     'cost_centre': user.cost_centre.code if user.cost_centre else None,
+                    'employee_id': user.employee_id if user.employee_id else None,  # NOTE: employee ID is used in the Moodle employee sync process.
                 } for user in queryset
             ]
 
         return JsonResponse(users, safe=False)
 
 
+@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class LocationAPIResource(View):
     """An API view that returns JSON of active physical locations.
     """
@@ -84,6 +89,7 @@ class LocationAPIResource(View):
         return JsonResponse(locations, safe=False)
 
 
+@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class OrgUnitAPIResource(View):
     """An API view that returns JSON of active organisation units.
     """
@@ -111,6 +117,7 @@ class OrgUnitAPIResource(View):
         return JsonResponse(org_units, safe=False)
 
 
+@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class LicenseAPIResource(View):
     """An API view that returns a list of Microsoft-licensed accounts.
     """

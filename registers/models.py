@@ -135,6 +135,7 @@ class ITSystem(models.Model):
     cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
     owner = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
+        verbose_name='system owner',
         related_name='systems_owned', help_text='IT system owner')
     technology_custodian = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,

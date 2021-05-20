@@ -101,7 +101,7 @@ FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env('FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.2.45'
+VERSION_NO = '2.2.49'
 
 # Alesco binding information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
@@ -241,7 +241,7 @@ LOGGING = {
         },
         'django.request': {
             'handlers': ['console'],
-            'level': 'WARNING',
+            'level': 'ERROR',
             'propagate': False,
         },
         'itassets': {
@@ -301,3 +301,8 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # status scanning settings
 STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 600)
+
+# django-basicauth config
+BASICAUTH_USERS = {
+    env('BASICAUTH_USER', 'SystemUser'): env('BASICAUTH_USER_PW', None)
+}
