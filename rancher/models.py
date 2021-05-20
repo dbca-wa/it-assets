@@ -23,10 +23,6 @@ class Cluster(models.Model):
     deleted_workloads = models.PositiveIntegerField(editable=False,default=0)
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    refreshed = models.DateTimeField(null=True,editable=False)
-    succeed_resources = models.PositiveIntegerField(editable=False,default=0)
-    failed_resources = models.PositiveIntegerField(editable=False,default=0)
-    refresh_message = models.TextField(null=True,blank=True,editable=False)
 
     @classmethod
     def populate_workloads_4_all(cls):
@@ -103,7 +99,7 @@ class Project(models.Model):
         ordering = ["cluster__name",'name']
 
 class DeletedMixin(models.Model):
-    deleted = models.DateTimeField(editable=False,null=True)
+    deleted = models.DateTimeField(editable=False,null=True,db_index=True)
 
     @property
     def is_deleted(self):
@@ -319,6 +315,7 @@ class Workload(DeletedMixin,models.Model):
     name = models.CharField(max_length=512, editable=False)
     kind = models.CharField(max_length=64, editable=False)
 
+    # a array  of three elements array (container_id, running status(1:running,0 terminated) ,log level(0 no log,1 INFO, 2 WARNING 2,4 ERROR)
     latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
 
     replicas = models.PositiveSmallIntegerField(editable=False, null=True)
@@ -659,6 +656,8 @@ class Container(models.Model):
 
     class Meta:
         unique_together = [["cluster","namespace","workload","containerid"],["cluster","workload","containerid"],["cluster","containerid"],["workload","containerid"]]
+        index_together = [["cluster","workload","pod_created"]]
+        
         ordering = ["cluster","namespace","workload","container_created"]
 
 class ContainerLog(models.Model):
@@ -686,6 +685,30 @@ class ContainerLog(models.Model):
         index_together = [["container","logtime","level"],["container","level"],["archiveid"]]
         ordering = ["container","logtime"]
 
+
+class Harvester(models.Model):
+    RUNNING = 1
+    SUCCEED = 10
+    SKIPPED = 11
+    FAILED = -1
+    ABORTED = -2
+    STATUSES = [
+        (RUNNING,"Running"),
+        (FAILED,"Failed"),
+        (SUCCEED,"Succeed"),
+        (SKIPPED,"Skipped"),
+        (ABORTED,"Aborted")
+    ]
+    name = models.CharField(max_length=64,editable=False,db_index=True)
+    starttime = models.DateTimeField(auto_now=False,editable=False,null=False,db_index=True)
+    last_heartbeat = models.DateTimeField(auto_now=False,editable=False,null=False,db_index=True)
+    endtime = models.DateTimeField(auto_now=False,editable=False,null=True)
+    status = models.SmallIntegerField(choices=STATUSES,db_index=True)
+    message = models.TextField(editable=False,null=True)
+
+    class Meta:
+        index_together = [["name","starttime"],["name","status","starttime"],["status","starttime"]]
+        ordering = ["name","starttime"]
 
 class WorkloadListener(object):
     @staticmethod
@@ -768,350 +791,5 @@ class NamespaceListener(object):
                 active_workloads=models.F("active_workloads") + instance.active_workloads,
                 deleted_workloads=models.F("deleted_workloads") + instance.deleted_workloads
             )
-
-
-def sync_project():
-    """
-    Synchronize namespace's project with the project of workload, ingress and PersistentVolumeClaim
-    """
-    #assign namespace's project to workload's project
-    for obj in Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
-        obj.project = obj.namespace.project
-        obj.save(update_fields=["project"])
-
-    #set workload's project to None if namespace's project is none
-    for obj in Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False):
-        obj.project = None
-        obj.save(update_fields=["project"])
-
-    #assign namespace's project to ingress's project
-    for obj in Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
-        obj.project = obj.namespace.project
-        obj.save(update_fields=["project"])
-
-    #set ingress's project to None if namespace's project is none
-    for obj in Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
-        obj.project = None
-        obj.save(update_fields=["project"])
-
-    #assign namespace's project to persistentvolumeclaim's project
-    for obj in PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
-        obj.project = obj.namespace.project
-        obj.save(update_fields=["project"])
-
-    #set persistentvolumeclaim's project to None if namespace's project is none
-    for obj in PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
-        obj.project = None
-        obj.save(update_fields=["project"])
-
-def check_project():
-    """
-    Check whether the namespace's project is the same as the project of workload, ingress and PersistentVolumeClaim, and print the result
-    """
-    objs = list(Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
-    objs += list(Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False))
-    if objs:
-        print("The following workloads'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
-
-    objs = list(Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
-    objs += list(Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False))
-    if objs:
-        print("The following ingresses'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
-
-    objs = list(PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
-    objs += list(PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False))
-    if objs:
-        print("The following PersistentVolumeClaims'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
-
-def check_workloads():
-    """
-    Check whether the active and deleted workloads is the same as the value of column 'active_workloads' and 'deleted_workloads' in model 'Namespace','Project' and 'Cluster' and print the result
-    """
-    for obj in Namespace.objects.all():
-        active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Namespace({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-
-
-    for obj in Project.objects.all():
-        active_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Project({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-
-    for obj in Cluster.objects.all():
-        active_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Cluster({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-
-def sync_workloads():
-    """
-    Update the column 'active_workoads' and 'deleted_workloads' in model 'Namespace', 'Project' and 'Cluster' to the active workloads and deleted workloads
-
-    """
-    for obj in Namespace.objects.all():
-        active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Namespace({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-            obj.active_workloads = active_workloads
-            obj.deleted_workloads = deleted_workloads
-            obj.save(update_fields=["active_workloads","deleted_workloads"])
-
-
-    for obj in Project.objects.all():
-        active_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Project({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-            obj.active_workloads = active_workloads
-            obj.deleted_workloads = deleted_workloads
-            obj.save(update_fields=["active_workloads","deleted_workloads"])
-
-    for obj in Cluster.objects.all():
-        active_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Cluster({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-            obj.active_workloads = active_workloads
-            obj.deleted_workloads = deleted_workloads
-            obj.save(update_fields=["active_workloads","deleted_workloads"])
-
-def clean_containers():
-    """
-    clean all containers and container logs,
-    sync projects and workloads
-    """
-    sync_workloads()
-    ContainerLog.objects.all().delete()
-    Container.objects.all().delete()
-    Workload.objects.filter(added_by_log=True).delete()
-    Namespace.objects.filter(added_by_log=True).delete()
-    Cluster.objects.filter(added_by_log=True).delete()
-    Workload.objects.all().update(deleted=None,latest_containers=None)
-    sync_project()
-    sync_workloads()
-
-def clean_containerlogs():
-    """
-    Clear all container logs
-    """
-    ContainerLog.objects.all().delete()
-    Container.objects.all().update(log=False,warning=False,error=False)
-    for workload in Workload.objects.all():
-        if workload.latest_containers:
-            for container in workload.latest_containers:
-                container[2] = 0
-            workload.save(update_fields=["latest_containers"])
-
-def clean_added_by_log_data():
-    """
-    Clean all the data which is added by log
-    """
-    deleted_rows = ContainerLog.objects.filter(container__workload__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Container.objects.filter(workload__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Ingress.objects.filter(namespace__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Workload.objects.filter(added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = PersistentVolume.objects.filter(cluster__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = PersistentVolumeClaim.objects.filter(cluster__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = ConfigMap.objects.filter(namespace__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Namespace.objects.filter(added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Project.objects.filter(cluster__added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Cluster.objects.filter(added_by_log=True).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-
-def clean_expired_deleted_data():
-    expired_time = timezone.now() - settings.DELETED_RANCHER_OBJECT_EXPIRED
-    deleted_rows = ContainerLog.objects.filter(container__workload__deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Container.objects.filter(workload__deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Ingress.objects.filter(deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Workload.objects.filter(deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-
-    deleted_rows = PersistentVolumeClaim.objects.filter(volume__deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = PersistentVolume.objects.filter(deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Namespace.objects.filter(deleted__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-
-def clean_expired_containers():
-    expired_time = timezone.now() - settings.RANCHER_CONTAINER_EXPIRED
-
-    deleted_rows = ContainerLog.objects.filter(container__container_terminated__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Container.objects.filter(container_terminated__lt = expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-
-def clean_expired_containerlogs():
-    expired_time = timezone.now() - settings.RANCHER_CONTAINERLOG_EXPIRED
-    
-    deleted_rows = ContainerLog.objects.filter(logtime__lt=expired_time).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-
-def delete_cluster(idorname):
-    """
-    delete cluster
-    """
-    try:
-        cluster = Cluster.objects.get(id=int(idorname))
-    except:
-        cluster = Cluster.objects.get(name=str(idorname))
-
-    deleted_rows = ContainerLog.objects.filter(container__cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Container.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Workload.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Ingress.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = PersistentVolumeClaim.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = PersistentVolume.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = ConfigMap.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    deleted_rows = Namespace.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = Project.objects.filter(cluster=cluster).delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-    deleted_rows = cluster.delete()
-    print("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
-
-    
-
-def sync_latestcontainers():
-    """
-    Reset the latest containers
-    """
-    Workload.objects.all().update(latest_containers=None)
-    workloads = {}
-    for container in Container.objects.all().order_by("id"):
-        workload_key = (container.workload.cluster.id,container.workload.namespace.name,container.workload.name,container.workload.kind)
-        if workload_key not in workloads:
-            workload_update_fields = []
-            workload = container.workload
-            workloads[workload_key] = (workload,workload_update_fields)
-        else:
-            workload,workload_update_fields = workloads[workload_key]
-
-        log_status = (Workload.INFO if container.log else 0) | (Workload.WARNING if container.warning else 0) | (Workload.ERROR if container.error else 0)
-        if workload.kind in ("Deployment",'DaemonSet','StatefulSet','service?'):
-            if container.status in ("Waiting","Running"):
-                if workload.latest_containers is None:
-                    workload.latest_containers=[[container.id,1,log_status]]
-                    if "latest_containers" not in workload_update_fields:
-                        workload_update_fields.append("latest_containers")
-                elif any(obj for obj in workload.latest_containers if obj[0] == container.id):
-                    pass
-                else:
-                    workload.latest_containers.append([container.id,1,log_status])
-                    if "latest_containers" not in workload_update_fields:
-                        workload_update_fields.append("latest_containers")
-            elif workload.latest_containers :
-                index = len(workload.latest_containers) - 1
-                while index >= 0:
-                    if workload.latest_containers[index][0] == container.id:
-                        del workload.latest_containers[index]
-                        if "latest_containers" not in workload_update_fields:
-                            workload_update_fields.append("latest_containers")
-                        break
-                    else:
-                        index -= 1
-        else:
-            if workload.latest_containers is None or len(workload.latest_containers) != 1 or workload.latest_containers[0][0] != container.id:
-                if container.status in ("Waiting","Running"):
-                    workload.latest_containers=[[container.id,1,log_status]]
-                else:
-                    workload.latest_containers=[[container.id,0,log_status]]
-                if "latest_containers" not in workload_update_fields:
-                    workload_update_fields.append("latest_containers")
-            else:
-                if container.status in ("Waiting","Running"):
-                    workload.latest_containers[0][1]=1
-                else:
-                    workload.latest_containers[0][1]=0
-                if "latest_containers" not in workload_update_fields:
-                    workload_update_fields.append("latest_containers")
-
-
-    for workload,workload_update_fields in workloads.values():
-        if not workload_update_fields:
-            continue
-
-        logger.debug("Workload({}<{}>):update latest_containers to {}".format(workload,workload.id,workload.latest_containers))
-        workload.save(update_fields=workload_update_fields)
-
 
 
