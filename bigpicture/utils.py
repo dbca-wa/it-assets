@@ -449,30 +449,35 @@ def itsystem_risks_traffic(it_systems=None):
             if not risk:
                 risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
 
+            # Total the count of HTTP requests to all URI synonyms for this system.
+            request_count = 0
             for syn in it.extra_data['url_synonyms']:
-                if syn in report and report[syn] >= 100:
-                    requests_mean = report[syn] / 7
+                if syn in report and report[syn]:
+                    request_count += report[syn]
+
+            requests_mean = request_count / 7  # Daily average request count.
+            if requests_mean:
+                risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
+                if not risk:
+                    risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
+                if requests_mean >= 10000:
+                    risk.rating = 3
+                    risk.notes = '[AUTOMATED ASSESSMENT] High traffic of daily HTTP requests'
+                elif requests_mean >= 1000:
+                    risk.rating = 2
+                    risk.notes = '[AUTOMATED ASSESSMENT] Moderate traffic of daily HTTP requests'
+                elif requests_mean >= 100:
+                    risk.rating = 1
+                    risk.notes = '[AUTOMATED ASSESSMENT] Low traffic of daily HTTP requests'
+                else:
+                    risk.rating = 0
+                    risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
+                risk.save()
+            else:  # Volume of HTTP traffic is too small to assess.
+                # If any Traffic risk exists, delete it.
+                if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').exists():
                     risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
-                    if not risk:
-                        risk = RiskAssessment(content_type=itsystem_ct, object_id=it.pk, category='Traffic')
-                    if requests_mean >= 10000:
-                        risk.rating = 3
-                        risk.notes = '[AUTOMATED ASSESSMENT] High traffic of daily HTTP requests'
-                    elif requests_mean >= 1000:
-                        risk.rating = 2
-                        risk.notes = '[AUTOMATED ASSESSMENT] Moderate traffic of daily HTTP requests'
-                    elif requests_mean >= 100:
-                        risk.rating = 1
-                        risk.notes = '[AUTOMATED ASSESSMENT] Low traffic of daily HTTP requests'
-                    else:
-                        risk.rating = 0
-                        risk.notes = '[AUTOMATED ASSESSMENT] Minimal traffic of daily HTTP requests'
-                    risk.save()
-                else:  # Volume of HTTP traffic is too small to assess.
-                    # If any Traffic risk exists, delete it.
-                    if RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').exists():
-                        risk = RiskAssessment.objects.filter(content_type=itsystem_ct, object_id=it.pk, category='Traffic').first()
-                        risk.delete()
+                    risk.delete()
 
 
 def signal_sciences_extract_feed(from_datetime=None, minutes=None):
