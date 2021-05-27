@@ -20,7 +20,7 @@ class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
+#@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class DepartmentUserAPIResource(View):
     """An API view that returns JSON of active department staff accounts.
     """
@@ -61,7 +61,7 @@ class DepartmentUserAPIResource(View):
         return JsonResponse(users, safe=False)
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
+#@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class LocationAPIResource(View):
     """An API view that returns JSON of active physical locations.
     """
@@ -89,7 +89,7 @@ class LocationAPIResource(View):
         return JsonResponse(locations, safe=False)
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
+#@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class OrgUnitAPIResource(View):
     """An API view that returns JSON of active organisation units.
     """
@@ -117,7 +117,7 @@ class OrgUnitAPIResource(View):
         return JsonResponse(org_units, safe=False)
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
+#@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class LicenseAPIResource(View):
     """An API view that returns a list of Microsoft-licensed accounts.
     """
