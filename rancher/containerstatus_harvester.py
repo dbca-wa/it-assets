@@ -46,6 +46,7 @@ status_map = {
     "waiting":10,
     "running":20,
     "lostheartbeat":25,
+    "shouldterminated":28,
     "terminated":30,
     "deleted":40
 }
@@ -140,7 +141,7 @@ def update_latest_containers(context,container,workload=None,workload_update_fie
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
-    context["harvester"].message="{}:Begin to process container status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),status_file)
+    context["harvester"].message="{}:Begin to process container status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
     context["harvester"].last_heartbeat = now
     context["harvester"].save(update_fields=["message","last_heartbeat"])
     if settings.CONTAINERSTATUS_STREAMING_PARSE:
@@ -150,6 +151,7 @@ def process_status_file(context,metadata,status_file):
             status_records = simdjson.loads(f.read())
 
     records = 0
+
     for record in status_records:
         records += 1
         try:
@@ -173,7 +175,7 @@ def process_status_file(context,metadata,status_file):
             if not image_without_tag:
                 continue
             else:
-                image = "{}:{}".format(image_without_tag,record["imagetag"].strip())
+                imageid = "{}:{}".format(image_without_tag,record["imagetag"].strip())
             cluster = None
             clustername = None
             if computer in context["clusters"]:
@@ -233,7 +235,7 @@ def process_status_file(context,metadata,status_file):
                     #try to find the workload through cluster and workload name
                     workload_qs = models.Workload.objects.filter(cluster=cluster,name=workload_name)
                     for obj in workload_qs:
-                        if obj.image.startswith(image_without_tag) and ((ports and obj.listenings.all().count()) or (not ports and obj.listenings.all().count() == 0)):
+                        if obj.containerimage and obj.containerimage.imageid.startswith(image_without_tag) and ((ports and obj.listenings.all().count()) or (not ports and obj.listenings.all().count() == 0)):
                             workload = obj
                             break
                     if not workload :
@@ -254,13 +256,14 @@ def process_status_file(context,metadata,status_file):
                             workload = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=new_workload_name,kind=kind).first()
     
                             if not workload:
-                                image = "{}:{}".format(record["image"].strip(),record["imagetag"].strip())
+                                image = models.ContainerImage.parse_image(imageid)
                                 workload = models.Workload(
                                     cluster=namespace.cluster,
                                     project=namespace.project,
                                     namespace=namespace,
                                     name=new_workload_name,
-                                    image=image,
+                                    image=imageid,
+                                    containerimage=image,
                                     kind=kind,
                                     api_version="",
                                     added_by_log=True,
@@ -292,7 +295,7 @@ def process_status_file(context,metadata,status_file):
             container_status = get_container_status(container,containerstate)
             update_fields = set_fields(container,[
                 ("exitcode",exitcode or container.exitcode),
-                ("image",image or container.image),
+                ("image",imageid or container.image),
                 ("ports",ports or container.ports),
                 ("envs",envs or container.envs),
                 ("container_created",created or container.container_created),
@@ -308,6 +311,10 @@ def process_status_file(context,metadata,status_file):
                 container.save(update_fields=update_fields)
 
             update_latest_containers(context,container,workload=workload,workload_update_fields=workload_update_fields)
+
+            if container.status == "running" and container.workload.lower() == "deployment" and (not container.pk or "status" in update_fields):
+                context["new_deployed_workloads"].add(container.workload)
+
             if container_status.lower() in ("deleted","terminated"):
                 del context["containers"][key]
                 context["terminated_containers"].add(key)
@@ -357,6 +364,25 @@ def process_status(context,max_harvest_files):
 
         process_status_file(context,metadata,status_file)
 
+        #terminate the containers which should have terminated before.
+        for workload in context["new_deployed_workloads"]:
+            instances = workload.replicas if workoad.replicas > 0 else 1
+            containers = models.Container.objects.filter(cluster=workload.cluster,namespace=workload.namespace,workload=workload,status="running")[instances:]
+            if not containers:
+                continue
+            if workload in context["workloads"]:
+                workload_update_fields = context["workloads"][workload]
+            else:
+                workload_update_fields = []
+                context["workloads"][workload] = workload_update_fields
+
+            for c in containers:
+                c.status = "shouldterminated"
+                c.container_terminated = timezone.now()
+                c.save(update_fields=["status","container_terminated"])
+            update_latest_containers(context,c,workload=workload,workload_update_fields=workload_update_fields)
+
+
         #save workload
         for workload,workload_update_fields in context["workloads"].values():
             if workload_update_fields:
@@ -392,108 +418,110 @@ def harvest(reconsume=False,max_harvest_files=None):
     harvester = models.Harvester(name=harvestername,starttime=now,last_heartbeat=now,status=models.Harvester.RUNNING)
     harvester.save()
     message = None
-    with LockSession(get_containerstatus_client(),settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
-        try:
-            if reconsume and get_containerstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-                get_containerstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-    
-            context = {
-                "reconsume":reconsume,
-                "lock_session":lock_session,
-                "clusters":{},
-                "clients":{},
-                "namespaces":{},
-                "workloads":{},
-                "containers":{},
-                "terminated_containers":set(),
-                "harvester":harvester
-            }
-            if max_harvest_files:
-                context["harvested_files"] = 0
-            #consume nginx config file
-            result = get_containerstatus_client().consume(process_status(context,max_harvest_files),f_post_consume=_post_consume)
-            #change the status of containers which has no status data harvested in recent half an hour
-            if result[1]:
-                if result[0]:
-                    message = """Failed to harvest container status,
-    {} container status files were consumed successfully.
-    {}
-    {} container status files were failed to consume
-    {}"""
+    try:
+        with LockSession(get_containerstatus_client(),settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            try:
+                if reconsume and get_containerstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                    get_containerstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+        
+                context = {
+                    "reconsume":reconsume,
+                    "lock_session":lock_session,
+                    "clusters":{},
+                    "clients":{},
+                    "namespaces":{},
+                    "workloads":{},
+                    "new_deployed_workoads":set(),
+                    "containers":{},
+                    "terminated_containers":set(),
+                    "harvester":harvester
+                }
+                if max_harvest_files:
+                    context["harvested_files"] = 0
+                #consume nginx config file
+                result = get_containerstatus_client().consume(process_status(context,max_harvest_files),f_post_consume=_post_consume)
+                #change the status of containers which has no status data harvested in recent half an hour
+                if result[1]:
+                    if result[0]:
+                        message = """Failed to harvest container status,
+        {} container status files were consumed successfully.
+        {}
+        {} container status files were failed to consume
+        {}"""
+                        message = message.format(
+                            len(result[0]),
+                            "\n        ".join(["Succeed to harvest container status file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                            len(result[1]),
+                            "\n        ".join(["Failed to harvest container status '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        )
+                    else:
+                        message = """Failed to harvest container status,{} container status files were failed to consume
+        {}"""
+                        message = message.format(
+                            len(result[1]),
+                            "\n        ".join(["Failed to harvest container status file '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        )
+                elif result[0]:
+                    message = """Succeed to harvest container status, {} container status files were consumed successfully.
+        {}"""
                     message = message.format(
                         len(result[0]),
-                        "\n        ".join(["Succeed to harvest container status file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
-                        len(result[1]),
-                        "\n        ".join(["Failed to harvest container status '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        "\n        ".join(["Succeed to harvest container status file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
                     )
                 else:
-                    message = """Failed to harvest container status,{} container status files were failed to consume
-    {}"""
-                    message = message.format(
-                        len(result[1]),
-                        "\n        ".join(["Failed to harvest container status file '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
-                    )
-            elif result[0]:
-                message = """Succeed to harvest container status, {} container status files were consumed successfully.
-    {}"""
-                message = message.format(
-                    len(result[0]),
-                    "\n        ".join(["Succeed to harvest container status file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
-                )
-            else:
-                message = "Succeed to harvest container status, no new container status file was added since last harvesting"
-
-
-            harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
-        
-            try:
-                if "last_archive_time" in context:
-                    for container in models.Container.objects.filter(status__in=("Waiting",'Running'),last_checked__lt=context["last_archive_time"] - timedelta(minutes=30)):
-                        container.status="LostHeartbeat"
-                        container.save(update_fields=["status"])
-                        update_latest_containers(context,container)
-        
-                #save workload
-                for workload,workload_update_fields in context["workloads"].values():
-                    if workload_update_fields:
-                        workload.save(update_fields=workload_update_fields)
-
+                    message = "Succeed to harvest container status, no new container status file was added since last harvesting"
+    
+    
+                harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
+            
+                try:
+                    if "last_archive_time" in context:
+                        for container in models.Container.objects.filter(status__in=("Waiting",'Running'),last_checked__lt=context["last_archive_time"] - timedelta(minutes=30)):
+                            container.status="LostHeartbeat"
+                            container.save(update_fields=["status"])
+                            update_latest_containers(context,container)
+            
+                    #save workload
+                    for workload,workload_update_fields in context["workloads"].values():
+                        if workload_update_fields:
+                            workload.save(update_fields=workload_update_fields)
+    
+                except:
+                    harvester.status = models.Harvester.FAILED
+                    msg = "Failed to save changed Containers or Workloads.{}".format(traceback.format_exc())
+                    logger.error(msg)
+                    message = """{}
+    =========Consuming Results================
+    {}""".format(msg,message)
+    
+                return result
             except:
                 harvester.status = models.Harvester.FAILED
-                msg = "Failed to save changed Containers or Workloads.{}".format(traceback.format_exc())
+                message = "Failed to harvest container status.{}".format(traceback.format_exc())
+                logger.error(message)
+                return ([],[(None,None,None,message)])
+    except exceptions.AlreadyLocked as ex:
+        harvester.status = models.Harvester.SKIPPED
+        message = "The previous harvest process is still running.{}".format(str(ex))
+        logger.info(message)
+        return ([],[(None,None,None,message)])
+    finally:
+        if need_clean[0]:
+            try:
+                clean_expired_containers(harvester)
+                message = """Succeed to clean expired containers.
+{}""".format(message)
+            except:
+                harvester.status = models.Harvester.FAILED
+                msg = "Failed to clean expired containers.{}".format(traceback.format_exc())
                 logger.error(msg)
                 message = """{}
 =========Consuming Results================
 {}""".format(msg,message)
-
-            return result
-        except exceptions.AlreadyLocked as ex:
-            harvester.status = models.Harvester.SKIPPED
-            message = "The previous harvest process is still running.{}".format(str(ex))
-            logger.info(message)
-            return ([],[(None,None,None,message)])
-        except:
-            harvester.status = models.Harvester.FAILED
-            message = "Failed to harvest container status.{}".format(traceback.format_exc())
-            logger.error(message)
-            return ([],[(None,None,None,message)])
-        finally:
-            if need_clean[0]:
-                try:
-                    clean_expired_containers(harvester)
-                    message = """Succeed to clean expired containers.
-{}""".format(message)
-                except:
-                    harvester.status = models.Harvester.FAILED
-                    msg = "Failed to clean expired containers.{}".format(traceback.format_exc())
-                    logger.error(msg)
-                    message = """{}
-=========Consuming Results================
-{}""".format(msg,message)
-            harvester.message = message
-            harvester.endtime = timezone.now()
-            harvester.last_heartbeat = harvester.endtime
-            harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
+        harvester.message = message
+        harvester.endtime = timezone.now()
+        harvester.last_heartbeat = harvester.endtime
+        harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
 
 
 

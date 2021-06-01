@@ -97,7 +97,7 @@ def update_workload_latest_containers(context,containerlog):
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
-    context["harvester"].message="{}:Begin to process container log file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),status_file)
+    context["harvester"].message="{}:Begin to process container log file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
     context["harvester"].last_heartbeat = now
     context["harvester"].save(update_fields=["message","last_heartbeat"])
     if settings.CONTAINERLOG_STREAMING_PARSE:
@@ -376,99 +376,100 @@ def harvest(reconsume=False):
     def _post_consume(client_consume_status,consume_result):
         now = timezone.localtime()
         if "next_clean_time" not in client_consume_status:
-            client_consume_status["next_clean_time"] = timezone.make_aware(datetime.datetime(now.year,now.month,now.day)) + timedelta(days=1)
+            client_consume_status["next_clean_time"] = timezone.make_aware(datetime.datetime(now.year,now.month,now.day)) + datetime.timedelta(days=1)
         elif now.hour > 6:
             return
         elif now >= client_consume_status["next_clean_time"]:
             need_clean[0] = True
-            client_consume_status["next_clean_time"] = timezone.make_aware(datetime.datetime(now.year,now.month,now.day)) + timedelta(days=1)
+            client_consume_status["next_clean_time"] = timezone.make_aware(datetime.datetime(now.year,now.month,now.day)) + datetime.timedelta(days=1)
 
     now = timezone.now()
     harvester = models.Harvester(name=harvestername,starttime=now,last_heartbeat=now,status=models.Harvester.RUNNING)
     harvester.save()
     message = None
-    with LockSession(get_containerlog_client(),settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
-        try:
-            if reconsume:
-                if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-                    get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-                clean_containerlogs()
-    
-    
-            context = {
-                "reconsume":reconsume,
-                "lock_session":lock_session,
-                "clients":{},
-                "clusters":{},
-                "namespaces":{},
-                "workloads":{},
-                "containers":{},
-                "containerlogs":{},
-                "terminated_containers":set(),
-                "harvester":harvester
-            }
-            #consume nginx config file
-            result = get_containerlog_client().consume(process_status(context),f_post_consume=_post_consume)
-    
-            if result[1]:
-                if result[0]:
-                    message = """Failed to harvest container log,
-    {} container log files were consumed successfully.
-    {}
-    {} container log files were failed to consume
-    {}"""
+    try:
+        with LockSession(get_containerlog_client(),settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            try:
+                if reconsume:
+                    if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                        get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+                    clean_containerlogs()
+        
+        
+                context = {
+                    "reconsume":reconsume,
+                    "lock_session":lock_session,
+                    "clients":{},
+                    "clusters":{},
+                    "namespaces":{},
+                    "workloads":{},
+                    "containers":{},
+                    "containerlogs":{},
+                    "terminated_containers":set(),
+                    "harvester":harvester
+                }
+                #consume nginx config file
+                result = get_containerlog_client().consume(process_status(context),f_post_consume=_post_consume)
+        
+                if result[1]:
+                    if result[0]:
+                        message = """Failed to harvest container log,
+        {} container log files were consumed successfully.
+        {}
+        {} container log files were failed to consume
+        {}"""
+                        message = message.format(
+                            len(result[0]),
+                            "\n        ".join(["Succeed to harvest container log file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                            len(result[1]),
+                            "\n        ".join(["Failed to harvest container log '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        )
+                    else:
+                        message = """Failed to harvest container log,{} container log files were failed to consume
+        {}"""
+                        message = message.format(
+                            len(result[1]),
+                            "\n        ".join(["Failed to harvest container log file '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        )
+                elif result[0]:
+                    message = """Succeed to harvest container log, {} container log files were consumed successfully.
+        {}"""
                     message = message.format(
                         len(result[0]),
-                        "\n        ".join(["Succeed to harvest container log file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
-                        len(result[1]),
-                        "\n        ".join(["Failed to harvest container log '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                        "\n        ".join(["Succeed to harvest container log file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
                     )
                 else:
-                    message = """Failed to harvest container log,{} container log files were failed to consume
-    {}"""
-                    message = message.format(
-                        len(result[1]),
-                        "\n        ".join(["Failed to harvest container log file '{}'.{}".format(resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
-                    )
-            elif result[0]:
-                message = """Succeed to harvest container log, {} container log files were consumed successfully.
-    {}"""
-                message = message.format(
-                    len(result[0]),
-                    "\n        ".join(["Succeed to harvest container log file '{}'".format(resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
-                )
-            else:
-                message = "Succeed to harvest container log, no new container log file was added since last harvesting"
-        
-            harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
-            return result
-        except exceptions.AlreadyLocked as ex: 
-            harvester.status = models.Harvester.SKIPPED
-            message = "The previous harvest process is still running.{}".format(str(ex))
-            logger.info(message)
-            return ([],[(None,None,None,message)])
-        except:
-            harvester.status = models.Harvester.FAILED
-            message = "Failed to harvest container log.{}".format(traceback.format_exc())
-            logger.error(message)
-            return ([],[(None,None,None,message)])
-        finally:
-            if need_clean[0]:
-                try:
-                    clean_expired_containerlogs(harvester)
-                    message = """Succeed to clean expired containers.
+                    message = "Succeed to harvest container log, no new container log file was added since last harvesting"
+            
+                harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
+                return result
+            except:
+                harvester.status = models.Harvester.FAILED
+                message = "Failed to harvest container log.{}".format(traceback.format_exc())
+                logger.error(message)
+                return ([],[(None,None,None,message)])
+    except exceptions.AlreadyLocked as ex: 
+        harvester.status = models.Harvester.SKIPPED
+        message = "The previous harvest process is still running.{}".format(str(ex))
+        logger.info(message)
+        return ([],[(None,None,None,message)])
+    finally:
+        if need_clean[0]:
+            try:
+                clean_expired_containerlogs(harvester)
+                message = """Succeed to clean expired containers.
 =========Consuming Results================
 {}""".format(message)
-                except:
-                    harvester.status = models.Harvester.FAILED
-                    msg = "Failed to clean expired container logs.{}".format(traceback.format_exc())
-                    logger.error(msg)
-                    message = """{}
+            except:
+                harvester.status = models.Harvester.FAILED
+                msg = "Failed to clean expired container logs.{}".format(traceback.format_exc())
+                logger.error(msg)
+                message = """{}
 =========Consuming Results================
 {}""".format(msg,message)
 
-            harvester.message = message
-            harvester.endtime = timezone.now()
-            harvester.last_heartbeat = harvester.endtime
-            harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
+        harvester.message = message
+        harvester.endtime = timezone.now()
+        harvester.last_heartbeat = harvester.endtime
+        harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
 

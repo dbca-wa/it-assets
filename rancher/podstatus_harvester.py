@@ -54,7 +54,7 @@ def to_workload_kind(controllerkind):
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
-    context["harvester"].message="{}:Begin to process pod status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),status_file)
+    context["harvester"].message="{}:Begin to process pod status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),metadata["resource_id"])
     context["harvester"].last_heartbeat = now
     context["harvester"].save(update_fields=["message","last_heartbeat"])
     if settings.PODSTATUS_STREAMING_PARSE:
