@@ -312,7 +312,7 @@ def process_status_file(context,metadata,status_file):
 
             update_latest_containers(context,container,workload=workload,workload_update_fields=workload_update_fields)
 
-            if container.status == "running" and container.workload.lower() == "deployment" and (not container.pk or "status" in update_fields):
+            if container.status == "running" and container.workload.kind.lower() == "deployment" and (not container.pk or "status" in update_fields):
                 context["new_deployed_workloads"].add(container.workload)
 
             if container_status.lower() in ("deleted","terminated"):
@@ -366,21 +366,22 @@ def process_status(context,max_harvest_files):
 
         #terminate the containers which should have terminated before.
         for workload in context["new_deployed_workloads"]:
-            instances = workload.replicas if workoad.replicas > 0 else 1
+            instances = workload.replicas if workload.replicas > 0 else 1
             containers = models.Container.objects.filter(cluster=workload.cluster,namespace=workload.namespace,workload=workload,status="running")[instances:]
             if not containers:
                 continue
-            if workload in context["workloads"]:
-                workload_update_fields = context["workloads"][workload]
+            workload_key = (workload.cluster.id,workload.namespace.name,workload.name,workload.kind)
+            if workload_key in context["workloads"]:
+                workload_update_fields = context["workloads"][workload_key][1]
             else:
                 workload_update_fields = []
-                context["workloads"][workload] = workload_update_fields
+                context["workloads"][workload_key] = (workload,workload_update_fields)
 
             for c in containers:
                 c.status = "shouldterminated"
                 c.container_terminated = timezone.now()
                 c.save(update_fields=["status","container_terminated"])
-            update_latest_containers(context,c,workload=workload,workload_update_fields=workload_update_fields)
+                update_latest_containers(context,c,workload=workload,workload_update_fields=workload_update_fields)
 
 
         #save workload
@@ -431,7 +432,7 @@ def harvest(reconsume=False,max_harvest_files=None):
                     "clients":{},
                     "namespaces":{},
                     "workloads":{},
-                    "new_deployed_workoads":set(),
+                    "new_deployed_workloads":set(),
                     "containers":{},
                     "terminated_containers":set(),
                     "harvester":harvester
