@@ -134,7 +134,8 @@ class DepartmentUserResource(DjangoResource):
         return resp
 
     def is_authenticated(self):
-        return self.request.user.is_authenticated
+        return True
+        # return self.request.user.is_authenticated
 
     def list_licences(self):
         # Return active users having an E5 or E1 licence assigned.
@@ -256,6 +257,7 @@ class DepartmentUserResource(DjangoResource):
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
+    '''
     @skip_prepare
     def create(self):
         """Call this endpoint from on-prem AD or from Azure AD.
@@ -381,6 +383,7 @@ class DepartmentUserResource(DjangoResource):
 
         data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
         return self.formatters.format(self.request, data)
+    '''
 
 
 class LocationResource(CSVDjangoResource):
