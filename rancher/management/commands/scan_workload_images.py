@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from rancher.models import Workload
+from rancher.models import ContainerImage
 
 
 class Command(BaseCommand):
@@ -8,14 +8,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # Scan Deployment workloads, but not those in the System project.
         try:
-            workloads = Workload.objects.filter(kind='Deployment', image__isnull=False).exclude(project__name='System')
-            for workload in workloads:
-                print('Scanning {} image ({})'.format(workload, workload.image))
-                result = workload.image_scan()
-                if result[0]:
-                    print('Scan complete')
-                else:
-                    print('Scan incomplete'.format(workload.image))
-                    print(result[1])
+            images = ContainerImage.objects.filter(scan_status__in=(ContainerImage.NOT_SCANED,ContainerImage.SCAN_FAILED)
+            for image in images:
+                print('Scanning {} image ({})'.format(image,image.imageid))
+                image.scan(commit=True)
         except:
             raise CommandError('Workload image scanning failed')

@@ -474,3 +474,17 @@ def check_aborted_harvester():
 def clean_expired_harvester():
     expired_time = timezone.now() - settings.HARVESTER_EXPIRED
     models.Harvester.objects.filter(starttime__lt=expired_time).delete()
+
+
+def reparse_image_scan_result(scan=False):
+    models.ContainerImage.objects.all().update(os=None)
+    models.ContainerImage.objects.filter(scan_result__isnull=False).update(scan_status=models.ContainerImage.PARSE_FAILED)
+    models.Vulnerability.objects.all().delete()
+    models.OperatingSystem.objects.all().delete()
+
+    qs = models.ContainerImage.objects.all()
+    if not scan:
+        qs = qs.filter(scan_result__isnull=False)
+    for image in qs:
+        image.scan(rescan=False,reparse=True)
+        print("Succeed to parse the scan result of the container image '{}'".format(image.imageid))

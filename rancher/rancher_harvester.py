@@ -750,12 +750,14 @@ def update_workload_volumes(workload,config,spec_config):
             logger.debug("The deployment workload volume({}) is not changed".format(obj))
     return updated
 
-
 def update_deployment(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
+    imageid = get_property(config,("spec","template","spec","containers",0,"image"))
+    image = models.ContainerImage.parse_imageid(imageid,scan=True)
+
     try:
         obj = models.Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
@@ -767,6 +769,7 @@ def update_deployment(cluster,status,metadata,config):
         ("project",None,lambda val:namespace.project),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
         ("replicas",("spec","replicas"),lambda val:int(val) if val else 0),
+        ("containerimage",None,lambda obj:image),
         ("image",("spec","template","spec","containers",0,"image"),None),
         ("image_pullpolicy",("spec","template","spec","containers",0,"imagePullPolicy"),None),
         ("cmd",("spec","template","spec","containers",0,"args"), lambda val:json.dumps(val) if val else None),
@@ -823,6 +826,8 @@ def update_cronjob(cluster,status,metadata,config):
     namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
+    imageid = get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"image"))
+    image = models.ContainerImage.parse_imageid(imageid,scan=True)
     try:
         obj = models.Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
@@ -834,6 +839,7 @@ def update_cronjob(cluster,status,metadata,config):
         ("api_version","apiVersion",None),
         ("project",None,lambda val:namespace.project),
         ("modified",[("spec","jobTemplate","spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
+        ("containerimage",None,lambda obj:image),
         ("image",("spec","jobTemplate","spec","template","spec","containers",0,"image"),None),
         ("image_pullpolicy",("spec","jobTemplate","spec","template","spec","containers",0,"imagePullPolicy"),None),
         ("replicas",None,lambda val:0),
@@ -892,6 +898,9 @@ def update_daemonset(cluster,status,metadata,config):
     namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
+    imageid = get_property(config,("spec","template","spec","containers",0,"image"))
+    image = models.ContainerImage.parse_imageid(imageid,scan=True)
+
     try:
         obj = models.Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
@@ -904,6 +913,7 @@ def update_daemonset(cluster,status,metadata,config):
         ("kind","kind",None),
         ("project",None,lambda val:namespace.project),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
+        ("containerimage",None,lambda obj:image),
         ("image",("spec","template","spec","containers",0,"image"),None),
         ("image_pullpolicy",("spec","template","spec","containers",0,"imagePullPolicy"),None),
         ("replicas",None,lambda val:0),
@@ -962,6 +972,9 @@ def update_statefulset(cluster,status,metadata,config):
     namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
+    imageid = get_property(config,("spec","template","spec","containers",0,"image"))
+    image = models.ContainerImage.parse_imageid(imageid,scan=True)
+
     try:
         obj = models.Workload.objects.get(cluster=cluster,namespace=namespace,name=name,kind=kind)
     except ObjectDoesNotExist as ex:
@@ -974,6 +987,7 @@ def update_statefulset(cluster,status,metadata,config):
         ("project",None,lambda val:namespace.project),
         ("kind","kind",None),
         ("modified",[("spec","template","metadata","annotations","cattle.io/timestamp"),("metadata","creationTimestamp")],lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
+        ("containerimage",None,lambda obj:image),
         ("image",("spec","template","spec","containers",0,"image"),None),
         ("image_pullpolicy",("spec","template","spec","containers",0,"imagePullPolicy"),None),
         ("replicas",None,lambda val:0),
