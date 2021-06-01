@@ -241,17 +241,6 @@ argon2 = ["argon2-cffi (>=16.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
-name = "django-basicauth"
-version = "0.5.3"
-description = "Basic auth utilities for Django."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-Django = ">=2.0"
-
-[[package]]
 name = "django-bootstrap-pagination"
 version = "1.7.1"
 description = "Render Django Page objects as Bootstrap 3.x/4.x Pagination compatible HTML"
@@ -1032,7 +1021,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "ff25320fb038796d709f58942e491df4a8dc53ad1c1ffb0309951a542e8db218"
+content-hash = "a352e3fe965195b30dd1ceaae15256f6ffa53b2d76aa34f3aa2fc1f8c0256524"
 
 [metadata.files]
 adal = [
@@ -1152,10 +1141,6 @@ dj-static = [
 django = [
     {file = "Django-2.2.21-py3-none-any.whl", hash = "sha256:7d8b61b6e7031a3c1a4aef29e2701849af0837f4f2062bc203077a0b46d51c2c"},
     {file = "Django-2.2.21.tar.gz", hash = "sha256:7460cfe3781d36d1625230267dad255deb33e9229e41f21e32b33b9d536d20cd"},
-]
-django-basicauth = [
-    {file = "django-basicauth-0.5.3.tar.gz", hash = "sha256:15e9e366f698f53c71b1e794dafea060f990a2ac556bae6b7330dd25324a091c"},
-    {file = "django_basicauth-0.5.3-py3-none-any.whl", hash = "sha256:e5e47d1acdc1943bedcc1bf673059d6c15e257dfe9eef67a22fb824f79546c0d"},
 ]
 django-bootstrap-pagination = [
     {file = "django-bootstrap-pagination-1.7.1.tar.gz", hash = "sha256:69d826d92217325611cb86e49944d8261e3c92eaa4deafea5a605d79fd363883"},
