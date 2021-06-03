@@ -453,27 +453,24 @@ def _ms_api(verb, url, previous=None, **kwargs):
 def backup_azure(plugin, date):
     AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
     AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
-    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_APP_SECRET = plugin.params.get(name="AZURE_APP_SECRET").value
     AZURE_SUBSCRIPTION_ID = plugin.params.get(name="AZURE_SUBSCRIPTION_ID").value
     AZURE_VAULT_NAME = plugin.params.get(name="AZURE_VAULT_NAME").value
-
     AZURE_URL = "https://portal.azure.com/#resource{}/backupSetting"
-
     MANAGEMENT_BASE = "https://management.azure.com"
-    MANAGEMENT_SUB = "{}/subscriptions/{}".format(
-        MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID
-    )
+    MANAGEMENT_BASE_SCOPE = "{}/.default".format(MANAGEMENT_BASE)
+    MANAGEMENT_SUB = "{}/subscriptions/{}".format(MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID)
 
-    ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(
-        MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY
+    ctx = ConfidentialClientApplication(
+        client_id=AZURE_APP_ID,
+        client_credential=AZURE_APP_SECRET,
+        authority=AZURE_TENANT,
     )
-    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
+    token = ctx.acquire_token_for_client(MANAGEMENT_BASE_SCOPE)
+    headers = {"Authorization": "Bearer {}".format(token["access_token"])}
 
     # Get the ID of the specified vault.
-    MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(
-        MANAGEMENT_SUB
-    )
+    MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(MANAGEMENT_SUB)
     vaults = _ms_api("GET", MANAGEMENT_LIST_VAULTS, headers=headers)
 
     vault = None
