@@ -19,19 +19,28 @@ class DepartmentUserAPIResourceTestCase(ApiTestCase):
         self.assertNotContains(response, self.inactive_user.email)
         self.assertNotContains(response, self.contractor.email)
         self.assertNotContains(response, self.shared_acct.email)
-        # Test the "selectlist" response.
-        url = '{}?selectlist='.format(reverse('department_user_api_resource'))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
 
     def test_list_filtering(self):
         """Test the DepartmentUserAPIResource filtered responses
         """
-        url = '{}?q={}'.format(reverse('department_user_api_resource'), self.user1.email)
+        url = reverse('department_user_api_resource', kwargs={'pk': self.user1.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.user1.email)
         self.assertNotContains(response, self.user2.email)
+        url = '{}?q={}'.format(reverse('department_user_api_resource'), self.user2.email)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.user1.email)
+        self.assertContains(response, self.user2.email)
+
+    def test_list_tailored(self):
+        """Test the LocationAPIResource tailored list responses
+        """
+        # Test the "selectlist" response.
+        url = '{}?selectlist='.format(reverse('department_user_api_resource'))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
 
 
 class LocationAPIResourceTestCase(ApiTestCase):
@@ -46,19 +55,28 @@ class LocationAPIResourceTestCase(ApiTestCase):
         self.assertContains(response, self.loc1.name)
         # Response should not contain the inactive Location.
         self.assertNotContains(response, loc_inactive.name)
-        # Test the "selectlist" response.
-        url = '{}?selectlist='.format(reverse('location_api_resource'))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
 
-    def test_filter(self):
+    def test_list_filtering(self):
         """Test the LocationAPIResource filtered response
         """
-        url = '{}?q={}'.format(reverse('location_api_resource'), self.loc1.name)
+        url = reverse('location_api_resource', kwargs={'pk': self.loc1.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.loc1.name)
         self.assertNotContains(response, self.loc2.name)
+        url = '{}?q={}'.format(reverse('location_api_resource'), self.loc2.name)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.loc1.name)
+        self.assertContains(response, self.loc2.name)
+
+    def test_list_tailored(self):
+        """Test the LocationAPIResource tailored list responses
+        """
+        # Test the "selectlist" response.
+        url = '{}?selectlist='.format(reverse('location_api_resource'))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
 
 
 class OrgUnitAPIResourceTestCase(ApiTestCase):
@@ -76,19 +94,20 @@ class OrgUnitAPIResourceTestCase(ApiTestCase):
         self.assertContains(response, self.branch1.name)
         # Response should not contain the inactive OrgUnit.
         self.assertNotContains(response, ou_inactive.name)
-        # Test the "selectlist" response.
-        url = '{}?selectlist='.format(reverse('orgunit_api_resource'))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
 
-    def test_filter(self):
+    def test_list_filtering(self):
         """Test the OrgUnitAPIResource filtered response
         """
-        url = '{}?q={}'.format(reverse('orgunit_api_resource'), self.div1.name)
+        url = reverse('orgunit_api_resource', kwargs={'pk': self.div1.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.div1.name)
         self.assertNotContains(response, self.div2.name)
+        url = '{}?q={}'.format(reverse('orgunit_api_resource'), self.div2.name)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.div1.name)
+        self.assertContains(response, self.div2.name)
         url = '{}?division'.format(reverse('orgunit_api_resource'))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -99,6 +118,14 @@ class OrgUnitAPIResourceTestCase(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.branch1.name)
         self.assertNotContains(response, self.branch2.name)
+
+    def test_list_tailored(self):
+        """Test the OrgUnitAPIResource tailored list responses
+        """
+        # Test the "selectlist" response.
+        url = '{}?selectlist='.format(reverse('orgunit_api_resource'))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
 
 
 class LicenseAPIResourceTestCase(ApiTestCase):
@@ -123,9 +150,14 @@ class LicenseAPIResourceTestCase(ApiTestCase):
     def test_filter(self):
         """Test the LicenseAPIResource filtered response
         """
-        url = '{}?q={}'.format(reverse('license_api_resource'), self.user1.email)
+        url = reverse('license_api_resource', kwargs={'pk': self.user1.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.user1.email)
         self.assertNotContains(response, self.user2.email)
+        url = '{}?q={}'.format(reverse('license_api_resource'), self.user2.email)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.user1.email)
+        self.assertContains(response, self.user2.email)
         self.assertNotContains(response, self.contractor.email)

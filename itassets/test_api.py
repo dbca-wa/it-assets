@@ -86,10 +86,10 @@ class ApiTestCase(TestCase):
         self.client.login(username='testuser', password='pass')
 
         # Generate some IT Systems.
-        self.it1 = mixer.blend(ITSystem, status=0, owner=self.user1)
-        self.it2 = mixer.blend(ITSystem, status=1, owner=self.user2)
-        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user2)
-        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user2)
+        self.it_prod = mixer.blend(ITSystem, status=0, owner=self.user1)  # Production
+        self.it_dev = mixer.blend(ITSystem, status=1, owner=self.user2)  # Development
+        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user2)  # Production legacy
+        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user2)  # Decommissioned
 
 
 class HealthCheckViewTestCase(TestCase):
