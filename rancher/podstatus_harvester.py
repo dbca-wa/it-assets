@@ -230,8 +230,8 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
         with LockSession(get_client(),settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
             if reconsume and get_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
                 get_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+
             context["podstatus"] = context.get("podstatus",{})
-    
             context["podstatus"].update({
                 "reconsume":reconsume  if reconsume is not None else context["podstatus"].get("reconsume",False),
                 "max_harvest_files":max_harvest_files if max_harvest_files is not None else context["podstatus"].get("max_harvest_files",None),

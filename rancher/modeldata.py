@@ -19,7 +19,7 @@ def synchronize_logharvester(func):
         from . import containerlog_harvester
         with LockSession(podstatus_harvester.get_client(),3600 * 3) as lock_session1:
             with LockSession(containerstatus_harvester.get_client(),3600 * 3) as lock_session2:
-                with LockSession(containerlog_harvester.get_client(),3600 * 3) as lock_session2:
+                with LockSession(containerlog_harvester.get_client(),3600 * 3) as lock_session3:
                     func(*args,**kwargs)
     return _wrapper
 
@@ -28,14 +28,14 @@ def _reset_workload_latestcontainers(workloads=None):
     Reset the latest containers
     """
     if not workloads:
-        qs = models.Workload.objects.all().order_by("cluster","name")
+        workload_qs = models.Workload.objects.all().order_by("cluster","name")
     elif isinstance(workloads,(list,tuple)):
         if len(workloads) == 1:
             workload_qs = models.Workload.objects.filter(id=workloads[0])
         else:
             workload_qs = models.Workload.objects.filter(id__in=workloads).order_by("cluster","name")
     else:
-        worklaod_qs = models.Workload.objects.filter(id=workloads)
+        workload_qs = models.Workload.objects.filter(id=workloads)
 
     processed_containers = set()
     for workload in workload_qs:

@@ -328,7 +328,7 @@ def process_status_file(context,metadata,status_file):
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
 
 
-def process_status(context,max_harvest_files):
+def process_status(context):
     def _func(status,metadata,status_file):
         if context["containerstatus"]["max_harvest_files"]:
             if context["containerstatus"]["harvested_files"] >= context["containerstatus"]["max_harvest_files"]:
@@ -454,7 +454,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                     "lock_session":lock_session,
                     "new_deployed_workloads":set(),
                     "terminated_containers":set(),
-                    "contaienrs":{},
+                    "containers":{},
                     "harvester":harvester,
                     "harvested_files": 0
                 }

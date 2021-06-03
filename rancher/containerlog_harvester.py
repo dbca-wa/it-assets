@@ -74,13 +74,11 @@ def update_workload_latest_containers(context,containerlog):
     else:
         status = models.Workload.INFO
 
-    for container_data in workload.new_latest_containers:
+    for container_data in workload.latest_containers:
         if container_data[0] != container.id:
-            index += 1
             continue
         else:
             if container_data[2] & status != status:
-                workload.new_latest_containers = [list(o) for o in workload.latest_containers]
                 container_data[2] = container_data[2] | status
                 if "latest_containers" not in workload_update_fields:
                     workload_update_fields.append("latest_containers")
@@ -348,7 +346,7 @@ def clean_expired_containerlogs(harvester):
     harvester.save(update_fields=["message","last_heartbeat"])
     modeldata.clean_expired_containerlogs()
 
-def harvest(reconsume=None,max_harvest_files=None,,context={}):
+def harvest(reconsume=None,max_harvest_files=None,context={}):
     need_clean = [False]
 
     def _post_consume(client_consume_status,consume_result):
