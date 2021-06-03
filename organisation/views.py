@@ -31,9 +31,13 @@ class DepartmentUserAPIResource(View):
             'org_unit',
         ).order_by('name')
 
+        # Queryset filtering.
+        if 'pk' in kwargs and kwargs['pk']:  # Allow filtering by object PK.
+            queryset = queryset.filter(pk=kwargs['pk'])
         if 'q' in self.request.GET:  # Allow basic filtering on email.
             queryset = queryset.filter(email__icontains=self.request.GET['q'])
 
+        # Tailor the API response.
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
             users = [{'id': user.pk, 'text': user.email} for user in queryset]
         else:  # Normal API response.
@@ -64,9 +68,13 @@ class LocationAPIResource(View):
     def get(self, request, *args, **kwargs):
         queryset = Location.objects.filter(active=True).order_by('name')
 
+        # Queryset filtering.
+        if 'pk' in kwargs and kwargs['pk']:  # Allow filtering by object PK.
+            queryset = queryset.filter(pk=kwargs['pk'])
         if 'q' in self.request.GET:  # Allow basic filtering on name.
             queryset = queryset.filter(name__icontains=self.request.GET['q'])
 
+        # Tailor the API response.
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
             locations = [{'id': location.pk, 'text': location.name} for location in queryset]
         else:
@@ -91,6 +99,9 @@ class OrgUnitAPIResource(View):
     def get(self, request, *args, **kwargs):
         queryset = OrgUnit.objects.filter(active=True).order_by('name')
 
+        # Queryset filtering.
+        if 'pk' in kwargs and kwargs['pk']:  # Allow filtering by object PK.
+            queryset = queryset.filter(pk=kwargs['pk'])
         if 'q' in self.request.GET:  # Allow basic filtering on name.
             queryset = queryset.filter(name__icontains=self.request.GET['q'])
         if 'division' in self.request.GET:  # Allow filtering to divisions only.
@@ -98,6 +109,7 @@ class OrgUnitAPIResource(View):
         if 'division_id' in self.request.GET and self.request.GET['division_id']:  # Allow filtering to org units belonging to a division.
             queryset = queryset.filter(division_unit__pk=self.request.GET['division_id'])
 
+        # Tailor the API response.
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
             org_units = [{'id': ou.pk, 'text': ou.name} for ou in queryset]
         else:
@@ -124,8 +136,13 @@ class LicenseAPIResource(View):
             Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
             Q(assigned_licences__contains=['OFFICE 365 E5']) |
             Q(assigned_licences__contains=['OFFICE 365 E1'])
+        ).prefetch_related(
+            'cost_centre',
         ).order_by('name')
 
+        # Queryset filtering.
+        if 'pk' in kwargs and kwargs['pk']:  # Allow filtering by object PK.
+            queryset = queryset.filter(pk=kwargs['pk'])
         if 'q' in self.request.GET:  # Allow basic filtering on email.
             queryset = queryset.filter(email__icontains=self.request.GET['q'])
 

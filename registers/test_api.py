@@ -33,6 +33,7 @@ class ITSystemAPIResourceTestCase(ApiTestCase):
     def test_list_tailored(self):
         """Test the ITSystemAPIResource tailored list responses
         """
+        # Test the "selectlist" response.
         url = '{}?selectlist='.format(reverse('it_system_api_resource'))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
