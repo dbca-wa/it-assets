@@ -15,11 +15,27 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--date', action='store', dest='datestring', default=None,
-            help='Date from which to start the calendar in format YYYY-MM-DD')
+            '--date',
+            action='store',
+            default=None,
+            type=str,
+            help='Date from which to start the calendar in format YYYY-MM-DD',
+            dest='datestring',
+        )
         parser.add_argument(
-            '--emails', action='store', dest='emails', default=None,
-            help='Comma-separated list of additional emails to which to deliver the report')
+            '--emails',
+            action='store',
+            default=None,
+            type=str,
+            help='Comma-separated list of additional emails to which to deliver the report',
+            dest='emails',
+        )
+        parser.add_argument(
+            '--all-rfcs',
+            action='store_true',
+            help='Change calendar to contain RFCs having all status types, not just those relevant to CAB',
+            dest='all_rfcs',
+        )
 
     def handle(self, *args, **options):
         try:
@@ -39,7 +55,11 @@ class Command(BaseCommand):
 
             week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
             week_end = week_start + timedelta(days=7)
-            rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+            if 'all_rfcs' in options and options['all_rfcs']:
+                rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+            else:
+                rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end], status__in=[2, 3]).order_by('planned_start')
+
             if Site.objects.filter(name='Change Requests').exists():
                 domain = Site.objects.get(name='Change Requests').domain
             else:

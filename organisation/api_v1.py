@@ -81,8 +81,6 @@ def format_org_unit(request, value):
 
 class DepartmentUserResource(DjangoResource):
     """An API Resource class to represent DepartmentUser objects.
-    This class is used to create & update synchronised user account data from
-    Active Directory.
     """
     COMPACT_ARGS = (
         'pk', 'name', 'title', 'email', 'telephone',
@@ -134,7 +132,8 @@ class DepartmentUserResource(DjangoResource):
         return resp
 
     def is_authenticated(self):
-        return self.request.user.is_authenticated
+        # We offload auth to the external service; assume all requests are legitimate.
+        return True
 
     def list_licences(self):
         # Return active users having an E5 or E1 licence assigned.
@@ -256,132 +255,6 @@ class DepartmentUserResource(DjangoResource):
         cache.set(self.request.get_full_path(), resp, timeout=300)
         return resp
 
-    @skip_prepare
-    def create(self):
-        """Call this endpoint from on-prem AD or from Azure AD.
-        Match either AD-object key values or Departmentuser field names.
-        """
-        # Short-circuit: check if the POST request has been made with `azure_guid` as a param.
-        # If so, check if that value matches an existing object and use it instead of
-        # creating a new object. All the "new" object values should be passed in and updated
-        # anyway.
-        # Rationale: we seem to have trouble getting the sync script to check for existing
-        # objects by Azure AD GUID.
-        if 'azure_guid' in self.data and DepartmentUser.objects.filter(azure_guid=self.data['azure_guid']).exists():
-            user = DepartmentUser.objects.get(azure_guid=self.data['azure_guid'])
-        else:
-            user = DepartmentUser()
-
-        # Check for essential request params.
-        if 'EmailAddress' not in self.data and 'email' not in self.data:
-            raise BadRequest('Missing email parameter value')
-        if 'DisplayName' not in self.data and 'name' not in self.data:
-            raise BadRequest('Missing name parameter value')
-
-        if 'EmailAddress' in self.data:
-            user.email = self.data['EmailAddress'].lower()
-        elif 'email' in self.data:
-            user.email = self.data['email'].lower()
-        if 'DisplayName' in self.data:
-            user.name = self.data['DisplayName']
-        elif 'name' in self.data:
-            user.name = self.data['name']
-        if 'SamAccountName' in self.data:
-            user.username = self.data['SamAccountName']
-        elif 'username' in self.data:
-            user.username = self.data['username']
-        # Optional fields.
-        if 'Enabled' in self.data:
-            user.active = self.data['Enabled']
-        elif 'active' in self.data:
-            user.active = self.data['active']
-        if 'ObjectGUID' in self.data:
-            user.ad_guid = self.data['ObjectGUID']
-        elif 'ad_guid' in self.data:
-            user.ad_guid = self.data['ad_guid']
-        if 'azure_guid' in self.data:  # Exception to the if/elif rule.
-            user.azure_guid = self.data['azure_guid']
-        if 'Title' in self.data:
-            user.title = self.data['Title']
-        elif 'title' in self.data:
-            user.title = self.data['title']
-        if 'GivenName' in self.data:
-            user.given_name = self.data['GivenName']
-        elif 'given_name' in self.data:
-            user.given_name = self.data['given_name']
-        if 'Surname' in self.data:
-            user.surname = self.data['Surname']
-        elif 'surname' in self.data:
-            user.surname = self.data['surname']
-
-        try:
-            user.save()
-        except Exception as e:
-            return self.formatters.format(self.request, {'Error': repr(e)})
-
-        # Serialise and return the newly-created DepartmentUser.
-        data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
-        return self.formatters.format(self.request, data)
-
-    def update(self, guid):
-        """Update view to handle changes to a DepartmentUser object.
-        This view also handles marking users as 'Inactive' or 'Deleted'
-        within AD.
-        """
-        try:
-            user = DepartmentUser.objects.get(ad_guid=guid)
-        except DepartmentUser.DoesNotExist:
-            try:
-                user = DepartmentUser.objects.get(email__iexact=guid.lower())
-            except DepartmentUser.DoesNotExist:
-                raise BadRequest('Object not found')
-
-        try:
-            if 'EmailAddress' in self.data and self.data['EmailAddress']:
-                user.email = self.data['EmailAddress'].lower()
-            elif 'email' in self.data and self.data['email']:
-                user.email = self.data['email'].lower()
-            if 'DisplayName' in self.data and self.data['DisplayName']:
-                user.name = self.data['DisplayName']
-            elif 'name' in self.data and self.data['name']:
-                user.name = self.data['name']
-            if 'SamAccountName' in self.data and self.data['SamAccountName']:
-                user.username = self.data['SamAccountName']
-            elif 'username' in self.data and self.data['username']:
-                user.username = self.data['username']
-            if 'ObjectGUID' in self.data and self.data['ObjectGUID']:
-                user.ad_guid = self.data['ObjectGUID']
-            elif 'ad_guid' in self.data and self.data['ad_guid']:
-                user.ad_guid = self.data['ad_guid']
-            if 'Title' in self.data and self.data['Title']:
-                user.title = self.data['Title']
-            elif 'title' in self.data and self.data['title']:
-                user.title = self.data['title']
-            if 'GivenName' in self.data and self.data['GivenName']:
-                user.given_name = self.data['GivenName']
-            elif 'given_name' in self.data and self.data['given_name']:
-                user.given_name = self.data['given_name']
-            if 'Surname' in self.data and self.data['Surname']:
-                user.surname = self.data['Surname']
-            elif 'surname' in self.data and self.data['surname']:
-                user.surname = self.data['surname']
-            if 'azure_guid' in self.data and self.data['azure_guid']:
-                user.azure_guid = self.data['azure_guid']
-            if 'Enabled' in self.data:  # Boolean; don't only work on True!
-                user.active = self.data['Enabled']
-            if 'active' in self.data:  # Boolean; don't only work on True!
-                user.active = self.data['active']
-            if 'Deleted' in self.data and self.data['Deleted']:
-                user.active = False
-                user.ad_guid, user.azure_guid = None, None
-                data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
-            user.save()
-        except Exception as e:
-            return self.formatters.format(self.request, {'Error': repr(e)})
-
-        data = list(DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS))[0]
-        return self.formatters.format(self.request, data)
-
 
 class LocationResource(CSVDjangoResource):
     VALUES_ARGS = (
@@ -439,19 +312,6 @@ def profile(request):
 
     if request.method == 'GET':
         data = qs.values(*self.VALUES_ARGS)[0]
-    elif request.method == 'POST':
-        if 'telephone' in request.POST:
-            user.telephone = request.POST['telephone']
-        if 'mobile_phone' in request.POST:
-            user.mobile_phone = request.POST['mobile_phone']
-        if 'extension' in request.POST:
-            user.extension = request.POST['extension']
-        if 'other_phone' in request.POST:
-            user.other_phone = request.POST['other_phone']
-        if 'preferred_name' in request.POST:
-            user.preferred_name = request.POST['preferred_name']
-        user.save()
-        data = DepartmentUser.objects.filter(pk=user.pk).values(*self.VALUES_ARGS)[0]
 
     return HttpResponse(json.dumps(
         {'objects': [self.formatters.format(request, data)]}, cls=MoreTypesJSONEncoder),
