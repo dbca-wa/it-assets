@@ -13,8 +13,8 @@ from . import models
 from itassets.utils import LogRecordIterator
 
 from .utils import to_datetime,set_fields
-from .containerstatus_harvester import get_containerstatus_client
-from .podstatus_harvester import get_podstatus_client
+from . import  containerstatus_harvester
+from . import podstatus_harvester
 from . import modeldata
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ log_levels = [
     (re.compile("(exception|error|failed|wrong|err|traceback)\s+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
-def get_containerlog_client(cache=True):
+def get_client(cache=True):
     """
     Return the blob resource client
     """
@@ -74,32 +74,22 @@ def update_workload_latest_containers(context,containerlog):
     else:
         status = models.Workload.INFO
 
-    if "latest_containers" not in workload_update_fields:
-        index = 0
-        while index < len(workload.latest_containers):
-            container_data = workload.latest_containers[index]
-            if container_data[0] != container.id:
-                index += 1
-                continue
-            else:
-                if container_data[2] & status != status:
-                    workload.new_latest_containers = [list(o) for o in workload.latest_containers]
-                    workload.new_latest_containers[index][2] = workload.latest_containers[index][2] | status
-                    workload_update_fields.append("latest_containers")
-                break
-    else:
-        for container_data in workload.new_latest_containers:
-            if container_data[0] != container.id:
-                continue
-            else:
+    for container_data in workload.new_latest_containers:
+        if container_data[0] != container.id:
+            index += 1
+            continue
+        else:
+            if container_data[2] & status != status:
+                workload.new_latest_containers = [list(o) for o in workload.latest_containers]
                 container_data[2] = container_data[2] | status
-                break
+                if "latest_containers" not in workload_update_fields:
+                    workload_update_fields.append("latest_containers")
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
-    context["harvester"].message="{}:Begin to process container log file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
-    context["harvester"].last_heartbeat = now
-    context["harvester"].save(update_fields=["message","last_heartbeat"])
+    context["logstatus"]["harvester"].message="{}:Begin to process container log file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
+    context["logstatus"]["harvester"].last_heartbeat = now
+    context["logstatus"]["harvester"].save(update_fields=["message","last_heartbeat"])
     if settings.CONTAINERLOG_STREAMING_PARSE:
         status_records = LogRecordIterator(status_file)
     else:
@@ -178,8 +168,8 @@ def process_status_file(context,metadata,status_file):
             """
 
             key = (cluster.id,containerid)
-            if key in context["containers"]:
-                container,container_update_fields = context["containers"][key]
+            if key in context["logstatus"]["containers"]:
+                container,container_update_fields = context["logstatus"]["containers"][key]
             else:
                 try:
                     container = models.Container.objects.get(cluster=cluster,containerid=containerid)
@@ -189,15 +179,15 @@ def process_status_file(context,metadata,status_file):
                     else:
                         continue
                 container_update_fields = []
-                context["containers"][key] = (container,container_update_fields)
+                context["logstatus"]["containers"][key] = (container,container_update_fields)
 
             key = (cluster.id,containerid)
-            if key in context["containerlogs"]:
-                containerlog = context["containerlogs"][key]
+            if key in context["logstatus"]["containerlogs"]:
+                containerlog = context["logstatus"]["containerlogs"][key]
                 containerlog.archiveid = metadata["resource_id"]
             else:
                 containerlog = models.ContainerLog(archiveid=metadata["resource_id"])
-                context["containerlogs"][key] = containerlog
+                context["logstatus"]["containerlogs"][key] = containerlog
 
             if not containerlog.logtime:
                 containerlog.id = None
@@ -215,11 +205,11 @@ def process_status_file(context,metadata,status_file):
                 container = containerlog.container
                 update_workload_latest_containers(context,containerlog)
                 key = (container.cluster.id,container.containerid)
-                if key in context["containers"]:
-                    container,container_update_fields = context["containers"][key]
+                if key in context["logstatus"]["containers"]:
+                    container,container_update_fields = context["logstatus"]["containers"][key]
                 else:
                     container_update_fields = []
-                    context["containers"][key] = (container,container_update_fields)
+                    context["logstatus"]["containers"][key] = (container,container_update_fields)
                 container_update_fields = set_fields(container,[
                     ("log", True),
                     ("warning", True if containerlog.level == models.ContainerLog.WARNING else container.warning),
@@ -249,7 +239,7 @@ def process_status_file(context,metadata,status_file):
             raise Exception("Failed to parse container log record({}).{}".format(record,str(ex)))
 
     #save the last message
-    containerlogs = [o for o in context["containerlogs"].values() if o.logtime and o.container]
+    containerlogs = [o for o in context["logstatus"]["containerlogs"].values() if o.logtime and o.container]
     containerlogs.sort(key=lambda o:o.logtime)
     for containerlog in containerlogs:
         records += 1
@@ -257,11 +247,11 @@ def process_status_file(context,metadata,status_file):
         container = containerlog.container
         update_workload_latest_containers(context,containerlog)
         key = (container.cluster.id,container.containerid)
-        if key in context["containers"]:
-            container,container_update_fields = context["containers"][key]
+        if key in context["logstatus"]["containers"]:
+            container,container_update_fields = context["logstatus"]["containers"][key]
         else:
             container_update_fields = []
-            context["containers"][key] = (container,container_update_fields)
+            context["logstatus"]["containers"][key] = (container,container_update_fields)
         container_update_fields = set_fields(container,[
             ("log", True),
             ("warning", True if containerlog.level == models.ContainerLog.WARNING else container.warning),
@@ -277,7 +267,7 @@ def process_status_file(context,metadata,status_file):
 
     #save terminated containers
     terminated_keys = []
-    for key,value  in context["containers"].items():
+    for key,value  in context["logstatus"]["containers"].items():
         container,container_update_fields = value
         if container.container_terminated and (container.container_terminated + datetime.timedelta(minutes=30)) < metadata["archive_endtime"]:
             terminated_keys.append(key)
@@ -289,25 +279,30 @@ def process_status_file(context,metadata,status_file):
 
     #delete terminated containers from cache
     for key in terminated_keys:
-        del context["containers"][key]
-        if key in context["containerlogs"]:
-            del context["containerlogs"][key]
+        del context["logstatus"]["containers"][key]
+        if key in context["logstatus"]["containerlogs"]:
+            del context["logstatus"]["containerlogs"][key]
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
 
 def process_status(context):
     def _func(status,metadata,status_file):
+        if context["logstatus"]["max_harvest_files"]:
+            if context["logstatus"]["harvested_files"] >= context["logstatus"]["max_harvest_files"]:
+                raise exceptions.StopConsuming("Already harvested {} files".format(context["logstatus"]["harvested_files"]))
+
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but the status of the currently consumed histroy data is {},metadata={}".format(
-                get_containerlog_client().get_consume_status_name(status),
+                get_client().get_consume_status_name(status),
                 metadata
             ))
         #guarantee containerlog must be consumed after podstatus and containerstatus
-        for name,key,client in (("podstatus","podstatus_client",get_podstatus_client(cache=False)),("containerstatus","containerstatus_client",get_containerstatus_client(cache=False))):
-            if key in context["clients"]:
-                last_consume = context["clients"][key]
-                if last_consume[1]["archive_endtime"] >= metadata["archive_endtime"]:
-                    continue
-            last_consume = client.last_consume
+        for name,key,client in (("podstatus","podstatus_client",podstatus_harvester.get_client(cache=False)),("containerstatus","containerstatus_client",containerstatus_harvester.get_client(cache=False))):
+            if key in context["resourceclients"]:
+                last_consume = context["resourceclients"][key]
+            else:
+                last_consume = client.last_consume
+                context["resourceclients"][key] = last_consume
+
             if not last_consume:
                 raise exceptions.StopConsuming("Can't consume containerlog file({0}) with archive_endtime '{1}', because no {2} file was consumed.".format(
                     metadata["resource_id"],
@@ -323,7 +318,6 @@ def process_status(context):
                     last_consume[1]["archive_endtime"],
                     last_consume[2]["consume_date"],
                 ))
-            context["clients"][key] = last_consume
 
         #delete the existing log which were populated in the previous consuming
         models.ContainerLog.objects.filter(archiveid=metadata["resource_id"]).delete()
@@ -331,7 +325,7 @@ def process_status(context):
         process_status_file(context,metadata,status_file)
 
         #save containers
-        for container,container_update_fields  in context["containers"].values():
+        for container,container_update_fields  in context["logstatus"]["containers"].values():
             if container_update_fields:
                 container.save(update_fields=container_update_fields)
                 container_update_fields.clear()
@@ -339,27 +333,11 @@ def process_status(context):
         #save workload
         for workload,workload_update_fields in context["workloads"].values():
             if workload_update_fields:
-                if models.Workload.objects.filter(id=workload.id,latest_containers=workload.latest_containers).update(latest_containers=workload.new_latest_containers) == 0:
-                    #workload's latest_containers changed
-                    db_workload = models.Workload.objects.filter(id=workload.id).first()
-                    if not db_workload or not db_workload.latest_containers:
-                        continue
-                    changed = False
-                    for container in db_workload.latest_containers:
-                        for o in workload.new_latest_containers:
-                            if container[0] == o[0]:
-                                container[2] = o[2]
-                                changed = True
-                                break
-                    if changed:
-                        db_workload.save(update_fields=["latest_containers"])
-                        workload.latest_containers = db_workload.latest_containers
-                else:
-                    workload.latest_containers = workload.new_latest_containers
+                workload.save(update_fields=workload_update_fields)
                 workload_update_fields.clear()
-                delattr(workload,"new_latest_containers")
 
-        context["lock_session"].renew()
+        context["logstatus"]["lock_session"].renew()
+        context["logstatus"]["harvested_files"] += 1
 
     return _func
 
@@ -370,7 +348,7 @@ def clean_expired_containerlogs(harvester):
     harvester.save(update_fields=["message","last_heartbeat"])
     modeldata.clean_expired_containerlogs()
 
-def harvest(reconsume=False):
+def harvest(reconsume=None,max_harvest_files=None,,context={}):
     need_clean = [False]
 
     def _post_consume(client_consume_status,consume_result):
@@ -388,28 +366,29 @@ def harvest(reconsume=False):
     harvester.save()
     message = None
     try:
-        with LockSession(get_containerlog_client(),settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+        with LockSession(get_client(),settings.CONTAINERLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
             try:
                 if reconsume:
-                    if get_containerlog_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-                        get_containerlog_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+                    if get_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                        get_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
                     clean_containerlogs()
         
         
-                context = {
-                    "reconsume":reconsume,
+                context["logstatus"] = context.get("logstatus",{})
+                context["logstatus"] = {
+                    "reconsume":reconsume  if reconsume is not None else context["logstatus"].get("reconsume",False),
+                    "max_harvest_files":max_harvest_files if max_harvest_files is not None else context["logstatus"].get("max_harvest_files",None),
                     "lock_session":lock_session,
-                    "clients":{},
-                    "clusters":{},
-                    "namespaces":{},
-                    "workloads":{},
-                    "containers":{},
                     "containerlogs":{},
-                    "terminated_containers":set(),
-                    "harvester":harvester
+                    "harvester":harvester,
+                    "containers":{},
+                    "harvested_files": 0
                 }
+                context["resourceclients"] = context.get("resourceclients",{})
+                context["clusters"] = context.get("clusters",{})
+                context["workloads"] = context.get("workloads",{})
                 #consume nginx config file
-                result = get_containerlog_client().consume(process_status(context),f_post_consume=_post_consume)
+                result = get_client().consume(process_status(context),f_post_consume=_post_consume)
         
                 if result[1]:
                     if result[0]:
@@ -472,4 +451,9 @@ def harvest(reconsume=False):
         harvester.endtime = timezone.now()
         harvester.last_heartbeat = harvester.endtime
         harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
+
+def harvest_all(context={}):
+    podstatus_harvester.harvest(context)
+    containerstatus_harvester.harvest(context)
+    harvest(context)
 

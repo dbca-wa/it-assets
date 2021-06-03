@@ -13,7 +13,7 @@ from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions,LockSe
 from . import models 
 from itassets.utils import LogRecordIterator
 
-from .podstatus_harvester import get_podstatus_client
+from . import podstatus_harvester 
 from .utils import to_datetime,set_fields
 from . import modeldata
 
@@ -23,7 +23,7 @@ _containerstatus_client = None
 
 harvestername = "containerstatus"
 
-def get_containerstatus_client(cache=True):
+def get_client(cache=True):
     """
     Return the blob resource client
     """
@@ -141,9 +141,9 @@ def update_latest_containers(context,container,workload=None,workload_update_fie
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
-    context["harvester"].message="{}:Begin to process container status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
-    context["harvester"].last_heartbeat = now
-    context["harvester"].save(update_fields=["message","last_heartbeat"])
+    context["containerstatus"]["harvester"].message="{}:Begin to process container status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
+    context["containerstatus"]["harvester"].last_heartbeat = now
+    context["containerstatus"]["harvester"].save(update_fields=["message","last_heartbeat"])
     if settings.CONTAINERSTATUS_STREAMING_PARSE:
         status_records = LogRecordIterator(status_file)
     else:
@@ -204,14 +204,14 @@ def process_status_file(context,metadata,status_file):
             workload = None
             container = None
             key = (cluster.id,containerid)
-            if key in context["terminated_containers"]:
+            if key in context["containerstatus"]["terminated_containers"]:
                 continue
-            elif key in context["containers"]:
-                container = context["containers"][key]
+            elif key in context["containerstatus"]["containers"]:
+                container = context["containerstatus"]["containers"][key]
             else:
                 try:
                     container = models.Container.objects.get(cluster=cluster,containerid=containerid)
-                    context["containers"][key] = container
+                    context["containerstatus"]["containers"][key] = container
                 except ObjectDoesNotExist as ex:
                     pass
 
@@ -287,7 +287,7 @@ def process_status_file(context,metadata,status_file):
                     poduid = "",
                     containerid = containerid
                 )
-                context["containers"][key] = container
+                context["containerstatus"]["containers"][key] = container
             else:
                 continue
 
@@ -313,11 +313,11 @@ def process_status_file(context,metadata,status_file):
             update_latest_containers(context,container,workload=workload,workload_update_fields=workload_update_fields)
 
             if container.status == "running" and container.workload.kind.lower() == "deployment" and (not container.pk or "status" in update_fields):
-                context["new_deployed_workloads"].add(container.workload)
+                context["containerstatus"]["new_deployed_workloads"].add(container.workload)
 
             if container_status.lower() in ("deleted","terminated"):
-                del context["containers"][key]
-                context["terminated_containers"].add(key)
+                del context["containerstatus"]["containers"][key]
+                context["containerstatus"]["terminated_containers"].add(key)
 
         except Exception as ex:
             #delete already added records from this log file
@@ -330,23 +330,25 @@ def process_status_file(context,metadata,status_file):
 
 def process_status(context,max_harvest_files):
     def _func(status,metadata,status_file):
-        if max_harvest_files:
-            if context["harvested_files"] >= max_harvest_files:
-                raise Exception("Already harvested {} files".format(context["harvested_files"]))
+        if context["containerstatus"]["max_harvest_files"]:
+            if context["containerstatus"]["harvested_files"] >= context["containerstatus"]["max_harvest_files"]:
+                raise exceptions.StopConsuming("Already harvested {} files".format(context["containerstatus"]["harvested_files"]))
+
             context["harvested_files"] += 1
 
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but currently consumed histroy data's status is {},metadata={}".format(
-                get_containerstatus_client().get_consume_status_name(status),
+                get_client().get_consume_status_name(status),
                 metadata
             ))
 
-        for key,client in (("podstatus_client",get_podstatus_client(cache=False)),):
-            if key in context["clients"]:
-                last_consume = context["clients"][key]
-                if last_consume[1]["archive_endtime"] >= metadata["archive_endtime"]:
-                    continue
-            last_consume = client.last_consume
+        for key,client in (("podstatus_client",podstatus_harvester.get_client(cache=False)),):
+            if key in context["resourceclients"]:
+                last_consume = context["resourceclients"][key]
+            else:
+                last_consume = client.last_consume
+                context["resourceclients"][key] = last_consume
+
             if not last_consume:
                 raise exceptions.StopConsuming("Can't consume containerstatus file({0}) with archive_endtime '{1}', because no podstatus file was consumed".format(
                     metadata["resource_id"],
@@ -360,12 +362,11 @@ def process_status(context,max_harvest_files):
                     last_consume[1]["archive_endtime"],
                     last_consume[2]["consume_date"],
                 ))
-            context["clients"][key] = last_consume
 
         process_status_file(context,metadata,status_file)
 
         #terminate the containers which should have terminated before.
-        for workload in context["new_deployed_workloads"]:
+        for workload in context["containerstatus"]["new_deployed_workloads"]:
             instances = workload.replicas if workload.replicas > 0 else 1
             containers = models.Container.objects.filter(cluster=workload.cluster,namespace=workload.namespace,workload=workload,status="running")[instances:]
             if not containers:
@@ -390,10 +391,31 @@ def process_status(context,max_harvest_files):
                 workload.save(update_fields=workload_update_fields)
                 workload_update_fields.clear()
 
-        context["lock_session"].renew()
+        context["containerstatus"]["lock_session"].renew()
+        context["containerstatus"]["harvested_files"] += 1
 
 
     return _func
+
+def check_aborted_containers(harvester,context):
+    """
+    Find all running containers which lost hearbeat for long time and set the status of these containers to 'shouldterminated'
+    """
+    now = timezone.now()
+    harvester.message="{}:Begin to check aborted containers".format(now.strftime("%Y-%m-%d %H:%M:%S"))
+    harvester.last_heartbeat = now
+    harvester.save(update_fields=["message","last_heartbeat"])
+    for c in models.Container.objects.filter(status__in=("waiting","running"),last_checked__lt=now() - settings.RANCHER_CONTAINER_ABORTED):
+        c.status = "shouldterminated"
+        c.container_terminated = timezone.now()
+        c.save(update_fields=["status","container_terminated"])
+        update_latest_containers(context,c)
+
+    #save workload
+    for workload,workload_update_fields in context["workloads"].values():
+        if workload_update_fields:
+            workload.save(update_fields=workload_update_fields)
+            workload_update_fields.clear()
 
 def clean_expired_containers(harvester):
     now = timezone.now()
@@ -402,7 +424,7 @@ def clean_expired_containers(harvester):
     harvester.save(update_fields=["message","last_heartbeat"])
     modeldata.clean_expired_containers()
 
-def harvest(reconsume=False,max_harvest_files=None):
+def harvest(reconsume=None,max_harvest_files=None,context={}):
     need_clean = [False]
 
     def _post_consume(client_consume_status,consume_result):
@@ -420,27 +442,29 @@ def harvest(reconsume=False,max_harvest_files=None):
     harvester.save()
     message = None
     try:
-        with LockSession(get_containerstatus_client(),settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+        with LockSession(get_client(),settings.CONTAINERSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
             try:
-                if reconsume and get_containerstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-                    get_containerstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+                if reconsume and get_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                    get_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
         
-                context = {
-                    "reconsume":reconsume,
+                context["containerstatus"] = context.get("containerstatus",{})
+                context["containerstatus"] = {
+                    "reconsume":reconsume  if reconsume is not None else context["containerstatus"].get("reconsume",False),
+                    "max_harvest_files":max_harvest_files if max_harvest_files is not None else context["containerstatus"].get("max_harvest_files",None),
                     "lock_session":lock_session,
-                    "clusters":{},
-                    "clients":{},
-                    "namespaces":{},
-                    "workloads":{},
                     "new_deployed_workloads":set(),
-                    "containers":{},
                     "terminated_containers":set(),
-                    "harvester":harvester
+                    "contaienrs":{},
+                    "harvester":harvester,
+                    "harvested_files": 0
                 }
-                if max_harvest_files:
-                    context["harvested_files"] = 0
+                context["resourceclients"] = context.get("resourceclients",{})
+                context["clusters"] = context.get("clusters",{})
+                context["namespaces"] = context.get("namespaces",{})
+                context["workloads"] = context.get("workloads",{})
+
                 #consume nginx config file
-                result = get_containerstatus_client().consume(process_status(context,max_harvest_files),f_post_consume=_post_consume)
+                result = get_client().consume(process_status(context),f_post_consume=_post_consume)
                 #change the status of containers which has no status data harvested in recent half an hour
                 if result[1]:
                     if result[0]:
@@ -509,6 +533,7 @@ def harvest(reconsume=False,max_harvest_files=None):
     finally:
         if need_clean[0]:
             try:
+                check_aborted_containers(harvester,context)
                 clean_expired_containers(harvester)
                 message = """Succeed to clean expired containers.
 {}""".format(message)

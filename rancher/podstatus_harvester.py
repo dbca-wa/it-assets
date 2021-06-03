@@ -17,7 +17,7 @@ _podstatus_client = None
 
 harvestername = "podstatus"
 
-def get_podstatus_client(cache=True):
+def get_client(cache=True):
     """
     Return the blob resource client
     """
@@ -54,9 +54,9 @@ def to_workload_kind(controllerkind):
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
-    context["harvester"].message="{}:Begin to process pod status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),metadata["resource_id"])
-    context["harvester"].last_heartbeat = now
-    context["harvester"].save(update_fields=["message","last_heartbeat"])
+    context["podstatus"]["harvester"].message="{}:Begin to process pod status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),metadata["resource_id"])
+    context["podstatus"]["harvester"].last_heartbeat = now
+    context["podstatus"]["harvester"].save(update_fields=["message","last_heartbeat"])
     if settings.PODSTATUS_STREAMING_PARSE:
         status_records = LogRecordIterator(status_file)
     else:
@@ -93,7 +93,7 @@ def process_status_file(context,metadata,status_file):
                 context["clusters"][cluster_name] = cluster
 
             namespace_name = record["namespace"].strip()
-            key = (cluster,namespace_name)
+            key = (cluster.id,namespace_name)
             if key in context["namespaces"]:
                 namespace = context["namespaces"][key]
             else:
@@ -125,7 +125,7 @@ def process_status_file(context,metadata,status_file):
 
             workload_kind = to_workload_kind(record["controllerkind"])
 
-            key = (namespace,workload_name,workload_kind)
+            key = (cluster.id,namespace.name,workload_name,workload_kind)
             if key in context["workloads"]:
                 workload,workload_update_fields = context["workloads"][key]
             else:
@@ -170,8 +170,8 @@ def process_status_file(context,metadata,status_file):
             """
 
             if previous_workload and previous_workload != workload and previous_workload.added_by_log and previous_workload.namespace.name == "unknown":
-                context["removable_workloads"].add(previous_workload)
-                context["orphan_namespaces"].add(previous_workload.namespace)
+                context["podstatus"]["removable_workloads"].add(previous_workload)
+                context["podstatus"]["orphan_namespaces"].add(previous_workload.namespace)
 
             if container.pk is None:
                 container.save()
@@ -186,16 +186,15 @@ def process_status_file(context,metadata,status_file):
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
 
 
-def process_status(context,max_harvest_files):
+def process_status(context):
     def _func(status,metadata,status_file):
-        if max_harvest_files:
-            if context["harvested_files"] >= max_harvest_files:
-                raise Exception("Already harvested {} files".format(context["harvested_files"]))
-            context["harvested_files"] += 1
+        if context["podstatus"]["max_harvest_files"]:
+            if context["podstatus"]["harvested_files"] >= context["podstatus"]["max_harvest_files"]:
+                raise exceptions.StopConsuming("Already harvested {} files".format(context["podstatus"]["harvested_files"]))
 
         if status != HistoryDataConsumeClient.NEW:
             raise Exception("The status of the consumed history data shoule be New, but currently consumed histroy data's status is {},metadata={}".format(
-                get_podstatus_client().get_consume_status_name(status),
+                get_client().get_consume_status_name(status),
                 metadata
             ))
         process_status_file(context,metadata,status_file)
@@ -207,44 +206,48 @@ def process_status(context,max_harvest_files):
                 workload_update_fields.clear()
 
         #delete orphan workloads
-        for workload in context["removable_workloads"]:
+        for workload in context["podstatus"]["removable_workloads"]:
             if not models.Container.objects.filter(cluster=workload.cluster,workload=workload).exists():
                 workload.delete()
-        context["removable_workloads"].clear()
+        context["podstatus"]["removable_workloads"].clear()
 
         #delete orphan namespaces
-        for namespace in context["orphan_namespaces"]:
+        for namespace in context["podstatus"]["orphan_namespaces"]:
             if not models.Workload.objects.filter(cluster=namespace.cluster,namespace=namespace).exists():
                 namespace.delete()
-        context["orphan_namespaces"].clear()
+        context["podstatus"]["orphan_namespaces"].clear()
 
-        context["lock_session"].renew()
+        context["podstatus"]["lock_session"].renew()
+        context["podstatus"]["harvested_files"] += 1
 
     return _func
-def harvest(reconsume=False,max_harvest_files=None):
+def harvest(reconsume=None,max_harvest_files=None,context={}):
     now = timezone.now()
     harvester = models.Harvester(name=harvestername,starttime=now,last_heartbeat=now,status=models.Harvester.RUNNING)
     harvester.save()
     message = None
     try:
-        with LockSession(get_podstatus_client(),settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
-            if reconsume and get_podstatus_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
-                get_podstatus_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+        with LockSession(get_client(),settings.PODSTATUS_MAX_CONSUME_TIME_PER_LOG) as lock_session:
+            if reconsume and get_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
+                get_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
+            context["podstatus"] = context.get("podstatus",{})
     
-            context = {
-                "reconsume":reconsume,
+            context["podstatus"].update({
+                "reconsume":reconsume  if reconsume is not None else context["podstatus"].get("reconsume",False),
+                "max_harvest_files":max_harvest_files if max_harvest_files is not None else context["podstatus"].get("max_harvest_files",None),
                 "lock_session":lock_session,
-                "clusters":{},
-                "namespaces":{},
-                "workloads":{},
                 "removable_workloads":set(),
                 "orphan_namespaces":set(),
-                "harvester":harvester
-            }
-            if max_harvest_files:
-                context["harvested_files"] = 0
+                "harvester":harvester,
+                "harvested_files": 0
+            })
+
+            context["clusters"] = context.get("clusters",{})
+            context["namespaces"] = context.get("namespaces",{})
+            context["workloads"] = context.get("workloads",{})
+
             #consume nginx config file
-            result = get_podstatus_client().consume(process_status(context,max_harvest_files))
+            result = get_client().consume(process_status(context))
     
             if result[1]:
                 if result[0]:

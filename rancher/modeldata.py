@@ -1,5 +1,6 @@
 from datetime  import datetime,timedelta
 import logging
+import traceback
 
 from django.db.models import F,Q
 from django.conf import settings
@@ -13,22 +14,31 @@ logger = logging.getLogger(__name__)
 
 def synchronize_logharvester(func):
     def _wrapper(*args,**kwargs):
-        from .podstatus_harvester import get_podstatus_client
-        from .containerstatus_harvester import get_containerstatus_client
-        from .containerlog_harvester import get_containerlog_client
-        with LockSession(get_podstatus_client(),3600 * 3) as lock_session1:
-            with LockSession(get_containerstatus_client(),3600 * 3) as lock_session2:
-                with LockSession(get_containerlog_client(),3600 * 3) as lock_session2:
+        from . import podstatus_harvester
+        from . import containerstatus_harvester
+        from . import containerlog_harvester
+        with LockSession(podstatus_harvester.get_client(),3600 * 3) as lock_session1:
+            with LockSession(containerstatus_harvester.get_client(),3600 * 3) as lock_session2:
+                with LockSession(containerlog_harvester.get_client(),3600 * 3) as lock_session2:
                     func(*args,**kwargs)
     return _wrapper
 
-def _reset_workload_latestcontainers():
+def _reset_workload_latestcontainers(workloads=None):
     """
     Reset the latest containers
     """
-    workloads = {}
+    if not workloads:
+        qs = models.Workload.objects.all().order_by("cluster","name")
+    elif isinstance(workloads,(list,tuple)):
+        if len(workloads) == 1:
+            workload_qs = models.Workload.objects.filter(id=workloads[0])
+        else:
+            workload_qs = models.Workload.objects.filter(id__in=workloads).order_by("cluster","name")
+    else:
+        worklaod_qs = models.Workload.objects.filter(id=workloads)
+
     processed_containers = set()
-    for workload in models.Workload.objects.all().order_by("cluster","name"):
+    for workload in workload_qs:
         logger.debug("Begin to process models.Workload:{}({})".format(workload,workload.id))
         workload.latest_containers = None
         if workload.kind in ("Deployment",'DaemonSet','StatefulSet','service?'):
@@ -60,11 +70,11 @@ def _reset_workload_latestcontainers():
         workload.save(update_fields=["latest_containers"])
         logger.debug("models.Workload({}<{}>):update latest_containers to {}".format(workload,workload.id,workload.latest_containers))
 
-def reset_workload_latestcontainers(sync=True):
+def reset_workload_latestcontainers(sync=True,workloads=None):
     if sync:
-        synchronize_logharvester(_reset_workload_latestcontainers)()
+        synchronize_logharvester(_reset_workload_latestcontainers)(workloads)
     else:
-        _reset_workload_latestcontainers()
+        _reset_workload_latestcontainers(workloads)
 
 
 def reset_project_property():
@@ -315,6 +325,9 @@ def clean_expired_deleted_data():
 
 
 def clean_expired_containers(cluster=None):
+    """
+    delete the expired containers from database to improve performance
+    """
     if cluster:
         if isinstance(cluster,models.Cluster):
             cluster_qs = [cluster]
@@ -465,6 +478,30 @@ def clean_orphan_namespaces(cluster = None):
             namespace.delete()
     else:
         logger.info("No orphan namespaces are found.")
+
+def clean_unused_oss():
+    for obj in list(models.OperatingSystem.objects.filter(images=0)):
+        try:
+            obj.delete()
+        except:
+            logger.error("Failed to delete unused operating system({}).{}".format(obj,traceback.format_exc()))
+
+
+def clean_unreferenced_vulnerabilities():
+    for vuln in models.Vulnerability.objects.filter(affected_images__lt=1):
+        count = vuln.containerimage_set.all().count()
+        if count > 0:
+            logger.error("There are {2} images reference the vulnerability({0}), but the affected_images is {1}, update it to {2} ".format(vuln,vuln.affected_images,count))
+            vuln.affected_images = count
+            vuln.save(update_fields=["affected_images"])
+        else:
+            try:
+                vuln.delete()
+            except:
+                logger.error("Failed to delete unreferenced vulnerability({}).{}".format(vuln,traceback.format_exc()))
+
+
+        
 
 def check_aborted_harvester():
     now = timezone.now()

@@ -51,7 +51,7 @@ class JSONEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self,obj)
 
 _consume_clients = {}
-def get_rancherconfig_client(cluster,cache=True):
+def get_client(cluster,cache=True):
     """
     Return the blob resource client
     """
@@ -1623,6 +1623,8 @@ def clean_expired_rancher_data():
         modeldata.clean_orphan_namespaces()
         modeldata.check_aborted_harvester()
         modeldata.clean_expired_harvester()
+        modeldata.clean_unused_oss()
+        modeldata.clean_unreferenced_vulnerabilities()
     except:
         logger.error("Failed to clean data.{}".format(traceback.format_exc()))
 
@@ -1656,9 +1658,9 @@ def _harvest(cluster,reconsume=False):
             return harvest_result
         
         try:
-            with LockSession(get_rancherconfig_client(cluster.name),3000,2000) as lock_session:
+            with LockSession(get_client(cluster.name),3000,2000) as lock_session:
                 now = timezone.now()
-                result = get_rancherconfig_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False,f_post_consume=_post_consume)
+                result = get_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False,f_post_consume=_post_consume)
                 #analysis the workload env.
                 logger.debug("Begin to analysis workload env")
                 analysis_workloadenv(cluster,now)

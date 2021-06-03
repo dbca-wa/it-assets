@@ -257,7 +257,7 @@ class ContainersLinkMixin(object):
                 ))
             else:
                 return mark_safe("<span style='white-space:nowrap'><A href='{0}'>Latest</A><A style='margin-left:5px' href='{1}?workload__id__exact={2}'>All</A></span>".format(
-                    change_url,self.containers_url,obj.id,logs_link
+                    change_url,self.containers_url,obj.id
                 ))
         else:
             containerids = ",".join(str(o[0]) for o in obj.latest_containers)
