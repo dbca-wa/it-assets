@@ -44,20 +44,21 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
         '--request', 'GET',
         url
     ])
-    out_lines = out.strip().splitlines()
-    if b'200 OK' not in out_lines[0]:
-        raise
+    out_lines = out.decode().strip().splitlines()
+    if '200 OK' not in out_lines[0]:
+        print(out_lines[0])
+        return None
 
     count = None
     for line in out_lines:
-        if line.startswith(b'X-Search-Results-Count'):
-            count = line.decode()
+        if line.startswith('X-Search-Results-Count'):
+            count = line
             break
     if not count:
         return None
     count = int(count.split()[1])
     if verbose:
-        print('{} results'.format(count))
+        print(out_lines)
 
     if count == 0:
         return None
@@ -69,7 +70,7 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     for i in range(1, pages + 1):
         url_page = url + '&include=type_fields&page={}'.format(i)
         if verbose:
-            print('Querying {}'.format(url_page))
+            print('Querying page {}'.format(i))
 
         out = check_output([
             'curl',

@@ -9,7 +9,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Querying Freshservice for IT Systems')
-        it_systems_fs = get_freshservice_objects_curl('assets', query='asset_type_id:{}'.format(settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID))
+        it_systems_fs = get_freshservice_objects_curl(
+            obj_type='assets',
+            query='asset_type_id:{}'.format(settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID),
+            verbose=True
+        )
+        if not it_systems_fs:
+            self.stdout.write(self.style.ERROR('Freshservice API returned no IT System assets'))
+            return
 
         self.stdout.write('Comparing Freshservice IT Systems to IT System Register')
         it_systems = ITSystem.objects.filter(status__in=[0, 2]).order_by('system_id')

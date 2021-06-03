@@ -1,4 +1,3 @@
-from basicauth.decorators import basic_auth_required
 from datetime import date, datetime
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -7,7 +6,6 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.decorators import method_decorator
 from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
 from itassets.utils import breadcrumbs_list
 
@@ -20,7 +18,6 @@ class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class DepartmentUserAPIResource(View):
     """An API view that returns JSON of active department staff accounts.
     """
@@ -38,7 +35,7 @@ class DepartmentUserAPIResource(View):
             queryset = queryset.filter(email__icontains=self.request.GET['q'])
 
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            users = {'objects': [{'id': user.pk, 'text': user.email} for user in queryset]}
+            users = [{'id': user.pk, 'text': user.email} for user in queryset]
         else:  # Normal API response.
             users = [
                 {
@@ -61,7 +58,6 @@ class DepartmentUserAPIResource(View):
         return JsonResponse(users, safe=False)
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class LocationAPIResource(View):
     """An API view that returns JSON of active physical locations.
     """
@@ -72,7 +68,7 @@ class LocationAPIResource(View):
             queryset = queryset.filter(name__icontains=self.request.GET['q'])
 
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            locations = {'objects': [{'id': location.pk, 'text': location.name} for location in queryset]}
+            locations = [{'id': location.pk, 'text': location.name} for location in queryset]
         else:
             locations = [
                 {
@@ -89,7 +85,6 @@ class LocationAPIResource(View):
         return JsonResponse(locations, safe=False)
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class OrgUnitAPIResource(View):
     """An API view that returns JSON of active organisation units.
     """
@@ -104,7 +99,7 @@ class OrgUnitAPIResource(View):
             queryset = queryset.filter(division_unit__pk=self.request.GET['division_id'])
 
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            org_units = {'objects': [{'id': ou.pk, 'text': ou.name} for ou in queryset]}
+            org_units = [{'id': ou.pk, 'text': ou.name} for ou in queryset]
         else:
             org_units = [
                 {
@@ -117,7 +112,6 @@ class OrgUnitAPIResource(View):
         return JsonResponse(org_units, safe=False)
 
 
-@method_decorator(basic_auth_required(target_test=lambda request: not request.user.is_authenticated), name='dispatch')
 class LicenseAPIResource(View):
     """An API view that returns a list of Microsoft-licensed accounts.
     """
