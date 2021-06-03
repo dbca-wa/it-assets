@@ -1,32 +1,38 @@
+from django.urls import reverse
 from itassets.test_api import ApiTestCase
 
 
-class ITSystemResourceTestCase(ApiTestCase):
+class ITSystemAPIResourceTestCase(ApiTestCase):
 
     def test_list(self):
-        """Test the ITSystemResource list response
+        """Test the ITSystemAPIResource list response
         """
-        url = '/api/v1/itsystems/'
+        url = reverse('it_system_api_resource')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.it_prod.name)
+        self.assertContains(response, self.it_leg.name)
         # The 'development' & decommissioned IT systems won't be in the response.
-        self.assertNotContains(response, self.it2.name)
+        self.assertNotContains(response, self.it_dev.name)
         self.assertNotContains(response, self.it_dec.name)
 
-    def test_list_all(self):
-        """Test the ITSystemResource list response with all param
+    def test_list_filtering(self):
+        """Test the ITSystemAPIResource filtered responses
         """
-        url = '/api/v1/itsystems/?all'
+        url = reverse('it_system_api_resource', kwargs={'pk': self.it_prod.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        # The 'development' IT system will be in the response.
-        self.assertContains(response, self.it2.name)
+        self.assertContains(response, self.it_prod.name)
+        self.assertNotContains(response, self.it_leg.name)
+        url = '{}?q={}'.format(reverse('it_system_api_resource'), self.it_leg.name)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.it_prod.name)
+        self.assertContains(response, self.it_leg.name)
 
-    def test_list_filter(self):
-        """Test the ITSystemResource list response with system_id param
+    def test_list_tailored(self):
+        """Test the ITSystemAPIResource tailored list responses
         """
-        url = '/api/v1/itsystems/?system_id={}'.format(self.it1.system_id)
+        url = '{}?selectlist='.format(reverse('it_system_api_resource'))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.it1.name)
-        self.assertNotContains(response, self.it2.name)
