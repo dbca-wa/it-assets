@@ -3,6 +3,7 @@ import re
 import urllib3
 
 import adal
+from msal import ConfidentialClientApplication
 import boto3
 import requests
 import pytz
@@ -661,18 +662,20 @@ def backup_storagesync(plugin, date):
 def patching_oms(plugin, date):
     AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
     AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
-    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_APP_SECRET = plugin.params.get(name="AZURE_APP_SECRET").value
     AZURE_LOG_WORKSPACE = plugin.params.get(name="AZURE_LOG_WORKSPACE").value
-
     LOG_ANALYTICS_BASE = "https://api.loganalytics.io"
-    LOG_ANALYTICS_QUERY = "{}/v1/workspaces/{}/query".format(
-        LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE
+    LOG_ANALYTICS_BASE_SCOPE = "{}/.default".format(LOG_ANALYTICS_BASE)
+    LOG_ANALYTICS_QUERY = "{}/v1/workspaces/{}/query".format(LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE)
+
+    ctx = ConfidentialClientApplication(
+        client_id=AZURE_APP_ID,
+        client_credential=AZURE_APP_SECRET,
+        authority=AZURE_TENANT,
     )
-    ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(
-        LOG_ANALYTICS_BASE, AZURE_APP_ID, AZURE_APP_KEY
-    )
-    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
+    token = ctx.acquire_token_for_client(LOG_ANALYTICS_BASE_SCOPE)
+    headers = {"Authorization": "Bearer {}".format(token["access_token"])}
+
     patching = requests.get(
         LOG_ANALYTICS_QUERY,
         params={
