@@ -35,7 +35,7 @@ class DepartmentUserAPIResource(View):
             queryset = queryset.filter(email__icontains=self.request.GET['q'])
 
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            users = {'objects': [{'id': user.pk, 'text': user.email} for user in queryset]}
+            users = [{'id': user.pk, 'text': user.email} for user in queryset]
         else:  # Normal API response.
             users = [
                 {
@@ -68,7 +68,7 @@ class LocationAPIResource(View):
             queryset = queryset.filter(name__icontains=self.request.GET['q'])
 
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            locations = {'objects': [{'id': location.pk, 'text': location.name} for location in queryset]}
+            locations = [{'id': location.pk, 'text': location.name} for location in queryset]
         else:
             locations = [
                 {
@@ -99,7 +99,7 @@ class OrgUnitAPIResource(View):
             queryset = queryset.filter(division_unit__pk=self.request.GET['division_id'])
 
         if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            org_units = {'objects': [{'id': ou.pk, 'text': ou.name} for ou in queryset]}
+            org_units = [{'id': ou.pk, 'text': ou.name} for ou in queryset]
         else:
             org_units = [
                 {
