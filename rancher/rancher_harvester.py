@@ -1625,6 +1625,7 @@ def clean_expired_rancher_data():
         modeldata.clean_expired_harvester()
         modeldata.clean_unused_oss()
         modeldata.clean_unreferenced_vulnerabilities()
+        modeldata.clean_unreferenced_images()
     except:
         logger.error("Failed to clean data.{}".format(traceback.format_exc()))
 
