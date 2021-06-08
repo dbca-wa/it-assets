@@ -37,7 +37,6 @@ def _reset_workload_latestcontainers(workloads=None):
     else:
         workload_qs = models.Workload.objects.filter(id=workloads)
 
-    processed_containers = set()
     for workload in workload_qs:
         logger.debug("Begin to process models.Workload:{}({})".format(workload,workload.id))
         workload.latest_containers = None
@@ -49,24 +48,22 @@ def _reset_workload_latestcontainers(workloads=None):
                 else:
                     workload.latest_containers.append([container.id,1,log_status])
         else:
-            processed_containers.clear()
-            for qs in [
-                models.Container.objects.filter(cluster=workload.cluster,workload=workload,status__in=("waiting","running")).order_by("pod_created"),
-                [models.Container.objects.filter(cluster=workload.cluster,workload=workload).order_by("-pod_created").first()]
-            ]:
-                for container in qs:
-                    if not container:
-                        continue
-                    if container.id in processed_containers:
-                        continue
-                    processed_containers.add(container.id)
+            first_running_container = models.Container.objects.filter(cluster=workload.cluster,workload=workload,status__in=("waiting","running")).order_by("pod_created").first()
+            if first_running_container:
+                qs = models.Container.objects.filter(cluster=workload.cluster,workload=workload,pod_created__gte=first_running_container.pod_created).order_by("pod_created")
+            else:
+                qs= [models.Container.objects.filter(cluster=workload.cluster,workload=workload).order_by("-pod_created").first()]
 
-                    log_status = (models.Workload.INFO if container.log else 0) | (models.Workload.WARNING if container.warning else 0) | (models.Workload.ERROR if container.error else 0)
-                    running_status = 1 if container.status in ("waiting","running") else 0
-                    if workload.latest_containers is None:
-                        workload.latest_containers=[[container.id,running_status,log_status]]
-                    else:
-                        workload.latest_containers.append([container.id,running_status,log_status])
+            for container in qs:
+                if not container:
+                    continue
+
+                log_status = (models.Workload.INFO if container.log else 0) | (models.Workload.WARNING if container.warning else 0) | (models.Workload.ERROR if container.error else 0)
+                running_status = 1 if container.status in ("waiting","running") else 0
+                if workload.latest_containers is None:
+                    workload.latest_containers=[[container.id,running_status,log_status]]
+                else:
+                    workload.latest_containers.append([container.id,running_status,log_status])
         workload.save(update_fields=["latest_containers"])
         logger.debug("models.Workload({}<{}>):update latest_containers to {}".format(workload,workload.id,workload.latest_containers))
 
@@ -500,8 +497,18 @@ def clean_unreferenced_vulnerabilities():
             except:
                 logger.error("Failed to delete unreferenced vulnerability({}).{}".format(vuln,traceback.format_exc()))
 
-
-        
+def clean_unreferenced_images():
+    for img in models.ContainerImage.objects.filter(workloads__lt=1):
+        count = models.Workload.objects.filter(containerimage=img).count()
+        if count > 0:
+            logger.error("There are {2} workloads reference the image({0}), but the workoads is {1}, update it to {2} ".format(img,img.workloads,count))
+            img.workloads = count
+            img.save(update_fields=["workloads"])
+        else:
+            try:
+                img.delete()
+            except:
+                logger.error("Failed to delete unreferenced image({}).{}".format(img,traceback.format_exc()))
 
 def check_aborted_harvester():
     now = timezone.now()
