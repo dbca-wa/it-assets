@@ -87,6 +87,13 @@ class DatetimeMixin(object):
             return timezone.localtime(obj.scaned).strftime("%Y-%m-%d %H:%M:%S")
     _scaned.short_description = "Scan Time"
 
+    def _added(self,obj):
+        if not obj or not obj.added :
+            return ""
+        else:
+            return timezone.localtime(obj.added).strftime("%Y-%m-%d %H:%M:%S")
+    _added.short_description = "Added"
+
 class EnvValueMixin(object):
     def _value(self,obj):
         if not obj or not obj.value :
@@ -381,7 +388,7 @@ class WorkloadsLinkMixin(object):
                     return workloads
             else:
                 return "0"
-    _active_workloads.short_description = "Acrive Workloads"
+    _active_workloads.short_description = "Active Workloads"
 
     def _deleted_workloads(self,obj):
         if not obj :
@@ -902,28 +909,33 @@ class ScanSummaryMixin(object):
                 obj = self.get_image(obj)
             if not obj:
                 return ""
-            result = ""
-            if obj.criticals:
-                result = "<span>Critical:{}</span>".format(obj.criticals)
-            if obj.highs:
-                if result:
-                    result = "{}<span style='margin-left:5px'>High:{}</span>".format(result,obj.highs)
-                else:
-                    result = "<span>High:{}</span>".format(obj.highs)
-            if obj.mediums:
-                if result:
-                    result = "{}<span style='margin-left:5px'>Medium:{}</span>".format(result,obj.mediums)
-                else:
-                    result = "<span>Medium:{}</span>".format(obj.mediums)
-            if obj.lows:
-                if result:
-                    result = "{}<span style='margin-left:5px'>Low:{}</span>".format(result,obj.lows)
-                else:
-                    result = "<span>Low:{}</span>".format(obj.lows)
-
+            if obj.scan_status < 0:
+                result = obj.scan_message
+            elif obj.scan_status == 0:
+                result = ""
+            else:
+                result = ""
+                if obj.criticals:
+                    result = "<span>Critical:{}</span>".format(obj.criticals)
+                if obj.highs:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>High:{}</span>".format(result,obj.highs)
+                    else:
+                        result = "<span>High:{}</span>".format(obj.highs)
+                if obj.mediums:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>Medium:{}</span>".format(result,obj.mediums)
+                    else:
+                        result = "<span>Medium:{}</span>".format(obj.mediums)
+                if obj.lows:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>Low:{}</span>".format(result,obj.lows)
+                    else:
+                        result = "<span>Low:{}</span>".format(obj.lows)
+    
             return mark_safe(result)
 
-    _scan_summary.short_description = "Scan Summary"
+    _scan_summary.short_description = "Scan Report"
 
 @many2manyinline("containerimage")
 class ContainerImageInline(RequestMixin,ScanSummaryMixin,WorkloadsLinkMixin,admin.TabularInline):
@@ -1059,7 +1071,7 @@ class VulnerabilityInline4Image(RequestMixin,admin.TabularInline):
 @admin.register(models.ContainerImage)
 class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsLinkMixin, admin.ModelAdmin):
     list_display = ('imageid', 'account', 'name', 'tag','_workloads','os', 'scan_status', '_scan_summary', '_scaned' )
-    readonly_fields = ('imageid', 'account', 'name', 'tag','_workloads','os', 'scan_status', '_scan_summary', '_scaned',"_scan_result","_scan_message" )
+    readonly_fields = ('imageid', 'account', 'name', 'tag','_workloads','os','_added', 'scan_status', '_scan_summary', '_scaned',"_scan_result","_scan_message" )
 
     list_filter = ("account","scan_status","os")
     ordering = ('account','name','tag')
@@ -1067,6 +1079,7 @@ class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsL
 
     actions = ('scan',)
 
+    search_fields = ['name']
 
     inlines = [ VulnerabilityInline4Image,WorkloadInline4Image]
 
