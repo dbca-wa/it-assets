@@ -322,7 +322,7 @@ class OperatingSystem(models.Model):
     @classmethod
     def parse_scan_result(cls,scan_result):
         if not scan_result:
-            return None
+            raise Exception("Failed to detect the operating system")
 
         osname = None
         osversion = None
@@ -338,7 +338,7 @@ class OperatingSystem(models.Model):
             imageos,created = cls.objects.get_or_create(name=osname,version=osversion)
             return imageos
 
-        return None
+        raise Exception("Failed to detect the operating system")
 
 
     def __str__(self):
@@ -489,8 +489,13 @@ class ContainerImage(DeletedMixin,models.Model):
         return image
 
     def parse_vulnerabilities(self):
+        self.scan_status = self.NO_RISK
+        self.lows = 0
+        self.mediums = 0
+        self.highs = 0
+        self.criticals = 0
         if not self.scan_result or not self.scan_result.get("Vulnerabilities"):
-            return None
+            return
 
         if not self.os:
             self.os = OperatingSystem.parse_scan_result(self.scan_result)
@@ -512,11 +517,6 @@ class ContainerImage(DeletedMixin,models.Model):
             if not found:
                 self.vulnerabilities.remove(vul)
 
-        self.scan_status = self.NO_RISK
-        self.lows = 0
-        self.mediums = 0
-        self.highs = 0
-        self.criticals = 0
         summary = {}
         for vuln in vulns:
             if vuln.id not in existed_vulns:
@@ -550,7 +550,7 @@ class ContainerImage(DeletedMixin,models.Model):
                     # trivy should return JSON, being a single-element list containing a dict of the scan results.
                     out = json.loads(out)
     
-                    if out:
+                    if out and out[0]:
                         self.scan_result = out[0]
                     else:
                         # If the scan fails, trivy returns 'null'
@@ -561,37 +561,40 @@ class ContainerImage(DeletedMixin,models.Model):
                     except:
                         output = e.output
         
-                    logger.error("Failed to scan container image.{}".format(output))
+                    logger.error("Failed to scan container image.CalledProcessError({})".format(output))
                     self.scan_status = self.SCAN_FAILED
                     self.scan_result = None
-                    self.scan_message = output
+                    self.scan_message = "CalledProcessError({})".format(output or "Unknown Error")
                     self.lows = 0
                     self.mediums = 0
                     self.highs = 0
                     self.criticals = 0
-                    self.vulnerabilities.clear()
+                    if self.pk:
+                        self.vulnerabilities.clear()
                 except Exception as e:
-                    logger.error("Failed to scan container image.{}".format(str(e)))
+                    logger.error("Failed to scan container image.{}({})".format(e.__class__.__name__,str(e)))
                     self.scan_status = self.SCAN_FAILED
                     self.scan_result = None
-                    self.scan_message = str(e)
+                    self.scan_message = "{}({})".format(e.__class__.__name__,str(e))
                     self.lows = 0
                     self.mediums = 0
                     self.highs = 0
                     self.criticals = 0
-                    self.vulnerabilities.clear()
-                self.scaned = timezone.now()
+                    if self.pk:
+                        self.vulnerabilities.clear()
+                finally:
+                    self.scaned = timezone.now()
     
-            if reparse or self.scan_status in (self.NOT_SCANED,self.SCAN_FAILED,self.PARSE_FAILED):
+            if self.scan_result and (reparse or self.scan_status in (self.NOT_SCANED,self.SCAN_FAILED,self.PARSE_FAILED)):
                 try:
                     reparse = True
                     self.os = OperatingSystem.parse_scan_result(self.scan_result)
                     self.parse_vulnerabilities()
                     self.scan_message = None
                 except Exception as e:
-                    logger.error("Failed to parse the scan result of the container image.{}".format(str(e)))
+                    logger.error("Failed to parse the scan result of the container image.{}({})".format(e.__class__.__name__,str(e)))
                     self.scan_status = self.PARSE_FAILED
-                    self.scan_message = str(e)
+                    self.scan_message = "{}({})".format(e.__class__.__name__,str(e))
                     self.lows = 0
                     self.mediums = 0
                     self.highs = 0
@@ -616,7 +619,7 @@ class ContainerImage(DeletedMixin,models.Model):
         elif self.tag:
             return "{}:{}".format(self.name,self.tag)
         else:
-            self.name
+            return self.name
 
     def __str__(self):
         return self.imageid
@@ -643,7 +646,7 @@ class Workload(DeletedMixin,models.Model):
     latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
 
     replicas = models.PositiveSmallIntegerField(editable=False, null=True)
-    containerimage = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, related_name='weorkloadset', editable=False,null=True)
+    containerimage = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, related_name='workloadset', editable=False,null=True)
     image = models.CharField(max_length=128, editable=False)
     image_pullpolicy = models.CharField(max_length=64, editable=False, null=True)
     cmd = models.CharField(max_length=2048, editable=False, null=True)
