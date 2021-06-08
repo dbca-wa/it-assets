@@ -83,12 +83,21 @@ def update_latest_containers(context,container,workload=None,workload_update_fie
                 workload.latest_containers=[[container.id,1,0]]
                 if "latest_containers" not in workload_update_fields:
                     workload_update_fields.append("latest_containers")
-            elif any(obj for obj in workload.latest_containers if obj[0] == container.id):
-                pass
             else:
-                workload.latest_containers.append([container.id,1,0])
-                if "latest_containers" not in workload_update_fields:
-                    workload_update_fields.append("latest_containers")
+                index = len(workload.latest_containers) - 1
+                found = False
+                while index >= 0:
+                    if workload.latest_containers[index][0] == container.id:
+                        found = True
+                        break
+                    elif workload.latest_containers[index][0] < container.id:
+                        break
+                    else:
+                        index -= 1
+                if not found:
+                    workload.latest_containers.insert(index + 1,[container.id,1,0])
+                    if "latest_containers" not in workload_update_fields:
+                        workload_update_fields.append("latest_containers")
         elif workload.latest_containers :
             index = len(workload.latest_containers) - 1
             while index >= 0:
@@ -102,42 +111,51 @@ def update_latest_containers(context,container,workload=None,workload_update_fie
                 else:
                     index -= 1
     else:
-        if workload.latest_containers is None :
-            if container.status in ("waiting","running"):
-                workload.latest_containers=[[container.id,1,0]]
-            else:
-                workload.latest_containers=[[container.id,0,0]]
-            if "latest_containers" not in workload_update_fields:
-                workload_update_fields.append("latest_containers")
-        else:
-            found = False
-            index = len(workload.latest_containers) - 1
-            while index >= 0:
-                latest_container = workload.latest_containers[index]
-                if latest_container[0] == container.id:
-                    if container.status in ("Waiting","Running"):
-                        latest_container[1]=1
-                    else:
-                        latest_container[1]=0
-                    found = True
-                    break
-                else:
-                    index -= 1
-
-            if not found:
-                #remove the terminated container first
-                index = len(workload.latest_containers) - 1
-                while index >= 0:
-                    if workload.latest_containers[index][1] == 0:
-                        #terminated
-                        del workload.latest_containers[index]
-                    index -= 1
+        #remove the terminated container first
+        index = 0
+        changed = False
+        workload.latest_containers = workload.latest_containers if workload.latest_containers is not None else []
+        while index <= len(workload.latest_containers):
+            if index == len(workload.latest_containers):
                 if container.status in ("waiting","running"):
-                    workload.latest_containers.append([container.id,1,0])
+                    workload.latest_containers.append([container.id,1,0]) 
                 else:
                     workload.latest_containers.append([container.id,0,0])
-            if "latest_containers" not in workload_update_fields:
-                workload_update_fields.append("latest_containers")
+                changed = True
+            elif workload.latest_containers[index][0] > container.id:
+                if container.status in ("waiting","running"):
+                    #the container is running , add to the latest_container
+                    workload.latest_containers.insert(index,[container.id,1,0])
+                    changed = True
+                    break
+                elif index > 0:
+                    #the container is terminated, but a earlier container is still running. , add to the latest_container
+                    workload.latest_containers.insert(index,[container.id,1,0])
+                    changed = True
+                    break
+                else:
+                    #the container is terminated , and also it is a ealier container. ignore it
+                    break
+            elif workload.latest_containers[index][0] == container.id:
+                if container.status not in ("waiting","running") and workload.latest_containers[index][1] == 1:
+                    workload.latest_containers[index][1] = 0
+                    changed = True
+                break
+            else:
+                if workload.latest_containers[index][1] == 1:
+                    #current latest container is still running, keep it
+                    index += 1
+                else:
+                    if index == 0:
+                        #this is the first latest container and it is stopped, also it is a earlier container than the container, remote  it
+                        del workload.latest_containers[index]
+                        changed = True
+                    else:
+                        #this is not the first latest container,keep it
+                        index += 1
+                                
+        if changed and "latest_containers" not in workload_update_fields:
+            workload_update_fields.append("latest_containers")
 
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
@@ -405,7 +423,7 @@ def check_aborted_containers(harvester,context):
     harvester.message="{}:Begin to check aborted containers".format(now.strftime("%Y-%m-%d %H:%M:%S"))
     harvester.last_heartbeat = now
     harvester.save(update_fields=["message","last_heartbeat"])
-    for c in models.Container.objects.filter(status__in=("waiting","running"),last_checked__lt=now() - settings.RANCHER_CONTAINER_ABORTED):
+    for c in models.Container.objects.filter(status__in=("waiting","running"),last_checked__lt=now - settings.RANCHER_CONTAINER_ABORTED):
         c.status = "shouldterminated"
         c.container_terminated = timezone.now()
         c.save(update_fields=["status","container_terminated"])
