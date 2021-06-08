@@ -38,7 +38,7 @@ python-nmap = "0.6.1"
 texttable = "1.6.3"
 titlecase = "0.12.0"
 pyyaml = "5.3.1"
-data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.9"}
+data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.15"}
 django-bootstrap-pagination = "^1.7.1"
 pybind11 = "2.5.0"
 pysimdjson = "2.5.1"

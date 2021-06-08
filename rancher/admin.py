@@ -1,22 +1,41 @@
 import logging
+import json
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
-from django.utils.html import mark_safe
-from django.urls import reverse
+from django.utils.html import format_html, mark_safe
+from django.urls import reverse,resolve
 from django.utils import timezone
+from django.contrib.admin.views.main import ChangeList
 
 from django_q.tasks import async_task
 
 from . import models
 from . import rancher_harvester
 from nginx.models import WebApp
+from .decorators import  add_changelink,many2manyinline
 
 logger = logging.getLogger(__name__)
+
+class ReverseChangeList(ChangeList):
+    def get_results(self, request):
+        super().get_results(request)
+        if not isinstance(self.result_list,list):
+            self.result_list = list(self.result_list)
+
+        self.result_list.reverse()
+
 
 class LookupAllowedMixin(object):
     def lookup_allowed(self, lookup, value):
         return True
+
+class RequestMixin(object):
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        self.request = request
+        return qs
 
 class DatetimeMixin(object):
     def _modified(self,obj):
@@ -40,6 +59,41 @@ class DatetimeMixin(object):
             return timezone.localtime(obj.refreshed).strftime("%Y-%m-%d %H:%M:%S")
     _refreshed.short_description = "Refreshed"
 
+    def _starttime(self,obj):
+        if not obj or not obj.starttime :
+            return ""
+        else:
+            return timezone.localtime(obj.starttime).strftime("%Y-%m-%d %H:%M:%S")
+    _starttime.short_description = "Start Time"
+
+    def _endtime(self,obj):
+        if not obj or not obj.endtime :
+            return ""
+        else:
+            return timezone.localtime(obj.endtime).strftime("%Y-%m-%d %H:%M:%S")
+    _endtime.short_description = "End Time"
+
+    def _last_heartbeat(self,obj):
+        if not obj or not obj.last_heartbeat :
+            return ""
+        else:
+            return timezone.localtime(obj.last_heartbeat).strftime("%Y-%m-%d %H:%M:%S")
+    _last_heartbeat.short_description = "Last Heartbeat"
+
+    def _scaned(self,obj):
+        if not obj or not obj.scaned :
+            return ""
+        else:
+            return timezone.localtime(obj.scaned).strftime("%Y-%m-%d %H:%M:%S")
+    _scaned.short_description = "Scan Time"
+
+    def _added(self,obj):
+        if not obj or not obj.added :
+            return ""
+        else:
+            return timezone.localtime(obj.added).strftime("%Y-%m-%d %H:%M:%S")
+    _added.short_description = "Added"
+
 class EnvValueMixin(object):
     def _value(self,obj):
         if not obj or not obj.value :
@@ -47,6 +101,19 @@ class EnvValueMixin(object):
         else:
             return mark_safe("<pre style='white-space:normal'>{}</pre>".format(obj.value))
     _value.short_description = "Value"
+
+class ContainerImageLinkMixin(object):
+    image_change_url_name = 'admin:{}_{}_change'.format(models.ContainerImage._meta.app_label,models.ContainerImage._meta.model_name)
+
+    def _containerimage(self,obj):
+        if not obj :
+            return ""
+        elif not obj.image or not obj.containerimage_id:
+            return ""
+        else:
+            url = reverse(self.image_change_url_name, args=(obj.containerimage_id,))
+            return mark_safe("<A href='{}'>{}</A>".format(url,obj.image))
+    _containerimage.short_description = "Image"
 
 class ClusterLinkMixin(object):
     cluster_change_url_name = 'admin:{}_{}_change'.format(models.Cluster._meta.app_label,models.Cluster._meta.model_name)
@@ -72,7 +139,13 @@ class ProjectLinkMixin(object):
             project = self.get_project(obj)
             if project:
                 url = reverse(self.project_change_url_name, args=(project.id,))
-                return mark_safe("<span style='white-space:nowrap;'><A href='{2}' target='manage_workloads'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{0}' style='margin-left:5px'>{1}</A></span>".format(url,project.name or project.projectid,project.managementurl))
+                if "/rancher/project/" in self.request.path and self.request.META.get("QUERY_STRING"):
+                    url = "{}?{}".format(url,self.request.META.get("QUERY_STRING"))
+                return mark_safe("<span style='white-space:nowrap;'><A href='{2}' target='manage_workloads'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{0}' style='margin-left:5px'>{1}</A></span>".format(
+                    url,
+                    "{}({})".format(project.name,project.projectid) if project.name else project.projectid,
+                    project.managementurl
+                ))
             else:
                 return ""
     _project.short_description = "Project"
@@ -83,7 +156,10 @@ class ProjectLinkMixin(object):
         else:
             project = self.get_project(obj)
             if project:
-                return mark_safe("{0}<A href='{1}' style='margin-left:20px' target='manage_workloads'><img src='/static/img/view.jpg' width=16 height=16></A>".format(project.projectid,project.managementurl))
+                return mark_safe("{0}<A href='{1}' style='margin-left:20px' target='manage_workloads'><img src='/static/img/view.jpg' width=16 height=16></A>".format(
+                    "{}({})".format(project.name,project.projectid) if project.name else project.projectid,
+                   project.managementurl
+                ))
             else:
                 return ""
     _projectid.short_description = "Projectid"
@@ -133,7 +209,27 @@ class DatabaseLinkMixin(object):
 
 class ContainersLinkMixin(object):
     containers_url_name = 'admin:{}_{}_changelist'.format(models.Container._meta.app_label,models.Container._meta.model_name)
+    _containers_url = None
+
     container_url_name = 'admin:{}_{}_change'.format(models.Container._meta.app_label,models.Container._meta.model_name)
+
+    containerlogs_url_name = 'admin:{}_{}_changelist'.format(models.ContainerLog._meta.app_label,models.ContainerLog._meta.model_name)
+    _containerlogs_url = None
+
+    @property
+    def containers_url(self):
+        if not  ContainersLinkMixin._containers_url:
+            ContainersLinkMixin._containers_url = reverse(ContainersLinkMixin.containers_url_name, args=[])
+
+        return ContainersLinkMixin._containers_url
+
+    @property
+    def containerlogs_url(self):
+        if not ContainersLinkMixin._containerlogs_url:
+            ContainersLinkMixin._containerlogs_url = reverse(ContainersLinkMixin.containerlogs_url_name, args=[])
+
+        return ContainersLinkMixin._containerlogs_url
+
     def _containers(self,obj):
         if not obj :
             return ""
@@ -141,34 +237,68 @@ class ContainersLinkMixin(object):
             url = reverse(self.containers_url_name, args=[])
             return mark_safe("<A href='{0}?workload__id__exact={1}'>All</A>".format(url,obj.id))
         elif len(obj.latest_containers) == 1:
-            list_url = reverse(self.containers_url_name, args=[])
             change_url = reverse(self.container_url_name, args=[obj.latest_containers[0][0]])
-            if obj.latest_containers[0][2] & models.Workload.ERROR == models.Workload.ERROR:
-                img = "<img src='/static/img/error.png' width=16 height=16>"
-            elif obj.latest_containers[0][2] & models.Workload.WARNING == models.Workload.WARNING:
-                img = "<img src='/static/img/warning.png' width=16 height=16>"
-            elif obj.latest_containers[0][2] & models.Workload.INFO == models.Workload.INFO:
-                img = "<img src='/static/img/info.png' width=16 height=16>"
-            else:
-                img = ""
 
-            return mark_safe("<span style='white-space:nowrap'><A href='{0}'>{3}Latest</A><A style='margin-left:5px' href='{1}?workload__id__exact={2}'>All</A></span>".format(change_url,list_url,obj.id,img))
+            logs_link = ""
+            if obj.latest_containers[0][2]:
+                logs_link = "<A href='{0}?container__id__exact={1}'><img src='/static/img/info.png' width=16 height=16></A>".format(self.containerlogs_url,obj.latest_containers[0][0])
+
+            if obj.latest_containers[0][2] & models.Workload.ERROR == models.Workload.ERROR:
+                logs_link = "{0}<A href='{1}?container__id__exact={2}&level={3}' style='margin-left:5px'><img src='/static/img/error.png' width=16 height=16></A>".format(
+                    logs_link,
+                    self.containerlogs_url,
+                    obj.latest_containers[0][0],
+                    models.ContainerLog.ERROR
+                )
+            elif obj.latest_containers[0][2] & models.Workload.WARNING == models.Workload.WARNING:
+                logs_link = "{0}<A href='{1}?container__id__exact={2}&level__gte={3}' style='margin-left:5px'><img src='/static/img/warning.png' width=16 height=16></A>".format(
+                    logs_link,
+                    self.containerlogs_url,
+                    obj.latest_containers[0][0],
+                    models.ContainerLog.WARNING
+                )
+
+            if logs_link:
+                return mark_safe("<span style='white-space:nowrap'>{3}<A href='{0}' style='margin-left:5px'>Latest</A><A style='margin-left:5px' href='{1}?workload__id__exact={2}'>All</A></span>".format(
+                    change_url,self.containers_url,obj.id,logs_link
+                ))
+            else:
+                return mark_safe("<span style='white-space:nowrap'><A href='{0}'>Latest</A><A style='margin-left:5px' href='{1}?workload__id__exact={2}'>All</A></span>".format(
+                    change_url,self.containers_url,obj.id
+                ))
         else:
+            containerids = ",".join(str(o[0]) for o in obj.latest_containers)
             level = 0
             for container in obj.latest_containers:
                 level |= container[2]
 
-            if level & models.Workload.ERROR == models.Workload.ERROR:
-                img = "<img src='/static/img/error.png' width=16 height=16>"
-            elif level & models.Workload.WARNING == models.Workload.WARNING:
-                img = "<img src='/static/img/warning.png' width=16 height=16>"
-            elif level & models.Workload.INFO == models.Workload.INFO:
-                img = "<img src='/static/img/info.png' widht=16 height=16>"
-            else:
-                img = ""
+            logs_link = ""
+            if level:
+                logs_link = "<A href='{0}?container__id__in={1}'><img src='/static/img/info.png' width=16 height=16></A>".format(self.containerlogs_url,containerids)
 
-            list_url = reverse(self.containers_url_name, args=[])
-            return mark_safe("<span style='white-space:nowrap'><A href='{0}?id__in={2}'>{3}Latest</A><A style='margin-left:5px' href='{0}?workload__id__exact={1}'>All</A></span>".format(list_url,obj.id,",".join(str(o[0]) for o in obj.latest_containers),img))
+            if level & models.Workload.ERROR == models.Workload.ERROR:
+                logs_link = "{0}<A href='{1}?container__id__in={2}&level={3}' style='margin-left:5px'><img src='/static/img/error.png' width=16 height=16></A>".format(
+                    logs_link,
+                    self.containerlogs_url,
+                    containerids,
+                    models.ContainerLog.ERROR
+                )
+            elif level & models.Workload.WARNING == models.Workload.WARNING:
+                logs_link = "{0}<A href='{1}?container__id__in={2}&level__gte={3}' style='margin-left:5px'><img src='/static/img/warning.png' width=16 height=16></A>".format(
+                    logs_link,
+                    self.containerlogs_url,
+                    containerids,
+                    models.ContainerLog.WARNING
+                )
+
+            if logs_link:
+                return mark_safe("<span style='white-space:nowrap'>{3}<A href='{0}?id__in={2}' style='margin-left:5px'>Latest</A><A style='margin-left:5px' href='{0}?workload__id__exact={1}'>All</A></span>".format(
+                    self.containers_url,obj.id,containerids,logs_link
+                ))
+            else:
+                return mark_safe("<span style='white-space:nowrap'><A href='{0}?id__in={2}'>Latest</A><A style='margin-left:5px' href='{0}?workload__id__exact={1}'>All</A></span>".format(
+                    self.containers_url,obj.id,containerids
+                ))
     _containers.short_description = "Containers"
 
     def _running_status(self,obj):
@@ -221,7 +351,10 @@ class WorkloadsLinkMixin(object):
         if not obj :
             return ""
         else:
-            workloads = obj.active_workloads + obj.deleted_workloads
+            if obj.__class__ == models.ContainerImage:
+                workloads = obj.workloads
+            else:
+                workloads = obj.active_workloads + obj.deleted_workloads
             if workloads:
                 url = reverse(self.workloads_url_name, args=[])
                 if obj.__class__ == models.Cluster:
@@ -230,6 +363,8 @@ class WorkloadsLinkMixin(object):
                     return mark_safe("<A href='{}?project__id__exact={}'>{}</A>".format(url,obj.id,workloads))
                 elif obj.__class__ == models.Namespace:
                     return mark_safe("<A href='{}?namespace__id__exact={}'>{}</A>".format(url,obj.id,workloads))
+                elif obj.__class__ == models.ContainerImage:
+                    return mark_safe("<A href='{}?containerimage__id__exact={}'>{}</A>".format(url,obj.id,workloads))
                 else:
                     return workloads
             else:
@@ -253,7 +388,7 @@ class WorkloadsLinkMixin(object):
                     return workloads
             else:
                 return "0"
-    _active_workloads.short_description = "Acrive Workloads"
+    _active_workloads.short_description = "Active Workloads"
 
     def _deleted_workloads(self,obj):
         if not obj :
@@ -322,7 +457,7 @@ class WorkloadLinkMixin(object):
     _name_with_link.short_description = "Name"
 
 
-class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin):
+class WorkloadInlineMixin(RequestMixin,ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin):
     readonly_fields = ('_workload','_cluster','_project','_namespace','user',"password",'config_items')
     fields = readonly_fields
     ordering = ('workload',)
@@ -339,17 +474,13 @@ class WorkloadInlineMixin(ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,W
 
 @admin.register(models.Cluster)
 class ClusterAdmin(WorkloadsLinkMixin,DatetimeMixin,admin.ModelAdmin):
-    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','added_by_log')
-    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','succeed_resources','failed_resources','_refreshed','_modified','_created','added_by_log','_refresh_message')
-    ordering = ('name',)
-    actions = ('refresh','enforce_refresh')
+    list_display = ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','_modified','added_by_log') if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('name','ip', 'clusterid','_workloads','_active_workloads','_deleted_workloads','_modified')
 
-    def _refresh_message(self,obj):
-        if not obj :
-            return ""
-        else:
-            return mark_safe("<pre>{}</pre>".format(obj.refresh_message))
-    _refresh_message.short_description = "Refresh Message"
+    readonly_fields = ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','_modified','_created','added_by_log') if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('ip','clusterid','_workloads','_active_workloads','_deleted_workloads','_modified','_created')
+
+    ordering = ('name',)
+    #actions = ('refresh','enforce_refresh')
+
 
     def has_add_permission(self, request, obj=None):
         return True
@@ -389,7 +520,7 @@ class DeletedMixin(object):
 
 
 @admin.register(models.Project)
-class ProjectAdmin(LookupAllowedMixin,ClusterLinkMixin,ProjectLinkMixin,WorkloadsLinkMixin,admin.ModelAdmin):
+class ProjectAdmin(RequestMixin,LookupAllowedMixin,ClusterLinkMixin,ProjectLinkMixin,WorkloadsLinkMixin,admin.ModelAdmin):
     list_display = ('_projectid_with_link','_cluster','name','_workloads','_active_workloads','_deleted_workloads')
     readonly_fields = ('_projectid','_cluster','_workloads','_active_workloads','_deleted_workloads')
     fields = ('_projectid','_cluster','name','_workloads','_active_workloads','_deleted_workloads')
@@ -406,7 +537,7 @@ class ProjectAdmin(LookupAllowedMixin,ClusterLinkMixin,ProjectLinkMixin,Workload
         return False
 
 
-class WorkloadInline(DeletedMixin,WorkloadLinkMixin,DatetimeMixin,admin.TabularInline):
+class WorkloadInline4Namespace(DeletedMixin,WorkloadLinkMixin,DatetimeMixin,admin.TabularInline):
     model = models.Workload
     readonly_fields = ('_name_with_link', 'kind','image',"suspend","_modified","_deleted")
     fields = readonly_fields
@@ -462,14 +593,16 @@ class ExistingStatusFilter(admin.SimpleListFilter):
             return queryset
 
 @admin.register(models.Namespace)
-class NamespaceAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
-    readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log")
+class NamespaceAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else  ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted')
+
+    readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted')
+
     fields = readonly_fields
     ordering = ('cluster__name','project__name','name')
     list_filter = ('project',ExistingStatusFilter)
 
-    inlines = [WorkloadInline]
+    inlines = [WorkloadInline4Namespace]
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -664,13 +797,353 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
     def has_delete_permission(self, request, obj=None):
         return False
 
+class WorkloadInline4Image(RequestMixin,DeletedMixin,ClusterLinkMixin,ProjectLinkMixin,WorkloadLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.TabularInline):
+    model = models.Workload
+    readonly_fields = ('_name_with_link','_cluster','_project','_namespace', 'kind','image',"suspend","_modified","_deleted")
+    fields = readonly_fields
+    ordering = ('name',)
+    get_workload = staticmethod(lambda obj:obj)
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@many2manyinline("vulnerability")
+class VulnerabilityInline4Os(RequestMixin,admin.TabularInline):
+    model = models.Vulnerability.oss.through
+    readonly_fields = ('vulnerabilityid', 'pkgname', 'installedversion', 'get_severity_display','affected_images','fixedversion', 'publisheddate', 'lastmodifieddate' )
+    fields = readonly_fields
+    #fields = readonly_fields
+    ordering = ('-vulnerability__severity','vulnerability__pkgname')
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+class VulnerabilitiesMixin(object):
+    vulns_url_name = 'admin:{}_{}_changelist'.format(models.Vulnerability._meta.app_label,models.Vulnerability._meta.model_name)
+    get_os = None
+    def _vulnerabilities(self,obj):
+        if not obj:
+            return ""
+        else:
+            if self.get_os:
+                obj = self.get_os(obj)
+            if not obj:
+                return ""
+
+            result = ""
+            if obj.criticals:
+                result = "<span>Critical:{}</span>".format(obj.criticals)
+            if obj.highs:
+                if result:
+                    result = "{}<span style='margin-left:5px'>High:{}</span>".format(result,obj.highs)
+                else:
+                    result = "<span>High:{}</span>".format(obj.highs)
+            if obj.mediums:
+                if result:
+                    result = "{}<span style='margin-left:5px'>Medium:{}</span>".format(result,obj.mediums)
+                else:
+                    result = "<span>Medium:{}</span>".format(obj.mediums)
+            if obj.lows:
+                if result:
+                    result = "{}<span style='margin-left:5px'>Low:{}</span>".format(result,obj.lows)
+                else:
+                    result = "<span>Low:{}</span>".format(obj.lows)
+
+            return mark_safe(result)
+    _vulnerabilities.short_description = "Vulnerabilities"
+
+class ImagesMixin(object):
+    images_url_name = 'admin:{}_{}_changelist'.format(models.ContainerImage._meta.app_label,models.ContainerImage._meta.model_name)
+    get_os = None
+    def _images(self,obj):
+        if not obj:
+            return ""
+        else:
+            if self.get_os:
+                obj = self.get_os(obj)
+            if not obj or not obj.images:
+                return ""
+            else:
+                url = "{}?os={}".format(reverse(self.images_url_name,args=None),obj.id)
+                return mark_safe("<A href='{}'>{}</A>".format(url,obj.images))
+    _images.short_description = "Images"
+
+@many2manyinline("operatingsystem")
+class OperatingSystemInline(RequestMixin,ImagesMixin,VulnerabilitiesMixin,admin.TabularInline):
+    model = models.Vulnerability.oss.through
+    readonly_fields = ('name','version','_images','criticals',"highs","mediums","lows" )
+    fields = readonly_fields
+    ordering = ('operatingsystem__name','operatingsystem__version')
+
+    get_os = lambda self,o:o.operatingsystem
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+class ScanSummaryMixin(object):
+    get_image = None
+
+    def _scan_summary(self,obj):
+        if not obj:
+            return ""
+        else:
+            if self.get_image:
+                obj = self.get_image(obj)
+            if not obj:
+                return ""
+            if obj.scan_status < 0:
+                result = obj.scan_message
+            elif obj.scan_status == 0:
+                result = ""
+            else:
+                result = ""
+                if obj.criticals:
+                    result = "<span>Critical:{}</span>".format(obj.criticals)
+                if obj.highs:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>High:{}</span>".format(result,obj.highs)
+                    else:
+                        result = "<span>High:{}</span>".format(obj.highs)
+                if obj.mediums:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>Medium:{}</span>".format(result,obj.mediums)
+                    else:
+                        result = "<span>Medium:{}</span>".format(obj.mediums)
+                if obj.lows:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>Low:{}</span>".format(result,obj.lows)
+                    else:
+                        result = "<span>Low:{}</span>".format(obj.lows)
+    
+            return mark_safe(result)
+
+    _scan_summary.short_description = "Scan Report"
+
+@many2manyinline("containerimage")
+class ContainerImageInline(RequestMixin,ScanSummaryMixin,WorkloadsLinkMixin,admin.TabularInline):
+    model = models.ContainerImage.vulnerabilities.through
+    readonly_fields = ('imageid','os','workloads', 'get_scan_status_display', '_scan_summary' )
+    fields = readonly_fields
+    get_image = lambda self,o:o.containerimage
+
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        qs = qs.select_related('containerimage').defer("containerimage__scan_result","containerimage__scan_message","containerimage__vulnerabilities")
+        return qs
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@add_changelink("imageid")
+class ContainerImageInline4Os(RequestMixin,ScanSummaryMixin,WorkloadsLinkMixin,admin.TabularInline):
+    model = models.ContainerImage
+    readonly_fields = ('imageid','os','workloads', 'get_scan_status_display', '_scan_summary' )
+    fields = readonly_fields
+
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        qs = qs.defer("scan_result","scan_message")
+        return qs
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(models.OperatingSystem)
+class OperatingSystemAdmin(RequestMixin,ImagesMixin,VulnerabilitiesMixin,admin.ModelAdmin):
+    list_display = ('name','version','_images','criticals',"highs","mediums","lows" )
+    readonly_fields = list_display
+    fields = readonly_fields
+    list_filter = ("name",)
+    ordering = ["name","version"]
+
+    inlines = [ContainerImageInline4Os,VulnerabilityInline4Os]
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(models.Vulnerability)
+class VulnerabilityAdmin(RequestMixin,admin.ModelAdmin):
+    list_display = ('vulnerabilityid', 'pkgname', 'installedversion','severity','affected_oss','affected_images','fixedversion', 'publisheddate', 'lastmodifieddate' )
+    readonly_fields = ('vulnerabilityid', 'pkgname', 'installedversion','severity','affected_oss','affected_images','severitysource','fixedversion', 'publisheddate', 'lastmodifieddate','_description','_scan_result' )
+    list_filter = ("severity",)
+    search_fields = ['pkgname','vulnerabilityid']
+    ordering = ["-severity","pkgname","installedversion"]
+
+    inlines = [ContainerImageInline,OperatingSystemInline]
+    #inlines = [OperatingSystemInline]
+
+    list_url_name = '{}_{}_changelist'.format(models.Vulnerability._meta.app_label,models.Vulnerability._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer("scan_result","description","severitysource")
+
+        return qs
+
+    def _scan_result(self,obj):
+        if not obj:
+            return ""
+        elif not obj.scan_result:
+            return ""
+        else:
+            return format_html("""<A href="javascript:void" onclick="django.jQuery('#id_image_{0}').toggle();django.jQuery(this).html((django.jQuery(this).html() == 'Show')?'Hide':'Show')">Show</A>
+<pre id="id_image_{0}" style="display:none;white-space:break-spaces">
+{1}
+</pre>""", obj.id,json.dumps(obj.scan_result,indent=4))
+    _scan_result.short_description = "Scan Result"
+
+    def _description(self,obj):
+        if not obj:
+            return ""
+        elif not obj.description:
+            return ""
+        else:
+            return mark_safe("<pre style='white-space:break-spaces'>{}</pre>".format(obj.description))
+    _description.short_description = "Description"
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@many2manyinline("vulnerability")
+class VulnerabilityInline4Image(RequestMixin,admin.TabularInline):
+    model = models.ContainerImage.vulnerabilities.through
+    readonly_fields = ('vulnerabilityid','os', 'pkgname', 'installedversion', 'get_severity_display','affected_images','fixedversion', 'publisheddate', 'lastmodifieddate' )
+    fields = readonly_fields
+    #fields = readonly_fields
+    ordering = ('-vulnerability__severity','vulnerability__vulnerabilityid','vulnerability__pkgname')
+
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        qs = qs.select_related('vulnerability').defer("vulnerability__scan_result","vulnerability__description","vulnerability__oss")
+        return qs
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(models.ContainerImage)
+class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsLinkMixin, admin.ModelAdmin):
+    list_display = ('imageid', 'account', 'name', 'tag','_workloads','os', 'scan_status', '_scan_summary', '_scaned' )
+    readonly_fields = ('imageid', 'account', 'name', 'tag','_workloads','os','_added', 'scan_status', '_scan_summary', '_scaned',"_scan_result","_scan_message" )
+
+    list_filter = ("account","scan_status","os")
+    ordering = ('account','name','tag')
+    exclude = ("vulnerabilities",)
+
+    actions = ('scan',)
+
+    search_fields = ['name']
+
+    inlines = [ VulnerabilityInline4Image,WorkloadInline4Image]
+
+    list_url_name = '{}_{}_changelist'.format(models.ContainerImage._meta.app_label,models.ContainerImage._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer("scan_result","scan_message","vulnerabilities")
+
+        return qs
+
+    def _scan_result(self,obj):
+        if not obj:
+            return ""
+        elif not obj.scan_result:
+            return ""
+        else:
+            return format_html("""<A href="javascript:void" onclick="django.jQuery('#id_image_{0}').toggle();django.jQuery(this).html((django.jQuery(this).html() == 'Show')?'Hide':'Show')">Show</A>
+<pre id="id_image_{0}" style="display:none">
+{1}
+</pre>""", obj.id,json.dumps(obj.scan_result,indent=4))
+    _scan_result.short_description = "Scan Result"
+
+    def _scan_message(self,obj):
+        if not obj:
+            return ""
+        elif not obj.scan_message:
+            return ""
+        else:
+            return mark_safe("<pre>{}</pre>".format(obj.scan_message))
+    _scan_message.short_description = "Scan Message"
+
+    def scan(self, request, queryset):
+        for image in queryset:
+            try:
+                image.scan(rescan=True)
+                if image.scan_status in (image.SCAN_FAILED,image.PARSE_FAILED):
+                    self.message_user(request, "Failed to scan the image '{}'.{}".format(image.imageid,image.scan_message),level=messages.ERROR)
+                else:
+                    self.message_user(request, "Succeed to scan the image '{}'".format(image.imageid))
+            except Exception as ex:
+                self.message_user(request, "Failed to scan the image '{}'. {}".format(image.imageid,str(ex)),level=messages.ERROR)
+
+    scan.short_description = 'Scan'
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 @admin.register(models.Workload)
-class WorkloadAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,DatetimeMixin, admin.ModelAdmin):
-    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', 'image', '_image_vulns_str','_containers','_running_status', '_modified','_deleted',"added_by_log")
+class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,ContainerImageLinkMixin,DatetimeMixin, admin.ModelAdmin):
+    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage', '_containers','_running_status', '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage', '_containers','_running_status', '_modified','_deleted')
+
     list_display_links = None
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log")
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', 'image', "_replicas",'schedule','_image_vulns_str', 'image_scan_timestamp', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log")
+
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend")
+
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule',  '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted')
+
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']
@@ -678,6 +1151,14 @@ class WorkloadAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLin
 
     inlines = [WorkloadDatabaseInline1, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
     webapp_change_url_name = 'admin:{}_{}_change'.format(WebApp._meta.app_label, WebApp._meta.model_name)
+
+    list_url_name = '{}_{}_changelist'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer("containerimage")
+
+        return qs
 
     def _replicas(self,obj):
         if not obj:
@@ -696,11 +1177,15 @@ class WorkloadAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLin
             if apps:
                 result = None
                 for app in apps:
-                    url = reverse(self.webapp_change_url_name, args=(app.id,))
-                    if result:
-                        result = "{}\n<A href='{}'>{}</A>".format(result, url, app.name)
-                    else:
-                        result = "<A href='{}'>{}</A>".format(url, app.name)
+                    try:
+                        url = reverse(self.webapp_change_url_name, args=(app.id,))
+                        if result:
+                            result = "{}\n<A href='{}'>{}</A>".format(result, url, app.name)
+                        else:
+                            result = "<A href='{}'>{}</A>".format(url, app.name)
+                    except:
+                        result = app.name
+
                 return mark_safe("<pre>{}</pre>".format(result))
             else:
                 return ""
@@ -838,6 +1323,35 @@ class ContainerAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,Work
     list_filter = ('cluster',"workload__kind","status")
     search_fields = ['workload__name','workload__namespace__name','containerid']
 
+    containers_url_name = '{}_{}_changelist'.format(models.Container._meta.app_label,models.Container._meta.model_name)
+    show_full_result_count = False
+    show_all = False
+
+    def get_model_perms(self, request):
+        """
+        Return empty perms dict thus hiding the model from admin index.
+        """
+        return {}
+
+    def get_queryset(self, request):
+        if not resolve(request.path_info).url_name == self.containers_url_name:
+            #not the list page
+            return super().get_queryset(request)
+
+        query_allowed = False
+        for key in request.GET.keys():
+            if key == "workload" or key.startswith("workload__"):
+                query_allowed = True
+                break
+            elif key in ("id","pk") or key.startswith("id__") or key.startswith("pk__"):
+                query_allowed = True
+                break
+
+        if query_allowed:
+            return super().get_queryset(request)
+        else:
+            return models.ContainerLog.objects.none()
+
     def _container_terminated(self,obj):
         if not obj or not obj.container_terminated:
             return ""
@@ -920,13 +1434,49 @@ class ContainerAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,Work
 
 @admin.register(models.ContainerLog)
 class ContainerLogAdmin(LookupAllowedMixin,ContainerLinkMixin,admin.ModelAdmin):
-    list_display = ("_logtime",'_container_short',"level","source","_short_message")
+    list_display = ("_logtime",'_container_short',"level","source","_message")
     readonly_fields = ("_logtime",'_container',"level","source","_message")
 
     list_filter = ("level",)
+    list_per_page = 500
 
     ordering = ("container__workload","-logtime")
-    search_fields = ['container__id','container__workload__name']
+    search_fields = ['container__id']
+    show_full_result_count = False
+    show_all = False
+
+    containerlogs_url_name = '{}_{}_changelist'.format(models.ContainerLog._meta.app_label,models.ContainerLog._meta.model_name)
+    def get_model_perms(self, request):
+        """
+        Return empty perms dict thus hiding the model from admin index.
+        """
+        return {}
+
+    def get_changelist(self, request, **kwargs):
+        """
+        Return the ChangeList class for use on the changelist page.
+        """
+        return ReverseChangeList
+
+    def get_queryset(self, request):
+        if not resolve(request.path_info).url_name == self.containerlogs_url_name:
+            #not the list page
+            return super().get_queryset(request)
+
+        query_allowed = False
+        for key in request.GET.keys():
+            if key == "container" or key.startswith("container__"):
+                query_allowed = True
+                break
+            elif key in ("id","pk") or key.startswith("id__") or key.startswith("pk__"):
+                query_allowed = True
+                break
+
+        if query_allowed:
+            qs = super().get_queryset(request)
+            return qs
+        else:
+            return models.ContainerLog.objects.none()
 
     def _short_message(self,obj):
         if not obj or not obj.message:
@@ -959,3 +1509,39 @@ class ContainerLogAdmin(LookupAllowedMixin,ContainerLinkMixin,admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(models.Harvester)
+class HarvesterAdmin(DatetimeMixin,admin.ModelAdmin):
+    list_display = ("name","get_status_display","_starttime","_last_heartbeat","_endtime","_short_message")
+    readonly_fields = ("name","get_status_display","_starttime","_last_heartbeat","_endtime","_message")
+
+    list_filter = ("name","status")
+
+    ordering = ("name","-starttime")
+
+    def _message(self,obj):
+        if not obj or not obj.message:
+            return ""
+        elif "\n" in obj.message:
+            return mark_safe("<pre>{}</pre>".format(obj.message))
+        else:
+            return mark_safe("<pre style='white-space:normal'>{}</pre>".format(obj.message))
+    _message.short_description = "message"
+
+    def _short_message(self,obj):
+        if not obj or not obj.message:
+            return ""
+        else:
+            return "{} ...".format(obj.message[:150])
+    _short_message.short_description = "message"
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
