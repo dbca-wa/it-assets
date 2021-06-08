@@ -107,7 +107,7 @@ def process_status_file(context,metadata,status_file):
             if not message:
                 continue
  
-            message = message.replace("\\n","\n")
+            message = message.replace("\x00","").replace("\\n","\n")
             message = message.strip()
             """
             #try to get log time from message.
