@@ -860,6 +860,12 @@ class VulnerabilitiesMixin(object):
                     result = "{}<span style='margin-left:5px'>Low:{}</span>".format(result,obj.lows)
                 else:
                     result = "<span>Low:{}</span>".format(obj.lows)
+            if obj.unknowns:
+                if result:
+                    result = "{}<span style='margin-left:5px'>Unknown:{}</span>".format(result,obj.unknowns)
+                else:
+                    result = "<span>Low:{}</span>".format(obj.unknowns)
+
 
             return mark_safe(result)
     _vulnerabilities.short_description = "Vulnerabilities"
@@ -883,7 +889,7 @@ class ImagesMixin(object):
 @many2manyinline("operatingsystem")
 class OperatingSystemInline(RequestMixin,ImagesMixin,VulnerabilitiesMixin,admin.TabularInline):
     model = models.Vulnerability.oss.through
-    readonly_fields = ('name','version','_images','criticals',"highs","mediums","lows" )
+    readonly_fields = ('name','version','_images','criticals',"highs","mediums","lows","unknowns" )
     fields = readonly_fields
     ordering = ('operatingsystem__name','operatingsystem__version')
 
@@ -932,6 +938,11 @@ class ScanSummaryMixin(object):
                         result = "{}<span style='margin-left:5px'>Low:{}</span>".format(result,obj.lows)
                     else:
                         result = "<span>Low:{}</span>".format(obj.lows)
+                if obj.unknowns:
+                    if result:
+                        result = "{}<span style='margin-left:5px'>Unknown:{}</span>".format(result,obj.unknowns)
+                    else:
+                        result = "<span>Low:{}</span>".format(obj.unknowns)
     
             return mark_safe(result)
 
@@ -980,7 +991,7 @@ class ContainerImageInline4Os(RequestMixin,ScanSummaryMixin,WorkloadsLinkMixin,a
 
 @admin.register(models.OperatingSystem)
 class OperatingSystemAdmin(RequestMixin,ImagesMixin,VulnerabilitiesMixin,admin.ModelAdmin):
-    list_display = ('name','version','_images','criticals',"highs","mediums","lows" )
+    list_display = ('name','version','_images','criticals',"highs","mediums","lows","unknowns" )
     readonly_fields = list_display
     fields = readonly_fields
     list_filter = ("name",)

@@ -232,15 +232,15 @@ def _clean_containers():
     clean all containers and container logs,
     sync projects and workloads
     """
-    sync_workloads()
+    reset_workloads_property()
     models.ContainerLog.objects.all().delete()
     models.Container.objects.all().delete()
     models.Workload.objects.filter(added_by_log=True).delete()
     models.Namespace.objects.filter(added_by_log=True).delete()
     models.Cluster.objects.filter(added_by_log=True).delete()
     models.Workload.objects.all().update(deleted=None,latest_containers=None)
-    sync_project()
-    sync_workloads()
+    reset_project_property()
+    reset_workloads_property()
 
 def clean_containers(sync=True):
     if sync:
