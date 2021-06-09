@@ -1,14 +1,15 @@
 from data_storage import AzureBlobStorage
-from dbca_utils.utils import env
 import json
+from msal import ConfidentialClientApplication
 import os
 import re
+import requests
 
 
 def get_azure_users_json(container, azure_json_path):
     """Pass in the container name and path to a JSON dump of Azure AD users, return parsed JSON.
     """
-    connect_string = env('AZURE_CONNECTION_STRING', '')
+    connect_string = os.environ.get("AZURE_CONNECTION_STRING", None)
     if not connect_string:
         return None
     store = AzureBlobStorage(connect_string, container)
@@ -118,13 +119,55 @@ def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.jso
         dept_user.audit_ad_actions(azure_user)
 
 
-def get_photo_path(instance, filename='photo.jpg'):
-    """NOTE: unused, but retain for historical migration purposes.
+def ms_graph_users():
+    """Query the Microsoft Graph REST API for all on-premise licensed users in our tenancy.
     """
-    return os.path.join('user_photo', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
+    azure_tenant_id = os.environ["AZURE_TENANT_ID"]
+    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
+    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
+    ctx = ConfidentialClientApplication(
+        client_id=client_id,
+        client_credential=client_secret,
+        authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
+    )
+    scope = "https://graph.microsoft.com/.default"
+    token = ctx.acquire_token_for_client(scope)
 
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
+    }
 
-def get_photo_ad_path(instance, filename='photo.jpg'):
-    """NOTE: unused, but retain for historical migration purposes.
-    """
-    return os.path.join('user_photo_ad', '{0}.{1}'.format(instance.id, os.path.splitext(filename)))
+    # NOTE: filtering on license SKU didn't seem to work, so we just get all users and then
+    # re-filter on the returned data.
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,jobTitle,businessPhones,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true"
+    users = []
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
+
+    while '@odata.nextLink' in j:
+        users = users + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    # NOTE: this SKU is for our MS 365 E5 license. It shouldn't ever change, so hard-coding it is fine.
+    m365_sku = "06ebc4ee-1bb5-47dd-8120-11324bc54e06"
+    onprem_users = []
+
+    for user in users:
+        for plan in user['assignedLicenses']:
+            if 'skuId' in plan and plan['skuId'] == m365_sku:
+                if user['businessPhones']:
+                    phone = user['businessPhones'][0]
+                else:
+                    phone = None
+                onprem_users.append({
+                    'id': user['id'],
+                    'mail': user['mail'].lower(),
+                    'displayName': user['displayName'],
+                    'jobTitle': user['jobTitle'],
+                    'telephoneNumber': phone,
+                })
+
+    return onprem_users
