@@ -12,7 +12,8 @@ def get_freshservice_object(obj_type, id):
     """Query the Freshservice v2 API for a single object.
     """
     url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
-    resp = requests.get(url, auth=FRESHSERVICE_AUTH)
+    params = {'include': 'type_fields'}
+    resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
     resp.raise_for_status()
     return resp.json()
 
@@ -32,7 +33,7 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
         url = url + '?query="{}"'.format(query)
 
     if verbose:
-        print('Querying {}'.format(url))
+        print('Querying headers')
 
     # First, make a query to get the count of results.
     out = check_output([
@@ -57,20 +58,20 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     if not count:
         return None
     count = int(count.split()[1])
-    if verbose:
-        print(out_lines)
 
     if count == 0:
         return None
 
     pages = ceil(count / 30)  # Always 30 results/page for filter queries.
     objects = []
+    if verbose:
+        print("{} objects, {} pages".format(count, pages))
 
     # Starting at 1, call the API
     for i in range(1, pages + 1):
         url_page = url + '&include=type_fields&page={}'.format(i)
         if verbose:
-            print('Querying page {}'.format(i))
+            print('Querying {}'.format(url_page))
 
         out = check_output([
             'curl',
@@ -134,7 +135,7 @@ def create_freshservice_object(obj_type, data):
 
 
 def update_freshservice_object(obj_type, id, data):
-    """Use the Freshservice v2 API to create an object.
+    """Use the Freshservice v2 API to update an object.
     Accepts an object name (string) and a dict of key values.
     """
     url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
