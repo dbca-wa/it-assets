@@ -25,7 +25,7 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     Reference: https://api.freshservice.com/v2/#filter_assets
     As we can't force request to NOT requote URIs, we're forced to call on curl directly
     on the command line :(
-    We very much indent to factor this method out when possible.
+    We very much intend to factor this method out when possible.
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     if query:
