@@ -316,6 +316,7 @@ class OperatingSystem(models.Model):
     highs = models.SmallIntegerField(editable=False,default=0)
     mediums = models.SmallIntegerField(editable=False,default=0)
     lows = models.SmallIntegerField(editable=False,default=0)
+    unknowns = models.SmallIntegerField(editable=False,default=0)
 
 
     target_re = re.compile("^\s*(?P<image>[^\s]+)\s+\(\s*(?P<osname>[^\s]+)\s+(?P<osversion>[^\s]+)\s*\)\s*$")
@@ -357,12 +358,14 @@ class Vulnerability(models.Model):
     MEDIUM = 4
     HIGH = 8
     CRITICAL = 16
+    UNKNOWN = 32
 
     SEVERITIES = (
         (LOW,"Low"),
         (MEDIUM,"Medium"),
         (HIGH,"High"),
         (CRITICAL,"Critical"),
+        (UNKNOWN,"Unknown"),
     )
 
     vulnerabilityid = models.CharField(max_length=128, editable=False)
@@ -434,6 +437,7 @@ class ContainerImage(DeletedMixin,models.Model):
     MEDIUM_RISK = 4
     HIGH_RISK = 8
     CRITICAL_RISK = 16
+    UNKNOWN_RISK = 32
 
     STATUSES = (
         (NOT_SCANED,"Not Scan"),
@@ -443,7 +447,8 @@ class ContainerImage(DeletedMixin,models.Model):
         (LOW_RISK,"Low Risk"),
         (MEDIUM_RISK,"Medium Risk"),
         (HIGH_RISK,"High Risk"),
-        (CRITICAL_RISK,"Critical Risk")
+        (CRITICAL_RISK,"Critical Risk"),
+        (UNKNOWN_RISK,"Unknown Risk")
     )
     account = models.CharField(max_length=64,null=True,db_index=True,editable=False)
     name = models.CharField(max_length=128, editable=False)
@@ -458,6 +463,7 @@ class ContainerImage(DeletedMixin,models.Model):
     highs = models.SmallIntegerField(editable=False,default=0)
     mediums = models.SmallIntegerField(editable=False,default=0)
     lows = models.SmallIntegerField(editable=False,default=0)
+    unknowns = models.SmallIntegerField(editable=False,default=0)
     added = models.DateTimeField(auto_now=True)
     vulnerabilities = models.ManyToManyField(Vulnerability,editable=False)
 
@@ -493,7 +499,9 @@ class ContainerImage(DeletedMixin,models.Model):
         self.lows = 0
         self.mediums = 0
         self.highs = 0
+        self.highs = 0
         self.criticals = 0
+        self.unknowns = 0
         if not self.scan_result or not self.scan_result.get("Vulnerabilities"):
             return
 
@@ -524,6 +532,7 @@ class ContainerImage(DeletedMixin,models.Model):
             summary[vuln.severity] = summary.get(vuln.severity,0) + 1
 
         for severity,field_name,status in (
+            (Vulnerability.UNKNOWN,"unknowns",self.CRITICAL_RISK),
             (Vulnerability.CRITICAL,"criticals",self.CRITICAL_RISK),
             (Vulnerability.HIGH,"highs",self.HIGH_RISK),
             (Vulnerability.MEDIUM,"mediums",self.MEDIUM_RISK),
@@ -569,6 +578,7 @@ class ContainerImage(DeletedMixin,models.Model):
                     self.mediums = 0
                     self.highs = 0
                     self.criticals = 0
+                    self.unknowns = 0
                     if self.pk:
                         self.vulnerabilities.clear()
                 except Exception as e:
@@ -580,6 +590,7 @@ class ContainerImage(DeletedMixin,models.Model):
                     self.mediums = 0
                     self.highs = 0
                     self.criticals = 0
+                    self.unknowns = 0
                     if self.pk:
                         self.vulnerabilities.clear()
                 finally:
@@ -599,13 +610,14 @@ class ContainerImage(DeletedMixin,models.Model):
                     self.mediums = 0
                     self.highs = 0
                     self.criticals = 0
+                    self.unknowns = 0
                     self.vulnerabilities.clear()
     
             if self.pk:
                 if rescan:
-                    self.save(update_fields=["scan_result","scan_status","criticals","highs","mediums","lows","scan_message","scaned","os"])
+                    self.save(update_fields=["scan_result","scan_status","unknowns","criticals","highs","mediums","lows","scan_message","scaned","os"])
                 elif reparse:
-                    self.save(update_fields=["scan_status","criticals","highs","mediums","lows","scan_message","os"])
+                    self.save(update_fields=["scan_status","unknowns","criticals","highs","mediums","lows","scan_message","os"])
             else:
                 self.save()
 
@@ -1164,6 +1176,8 @@ class OssListener(object):
                 OperatingSystem.objects.filter(pk__in=pk_set).update(highs=models.F("highs") + 1)
             elif instance.severity == instance.CRITICAL:
                 OperatingSystem.objects.filter(pk__in=pk_set).update(criticals=models.F("criticals") + 1)
+            elif instance.severity == instance.UNKNOWN:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(unknowns=models.F("unknowns") + 1)
         elif action == "post_remove":
             Vulnerability.objects.filter(pk=instance.pk).update(affected_oss=models.F("affected_oss") - len(pk_set))
             if instance.severity == instance.LOW:
@@ -1174,6 +1188,8 @@ class OssListener(object):
                 OperatingSystem.objects.filter(pk__in=pk_set).update(highs=models.F("highs") - 1)
             elif instance.severity == instance.CRITICAL:
                 OperatingSystem.objects.filter(pk__in=pk_set).update(criticals=models.F("criticals") - 1)
+            elif instance.severity == instance.UNKNOWN:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(unknowns=models.F("unknowns") - 1)
         elif action == "pre_clear":
             instance.cleared_oss = [o.pk for o in instance.oss.all()]
         elif action == "post_clear":
@@ -1186,3 +1202,5 @@ class OssListener(object):
                 OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(highs=models.F("highs") - 1)
             elif instance.severity == instance.CRITICAL:
                 OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(criticals=models.F("criticals") - 1)
+            elif instance.severity == instance.UNKNOWN:
+                OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(unknowns=models.F("unknowns") - 1)
