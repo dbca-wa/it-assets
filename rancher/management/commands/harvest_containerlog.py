@@ -12,7 +12,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            containerlog_harvester.harvest()
+            context = {}
+            containerlog_harvester.harvest_all(context)
         except :
             logger.error(traceback.format_exc())
 

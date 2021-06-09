@@ -7,13 +7,13 @@ from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.urls import reverse
 from django.utils import timezone
-from django.db.models.signals import pre_save,pre_delete
+from django.db.models.signals import pre_save,pre_delete,m2m_changed
 from django.dispatch import receiver
 
 logger = logging.getLogger(__name__)
 
-
 class Cluster(models.Model):
+
     name = models.CharField(max_length=64,unique=True)
     clusterid = models.CharField(max_length=64,null=True,editable=False)
     ip = models.CharField(max_length=128,null=True,editable=False)
@@ -23,10 +23,6 @@ class Cluster(models.Model):
     deleted_workloads = models.PositiveIntegerField(editable=False,default=0)
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    refreshed = models.DateTimeField(null=True,editable=False)
-    succeed_resources = models.PositiveIntegerField(editable=False,default=0)
-    failed_resources = models.PositiveIntegerField(editable=False,default=0)
-    refresh_message = models.TextField(null=True,blank=True,editable=False)
 
     @classmethod
     def populate_workloads_4_all(cls):
@@ -56,6 +52,7 @@ class Cluster(models.Model):
 
     class Meta:
         ordering = ["name"]
+        verbose_name_plural = "{}{}".format(" " * 10,"Clusters")
 
 
 class Project(models.Model):
@@ -101,13 +98,19 @@ class Project(models.Model):
     class Meta:
         unique_together = [["cluster","projectid"]]
         ordering = ["cluster__name",'name']
+        verbose_name_plural = "{}{}".format(" " * 9,"Projects")
 
 class DeletedMixin(models.Model):
-    deleted = models.DateTimeField(editable=False,null=True)
+    deleted = models.DateTimeField(editable=False,null=True,db_index=True)
 
     @property
     def is_deleted(self):
         return True if self.deleted else False
+
+    def logically_delete(self):
+        self.deleted = timezone.now()
+        self.save(update_fields=["deleted"])
+    
 
     class Meta:
         abstract = True
@@ -157,6 +160,7 @@ class Namespace(DeletedMixin,models.Model):
     class Meta:
         unique_together = [["cluster","name"]]
         ordering = ["cluster__name",'name']
+        verbose_name_plural = "{}{}".format(" " * 8,"Namespaces")
 
 
 class PersistentVolume(DeletedMixin,models.Model):
@@ -183,6 +187,7 @@ class PersistentVolume(DeletedMixin,models.Model):
     class Meta:
         unique_together = [["cluster","name"],["cluster","volumepath"],["cluster","uuid"]]
         ordering = ["cluster__name",'name']
+        verbose_name_plural = "{}{}".format(" " * 6,"Persistent volumes")
 
 class ConfigMap(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='configmaps',editable=False)
@@ -200,6 +205,7 @@ class ConfigMap(models.Model):
     class Meta:
         unique_together = [["cluster","namespace","name"]]
         ordering = ["cluster__name","namespace__name",'name']
+        verbose_name_plural = "{}{}".format(" " * 7,"Config maps")
 
 class ConfigMapItem(models.Model):
     configmap = models.ForeignKey(ConfigMap, on_delete=models.CASCADE, related_name='items',editable=False)
@@ -302,6 +308,328 @@ class IngressRule(models.Model):
         unique_together = [["ingress","protocol","hostname","path"],["ingress","servicename"]]
         index_together = [["cluster","servicename"]]
 
+class OperatingSystem(models.Model):
+    name = models.CharField(max_length=64,editable=False)
+    version = models.CharField(max_length=64,editable=False,null=True)
+    images = models.SmallIntegerField(editable=False,default=0)
+    criticals = models.SmallIntegerField(editable=False,default=0)
+    highs = models.SmallIntegerField(editable=False,default=0)
+    mediums = models.SmallIntegerField(editable=False,default=0)
+    lows = models.SmallIntegerField(editable=False,default=0)
+
+
+    target_re = re.compile("^\s*(?P<image>[^\s]+)\s+\(\s*(?P<osname>[^\s]+)\s+(?P<osversion>[^\s]+)\s*\)\s*$")
+    @classmethod
+    def parse_scan_result(cls,scan_result):
+        if not scan_result:
+            raise Exception("Failed to detect the operating system")
+
+        osname = None
+        osversion = None
+        if scan_result.get("Target"):
+            m = cls.target_re.search(scan_result.get("Target"))
+            if m:
+                osname = m.group("osname").lower()
+                osversion = m.group("osversion") or None
+        if not osname:
+            osname = scan_result.get("Type").lower()
+
+        if osname:
+            imageos,created = cls.objects.get_or_create(name=osname,version=osversion)
+            return imageos
+
+        raise Exception("Failed to detect the operating system")
+
+
+    def __str__(self):
+        if self.version:
+            return "{} {}".format(self.name,self.version)
+        else:
+            return self.name
+
+    class Meta:
+        unique_together = [["name","version"]]
+        ordering = ['name','version']
+        verbose_name_plural = "{}{}".format(" " * 3,"OperatingSystems")
+
+class Vulnerability(models.Model):
+    LOW = 2
+    MEDIUM = 4
+    HIGH = 8
+    CRITICAL = 16
+
+    SEVERITIES = (
+        (LOW,"Low"),
+        (MEDIUM,"Medium"),
+        (HIGH,"High"),
+        (CRITICAL,"Critical"),
+    )
+
+    vulnerabilityid = models.CharField(max_length=128, editable=False)
+    pkgname = models.CharField(max_length=128, editable=False)
+    installedversion = models.CharField(max_length=128, editable=False)
+    vulnerabilityid = models.CharField(max_length=128, editable=False)
+    severity = models.SmallIntegerField(choices=SEVERITIES,editable=False,db_index=True)
+    severitysource = models.CharField(max_length=64, editable=False,null=True)
+    affected_images = models.SmallIntegerField(editable=False,default=0)
+    affected_oss = models.SmallIntegerField(editable=False,default=0)
+    description = models.TextField(editable=False,null=True)
+    fixedversion = models.CharField(max_length=128, editable=False,null=True)
+    publisheddate = models.CharField(max_length=64, editable=False,null=True)
+    lastmodifieddate = models.CharField(max_length=64, editable=False,null=True)
+    scan_result = JSONField(null=True,editable=False)
+    oss= models.ManyToManyField(OperatingSystem,editable=False)
+
+    @classmethod
+    def get_severity(cls,severityname):
+        for k,v in cls.SEVERITIES:
+            if v.lower() == severityname:
+                return k
+
+        raise Exception("Unknown severity name '{}'".format(severityname))
+
+    @classmethod
+    def parse_scan_result(cls,os,scan_result):
+        obj = Vulnerability.objects.get_or_create(
+            vulnerabilityid=scan_result["VulnerabilityID"],
+            pkgname=scan_result["PkgName"],
+            installedversion=scan_result["InstalledVersion"],
+            defaults = {
+                "severity":cls.get_severity(scan_result["Severity"].lower()),
+                "severitysource":scan_result.get("SeveritySource"),
+                "description": scan_result.get("Description"),
+                "fixedversion":scan_result.get("FixedVersion"),
+                "publisheddate":scan_result.get("PublishedDate"),
+                "lastmodifieddate":scan_result.get("LastModifiedDate"),
+                "scan_result":scan_result
+            }
+        )[0]
+        if not obj.oss.filter(id=os.id).exists():
+            obj.oss.add(os)
+
+        return obj
+
+
+    def __str__(self):
+        if self.installedversion:
+            return "{} {}".format(self.pkgname,self.installedversion)
+        else:
+            return self.pkgname
+
+
+    class Meta:
+        unique_together = [["vulnerabilityid","pkgname","installedversion"]]
+        index_together = [["pkgname","installedversion"],["severity","pkgname","installedversion"]]
+        ordering = ['severity','pkgname','installedversion','vulnerabilityid']
+        verbose_name_plural = "{}{}".format(" " * 2,"Vulnerabilities")
+
+    
+
+class ContainerImage(DeletedMixin,models.Model):
+    NOT_SCANED = 0
+    SCAN_FAILED = -1
+    PARSE_FAILED = -2
+    NO_RISK = 1
+    LOW_RISK = 2
+    MEDIUM_RISK = 4
+    HIGH_RISK = 8
+    CRITICAL_RISK = 16
+
+    STATUSES = (
+        (NOT_SCANED,"Not Scan"),
+        (SCAN_FAILED,"Scan Failed"),
+        (PARSE_FAILED,"Parse Failed"),
+        (NO_RISK,"No Risk"),
+        (LOW_RISK,"Low Risk"),
+        (MEDIUM_RISK,"Medium Risk"),
+        (HIGH_RISK,"High Risk"),
+        (CRITICAL_RISK,"Critical Risk")
+    )
+    account = models.CharField(max_length=64,null=True,db_index=True,editable=False)
+    name = models.CharField(max_length=128, editable=False)
+    tag = models.CharField(max_length=64, editable=False,null=True)
+    os = models.ForeignKey(OperatingSystem, on_delete=models.PROTECT, related_name='containerimages', editable=False,null=True)
+    workloads = models.PositiveSmallIntegerField(default=0,editable=False)
+    scan_status = models.SmallIntegerField(choices=STATUSES,editable=False,db_index=True,default=NOT_SCANED)
+    scaned = models.DateTimeField(editable=False,null=True)
+    scan_result = JSONField(editable=False, null=True)
+    scan_message = models.TextField(null=True,editable=False)
+    criticals = models.SmallIntegerField(editable=False,default=0)
+    highs = models.SmallIntegerField(editable=False,default=0)
+    mediums = models.SmallIntegerField(editable=False,default=0)
+    lows = models.SmallIntegerField(editable=False,default=0)
+    added = models.DateTimeField(auto_now=True)
+    vulnerabilities = models.ManyToManyField(Vulnerability,editable=False)
+
+
+    @classmethod
+    def parse_imageid(cls,imageid,scan=False):
+        """
+        Return image 
+        """
+        imageid = imageid.strip() if imageid else None
+        if not imageid :
+            return None
+        if ":" in imageid:
+            image_without_tag,image_tag = imageid.rsplit(":",1)
+        else:
+            image_tag = None
+            image_without_tag = imageid
+
+        if "/" in image_without_tag:
+            account,image_name = image_without_tag.rsplit("/",1)
+        else:
+            account = None
+            image_name = image_without_tag
+
+
+        image,created = ContainerImage.objects.get_or_create(account=account,name=image_name,tag=image_tag)
+        if image.scan_status == cls.NOT_SCANED  and scan:
+            image.scan()
+        return image
+
+    def parse_vulnerabilities(self):
+        self.scan_status = self.NO_RISK
+        self.lows = 0
+        self.mediums = 0
+        self.highs = 0
+        self.criticals = 0
+        if not self.scan_result or not self.scan_result.get("Vulnerabilities"):
+            return
+
+        if not self.os:
+            self.os = OperatingSystem.parse_scan_result(self.scan_result)
+
+        vulns = []
+        for vuln in  self.scan_result['Vulnerabilities']:
+            vulns.append(Vulnerability.parse_scan_result(self.os,vuln))
+
+        vulns.sort(key=lambda o:o.severity,reverse=True)
+        existed_vulns = set()
+        #remove deleted vulns
+        for vul in list(self.vulnerabilities.all()):
+            found = False
+            for o in vulns:
+                if vul == o:
+                    found = True
+                    existed_vulns.add(o.id)
+                    break
+            if not found:
+                self.vulnerabilities.remove(vul)
+
+        summary = {}
+        for vuln in vulns:
+            if vuln.id not in existed_vulns:
+                self.vulnerabilities.add(vuln)
+            summary[vuln.severity] = summary.get(vuln.severity,0) + 1
+
+        for severity,field_name,status in (
+            (Vulnerability.CRITICAL,"criticals",self.CRITICAL_RISK),
+            (Vulnerability.HIGH,"highs",self.HIGH_RISK),
+            (Vulnerability.MEDIUM,"mediums",self.MEDIUM_RISK),
+            (Vulnerability.LOW,"lows",self.LOW_RISK)
+        ):
+            if summary.get(severity):
+                if self.scan_status == self.NO_RISK:
+                    self.scan_status = status
+                setattr(self,field_name,summary.get(severity))
+
+
+    def scan(self,rescan=False,reparse=False):
+        """Runs trivy locally and saves the scan result.
+           
+        """
+        with transaction.atomic():
+            if rescan or not self.scan_result:
+                try:
+                    rescan = True
+                    reparse = True
+                    cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.imageid)
+                    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    
+                    # trivy should return JSON, being a single-element list containing a dict of the scan results.
+                    out = json.loads(out)
+    
+                    if out and out[0]:
+                        self.scan_result = out[0]
+                    else:
+                        # If the scan fails, trivy returns 'null'
+                        raise Exception("No results is returned from trivy")
+                except subprocess.CalledProcessError as e:
+                    try:
+                        output = e.output.decode()
+                    except:
+                        output = e.output
+        
+                    logger.error("Failed to scan container image.CalledProcessError({})".format(output))
+                    self.scan_status = self.SCAN_FAILED
+                    self.scan_result = None
+                    self.scan_message = "CalledProcessError({})".format(output or "Unknown Error")
+                    self.lows = 0
+                    self.mediums = 0
+                    self.highs = 0
+                    self.criticals = 0
+                    if self.pk:
+                        self.vulnerabilities.clear()
+                except Exception as e:
+                    logger.error("Failed to scan container image.{}({})".format(e.__class__.__name__,str(e)))
+                    self.scan_status = self.SCAN_FAILED
+                    self.scan_result = None
+                    self.scan_message = "{}({})".format(e.__class__.__name__,str(e))
+                    self.lows = 0
+                    self.mediums = 0
+                    self.highs = 0
+                    self.criticals = 0
+                    if self.pk:
+                        self.vulnerabilities.clear()
+                finally:
+                    self.scaned = timezone.now()
+    
+            if self.scan_result and (reparse or self.scan_status in (self.NOT_SCANED,self.SCAN_FAILED,self.PARSE_FAILED)):
+                try:
+                    reparse = True
+                    self.os = OperatingSystem.parse_scan_result(self.scan_result)
+                    self.parse_vulnerabilities()
+                    self.scan_message = None
+                except Exception as e:
+                    logger.error("Failed to parse the scan result of the container image.{}({})".format(e.__class__.__name__,str(e)))
+                    self.scan_status = self.PARSE_FAILED
+                    self.scan_message = "{}({})".format(e.__class__.__name__,str(e))
+                    self.lows = 0
+                    self.mediums = 0
+                    self.highs = 0
+                    self.criticals = 0
+                    self.vulnerabilities.clear()
+    
+            if self.pk:
+                if rescan:
+                    self.save(update_fields=["scan_result","scan_status","criticals","highs","mediums","lows","scan_message","scaned","os"])
+                elif reparse:
+                    self.save(update_fields=["scan_status","criticals","highs","mediums","lows","scan_message","os"])
+            else:
+                self.save()
+
+    @property
+    def imageid(self):
+        if self.account:
+            if self.tag:
+                return "{}/{}:{}".format(self.account,self.name, self.tag)
+            else:
+                return "{}/{}".format(self.account,self.name)
+        elif self.tag:
+            return "{}:{}".format(self.name,self.tag)
+        else:
+            return self.name
+
+    def __str__(self):
+        return self.imageid
+
+    class Meta:
+        unique_together = [["account","name","tag"]]
+        ordering = ['account','name','tag']
+        verbose_name_plural = "{}{}".format(" " * 1,"Images")
+
+
 
 class Workload(DeletedMixin,models.Model):
     ERROR = 4
@@ -314,15 +642,15 @@ class Workload(DeletedMixin,models.Model):
     name = models.CharField(max_length=512, editable=False)
     kind = models.CharField(max_length=64, editable=False)
 
+    # a array  of three elements array (container_id, running status(1:running,0 terminated) ,log level(0 no log,1 INFO, 2 WARNING 2,4 ERROR)
     latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
 
     replicas = models.PositiveSmallIntegerField(editable=False, null=True)
+    containerimage = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, related_name='workloadset', editable=False,null=True)
     image = models.CharField(max_length=128, editable=False)
     image_pullpolicy = models.CharField(max_length=64, editable=False, null=True)
-    image_scan_json = JSONField(default=dict, editable=False, blank=True)
-    image_scan_timestamp = models.DateTimeField(editable=False, null=True, blank=True)
     cmd = models.CharField(max_length=2048, editable=False, null=True)
-    schedule = models.CharField(max_length=32, editable=False, null=True)
+    schedule = models.CharField(max_length=128, editable=False, null=True)
     suspend = models.NullBooleanField(editable=False)
     failedjobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
     successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
@@ -369,56 +697,10 @@ class Workload(DeletedMixin,models.Model):
     def __str__(self):
         return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
 
-    def image_scan(self):
-        """Runs trivy locally and saves the scan result.
-        """
-        if not self.image:
-            return (False, None)
-
-        try:
-            cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.image)
-            out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as e:
-            return (False, e.output)
-
-        # trivy should return JSON, being a single-element list containing a dict of the scan results.
-        out = json.loads(out)
-
-        if not out:
-            return (False, None)  # If the scan fails, trivy returns 'null'.
-        self.image_scan_json = out[0]
-        self.image_scan_timestamp = timezone.now()
-        self.save()
-        return (True, out)
-
-    def get_image_scan_vulns(self):
-        vulns = {}
-        if self.image_scan_json and 'Vulnerabilities' in self.image_scan_json and self.image_scan_json['Vulnerabilities']:
-            for v in self.image_scan_json['Vulnerabilities']:
-                if v['Severity'] not in vulns:
-                    vulns[v['Severity']] = 1
-                else:
-                    vulns[v['Severity']] += 1
-        return vulns
-
-    def _image_vulns_str(self):
-        if not self.image_scan_json:
-            return ''
-        return ', '.join(['{}: {}'.format(k.capitalize(), v) for (k, v) in self.get_image_scan_vulns().items()])
-    _image_vulns_str.short_description = 'Image vulnerabilities'
-
-    def get_image_scan_os(self):
-        if self.image_scan_json and 'Target' in self.image_scan_json and self.image_scan_json['Target']:
-            pattern = '\\((.*?)\\)'
-            match = re.search(pattern, self.image_scan_json['Target'])
-            if match:
-                return match.groups()[0].capitalize()
-            else:
-                return ''
-
     class Meta:
         unique_together = [["cluster", "namespace", "name","kind"]]
         ordering = ["cluster__name", 'namespace', 'name']
+        verbose_name_plural = "{}{}".format(" " * 5,"Workloads")
 
 
 class WorkloadListening(models.Model):
@@ -493,8 +775,8 @@ class WorkloadVolume(models.Model):
     mountpath = models.CharField(max_length=128,editable=False)
     subpath = models.CharField(max_length=128,editable=False,null=True)
 
-    volume_claim = models.ForeignKey(PersistentVolumeClaim, on_delete=models.PROTECT, related_name='+',editable=False,null=True)
-    volume = models.ForeignKey(PersistentVolume, on_delete=models.PROTECT, related_name='+',editable=False,null=True)
+    volume_claim = models.ForeignKey(PersistentVolumeClaim, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
+    volume = models.ForeignKey(PersistentVolume, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
     volumepath = models.CharField(max_length=612,editable=False,null=True)
     other_config = models.TextField(null=True)
 
@@ -564,7 +846,6 @@ class DatabaseServer(models.Model):
         index_together = [["host","port"],["internal_name","internal_port"]]
         ordering = ['host','port']
 
-
 class Database(models.Model):
     server = models.ForeignKey(DatabaseServer, on_delete=models.CASCADE, related_name='databases',editable=False)
     name = models.CharField(max_length=128,editable=False)
@@ -576,6 +857,7 @@ class Database(models.Model):
 
     class Meta:
         ordering = ['server','name']
+        verbose_name_plural = "{}{}".format(" " * 4,"Databases")
 
 
 class DatabaseUser(models.Model):
@@ -639,13 +921,13 @@ class Container(models.Model):
     warning = models.BooleanField(editable=False,default=False)
     error = models.BooleanField(editable=False,default=False)
 
-    status = models.CharField(max_length=16,null=True,editable=False)
+    status = models.CharField(max_length=32,null=True,editable=False)
 
     pod_created = models.DateTimeField(editable=False,null=True)
     pod_started = models.DateTimeField(editable=False,null=True)
     container_created = models.DateTimeField(editable=False,null=True)
     container_started = models.DateTimeField(editable=False,null=True)
-    container_terminated = models.DateTimeField(editable=False,null=True)
+    container_terminated = models.DateTimeField(editable=False,null=True,db_index=True)
     last_checked = models.DateTimeField(editable=False)
 
     @property
@@ -654,6 +936,8 @@ class Container(models.Model):
 
     class Meta:
         unique_together = [["cluster","namespace","workload","containerid"],["cluster","workload","containerid"],["cluster","containerid"],["workload","containerid"]]
+        index_together = [["cluster","workload","pod_created"]]
+        
         ordering = ["cluster","namespace","workload","container_created"]
 
 class ContainerLog(models.Model):
@@ -670,7 +954,7 @@ class ContainerLog(models.Model):
         (ERROR,"Error"),
     ]
     container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name='logs',editable=False)
-    logtime = models.DateTimeField(editable=False)
+    logtime = models.DateTimeField(editable=False,db_index=True)
     level = models.PositiveSmallIntegerField(choices=LOG_LEVELS)
     source = models.CharField(max_length=32,null=True,editable=False)
     message = models.TextField(editable=False)
@@ -682,12 +966,35 @@ class ContainerLog(models.Model):
         ordering = ["container","logtime"]
 
 
+class Harvester(models.Model):
+    RUNNING = 1
+    SUCCEED = 10
+    SKIPPED = 11
+    FAILED = -1
+    ABORTED = -2
+    STATUSES = [
+        (RUNNING,"Running"),
+        (FAILED,"Failed"),
+        (SUCCEED,"Succeed"),
+        (SKIPPED,"Skipped"),
+        (ABORTED,"Aborted")
+    ]
+    name = models.CharField(max_length=64,editable=False,db_index=True)
+    starttime = models.DateTimeField(auto_now=False,editable=False,null=False,db_index=True)
+    last_heartbeat = models.DateTimeField(auto_now=False,editable=False,null=False,db_index=True)
+    endtime = models.DateTimeField(auto_now=False,editable=False,null=True)
+    status = models.SmallIntegerField(choices=STATUSES,db_index=True)
+    message = models.TextField(editable=False,null=True)
+
+    class Meta:
+        index_together = [["name","starttime"],["name","status","starttime"],["status","starttime"]]
+        ordering = ["name","starttime"]
+        verbose_name_plural = "{}{}".format(" " * 0,"Harvesting jobs")
+
 class WorkloadListener(object):
     @staticmethod
-    @receiver(pre_save,sender=Workload)
-    def save_workload(sender,instance,update_fields=None,**kwargs):
-        existing_obj = None
-        if instance.pk:
+    def update_workloads(instance,update_fields,existing_obj):
+        if existing_obj:
             if update_fields:
                 if "deleted" not in update_fields:
                     return
@@ -721,8 +1028,28 @@ class WorkloadListener(object):
             update_workloads(obj)
 
     @staticmethod
-    @receiver(pre_delete,sender=Workload)
-    def delete_workload(sender,instance,**kwargs):
+    def update_image_workloads(instance,update_fields,existing_obj):
+        if not existing_obj or instance.containerimage != existing_obj.containerimage:
+            #new workload or image changed
+            if instance.containerimage:
+                ContainerImage.objects.filter(pk=instance.containerimage.pk).update(workloads=models.F("workloads") + 1)
+
+        if existing_obj and instance.containerimage != existing_obj.containerimage:
+            if existing_obj.containerimage:
+                ContainerImage.objects.filter(pk=existing_obj.containerimage.pk).update(workloads=models.F("workloads") - 1)
+
+    @staticmethod
+    @receiver(pre_save,sender=Workload)
+    def pre_save(sender,instance,update_fields=None,**kwargs):
+        existing_obj = None
+        if instance.pk:
+            existing_obj = Workload.objects.get(id=instance.id)
+
+        WorkloadListener.update_workloads(instance,update_fields,existing_obj)
+        WorkloadListener.update_image_workloads(instance,update_fields,existing_obj)
+
+    @staticmethod
+    def delete_workloads(instance):
         if instance.deleted:
             def update_workloads(obj):
                 obj.__class__.objects.filter(pk=obj.pk).update(deleted_workloads=models.F("deleted_workloads") - 1)
@@ -734,6 +1061,49 @@ class WorkloadListener(object):
             if not obj:
                 continue
             update_workloads(obj)
+            
+    @staticmethod
+    def delete_image_workloads(instance):
+        if instance.containerimage:
+            ContainerImage.objects.filter(pk=instance.containerimage.pk).update(workloads=models.F("workloads") - 1)
+
+    @staticmethod
+    @receiver(pre_delete,sender=Workload)
+    def pre_delete(sender,instance,**kwargs):
+        WorkloadListener.delete_workloads(instance)
+        WorkloadListener.delete_image_workloads(instance)
+
+class ContainerImageListener(object):
+    @staticmethod
+    def update_os_images(instance,update_fields,existing_obj):
+        if not existing_obj or instance.os != existing_obj.os:
+            #new workload or image changed
+            if instance.os:
+                OperatingSystem.objects.filter(pk=instance.os.pk).update(images=models.F("images") + 1)
+
+        if existing_obj and instance.os != existing_obj.os:
+            if existing_obj.os:
+                OperatingSystem.objects.filter(pk=existing_obj.os.pk).update(images=models.F("images") - 1)
+
+
+    @staticmethod
+    @receiver(pre_save,sender=ContainerImage)
+    def pre_save(sender,instance,update_fields=None,**kwargs):
+        existing_obj = None
+        if instance.pk:
+            existing_obj = ContainerImage.objects.get(id=instance.id)
+
+        ContainerImageListener.update_os_images(instance,update_fields,existing_obj)
+
+    @staticmethod
+    def delete_os_images(instance):
+        if instance.os:
+            OperatingSystem.objects.filter(pk=instance.os.pk).update(images=models.F("images") - 1)
+
+    @staticmethod
+    @receiver(pre_delete,sender=ContainerImage)
+    def pre_delete(sender,instance,**kwargs):
+        ContainerImageListener.delete_os_images(instance)
 
 class NamespaceListener(object):
     @staticmethod
@@ -765,216 +1135,54 @@ class NamespaceListener(object):
             )
 
 
-def sync_project():
-    for obj in Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
-        obj.project = obj.namespace.project
-        obj.save(update_fields=["project"])
-
-    for obj in Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False):
-        obj.project = None
-        obj.save(update_fields=["project"])
-
-    for obj in Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
-        obj.project = obj.namespace.project
-        obj.save(update_fields=["project"])
-
-    for obj in Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
-        obj.project = None
-        obj.save(update_fields=["project"])
-
-    for obj in PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")):
-        obj.project = obj.namespace.project
-        obj.save(update_fields=["project"])
-
-    for obj in PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False):
-        obj.project = None
-        obj.save(update_fields=["project"])
-
-def check_project():
-    objs = list(Workload.objects.filter(namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
-    objs += list(Workload.objects.filter(namespace__project__isnull=True).filter(project__isnull=False))
-    if objs:
-        print("The following workloads'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
-
-    objs = list(Ingress.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
-    objs += list(Ingress.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False))
-    if objs:
-        print("The following ingresses'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
-
-    objs = list(PersistentVolumeClaim.objects.filter(namespace__isnull=False,namespace__project__isnull=False).exclude(project=models.F("namespace__project")))
-    objs += list(PersistentVolumeClaim.objects.filter(models.Q(namespace__isnull=True) | models.Q(namespace__project__isnull=True)).filter(project__isnull=False))
-    if objs:
-        print("The following PersistentVolumeClaims'project are not equal with namespace's project.{}\n".format(["{}({})".format(o,o.id) for o in objs]))
-
-def check_workloads():
-    for obj in Namespace.objects.all():
-        active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Namespace({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
+class VulnerabilitiesListener(object):
+    @staticmethod
+    @receiver(m2m_changed,sender=ContainerImage.vulnerabilities.through)
+    def m2m_changed(sender,instance,action,reverse,model,pk_set,**kwargs):
+        if action == "post_add":
+            Vulnerability.objects.filter(pk__in=pk_set).update(affected_images=models.F("affected_images") + 1)
+        elif action == "post_remove":
+            Vulnerability.objects.filter(pk__in=pk_set).update(affected_images=models.F("affected_images") - 1)
+        elif action == "pre_clear":
+            instance.cleared_vulns = [o.pk for o in instance.vulnerabilities.all()]
+        elif action == "post_clear":
+            if instance.cleared_vulns:
+                Vulnerability.objects.filter(pk__in=instance.cleared_vulns).update(affected_images=models.F("affected_images") - 1)
 
 
-    for obj in Project.objects.all():
-        active_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Project({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-
-    for obj in Cluster.objects.all():
-        active_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Cluster({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-
-def sync_workloads():
-    for obj in Namespace.objects.all():
-        active_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Namespace({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-            obj.active_workloads = active_workloads
-            obj.deleted_workloads = deleted_workloads
-            obj.save(update_fields=["active_workloads","deleted_workloads"])
-
-
-    for obj in Project.objects.all():
-        active_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(namespace__project=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Project({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-            obj.active_workloads = active_workloads
-            obj.deleted_workloads = deleted_workloads
-            obj.save(update_fields=["active_workloads","deleted_workloads"])
-
-    for obj in Cluster.objects.all():
-        active_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=True).count()
-        deleted_workloads = Workload.objects.filter(cluster=obj,deleted__isnull=False).count()
-        if obj.active_workloads != active_workloads or obj.deleted_workloads != deleted_workloads:
-            print("Cluster({}<{}>): active_workloads={}, expected acrive_workloads={}; deleted_workloads={}, expected deleted_workloads={}".format(
-                obj,
-                obj.id,
-                obj.active_workloads,
-                active_workloads,
-                obj.deleted_workloads,
-                deleted_workloads
-            ))
-            obj.active_workloads = active_workloads
-            obj.deleted_workloads = deleted_workloads
-            obj.save(update_fields=["active_workloads","deleted_workloads"])
-
-def clean_containers():
-    sync_workloads()
-    ContainerLog.objects.all().delete()
-    Container.objects.all().delete()
-    Workload.objects.filter(added_by_log=True).delete()
-    Namespace.objects.filter(added_by_log=True).delete()
-    Cluster.objects.filter(added_by_log=True).delete()
-    Workload.objects.all().update(deleted=None,latest_containers=None)
-    sync_project()
-    sync_workloads()
-
-def clean_containerlogs():
-    ContainerLog.objects.all().delete()
-    Container.objects.all().update(log=False,warning=False,error=False)
-    for workload in Workload.objects.all():
-        if workload.latest_containers:
-            for container in workload.latest_containers:
-                container[2] = 0
-            workload.save(update_fields=["latest_containers"])
-
-def sync_latestcontainers():
-    Workload.objects.all().update(latest_containers=None)
-    workloads = {}
-    for container in Container.objects.all().order_by("id"):
-        workload_key = (container.workload.cluster.id,container.workload.namespace.name,container.workload.name,container.workload.kind)
-        if workload_key not in workloads:
-            workload_update_fields = []
-            workload = container.workload
-            workloads[workload_key] = (workload,workload_update_fields)
-        else:
-            workload,workload_update_fields = workloads[workload_key]
-
-        log_status = (Workload.INFO if container.log else 0) | (Workload.WARNING if container.warning else 0) | (Workload.ERROR if container.error else 0)
-        if workload.kind in ("Deployment",'DaemonSet','StatefulSet','service?'):
-            if container.status in ("Waiting","Running"):
-                if workload.latest_containers is None:
-                    workload.latest_containers=[[container.id,1,log_status]]
-                    if "latest_containers" not in workload_update_fields:
-                        workload_update_fields.append("latest_containers")
-                elif any(obj for obj in workload.latest_containers if obj[0] == container.id):
-                    pass
-                else:
-                    workload.latest_containers.append([container.id,1,log_status])
-                    if "latest_containers" not in workload_update_fields:
-                        workload_update_fields.append("latest_containers")
-            elif workload.latest_containers :
-                index = len(workload.latest_containers) - 1
-                while index >= 0:
-                    if workload.latest_containers[index][0] == container.id:
-                        del workload.latest_containers[index]
-                        if "latest_containers" not in workload_update_fields:
-                            workload_update_fields.append("latest_containers")
-                        break
-                    else:
-                        index -= 1
-        else:
-            if workload.latest_containers is None or len(workload.latest_containers) != 1 or workload.latest_containers[0][0] != container.id:
-                if container.status in ("Waiting","Running"):
-                    workload.latest_containers=[[container.id,1,log_status]]
-                else:
-                    workload.latest_containers=[[container.id,0,log_status]]
-                if "latest_containers" not in workload_update_fields:
-                    workload_update_fields.append("latest_containers")
-            else:
-                if container.status in ("Waiting","Running"):
-                    workload.latest_containers[0][1]=1
-                else:
-                    workload.latest_containers[0][1]=0
-                if "latest_containers" not in workload_update_fields:
-                    workload_update_fields.append("latest_containers")
-
-
-    for workload,workload_update_fields in workloads.values():
-        if not workload_update_fields:
-            continue
-
-        logger.debug("Workload({}<{}>):update latest_containers to {}".format(workload,workload.id,workload.latest_containers))
-        workload.save(update_fields=workload_update_fields)
-
-
-
+class OssListener(object):
+    @staticmethod
+    @receiver(m2m_changed,sender=Vulnerability.oss.through)
+    def m2m_changed(sender,instance,action,reverse,model,pk_set,**kwargs):
+        if action == "post_add":
+            Vulnerability.objects.filter(pk=instance.pk).update(affected_oss=models.F("affected_oss") + len(pk_set))
+            if instance.severity == instance.LOW:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(lows=models.F("lows") + 1)
+            elif instance.severity == instance.MEDIUM:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(mediums=models.F("mediums") + 1)
+            elif instance.severity == instance.HIGH:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(highs=models.F("highs") + 1)
+            elif instance.severity == instance.CRITICAL:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(criticals=models.F("criticals") + 1)
+        elif action == "post_remove":
+            Vulnerability.objects.filter(pk=instance.pk).update(affected_oss=models.F("affected_oss") - len(pk_set))
+            if instance.severity == instance.LOW:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(lows=models.F("lows") - 1)
+            elif instance.severity == instance.MEDIUM:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(mediums=models.F("mediums") - 1)
+            elif instance.severity == instance.HIGH:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(highs=models.F("highs") - 1)
+            elif instance.severity == instance.CRITICAL:
+                OperatingSystem.objects.filter(pk__in=pk_set).update(criticals=models.F("criticals") - 1)
+        elif action == "pre_clear":
+            instance.cleared_oss = [o.pk for o in instance.oss.all()]
+        elif action == "post_clear":
+            Vulnerability.objects.filter(pk=instance.pk).update(affected_oss=0)
+            if instance.severity == instance.LOW:
+                OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(lows=models.F("lows") - 1)
+            elif instance.severity == instance.MEDIUM:
+                OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(mediums=models.F("mediums") - 1)
+            elif instance.severity == instance.HIGH:
+                OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(highs=models.F("highs") - 1)
+            elif instance.severity == instance.CRITICAL:
+                OperatingSystem.objects.filter(pk__in=instance.cleared_oss).update(criticals=models.F("criticals") - 1)
