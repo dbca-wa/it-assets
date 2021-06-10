@@ -8,7 +8,7 @@ from rancher import rancher_harvester
 logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
-    help = 'Harvest nginx configuration from blob storage'
+    help = 'Harvest rancher configuration from blob storage'
 
     def handle(self, *args, **options):
         try:

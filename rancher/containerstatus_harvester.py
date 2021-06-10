@@ -481,7 +481,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 context["namespaces"] = context.get("namespaces",{})
                 context["workloads"] = context.get("workloads",{})
 
-                #consume nginx config file
+                #consume container status file
                 result = get_client().consume(process_status(context),f_post_consume=_post_consume)
                 #change the status of containers which has no status data harvested in recent half an hour
                 if result[1]:
