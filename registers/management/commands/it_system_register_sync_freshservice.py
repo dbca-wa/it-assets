@@ -2,8 +2,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 import requests
 from urllib.parse import urlparse
+from itassets.utils_freshservice import get_freshservice_objects_curl, create_freshservice_object, update_freshservice_object, FRESHSERVICE_AUTH
 from registers.models import ITSystem
-from registers.utils_freshservice import get_freshservice_objects_curl, create_freshservice_object, update_freshservice_object, FRESHSERVICE_AUTH
 
 
 class Command(BaseCommand):
