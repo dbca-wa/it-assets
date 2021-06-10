@@ -385,7 +385,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 context["resourceclients"] = context.get("resourceclients",{})
                 context["clusters"] = context.get("clusters",{})
                 context["workloads"] = context.get("workloads",{})
-                #consume nginx config file
+                #consume container log file
                 result = get_client().consume(process_status(context),f_post_consume=_post_consume)
         
                 if result[1]:
