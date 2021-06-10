@@ -3,6 +3,7 @@ import json
 from msal import ConfidentialClientApplication
 import os
 import requests
+from itassets.utils import ms_graph_client_token
 
 
 def get_azure_users_json(container, azure_json_path):
@@ -117,16 +118,7 @@ def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.jso
 def ms_graph_users():
     """Query the Microsoft Graph REST API for all on-premise licensed users in our tenancy.
     """
-    azure_tenant_id = os.environ["AZURE_TENANT_ID"]
-    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
-    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
-    ctx = ConfidentialClientApplication(
-        client_id=client_id,
-        client_credential=client_secret,
-        authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
-    )
-    scope = "https://graph.microsoft.com/.default"
-    token = ctx.acquire_token_for_client(scope)
+    token = ms_graph_client_token()
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
