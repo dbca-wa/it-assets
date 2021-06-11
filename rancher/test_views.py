@@ -1,9 +1,10 @@
+from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from mixer.backend.django import mixer
 
-from rancher.models import Workload
+from rancher.models import Cluster, Workload
 
 User = get_user_model()
 
@@ -17,7 +18,21 @@ class RancherViewsTestCase(TestCase):
         self.n_user.set_password('pass')
         self.n_user.save()
         self.client.login(username='normaluser', password='pass')
-        self.workload = mixer.blend(Workload, latest_containers=[1])
+        # Mixer throws an exception on generation of a Workload instance:
+        # type object 'JSONField' has no attribute '_meta'
+        #self.workload = mixer.blend(Workload, latest_containers=[1])
+        self.cluster = Cluster.objects.create(
+            name='test-cluster',
+        )
+        self.workload = Workload.objects.create(
+            cluster=self.cluster,
+            name='test-workload',
+            kind='test',
+            image='test-image',
+            api_version='1',
+            modified=datetime.now(),
+            created=datetime.now(),
+        )
 
     def test_workload_detail(self):
         url = reverse('workload_detail', kwargs={'pk': self.workload.pk})

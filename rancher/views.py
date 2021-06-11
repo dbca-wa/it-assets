@@ -10,7 +10,7 @@ class WorkloadDetail(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
         context['page_title'] = 'Workload: {}'.format(obj)
-        if obj.image_scan_json:
+        if hasattr(obj, 'image_scan_json') and obj.image_scan_json:
             context['image_vulns'] = obj.image_scan_json['Vulnerabilities']
         else:
             context['image_vulns'] = []

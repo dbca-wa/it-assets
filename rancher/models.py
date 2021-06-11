@@ -110,7 +110,7 @@ class DeletedMixin(models.Model):
     def logically_delete(self):
         self.deleted = timezone.now()
         self.save(update_fields=["deleted"])
-    
+
 
     class Meta:
         abstract = True
@@ -426,7 +426,7 @@ class Vulnerability(models.Model):
         ordering = ['severity','pkgname','installedversion','vulnerabilityid']
         verbose_name_plural = "{}{}".format(" " * 2,"Vulnerabilities")
 
-    
+
 
 class ContainerImage(DeletedMixin,models.Model):
     NOT_SCANED = 0
@@ -471,7 +471,7 @@ class ContainerImage(DeletedMixin,models.Model):
     @classmethod
     def parse_imageid(cls,imageid,scan=False):
         """
-        Return image 
+        Return image
         """
         imageid = imageid.strip() if imageid else None
         if not imageid :
@@ -546,7 +546,7 @@ class ContainerImage(DeletedMixin,models.Model):
 
     def scan(self,rescan=False,reparse=False):
         """Runs trivy locally and saves the scan result.
-           
+
         """
         with transaction.atomic():
             if rescan or not self.scan_result:
@@ -555,10 +555,10 @@ class ContainerImage(DeletedMixin,models.Model):
                     reparse = True
                     cmd = 'trivy --quiet image --no-progress --format json {}'.format(self.imageid)
                     out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    
+
                     # trivy should return JSON, being a single-element list containing a dict of the scan results.
                     out = json.loads(out)
-    
+
                     if out and out[0]:
                         self.scan_result = out[0]
                     else:
@@ -569,7 +569,7 @@ class ContainerImage(DeletedMixin,models.Model):
                         output = e.output.decode()
                     except:
                         output = e.output
-        
+
                     logger.error("Failed to scan container image.CalledProcessError({})".format(output))
                     self.scan_status = self.SCAN_FAILED
                     self.scan_result = None
@@ -595,7 +595,7 @@ class ContainerImage(DeletedMixin,models.Model):
                         self.vulnerabilities.clear()
                 finally:
                     self.scaned = timezone.now()
-    
+
             if self.scan_result and (reparse or self.scan_status in (self.NOT_SCANED,self.SCAN_FAILED,self.PARSE_FAILED)):
                 try:
                     reparse = True
@@ -612,7 +612,7 @@ class ContainerImage(DeletedMixin,models.Model):
                     self.criticals = 0
                     self.unknowns = 0
                     self.vulnerabilities.clear()
-    
+
             if self.pk:
                 if rescan:
                     self.save(update_fields=["scan_result","scan_status","unknowns","criticals","highs","mediums","lows","scan_message","scaned","os"])
@@ -707,7 +707,10 @@ class Workload(DeletedMixin,models.Model):
             return super().save(*args,**kwargs)
 
     def __str__(self):
-        return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
+        if self.namespace:
+            return "{}.{}.{}".format(self.cluster.name, self.namespace.name, self.name)
+        else:
+            return "{}.NA.{}".format(self.cluster.name, self.name)
 
     class Meta:
         unique_together = [["cluster", "namespace", "name","kind"]]
@@ -949,7 +952,7 @@ class Container(models.Model):
     class Meta:
         unique_together = [["cluster","namespace","workload","containerid"],["cluster","workload","containerid"],["cluster","containerid"],["workload","containerid"]]
         index_together = [["cluster","workload","pod_created"]]
-        
+
         ordering = ["cluster","namespace","workload","container_created"]
 
 class ContainerLog(models.Model):
@@ -1073,7 +1076,7 @@ class WorkloadListener(object):
             if not obj:
                 continue
             update_workloads(obj)
-            
+
     @staticmethod
     def delete_image_workloads(instance):
         if instance.containerimage:
