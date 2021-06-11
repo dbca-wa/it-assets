@@ -1,13 +1,63 @@
 from data_storage import AzureBlobStorage
 import json
-from msal import ConfidentialClientApplication
 import os
 import requests
 from itassets.utils import ms_graph_client_token
 
 
+def ms_graph_users(licensed=False):
+    """Query the Microsoft Graph REST API for on-premise user accounts in our tenancy.
+    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
+    """
+    token = ms_graph_client_token()
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
+    }
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,givenName,surname,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true"
+    users = []
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
+
+    while '@odata.nextLink' in j:
+        users = users + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    aad_users = []
+
+    for user in users:
+        if user['businessPhones']:
+            phone = user['businessPhones'][0]
+        else:
+            phone = None
+        aad_users.append({
+            'objectId': user['id'],
+            'mail': user['mail'].lower(),
+            'displayName': user['displayName'],
+            'givenName': user['givenName'],
+            'surname': user['surname'],
+            'jobTitle': user['jobTitle'],
+            'telephoneNumber': phone,
+            'mobilePhone': user['mobilePhone'],
+            'companyName': user['companyName'],
+            'officeLocation': user['officeLocation'],
+            'proxyAddresses': user['proxyAddresses'],
+            'accountEnabled': user['accountEnabled'],
+            'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
+            'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
+        })
+
+    if licensed:
+        return [u for u in aad_users if u['assignedLicenses']]
+    else:
+        return aad_users
+
+
 def get_azure_users_json(container, azure_json_path):
     """Pass in the container name and path to a JSON dump of Azure AD users, return parsed JSON.
+    Deprecated in favour of the ms_graph_users function.
     """
     connect_string = os.environ.get("AZURE_CONNECTION_STRING", None)
     if not connect_string:
@@ -102,7 +152,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
     dept_user.save()
 
 
-def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.json'):
+def deptuser_azure_sync(dept_user):
     """Utility function to perform all of the steps to sync up a single DepartmentUser and Azure AD.
     Function may be run as-is, or queued as an asynchronous task.
     """
@@ -113,49 +163,3 @@ def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.jso
         update_deptuser_from_azure(azure_user, dept_user)
         dept_user.generate_ad_actions(azure_user)
         dept_user.audit_ad_actions(azure_user)
-
-
-def ms_graph_users():
-    """Query the Microsoft Graph REST API for all on-premise licensed users in our tenancy.
-    """
-    token = ms_graph_client_token()
-    headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
-        "ConsistencyLevel": "eventual",
-    }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,givenName,surname,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true"
-    users = []
-    resp = requests.get(url, headers=headers)
-    j = resp.json()
-
-    while '@odata.nextLink' in j:
-        users = users + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
-        resp.raise_for_status()
-        j = resp.json()
-
-    aad_users = []
-
-    for user in users:
-        if user['businessPhones']:
-            phone = user['businessPhones'][0]
-        else:
-            phone = None
-        aad_users.append({
-            'objectId': user['id'],
-            'mail': user['mail'].lower(),
-            'displayName': user['displayName'],
-            'givenName': user['givenName'],
-            'surname': user['surname'],
-            'jobTitle': user['jobTitle'],
-            'telephoneNumber': phone,
-            'mobilePhone': user['mobilePhone'],
-            'companyName': user['companyName'],
-            'officeLocation': user['officeLocation'],
-            'proxyAddresses': user['proxyAddresses'],
-            'accountEnabled': user['accountEnabled'],
-            'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
-            'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
-        })
-
-    return aad_users

@@ -7,12 +7,12 @@ class Command(BaseCommand):
     help = 'Checks user accounts from Azure AD and creates/updates linked DepartmentUser objects'
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Comparing Department Users to Azure AD user accounts'))
-        azure_users = ms_graph_users()
+        self.stdout.write(self.style.SUCCESS('Comparing Department Users to licensed Azure AD user accounts'))
+        azure_users = ms_graph_users(licensed=True)
 
         for az in azure_users:
             if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
-                if az['mail'] and az['assignedLicenses']:  # Azure object has an email and is licensed; proceed.
+                if az['mail']:  # Azure object has an email address; proceed.
 
                     # A department user with matching email may already exist in IT Assets with a different azure_guid.
                     # If so, return a warning and skip that user.
@@ -26,13 +26,13 @@ class Command(BaseCommand):
                         continue
 
                     # A department user with matching email may already exist in IT Assets with no azure_guid.
-                    # If so, simply associate the Azure AD ObjectId with that user.
+                    # If so, simply associate the Azure AD objectId with that user.
                     if DepartmentUser.objects.filter(email__istartswith=az['mail'], azure_guid__isnull=True).exists():
                         existing_user = DepartmentUser.objects.filter(email__istartswith=az['mail']).first()
                         existing_user.azure_guid = az['objectId']
                         existing_user.save()
                         self.stdout.write(
-                            self.style.WARNING('Updated existing user {} with Azure ObjectId {}'.format(az['mail'], az['objectId']))
+                            self.style.WARNING('Updated existing user {} with Azure objectId {}'.format(az['mail'], az['objectId']))
                         )
                         continue
 
@@ -56,10 +56,8 @@ class Command(BaseCommand):
                         title=az['jobTitle'],
                         telephone=az['telephoneNumber'],
                         mobile_phone=az['mobilePhone'],
-                        #manager=manager,
                         cost_centre=cost_centre,
                         location=location,
-                        #mail_nickname=az['MailNickName'],
                         dir_sync_enabled=az['onPremisesSyncEnabled'],
                     )
                     update_deptuser_from_azure(az, new_user)  # Easier way to set some fields.
@@ -73,7 +71,7 @@ class Command(BaseCommand):
                     except:
                         self.stdout.write(
                             self.style.NOTICE(
-                                'Error during sync of {} with Azure ObjectId {}'.format(user.email, az['objectId'])
+                                'Error during sync of {} with Azure objectId {}'.format(user.email, az['objectId'])
                             )
                         )
 
