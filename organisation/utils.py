@@ -152,14 +152,10 @@ def update_deptuser_from_azure(azure_user, dept_user):
     dept_user.save()
 
 
-def deptuser_azure_sync(dept_user):
+def deptuser_azure_sync(dept_user, azure_user):
     """Utility function to perform all of the steps to sync up a single DepartmentUser and Azure AD.
     Function may be run as-is, or queued as an asynchronous task.
     """
-    azure_users = ms_graph_users()
-    azure_user = find_user_in_list(azure_users, objectid=dept_user.azure_guid)
-
-    if azure_user:
-        update_deptuser_from_azure(azure_user, dept_user)
-        dept_user.generate_ad_actions(azure_user)
-        dept_user.audit_ad_actions(azure_user)
+    update_deptuser_from_azure(azure_user, dept_user)
+    dept_user.generate_ad_actions(azure_user)
+    dept_user.audit_ad_actions(azure_user)
