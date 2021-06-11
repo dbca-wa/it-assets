@@ -2,7 +2,7 @@ import datetime
 import re
 import urllib3
 
-import adal
+from msal import ConfidentialClientApplication
 import boto3
 import requests
 import pytz
@@ -452,27 +452,24 @@ def _ms_api(verb, url, previous=None, **kwargs):
 def backup_azure(plugin, date):
     AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
     AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
-    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_APP_SECRET = plugin.params.get(name="AZURE_APP_SECRET").value
     AZURE_SUBSCRIPTION_ID = plugin.params.get(name="AZURE_SUBSCRIPTION_ID").value
     AZURE_VAULT_NAME = plugin.params.get(name="AZURE_VAULT_NAME").value
-
     AZURE_URL = "https://portal.azure.com/#resource{}/backupSetting"
-
     MANAGEMENT_BASE = "https://management.azure.com"
-    MANAGEMENT_SUB = "{}/subscriptions/{}".format(
-        MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID
-    )
+    MANAGEMENT_BASE_SCOPE = "{}/.default".format(MANAGEMENT_BASE)
+    MANAGEMENT_SUB = "{}/subscriptions/{}".format(MANAGEMENT_BASE, AZURE_SUBSCRIPTION_ID)
 
-    ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(
-        MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY
+    ctx = ConfidentialClientApplication(
+        client_id=AZURE_APP_ID,
+        client_credential=AZURE_APP_SECRET,
+        authority=AZURE_TENANT,
     )
-    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
+    token = ctx.acquire_token_for_client(MANAGEMENT_BASE_SCOPE)
+    headers = {"Authorization": "Bearer {}".format(token["access_token"])}
 
     # Get the ID of the specified vault.
-    MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(
-        MANAGEMENT_SUB
-    )
+    MANAGEMENT_LIST_VAULTS = "{}/providers/Microsoft.RecoveryServices/vaults?api-version=2016-06-01".format(MANAGEMENT_SUB)
     vaults = _ms_api("GET", MANAGEMENT_LIST_VAULTS, headers=headers)
 
     vault = None
@@ -547,7 +544,7 @@ def backup_azure(plugin, date):
 def backup_storagesync(plugin, date):
     AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
     AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
-    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_APP_SECRET = plugin.params.get(name="AZURE_APP_SECRET").value
     AZURE_SUBSCRIPTION_ID = plugin.params.get(name="AZURE_SUBSCRIPTION_ID").value
     AZURE_RESOURCE_GROUP = plugin.params.get(name="AZURE_RESOURCE_GROUP").value
     AZURE_STORAGE_SYNC_NAME = plugin.params.get(name="AZURE_STORAGE_SYNC_NAME").value
@@ -556,16 +553,19 @@ def backup_storagesync(plugin, date):
         AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_STORAGE_SYNC_NAME
     )
     MANAGEMENT_BASE = "https://management.azure.com"
+    MANAGEMENT_BASE_SCOPE = "{}/.default".format(MANAGEMENT_BASE)
 
     backup_limit = (
         datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
     ).isoformat()
 
-    ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(
-        MANAGEMENT_BASE, AZURE_APP_ID, AZURE_APP_KEY
+    ctx = ConfidentialClientApplication(
+        client_id=AZURE_APP_ID,
+        client_credential=AZURE_APP_SECRET,
+        authority=AZURE_TENANT,
     )
-    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
+    token = ctx.acquire_token_for_client(MANAGEMENT_BASE_SCOPE)
+    headers = {"Authorization": "Bearer {}".format(token["access_token"])}
 
     # Get list of sync groups
     MANAGEMENT_SYNC_BASE = "{}/subscriptions/{}/resourceGroups/{}/providers/Microsoft.StorageSync/storageSyncServices/{}".format(
@@ -661,18 +661,20 @@ def backup_storagesync(plugin, date):
 def patching_oms(plugin, date):
     AZURE_TENANT = plugin.params.get(name="AZURE_TENANT").value
     AZURE_APP_ID = plugin.params.get(name="AZURE_APP_ID").value
-    AZURE_APP_KEY = plugin.params.get(name="AZURE_APP_KEY").value
+    AZURE_APP_SECRET = plugin.params.get(name="AZURE_APP_SECRET").value
     AZURE_LOG_WORKSPACE = plugin.params.get(name="AZURE_LOG_WORKSPACE").value
-
     LOG_ANALYTICS_BASE = "https://api.loganalytics.io"
-    LOG_ANALYTICS_QUERY = "{}/v1/workspaces/{}/query".format(
-        LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE
+    LOG_ANALYTICS_BASE_SCOPE = "{}/.default".format(LOG_ANALYTICS_BASE)
+    LOG_ANALYTICS_QUERY = "{}/v1/workspaces/{}/query".format(LOG_ANALYTICS_BASE, AZURE_LOG_WORKSPACE)
+
+    ctx = ConfidentialClientApplication(
+        client_id=AZURE_APP_ID,
+        client_credential=AZURE_APP_SECRET,
+        authority=AZURE_TENANT,
     )
-    ctx = adal.AuthenticationContext(AZURE_TENANT)
-    token = ctx.acquire_token_with_client_credentials(
-        LOG_ANALYTICS_BASE, AZURE_APP_ID, AZURE_APP_KEY
-    )
-    headers = {"Authorization": "Bearer {}".format(token["accessToken"])}
+    token = ctx.acquire_token_for_client(LOG_ANALYTICS_BASE_SCOPE)
+    headers = {"Authorization": "Bearer {}".format(token["access_token"])}
+
     patching = requests.get(
         LOG_ANALYTICS_QUERY,
         params={

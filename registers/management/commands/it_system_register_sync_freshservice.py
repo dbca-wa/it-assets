@@ -1,7 +1,9 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand
+import requests
+from urllib.parse import urlparse
+from itassets.utils_freshservice import get_freshservice_objects_curl, create_freshservice_object, update_freshservice_object, FRESHSERVICE_AUTH
 from registers.models import ITSystem
-from registers.utils_freshservice import get_freshservice_objects_curl, create_freshservice_object
 
 
 class Command(BaseCommand):
@@ -23,23 +25,28 @@ class Command(BaseCommand):
 
         # Iterate through the list of IT Systems from the register.
         # If that system has a value for ``freshservice_api_url`` in its extra_data document,
-        # assume that it has already been created within Freshservice and move on.
+        # assume that it has already been created within Freshservice and check if updates are needed.
         # If not, check if there is a match (by name) in the IT System asset list from Freshservice.
         # If there is, link it.
         # If not, create a new asset in Freshservice and then link it.
 
         for system in it_systems:
             name = '{} - {}'.format(system.system_id, system.name)
+            if urlparse(system.link) and urlparse(system.link).scheme:
+                link = system.link
+            else:
+                link = None
             self.stdout.write('Checking {}'.format(name))
 
             if not system.extra_data:
                 system.extra_data = {}
-            if 'freshservice_api_url' not in system.extra_data:  # Not linked to a Freshservice object.
+            if 'freshservice_api_url' not in system.extra_data:  # IT System is not linked to any Freshservice asset.
                 # Is there already a matching asset in Freshservice?
                 existing = False
                 for asset in it_systems_fs:
-                    system_id = asset['name'].split()[0]  # Match on System ID.
-                    if system_id == system.system_id:
+                    asset_system_id = asset['name'].split()[0]  # Match on System ID.
+                    if asset_system_id == system.system_id:
+                        # Link the IT System to this Freshservice asset.
                         existing = True
                         url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
                         self.stdout.write('Linking {} to {}'.format(name, url))
@@ -48,15 +55,97 @@ class Command(BaseCommand):
                         break  # Break out of the for loop.
 
                 if not existing:
-                    self.stdout.write('Unable to find {} in Freshservice, creating a new asset there'.format(name))
+                    self.stdout.write(self.style.SUCCESS('Unable to find {} in Freshservice, creating a new asset'.format(name)))
                     data = {
                         'asset_type_id': settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID,
                         'name': name,
                     }
-                    asset = create_freshservice_object('assets', data).json()['asset']
+                    # type_field values cannot be blank or None.
+                    type_fields = {}
+                    if link:
+                        type_fields['link_75000272223'] = link
+                    if system.owner:
+                        type_fields['system_owner_75000272223'] = system.owner.get_full_name()
+                    if system.technology_custodian:
+                        type_fields['technology_custodian_75000272223'] = system.technology_custodian.get_full_name()
+                    if system.information_custodian:
+                        type_fields['information_custodian_75000272223'] = system.information_custodian.get_full_name()
+                    if type_fields:
+                        data['type_fields'] = type_fields
+
+                    resp = create_freshservice_object('assets', data)
+                    asset = resp.json()['asset']
                     url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
                     self.stdout.write('Linking {} to {}'.format(name, url))
                     system.extra_data['freshservice_api_url'] = url
                     system.save()
+            else:  # IT System is linked to an existing Freshservice asset.
+                matched = False
+                # Find the matching asset.
+                display_id = int(system.extra_data['freshservice_api_url'].split('/')[-1])
+                for asset in it_systems_fs:
+                    if asset['display_id'] == display_id:
+                        matched = True
+                        # Check if updates are required.
+                        # Compare the Freshservice asset to the IT System to check for updates.
+                        data = {}
+                        type_fields = {}
+                        if asset['name'] != name:
+                            data['name'] = name
+                        if link and asset['type_fields']['link_75000272223'] != link:
+                            type_fields['link_75000272223'] = link
+                        if system.owner and asset['type_fields']['system_owner_75000272223'] != system.owner.get_full_name():
+                            type_fields['system_owner_75000272223'] = system.owner.get_full_name()
+                        if system.technology_custodian and asset['type_fields']['technology_custodian_75000272223'] != system.technology_custodian.get_full_name():
+                            type_fields['technology_custodian_75000272223'] = system.technology_custodian.get_full_name()
+                        if system.information_custodian and asset['type_fields']['information_custodian_75000272223'] != system.information_custodian.get_full_name():
+                            type_fields['information_custodian_75000272223'] = system.information_custodian.get_full_name()
+
+                        # Did any of the asset's type_fields need to be updated?
+                        if type_fields:
+                            data['type_fields'] = type_fields
+                        if data:
+                            # Update the Freshservice asset.
+                            resp = update_freshservice_object('assets', asset['display_id'], data)
+                            self.stdout.write('Updated details for {} ({})'.format(system.extra_data['freshservice_api_url'], data))
+
+                        break  # Break out of the for loop.
+
+                if not matched:
+                    # We may be in the situation where the IT System is "linked" to a non-existent Freshservice asset.
+                    # Alternatively, the Freshservice API sometimes seems to not return all of the systems :|
+                    # Try manually downloading the linked asset first.
+                    self.stdout.write(self.style.WARNING('Asset not matched in list, trying to download manually at {}'.format(system.extra_data['freshservice_api_url'])))
+                    params = {'include': 'type_fields'}
+                    resp = requests.get(system.extra_data['freshservice_api_url'], auth=FRESHSERVICE_AUTH, params=params)
+                    resp.raise_for_status()
+                    asset = resp.json()['asset']
+                    asset_system_id = asset['name'].split()[0]  # Match on System ID.
+                    if asset_system_id == system.system_id:
+                        # Finally, we have a match. Check if updates are required.
+                        data = {}
+                        type_fields = {}
+                        if asset['name'] != name:
+                            data['name'] = name
+                        if link and asset['type_fields']['link_75000272223'] != link:
+                            type_fields['link_75000272223'] = link
+                        if system.owner and asset['type_fields']['system_owner_75000272223'] != system.owner.get_full_name():
+                            type_fields['system_owner_75000272223'] = system.owner.get_full_name()
+                        if system.technology_custodian and asset['type_fields']['technology_custodian_75000272223'] != system.technology_custodian.get_full_name():
+                            type_fields['technology_custodian_75000272223'] = system.technology_custodian.get_full_name()
+                        if system.information_custodian and asset['type_fields']['information_custodian_75000272223'] != system.information_custodian.get_full_name():
+                            type_fields['information_custodian_75000272223'] = system.information_custodian.get_full_name()
+
+                        # Did any of the asset's type_fields need to be updated?
+                        if type_fields:
+                            data['type_fields'] = type_fields
+                        if data:
+                            # Update the Freshservice asset.
+                            resp = update_freshservice_object('assets', asset['display_id'], data)
+                            self.stdout.write('Updated details for {} ({})'.format(system.extra_data['freshservice_api_url'], data))
+                    else:
+                        self.stdout.write(self.style.ERROR('{} is linked to the wrong Freshservice asset {}'.format(name, system.extra_data['freshservice_api_url'])))
+                        system.extra_data.pop('freshservice_api_url')
+                        system.save()
 
         self.stdout.write(self.style.SUCCESS('Completed'))

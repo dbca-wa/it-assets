@@ -2,8 +2,8 @@ from django.db.models import Q
 from django.utils.encoding import smart_text
 from django.utils.text import smart_split
 from functools import reduce
-import os
 import requests
+from itassets.utils import ms_graph_client_token
 
 
 def smart_truncate(content, length=100, suffix='....(more)'):
@@ -46,88 +46,41 @@ def search_filter(search_fields, query_string):
     return reduce(Q.__and__, filters) if len(filters) else null_filter
 
 
-def sharepoint_access_token():
-    """Query the Sharepoint REST API for a dict containing an access token.
-    """
-    tenant_id = os.environ["SHAREPOINT_TENANT_ID"]
-    client_id = os.environ["SHAREPOINT_CLIENT_ID"]
-    client_secret = os.environ["SHAREPOINT_CLIENT_SECRET"]
-
-    # Get an access token for further requests.
-    token_url = "https://accounts.accesscontrol.windows.net/{}/tokens/OAuth/2".format(tenant_id)
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    params = {
-        "grant_type": "client_credentials",
-        "resource": "00000003-0000-0ff1-ce00-000000000000/dpaw.sharepoint.com@{}".format(tenant_id),
-        "client_id": "{}@{}".format(client_id, tenant_id),
-        "client_secret": client_secret,
-    }
-    return requests.post(token_url, params, headers=headers).json()
-
-
-def sharepoint_user_information_list():
-    """Query Sharepoint for details of all users in our tenancy.
-    """
-    token_resp = sharepoint_access_token()
-
-    # Get the User Information List details (we need the GUID).
-    url = "https://dpaw.sharepoint.com/_api/web/lists"
+def ms_graph_sharepoint_users():
+    token = ms_graph_client_token()
     headers = {
-        "Accept": "application/json;odata=verbose",
-        "Authorization": "{} {}".format(token_resp["token_type"], token_resp["access_token"])
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
     }
-    resp_json = requests.get(url, headers=headers).json()
-    lists = resp_json['d']['results']
-    for l in lists:
-        if l['Title'] == 'User Information List':
-            uil = l
-            break
+    url = "https://graph.microsoft.com/v1.0/sites/dpaw.sharepoint.com/lists/a9a3eaf6-6580-4506-b7ac-73b621b5ab7a/items?expand=fields"
+    sharepoint_users = []
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
 
-    # Get the list of users.
-    url = "https://dpaw.sharepoint.com/_api/web/lists(guid'{}')/items".format(uil['Id'])
-    users = []
-    more_users = True
+    while '@odata.nextLink' in j:
+        sharepoint_users = sharepoint_users + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
 
-    while more_users:
-        resp_json = requests.get(url, headers=headers).json()
-        users += resp_json['d']['results']
-        if '__next' in resp_json['d']:
-            url = resp_json['d']['__next']
-        else:
-            more_users = False
-
-    return users
+    return [user['fields'] for user in sharepoint_users]
 
 
-def sharepoint_it_system_register_list():
-    """Query Sharepoint for the IT System Register list contents.
-    """
-    token_resp = sharepoint_access_token()
-
-    # Get the IT Systems Register list details (we need the GUID).
-    url = "https://dpaw.sharepoint.com/Divisions/corporate/oim/_api/Web/lists"
+def ms_graph_sharepoint_it_systems():
+    token = ms_graph_client_token()
     headers = {
-        "Accept": "application/json;odata=verbose",
-        "Authorization": "{} {}".format(token_resp["token_type"], token_resp["access_token"])
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
     }
-    resp_json = requests.get(url, headers=headers).json()
-    lists = resp_json['d']['results']
-    for l in lists:
-        if l['Title'] == 'IT Systems Register':
-            register_list = l
-            break
-
-    # IT System register
-    url = "https://dpaw.sharepoint.com/Divisions/corporate/oim/_api/Web/lists(guid'{}')/items".format(register_list['Id'])
+    url = "https://graph.microsoft.com/v1.0/sites/dpaw.sharepoint.com,485537cf-e72c-431d-9d71-f5101df1f274,2091d73c-5d12-4d02-ac11-fdbe889a6d95/lists/65703834-92c6-4de6-9d10-83862730115f/items?expand=fields"
     it_systems = []
-    more_systems = True
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
 
-    while more_systems:
-        resp_json = requests.get(url, headers=headers).json()
-        it_systems += resp_json['d']['results']
-        if '__next' in resp_json['d']:
-            url = resp_json['d']['__next']
-        else:
-            more_systems = False
+    while '@odata.nextLink' in j:
+        it_systems = it_systems + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
 
-    return it_systems
+    return [system['fields'] for system in it_systems]

@@ -8,15 +8,6 @@ import requests
 FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, 'X')
 
 
-def get_freshservice_object(obj_type, id):
-    """Query the Freshservice v2 API for a single object.
-    """
-    url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
-    resp = requests.get(url, auth=FRESHSERVICE_AUTH)
-    resp.raise_for_status()
-    return resp.json()
-
-
 def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     """The `requests` library has a (normally very useful) feature of normalising
     quotes in request URIs (https://github.com/kennethreitz/requests/blob/master/requests/utils.py#L604).
@@ -25,14 +16,14 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     Reference: https://api.freshservice.com/v2/#filter_assets
     As we can't force request to NOT requote URIs, we're forced to call on curl directly
     on the command line :(
-    We very much indent to factor this method out when possible.
+    We very much intend to factor this method out when possible.
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     if query:
         url = url + '?query="{}"'.format(query)
 
     if verbose:
-        print('Querying {}'.format(url))
+        print('Querying headers')
 
     # First, make a query to get the count of results.
     out = check_output([
@@ -57,20 +48,20 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     if not count:
         return None
     count = int(count.split()[1])
-    if verbose:
-        print(out_lines)
 
     if count == 0:
         return None
 
     pages = ceil(count / 30)  # Always 30 results/page for filter queries.
     objects = []
+    if verbose:
+        print("{} objects, {} pages".format(count, pages))
 
     # Starting at 1, call the API
     for i in range(1, pages + 1):
         url_page = url + '&include=type_fields&page={}'.format(i)
         if verbose:
-            print('Querying page {}'.format(i))
+            print('Querying {}'.format(url_page))
 
         out = check_output([
             'curl',
@@ -86,20 +77,14 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     return objects
 
 
-def get_freshservice_objects(obj_type, query=None, verbose=False):
+def get_freshservice_objects(obj_type, verbose=False):
     """Query the Freshservice v2 API for objects of a defined type.
-    ``query`` should be a valid query filter string for the API.
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     params = {
         'page': 1,
-        'include': 'type_fields',
+        'per_page': 100,
     }
-    if query:
-        # Note that we can't just add the query string to params, because requests
-        # helpfully URL-encodes away the double quotes.
-        # The easiest solution is simply to append the query string on the URL.
-        url = url + '?query="{}"'.format(query)
     objects = []
     further_results = True
 
@@ -108,7 +93,6 @@ def get_freshservice_objects(obj_type, query=None, verbose=False):
             print('Querying page {}'.format(params['page']))
 
         resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
-        resp.raise_for_status()
 
         if 'link' not in resp.headers:  # No further paginated results.
             further_results = False
@@ -128,17 +112,13 @@ def create_freshservice_object(obj_type, data):
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
-    resp.raise_for_status()
-
     return resp  # Return the response, so we can handle unsuccessful responses.
 
 
 def update_freshservice_object(obj_type, id, data):
-    """Use the Freshservice v2 API to create an object.
+    """Use the Freshservice v2 API to update an object.
     Accepts an object name (string) and a dict of key values.
     """
     url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
     resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
-    resp.raise_for_status()
-
     return resp  # Return the response, so we can handle unsuccessful responses.

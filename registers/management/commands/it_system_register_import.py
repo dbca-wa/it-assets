@@ -1,25 +1,27 @@
 from django.core.management.base import BaseCommand
 from organisation.models import DepartmentUser
 from registers.models import ITSystem
-from registers.utils import sharepoint_user_information_list, sharepoint_it_system_register_list
+from registers.utils import ms_graph_sharepoint_users, ms_graph_sharepoint_it_systems
 
 
 class Command(BaseCommand):
     help = 'Queries Sharepoint for the IT System Register and syncs it locally'
 
     def handle(self, *args, **options):
-        self.stdout.write('Querying Sharepoint for user information')
-        users = sharepoint_user_information_list()
+        self.stdout.write('Querying Microsoft Graph API for Sharepoint user information')
+        sharepoint_users = ms_graph_sharepoint_users()
 
         # Create a dict of user emails using Id as the key.
         users_dict = {}
-        for user in users:
-            users_dict[user['Id']] = user['EMail']
+        for user in sharepoint_users:
+            if 'EMail' in user:
+                users_dict[user['id']] = user['EMail']
 
-        self.stdout.write('Querying Sharepoint for IT System Register')
-        it_systems = sharepoint_it_system_register_list()
+        self.stdout.write('Querying Microsoft Graph API for IT System Register')
+        it_systems = ms_graph_sharepoint_it_systems()
 
         prod_systems = ITSystem.objects.filter(status__in=[0, 2])
+
         for system in it_systems:
             self.stdout.write('Checking {}'.format(system['Title']))
             system_id = system['Title'].split()[0]
@@ -56,8 +58,8 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS('Changing {} status to Decommissioned'.format(it_system)))
 
             # System owner
-            if system['SystemOwnerId']:
-                owner_email = users_dict[system['SystemOwnerId']]
+            if system['SystemOwnerLookupId']:
+                owner_email = users_dict[system['SystemOwnerLookupId']]
             else:
                 owner_email = None
             if owner_email:
@@ -83,8 +85,8 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING('No owner recorded for {}, clearing'.format(it_system)))
 
             # Technology custodian
-            if system['TechnicalCustodianId']:
-                custodian_email = users_dict[system['TechnicalCustodianId']]
+            if system['TechnicalCustodianLookupId']:
+                custodian_email = users_dict[system['TechnicalCustodianLookupId']]
             else:
                 custodian_email = None
             if custodian_email:
@@ -108,8 +110,8 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING('No tech custodian recorded for {}, clearing'.format(it_system)))
 
             # Information custodian
-            if system['InformationCustodianId']:
-                info_email = users_dict[system['InformationCustodianId']]
+            if system['InformationCustodianLookupId']:
+                info_email = users_dict[system['InformationCustodianLookupId']]
             else:
                 info_email = None
             if info_email:
@@ -133,7 +135,10 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING('No info custodian recorded for {}, clearing'.format(it_system)))
 
             # Seasonality
-            season = system['Seasonality']
+            if 'Seasonality' in system:
+                season = system['Seasonality']
+            else:
+                season = None
             if season and season != it_system.get_seasonality_display():
                 for i in ITSystem.SEASONALITY_CHOICES:
                     if season == i[1]:
@@ -142,7 +147,10 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS('Changing {} seasonality to {}'.format(it_system, season)))
 
             # Availability
-            avail = system['Availability']
+            if 'Availability' in system:
+                avail = system['Availability']
+            else:
+                avail = None
             if avail and avail != it_system.get_availability_display():
                 for i in ITSystem.AVAILABILITY_CHOICES:
                     if avail == i[1]:
@@ -151,18 +159,21 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS('Changing {} availability to {}'.format(it_system, avail)))
 
             # Link
-            if system['Link0'] and system['Link0']['Url']:
-                link = system['Link0']['Url']
+            if 'Link0' in system and system['Link0'] and system['Link0']['Url']:
+                link = system['Link0']['Url'].strip()
             else:
                 link = None
-            if link and link.strip() != it_system.link:
-                it_system.link = link.strip()
+            if link != it_system.link:
+                it_system.link = link
                 update = True
                 self.stdout.write(self.style.SUCCESS('Changing {} link to {}'.format(it_system, link)))
 
             # Description
-            desc = system['Description']
-            if desc and desc != it_system.description:
+            if 'Description' in system:
+                desc = system['Description']
+            else:
+                desc = ''
+            if desc != it_system.description:
                 it_system.description = desc
                 update = True
                 self.stdout.write(self.style.SUCCESS('Changing {} description to {}'.format(it_system, desc)))

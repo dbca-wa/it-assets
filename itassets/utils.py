@@ -3,10 +3,25 @@ from django.db.models import Q
 from django.http import HttpResponse
 from djqscsv import render_to_csv_response
 import logging
+from msal import ConfidentialClientApplication
+import os
 import re
 from restless.dj import DjangoResource
 import subprocess
 import simdjson
+
+
+def ms_graph_client_token():
+    azure_tenant_id = os.environ["AZURE_TENANT_ID"]
+    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
+    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
+    context = ConfidentialClientApplication(
+        client_id=client_id,
+        client_credential=client_secret,
+        authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
+    )
+    scope = "https://graph.microsoft.com/.default"
+    return context.acquire_token_for_client(scope)
 
 
 class ModelDescMixin(object):

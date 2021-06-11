@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "it-assets"
-version = "2.2.49"
+version = "2.2.56"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-Django = "2.2.21"
+Django = "2.2.24"
 psycopg2-binary = "2.8.6"
 dbca-utils = "1.1.1"
 django-extensions = "3.1.3"
@@ -32,7 +32,6 @@ djangorestframework-gis = "0.14"
 djangorestframework-recursive = "0.1.2"
 django-cors-headers = "3.4.0"
 django-crispy-forms = "1.10.0"
-adal = "1.2.0"
 boto3 = "1.14.56"
 python-nmap = "0.6.1"
 texttable = "1.6.3"
@@ -47,6 +46,7 @@ webtemplate-dbca = "1.3.0"
 fuzzywuzzy = "0.18.0"
 python-Levenshtein = "0.12.0"
 mixer = "6.1.3"
+msal = "1.12.0"
 
 [tool.poetry.dev-dependencies]
 ipython = "^7.20.0"
