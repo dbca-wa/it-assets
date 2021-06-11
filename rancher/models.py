@@ -7,8 +7,11 @@ from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.urls import reverse
 from django.utils import timezone
-from django.db.models.signals import pre_save,pre_delete,m2m_changed
+from django.db.models.signals import pre_save,pre_delete,m2m_changed,post_save
 from django.dispatch import receiver
+
+from registers.models import ITSystem
+from . import utils
 
 logger = logging.getLogger(__name__)
 
@@ -293,10 +296,16 @@ class IngressRule(models.Model):
 
     @property
     def listen(self):
-        if self.path:
-            return "{}://{}:{}/{}".format(self.protocol,self.hostname,self.port,self.path)
+        if (self.protocol == 'http' and self.port == 80) or (self.protocol == 'https' and self.port == 443):
+            if self.path:
+                return "{}://{}/{}".format(self.protocol,self.hostname,self.path)
+            else:
+                return "{}://{}".format(self.protocol,self.hostname)
         else:
-            return "{}://{}:{}".format(self.protocol,self.hostname,self.port)
+            if self.path:
+                return "{}://{}:{}/{}".format(self.protocol,self.hostname,self.port,self.path)
+            else:
+                return "{}://{}:{}".format(self.protocol,self.hostname,self.port)
 
     def __str__(self):
         if self.path:
@@ -648,11 +657,15 @@ class Workload(DeletedMixin,models.Model):
     WARNING = 2
     INFO = 1
 
+    DEPLOYMENT = "Deployment"
+
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='workloads', editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='workloads', editable=False,null=True)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='workloads', editable=False, null=True)
     name = models.CharField(max_length=512, editable=False)
     kind = models.CharField(max_length=64, editable=False)
+
+    itsystem = models.ForeignKey(ITSystem, on_delete=models.SET_NULL, related_name='workloads', editable=False,null=True)
 
     # a array  of three elements array (container_id, running status(1:running,0 terminated) ,log level(0 no log,1 INFO, 2 WARNING 2,4 ERROR)
     latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
@@ -693,15 +706,131 @@ class Workload(DeletedMixin,models.Model):
         else:
             return "{0}/p/{1}:{2}/workloads/run?group=namespace&namespaceId={4}&upgrade=true&workloadId={3}:{4}:{5}".format(settings.GET_CLUSTER_MANAGEMENT_URL(self.cluster.name),self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
 
-    @property
-    def webapps(self):
-        from nginx.models import WebAppLocationServer
-        apps = set()
-        for location_server in WebAppLocationServer.objects.filter(rancher_workload=self):
-            apps.add(location_server.location.app)
 
-        return apps
+    def update_itsystem(self,itsystems=None,refresh=False):
+        """
+        Update workload's property 'itsystem'  if required
+        refresh: always update it's itsystem even if it has already been set.
+        return True if updated; otherwise return False
+        """
+        if self.itsystem and not refresh:
+            return False
+        webserver = self.find_related_webserver()
+        if self != webserver:
+            if webserver:
+                webserver.update_itsystem(itsystems=itsystems)
+                if self.itsystem == webserver.itsystem:
+                    #itsystem is not changed
+                    return False
+                self.itsystem = webserver.itsystem
+            elif self.itsystem:
+                self.itsystem = None
+            else:
+                #itsystem is not changed
+                return False
+            self.save(update_fields=["itsystem"])
+            return True
+            
+        itsystems = itsystems or list(ITSystem.objects.all().only("name","acronym","extra_data"))
+        itsystem = None
+        version = None
+        for listener in WorkloadListening.objects.filter(workload=self,ingress_rule__isnull=False).order_by("ingress_rule__hostname"):
+            hostname = listener.ingress_rule.hostname
+            for obj in itsystems:
+                #if obj.name.lower().startswith("parkstay"):
+                #    import ipdb;ipdb.set_trace()
+                if isinstance(obj.extra_data,str):
+                    print("itsystem({}<{}>):{}({})".format(obj.name,obj.id,obj.extra_data.__class__,obj.extra_data))
+                    #extra data  is not a dictionary, changee it to dictionary
+                    obj.extra_data = utils.parse_json(obj.extra_data)
+                    obj.save(update_fields=["extra_data"])
+                if obj.extra_data and hostname in (obj.extra_data.get("url_synonyms") or []):
+                    #hostname in url_synonyms; this is the itsystem linked to the workload
+                    itsystem = obj
+                    version = "prod"
+                    break
+                synonyms = obj.extra_data.get("synonyms") if obj.extra_data else None
+                if not synonyms and obj.acronym:
+                    #synonyms is not configured, use "acronym" as the default 'synonyms'
+                    synonyms = [obj.acronym]
 
+                if not  synonyms:
+                    continue
+    
+                synonyms.sort(reverse=True,key=lambda o:len(o))
+                for synonym in synonyms:
+                    system_re = re.compile( "{}(?P<api>api)?(-(?P<version>[a-z0-9]+(-[a-z0-9]+)*))?\.(dbca|dpaw)\.wa\.gov\.au".format(synonym.lower()))
+                    m = system_re.search(hostname)
+                    if m:
+                        #the host name matchs the synonym. 
+                        if itsystem:
+                            if len(m.group("version")) < len(version):
+                                #found another itsystem which version's length is less than the previous found it system. use the current it system as the it system linked to the workload
+                                itsystem = obj
+                                version = m.group("version")
+                        else:
+                            #didn't find a matched it system, use this as the it system linked to the workload
+                            itsystem = obj
+                            version = m.group("version")
+                        break
+            if itsystem:
+                break
+        if self.itsystem == itsystem:
+            #itsystem is not changed
+            return False
+
+        self.itsystem = itsystem
+        self.save(update_fields=["itsystem"])
+        return True
+
+    def find_related_webserver(self):
+        if self.kind == self.DEPLOYMENT and WorkloadListening.objects.filter(workload=self,ingress_rule__isnull=False).exists():
+            return self
+
+        if not self.containerimage:
+            return None
+        #try to find the deployment with the same image
+        deployment = Workload.objects.filter(kind=self.DEPLOYMENT,containerimage=self.containerimage).first()
+        if deployment and WorkloadListening.objects.filter(workload=deployment,ingress_rule__isnull=False).exists():
+            return deployment
+
+        qs = Workload.objects.filter(kind=self.DEPLOYMENT)
+        if self.containerimage.account:
+            qs = qs.filter(containerimage__account = self.containerimage.account)
+        else:
+            qs = qs.filter(containerimage__account__isnull=True)
+
+        qs = qs.filter(containerimage__name = self.containerimage.name)
+        #try to find the deployment which image has the same account and name but tag is not 'latest'
+        deployments = list(o for o in (qs if self.containerimage.tag == "latest" else qs.exclude(containerimage__tag="latest")) if WorkloadListening.objects.filter(workload=o,ingress_rule__isnull=False).exists())
+
+        #try to find the deployment which image has the same account and name, and alos its tag is 'latest'
+        if not deployments and self.containerimage.tag != "latest":
+            deployments = list(o for o in qs.filter(containerimage__tag="latest") if WorkloadListening.objects.filter(workload=o,ingress_rule__isnull=False).exists())
+
+        if not deployments:
+            return None
+        elif len(deployments) == 1:
+            return deployments[0]
+
+        #found more than one deployments, try to find the match one
+        workload_version = None
+        for version in ("uat","dev","prod"):
+            if version in self.name.lower():
+                workload_version = version
+                break
+
+        for deployment in deployments:
+            if workload_version:
+                if workload_version in deployment.name.lower():
+                    return deployment
+            else:
+                if not any(v in deployment.name for v in ("uat","dev","prod")):
+                    return deployment
+
+        #can't find the match one, choose the first one
+        return deployments[0]
+        
     def save(self,*args,**kwargs):
         with transaction.atomic():
             return super().save(*args,**kwargs)
@@ -1145,6 +1274,53 @@ class NamespaceListener(object):
                 active_workloads=models.F("active_workloads") + instance.active_workloads,
                 deleted_workloads=models.F("deleted_workloads") + instance.deleted_workloads
             )
+
+class ITSystemListener(object):
+    @staticmethod
+    @receiver(pre_save,sender=ITSystem)
+    def request_update_workload_itsystem(sender,instance,update_fields=None,**kwargs):
+        if instance.pk and (update_fields is None or "extra_data" in update_fields or "acronym" in update_fields):
+            db_obj = ITSystem.objects.get(id=instance.id)
+            db_extra_data = utils.parse_json(db_obj.extra_data)
+            extra_data = utils.parse_json(instance.extra_data)
+            if (db_obj.acronym == instance.acronym
+                and db_extra_data.get("url_synonyms") == extra_data.get("url_synonyms") 
+                and db_extra_data.get("synonyms") ==  extra_data.get("synonyms")
+            ):
+                return
+
+        instance.update_workload_itsystem = True
+
+
+    @staticmethod
+    @receiver(post_save,sender=ITSystem)
+    def update_workload_itsystem(sender,instance,update_fields=None,**kwargs):
+        if not hasattr(instance,"update_workload_itsystem") :
+            return
+        elif not instance.update_workload_itsystem:
+            delattr(instance,"update_workload_itsystem")
+            return
+
+        #update the deployment first
+        itsystems = [instance]
+        for workload in Workload.objects.filter(itsystem__isnull=True,kind=Workload.DEPLOYMENT):
+            if not WorkloadListening.objects.filter(workload=workload,ingress_rule__isnull=False).exists():
+                continue
+            if workload.update_itsystem(itsystems=itsystems):
+                #deployment changed, find the related workloads and update.
+                qs = Workload.objects.filter(itsystem__isnull=True)
+                if workload.containerimage.account:
+                    qs = qs.filter(containerimage__account=workload.containerimage.account)
+                else:
+                    qs = qs.filter(containerimage__account__isnull=True)
+
+                qs = qs.filter(containerimage__name=workload.containerimage.name)
+                
+                for o in qs:
+                    o.update_itsystem(itsystems=itsystems)
+
+
+        delattr(instance,"update_workload_itsystem")
 
 
 class VulnerabilitiesListener(object):

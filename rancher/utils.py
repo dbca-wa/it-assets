@@ -1,4 +1,5 @@
 import datetime
+import  json
 from data_storage.utils import get_property
 from django.utils import timezone
 
@@ -55,4 +56,34 @@ def set_fields_from_config(obj,config,fields,update_fields=None):
                 update_fields.append(field)
 
     return update_fields
+
+def parse_json(s,null={}):
+    """
+    convert a object json string to an object
+    return  null if s is empty
+    """
+    
+    if s is None:
+        return null
+
+    if not isinstance(s,str):
+        return s
+   
+    try:
+        while isinstance(s,str):
+            s = s.strip()
+            if not s:
+                return null
+
+            s = json.loads(s)
+    except:
+        pass
+
+    if s is None:
+        return null
+    else:
+        return s
+
+
+
 

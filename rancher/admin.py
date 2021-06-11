@@ -13,7 +13,6 @@ from django_q.tasks import async_task
 
 from . import models
 from . import rancher_harvester
-from nginx.models import WebApp
 from .decorators import  add_changelink,many2manyinline
 
 logger = logging.getLogger(__name__)
@@ -539,7 +538,7 @@ class ProjectAdmin(RequestMixin,LookupAllowedMixin,ClusterLinkMixin,ProjectLinkM
 
 class WorkloadInline4Namespace(DeletedMixin,WorkloadLinkMixin,DatetimeMixin,admin.TabularInline):
     model = models.Workload
-    readonly_fields = ('_name_with_link', 'kind','image',"suspend","_modified","_deleted")
+    readonly_fields = ('_name_with_link', 'kind','image','itsystem',"suspend","_modified","_deleted")
     fields = readonly_fields
     ordering = ('name',)
     get_workload = staticmethod(lambda obj:obj)
@@ -799,7 +798,7 @@ class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline
 
 class WorkloadInline4Image(RequestMixin,DeletedMixin,ClusterLinkMixin,ProjectLinkMixin,WorkloadLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.TabularInline):
     model = models.Workload
-    readonly_fields = ('_name_with_link','_cluster','_project','_namespace', 'kind','image',"suspend","_modified","_deleted")
+    readonly_fields = ('_name_with_link','_cluster','_project','_namespace', 'kind','image','itsystem',"suspend","_modified","_deleted")
     fields = readonly_fields
     ordering = ('name',)
     get_workload = staticmethod(lambda obj:obj)
@@ -1147,13 +1146,13 @@ class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsL
 
 @admin.register(models.Workload)
 class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,ContainerImageLinkMixin,DatetimeMixin, admin.ModelAdmin):
-    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage', '_containers','_running_status', '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage', '_containers','_running_status', '_modified','_deleted')
+    list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage','itsystem', '_containers','_running_status', '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage','itsystem', '_containers','_running_status', '_modified','_deleted')
 
     list_display_links = None
 
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend","added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule', '_webapps','_containers','_running_status', '_modified',"suspend")
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule','_containers','_running_status', '_modified',"suspend","added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule','_containers','_running_status', '_modified',"suspend")
 
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule',  '_webapps','_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule', '_webapps','_containers','_running_status',"suspend", '_modified','_deleted')
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule', '_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule','_containers','_running_status',"suspend", '_modified','_deleted')
 
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
@@ -1161,7 +1160,6 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
     get_workload = staticmethod(lambda obj: obj)
 
     inlines = [WorkloadDatabaseInline1, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
-    webapp_change_url_name = 'admin:{}_{}_change'.format(WebApp._meta.app_label, WebApp._meta.model_name)
 
     list_url_name = '{}_{}_changelist'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
     def get_queryset(self, request):
@@ -1179,28 +1177,6 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
         else:
             return ""
     _replicas.short_description = "Replicas"
-
-    def _webapps(self, obj):
-        if not obj:
-            return ""
-        else:
-            apps = obj.webapps
-            if apps:
-                result = None
-                for app in apps:
-                    try:
-                        url = reverse(self.webapp_change_url_name, args=(app.id,))
-                        if result:
-                            result = "{}\n<A href='{}'>{}</A>".format(result, url, app.name)
-                        else:
-                            result = "<A href='{}'>{}</A>".format(url, app.name)
-                    except:
-                        result = app.name
-
-                return mark_safe("<pre>{}</pre>".format(result))
-            else:
-                return ""
-    _webapps.short_description = "Web Applications"
 
     def has_change_permission(self, request, obj=None):
         return False

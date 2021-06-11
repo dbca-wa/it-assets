@@ -9,6 +9,7 @@ from django.utils import timezone
 from data_storage import LockSession
 
 from . import models
+from registers.models import ITSystem
 
 logger = logging.getLogger(__name__)
 
@@ -532,3 +533,27 @@ def reparse_image_scan_result(scan=False):
     for image in qs:
         image.scan(rescan=False,reparse=True)
         print("Succeed to parse the scan result of the container image '{}'".format(image.imageid))
+
+def set_workload_itsystem(refresh=False):
+    itsystems = list(ITSystem.objects.all().only("name","acronym","extra_data"))
+
+    qs = models.Workload.objects.all()
+    if not refresh:
+        qs = qs.filter(itsystem__isnull=True)
+
+    #update deployment first
+    for workload in qs.filter(kind=models.Workload.DEPLOYMENT):
+        print("Begin to update the itsystem({2}) of the workload({0}<{1}>)".format(workload,workload.id,workload.itsystem))
+        if workload.update_itsystem(itsystems=itsystems,refresh=refresh):
+            print("Update the itsystem of the workload({0}) to {1}".format(workload,workload.itsystem))
+        else:
+            print("The itsystem({1}) of the workload({0}) is not changed".format(workload,workload.itsystem))
+
+
+    #update others
+    for workload in qs.exclude(kind=models.Workload.DEPLOYMENT):
+        print("Begin to update the itsystem({2}) of the workload({0}<{1}>)".format(workload,workload.id,workload.itsystem))
+        if workload.update_itsystem(itsystems=itsystems,refresh=refresh):
+            print("Update the itsystem of the workload({0}) to {1}".format(workload,workload.itsystem))
+        else:
+            print("The itsystem({1}) of the workload({0}) is not changed".format(workload,workload.itsystem))

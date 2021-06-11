@@ -15,7 +15,6 @@ from django.db import transaction
 from data_storage import ResourceConsumeClient, AzureBlobStorage,exceptions,LockSession
 from . import models
 from data_storage.utils import get_property
-from nginx.models import WebAppLocationServer
 from .utils import set_fields,set_field,set_fields_from_config
 from . import modeldata
 
@@ -1543,14 +1542,14 @@ process_func_map = {
     20:update_volume,
     30:update_volume_claim,
     40:update_ingress,
-    50:update_statefulset,
-    60:update_deployment,
+    50:update_deployment,
+    60:update_statefulset,
     70:update_cronjob,
     75:update_daemonset,
     80:delete_cronjob,
     85:delete_daemonset,
-    90:delete_deployment,
-    100:delete_statefulset,
+    90:delete_statefulset,
+    100:delete_deployment,
     110:delete_ingress,
     120:delete_volume_claim,
     130:delete_volume,
@@ -1569,9 +1568,9 @@ def resource_type(status,resource_id):
         return 30
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and INGRESS_RE.search(resource_id):
         return 40
-    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and STATEFULSET_RE.search(resource_id):
-        return 50
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and DEPLOYMENT_RE.search(resource_id):
+        return 50
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and STATEFULSET_RE.search(resource_id):
         return 60
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CRONJOB_RE.search(resource_id):
         return 70
@@ -1581,9 +1580,9 @@ def resource_type(status,resource_id):
         return 80
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DAEMONSET_RE.search(resource_id):
         return 85
-    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DEPLOYMENT_RE.search(resource_id):
-        return 90
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and STATEFULSET_RE.search(resource_id):
+        return 90
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and DEPLOYMENT_RE.search(resource_id):
         return 100
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and INGRESS_RE.search(resource_id):
         return 110
@@ -1721,7 +1720,6 @@ def _harvest(cluster,reconsume=False):
         
     finally:
         #logger.debug("Begin to refresh rancher workload in web app locaion")
-        #WebAppLocationServer.refresh_rancher_workload(cluster)
         harvester.message = message
         harvester.endtime = timezone.now()
         harvester.last_heartbeat = harvester.endtime
