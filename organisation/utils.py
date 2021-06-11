@@ -1,13 +1,63 @@
 from data_storage import AzureBlobStorage
 import json
-from msal import ConfidentialClientApplication
 import os
-import re
 import requests
+from itassets.utils import ms_graph_client_token
+
+
+def ms_graph_users(licensed=False):
+    """Query the Microsoft Graph REST API for on-premise user accounts in our tenancy.
+    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
+    """
+    token = ms_graph_client_token()
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
+    }
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,givenName,surname,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true"
+    users = []
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
+
+    while '@odata.nextLink' in j:
+        users = users + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    aad_users = []
+
+    for user in users:
+        if user['businessPhones']:
+            phone = user['businessPhones'][0]
+        else:
+            phone = None
+        aad_users.append({
+            'objectId': user['id'],
+            'mail': user['mail'].lower(),
+            'displayName': user['displayName'],
+            'givenName': user['givenName'],
+            'surname': user['surname'],
+            'jobTitle': user['jobTitle'],
+            'telephoneNumber': phone,
+            'mobilePhone': user['mobilePhone'],
+            'companyName': user['companyName'],
+            'officeLocation': user['officeLocation'],
+            'proxyAddresses': user['proxyAddresses'],
+            'accountEnabled': user['accountEnabled'],
+            'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
+            'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
+        })
+
+    if licensed:
+        return [u for u in aad_users if u['assignedLicenses']]
+    else:
+        return aad_users
 
 
 def get_azure_users_json(container, azure_json_path):
     """Pass in the container name and path to a JSON dump of Azure AD users, return parsed JSON.
+    Deprecated in favour of the ms_graph_users function.
     """
     connect_string = os.environ.get("AZURE_CONNECTION_STRING", None)
     if not connect_string:
@@ -21,13 +71,13 @@ def find_user_in_list(user_list, email=None, objectid=None):
     """
     if email:
         for user in user_list:
-            if 'Mail' in user and user['Mail'] and user['Mail'].lower() == email.lower():  # Azure AD
+            if 'mail' in user and user['mail'] and user['mail'].lower() == email.lower():  # Azure AD
                 return user
             elif 'EmailAddress' in user and user['EmailAddress'] and user['EmailAddress'].lower() == email.lower():  # Onprem AD
                 return user
     if objectid:
         for user in user_list:
-            if 'ObjectId' in user and user['ObjectId'] and user['ObjectId'] == objectid:  # Azure AD
+            if 'objectId' in user and user['objectId'] and user['objectId'] == objectid:  # Azure AD
                 return user
             elif 'ObjectGUID' in user and user['ObjectGUID'] and user['ObjectGUID'] == objectid:  # Onprem AD
                 return user
@@ -48,27 +98,23 @@ def update_deptuser_from_azure(azure_user, dept_user):
     """For given Azure AD user and DepartmentUser objects, update the DepartmentUser object fields
     with values from Azure (the source of truth for these values).
     """
-    if azure_user['ObjectId'] != dept_user.azure_guid:
-        dept_user.azure_guid = azure_user['ObjectId']
-    if azure_user['AccountEnabled'] != dept_user.active:
-        dept_user.active = azure_user['AccountEnabled']
-    if azure_user['Mail'] != dept_user.email:
-        dept_user.email = azure_user['Mail']
-    if azure_user['DisplayName'] != dept_user.name:
-        dept_user.name = azure_user['DisplayName']
-    if azure_user['GivenName'] != dept_user.given_name:
-        dept_user.given_name = azure_user['GivenName']
-    if azure_user['Surname'] != dept_user.surname:
-        dept_user.surname = azure_user['Surname']
-    if azure_user['MailNickName'] != dept_user.mail_nickname:
-        dept_user.mail_nickname = azure_user['MailNickName']
-    if azure_user['DirSyncEnabled'] != dept_user.dir_sync_enabled:
-        dept_user.dir_sync_enabled = azure_user['DirSyncEnabled']
+    if azure_user['objectId'] != dept_user.azure_guid:
+        dept_user.azure_guid = azure_user['objectId']
+    if azure_user['accountEnabled'] != dept_user.active:
+        dept_user.active = azure_user['accountEnabled']
+    if azure_user['mail'] != dept_user.email:
+        dept_user.email = azure_user['mail']
+    if azure_user['displayName'] != dept_user.name:
+        dept_user.name = azure_user['displayName']
+    if azure_user['givenName'] != dept_user.given_name:
+        dept_user.given_name = azure_user['givenName']
+    if azure_user['surname'] != dept_user.surname:
+        dept_user.surname = azure_user['surname']
+    if azure_user['onPremisesSyncEnabled'] != dept_user.dir_sync_enabled:
+        dept_user.dir_sync_enabled = azure_user['onPremisesSyncEnabled']
 
-    dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in azure_user['ProxyAddresses'] if i.lower().startswith('smtp')]
+    dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in azure_user['proxyAddresses'] if i.lower().startswith('smtp')]
 
-    licence_pattern = 'SkuId:\s[a-z0-9-]+'
-    skus = [re.search(licence_pattern, i)[0].replace('SkuId: ', '') for i in azure_user['AssignedLicenses'] if re.search(licence_pattern, i)]
     dept_user.assigned_licences = []
     # MS licence SKU reference:
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
@@ -97,7 +143,7 @@ def update_deptuser_from_azure(azure_user, dept_user):
         '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1',  # STANDARDPACK
         '06ebc4ee-1bb5-47dd-8120-11324bc54e06': 'MICROSOFT 365 E5',
     }
-    for sku in skus:
+    for sku in azure_user['assignedLicenses']:
         if sku in ms_licence_skus:
             dept_user.assigned_licences.append(ms_licence_skus[sku])
         else:
@@ -106,68 +152,10 @@ def update_deptuser_from_azure(azure_user, dept_user):
     dept_user.save()
 
 
-def deptuser_azure_sync(dept_user, container='azuread', azure_json='aadusers.json'):
+def deptuser_azure_sync(dept_user, azure_user):
     """Utility function to perform all of the steps to sync up a single DepartmentUser and Azure AD.
     Function may be run as-is, or queued as an asynchronous task.
     """
-    azure_users = get_azure_users_json(container, azure_json)
-    azure_user = find_user_in_list(azure_users, objectid=dept_user.azure_guid)
-
-    if azure_user:
-        update_deptuser_from_azure(azure_user, dept_user)
-        dept_user.generate_ad_actions(azure_user)
-        dept_user.audit_ad_actions(azure_user)
-
-
-def ms_graph_users():
-    """Query the Microsoft Graph REST API for all on-premise licensed users in our tenancy.
-    """
-    azure_tenant_id = os.environ["AZURE_TENANT_ID"]
-    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
-    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
-    ctx = ConfidentialClientApplication(
-        client_id=client_id,
-        client_credential=client_secret,
-        authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
-    )
-    scope = "https://graph.microsoft.com/.default"
-    token = ctx.acquire_token_for_client(scope)
-
-    headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
-        "ConsistencyLevel": "eventual",
-    }
-
-    # NOTE: filtering on license SKU didn't seem to work, so we just get all users and then
-    # re-filter on the returned data.
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,jobTitle,businessPhones,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true"
-    users = []
-    resp = requests.get(url, headers=headers)
-    j = resp.json()
-
-    while '@odata.nextLink' in j:
-        users = users + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
-        resp.raise_for_status()
-        j = resp.json()
-
-    # NOTE: this SKU is for our MS 365 E5 license. It shouldn't ever change, so hard-coding it is fine.
-    m365_sku = "06ebc4ee-1bb5-47dd-8120-11324bc54e06"
-    onprem_users = []
-
-    for user in users:
-        for plan in user['assignedLicenses']:
-            if 'skuId' in plan and plan['skuId'] == m365_sku:
-                if user['businessPhones']:
-                    phone = user['businessPhones'][0]
-                else:
-                    phone = None
-                onprem_users.append({
-                    'id': user['id'],
-                    'mail': user['mail'].lower(),
-                    'displayName': user['displayName'],
-                    'jobTitle': user['jobTitle'],
-                    'telephoneNumber': phone,
-                })
-
-    return onprem_users
+    update_deptuser_from_azure(azure_user, dept_user)
+    dept_user.generate_ad_actions(azure_user)
+    dept_user.audit_ad_actions(azure_user)

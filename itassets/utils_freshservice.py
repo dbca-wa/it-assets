@@ -8,16 +8,6 @@ import requests
 FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, 'X')
 
 
-def get_freshservice_object(obj_type, id):
-    """Query the Freshservice v2 API for a single object.
-    """
-    url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
-    params = {'include': 'type_fields'}
-    resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
-    resp.raise_for_status()
-    return resp.json()
-
-
 def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     """The `requests` library has a (normally very useful) feature of normalising
     quotes in request URIs (https://github.com/kennethreitz/requests/blob/master/requests/utils.py#L604).
@@ -87,20 +77,14 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     return objects
 
 
-def get_freshservice_objects(obj_type, query=None, verbose=False):
+def get_freshservice_objects(obj_type, verbose=False):
     """Query the Freshservice v2 API for objects of a defined type.
-    ``query`` should be a valid query filter string for the API.
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     params = {
         'page': 1,
-        'include': 'type_fields',
+        'per_page': 100,
     }
-    if query:
-        # Note that we can't just add the query string to params, because requests
-        # helpfully URL-encodes away the double quotes.
-        # The easiest solution is simply to append the query string on the URL.
-        url = url + '?query="{}"'.format(query)
     objects = []
     further_results = True
 
@@ -109,7 +93,6 @@ def get_freshservice_objects(obj_type, query=None, verbose=False):
             print('Querying page {}'.format(params['page']))
 
         resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
-        resp.raise_for_status()
 
         if 'link' not in resp.headers:  # No further paginated results.
             further_results = False
@@ -129,8 +112,6 @@ def create_freshservice_object(obj_type, data):
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
-    resp.raise_for_status()
-
     return resp  # Return the response, so we can handle unsuccessful responses.
 
 
@@ -140,6 +121,4 @@ def update_freshservice_object(obj_type, id, data):
     """
     url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
     resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
-    resp.raise_for_status()
-
     return resp  # Return the response, so we can handle unsuccessful responses.
