@@ -97,7 +97,7 @@ class DepartmentUser(models.Model):
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
     position_type = models.PositiveSmallIntegerField(
-        choices=POSITION_TYPE_CHOICES, null=True, blank=True, default=0,
+        choices=POSITION_TYPE_CHOICES, null=True, blank=True,
         help_text='Employee position working arrangement (Ascender employment status)')
     employee_id = models.CharField(
         max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
@@ -117,7 +117,7 @@ class DepartmentUser(models.Model):
         null=True, blank=True,
         help_text='Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).')
     working_hours = models.TextField(
-        default="N/A", null=True, blank=True,
+        null=True, blank=True,
         help_text="Description of normal working hours")
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES, null=True, blank=True,
