@@ -1616,17 +1616,21 @@ def resource_filter(resource_id):
     return True if RANCHER_FILE_RE.search(resource_id) else False
 
 def clean_expired_rancher_data():
-    try:
-        modeldata.clean_expired_deleted_data()
-        modeldata.clean_orphan_projects()
-        modeldata.clean_orphan_namespaces()
-        modeldata.check_aborted_harvester()
-        modeldata.clean_expired_harvester()
-        modeldata.clean_unused_oss()
-        modeldata.clean_unreferenced_vulnerabilities()
-        modeldata.clean_unreferenced_images()
-    except:
-        logger.error("Failed to clean data.{}".format(traceback.format_exc()))
+    for func in (
+        modeldata.clean_expired_deleted_data,
+        modeldata.clean_orphan_projects,
+        modeldata.clean_orphan_namespaces,
+        modeldata.check_aborted_harvester,
+        modeldata.clean_expired_harvester,
+        modeldata.clean_unused_oss,
+        modeldata.clean_unreferenced_vulnerabilities,
+        modeldata.clean_unreferenced_images,
+        modeldata.set_workload_itsystem
+    ):
+        try:
+            func()
+        except:
+            logger.error("Failed to call method({}) to clean data.{}".format(func,traceback.format_exc()))
 
 def _harvest(cluster,reconsume=False):
     harvest_result = [None,False]

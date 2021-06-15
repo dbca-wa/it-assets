@@ -31,6 +31,7 @@ class LookupAllowedMixin(object):
         return True
 
 class RequestMixin(object):
+    request = None
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         self.request = request

@@ -715,6 +715,7 @@ class Workload(DeletedMixin,models.Model):
         """
         if self.itsystem and not refresh:
             return False
+
         webserver = self.find_related_webserver()
         if self != webserver:
             if webserver:
@@ -1277,7 +1278,7 @@ class NamespaceListener(object):
                 active_workloads=models.F("active_workloads") + instance.active_workloads,
                 deleted_workloads=models.F("deleted_workloads") + instance.deleted_workloads
             )
-
+"""
 class ITSystemListener(object):
     @staticmethod
     @receiver(pre_save,sender=ITSystem)
@@ -1324,7 +1325,7 @@ class ITSystemListener(object):
 
 
         delattr(instance,"update_workload_itsystem")
-
+"""
 
 class VulnerabilitiesListener(object):
     @staticmethod
