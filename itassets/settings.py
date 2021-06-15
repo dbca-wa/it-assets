@@ -33,6 +33,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'django_json_widget',
     # Third-party applications:
     'django_extensions',
     'corsheaders',
