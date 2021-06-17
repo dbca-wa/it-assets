@@ -3,6 +3,221 @@ import json
 import os
 import requests
 from itassets.utils import ms_graph_client_token
+from organisation.ascender import ascender_employee_fetch
+
+
+def ascender_onprem_ad_diff(container='azuread', json_path='adusers.json'):
+    """A utility function to compare Ascender user data with on-premise AD data.
+    """
+    print("Getting Ascender data")
+    employee_iter = ascender_employee_fetch()
+    ascender_users = {}
+    for eid, jobs in employee_iter:
+        # Exclude FPC employees and terminated employees.
+        job = jobs[0]
+        if job['clevel1_id'] != 'FPC' and not job['job_term_date']:
+            ascender_users[eid] = job
+
+    print("Downloading on-premise AD data")
+    ad_users = get_azure_users_json(container=container, azure_json_path=json_path)
+    ad_users = {u['ObjectGUID']: u for u in ad_users}
+    discrepancies = []
+
+    # Iterate through the Ascender data, checking for mismatches with on-prem AD data.
+    for emp_id, user in ascender_users.items():
+        ad_user = None
+
+        # Find the matching AD user.
+        for ad in ad_users.values():
+            if ad['EmployeeID'] == emp_id:
+                ad_user = ad
+                break
+
+        if ad_user:
+            print("Checking {} against {}".format(emp_id, ad_user['EmailAddress']))
+
+            # First name.
+            if ad_user['GivenName'].upper() != user['first_name']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Onprem AD',
+                    'target_pk': ad_user['ObjectGUID'],
+                    'field': 'GivenName',
+                    'old_value': ad_user['GivenName'],
+                    'new_value': user['first_name'].capitalize(),
+                    'action': 'Update onprem AD user {} GivenName to {}'.format(ad_user['ObjectGUID'], user['first_name'].capitalize()),
+                })
+
+            # Surname.
+            if ad_user['Surname'].upper() != user['surname']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Onprem AD',
+                    'target_pk': ad_user['ObjectGUID'],
+                    'field': 'Surname',
+                    'old_value': ad_user['Surname'],
+                    'new_value': user['surname'].capitalize(),
+                    'action': 'Update onprem AD user {} Surname to {}'.format(ad_user['ObjectGUID'], user['surname'].capitalize()),
+                })
+
+            # Phone number.
+            if ad_user['telephoneNumber'] != user['work_phone_no']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Onprem AD',
+                    'target_pk': ad_user['ObjectGUID'],
+                    'field': 'telephoneNumber',
+                    'old_value': ad_user['telephoneNumber'],
+                    'new_value': user['work_phone_no'],
+                    'action': 'Update onprem AD user {} telephoneNumber to {}'.format(ad_user['ObjectGUID'], user['work_phone_no']),
+                })
+
+            # Title
+            if ad_user['Title'].upper() != user['occup_pos_title']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Onprem AD',
+                    'target_pk': ad_user['ObjectGUID'],
+                    'field': 'Title',
+                    'old_value': ad_user['Title'],
+                    'new_value': user['occup_pos_title'].title(),
+                    'action': 'Update onprem AD user {} Title to {}'.format(ad_user['ObjectGUID'], user['occup_pos_title'].title()),
+                })
+
+            # Cost centre
+            if user['paypoint'] and user['paypoint'] != ad_user['Company']:
+                cc = False
+                if user['paypoint'].startswith('R') and user['paypoint'].replace('R', '') != ad_user['Company'].replace('RIA-', ''):
+                    cc = user['paypoint'].replace('R', 'RIA-')
+                elif user['paypoint'].startswith('Z') and user['paypoint'].replace('Z', '') != ad_user['Company'].replace('ZPA-', ''):
+                    cc = user['paypoint'].replace('Z', 'ZPA-')
+                elif user['paypoint'][0] in '1234567890' and user['paypoint'] != ad_user['Company'].replace('DBCA-', ''):
+                    cc = 'DBCA-{}'.format(user['paypoint'])
+                # TODO: differences for BGPA cost centres.
+                if cc:
+                    discrepancies.append({
+                        'ascender_id': user['employee_id'],
+                        'target': 'Onprem AD',
+                        'target_pk': ad_user['ObjectGUID'],
+                        'field': 'Company',
+                        'old_value': ad_user['Company'],
+                        'new_value': cc,
+                        'action': 'Update onprem AD user {} Company to {}'.format(ad_user['ObjectGUID'], cc),
+                    })
+        else:
+            print("{} didn't match any on-premise AD user".format(emp_id))
+
+    return discrepancies
+
+
+def ascender_azure_ad_diff():
+    """A utility function to compare Ascender user data with Azure AD data.
+    """
+    print("Getting Ascender data")
+    employee_iter = ascender_employee_fetch()
+    ascender_users = {}
+    for eid, jobs in employee_iter:
+        # Exclude FPC employees and terminated employees.
+        job = jobs[0]
+        if job['clevel1_id'] != 'FPC' and not job['job_term_date']:
+            ascender_users[eid] = job
+
+    print("Downloading Azure AD data")
+    azure_users = ms_graph_users(licensed=True)
+    aad_users = {u['objectId']: u for u in azure_users}
+    discrepancies = []
+
+    # Iterate through the Ascender data, checking for mismatches with Azure AD data.
+    for emp_id, user in ascender_users.items():
+        aad_user = None
+
+        # Find the matching Azure AD user.
+        for u in aad_users:
+            if u['employeeId'] == emp_id:
+                aad_user = u
+                break
+
+        if aad_user:
+            print("Checking {} against {}".format(emp_id, aad_user['mail']))
+
+            # First name.
+            if aad_user['givenName'].upper() != user['first_name']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Azure AD',
+                    'target_pk': aad_user['objectId'],
+                    'field': 'givenName',
+                    'old_value': aad_user['givenName'],
+                    'new_value': user['first_name'].capitalize(),
+                    'action': 'Update Azure AD user {} givenName to {}'.format(aad_user['objectId'], user['first_name'].capitalize()),
+                })
+
+            # Surname.
+            if aad_user['surname'].upper() != user['surname']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Azure AD',
+                    'target_pk': aad_user['objectId'],
+                    'field': 'surname',
+                    'old_value': aad_user['surname'],
+                    'new_value': user['surname'].capitalize(),
+                    'action': 'Update Azure AD user {} surname to {}'.format(aad_user['objectId'], user['surname'].capitalize()),
+                })
+
+            # Phone number.
+            if aad_user['telephoneNumber'] != user['work_phone_no']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Azure AD',
+                    'target_pk': aad_user['objectId'],
+                    'field': 'telephoneNumber',
+                    'old_value': aad_user['telephoneNumber'],
+                    'new_value': user['work_phone_no'],
+                    'action': 'Update Azure AD user {} telephoneNumber to {}'.format(aad_user['objectId'], user['work_phone_no']),
+                })
+
+            # Title
+            if aad_user['jobTitle'].upper() != user['occup_pos_title']:
+                discrepancies.append({
+                    'ascender_id': user['employee_id'],
+                    'target': 'Azure AD',
+                    'target_pk': aad_user['objectId'],
+                    'field': 'jobTitle',
+                    'old_value': aad_user['jobTitle'],
+                    'new_value': user['occup_pos_title'].title(),
+                    'action': 'Update Azure AD user {} jobTitle to {}'.format(aad_user['objectId'], user['occup_pos_title'].title()),
+                })
+
+            # Cost centre
+            # We have to handle these a bit differently to the above.
+            if user['paypoint'] and user['paypoint'] != aad_user['companyName']:
+                cc = False
+                if user['paypoint'].startswith('R') and user['paypoint'].replace('R', '') != aad_user['companyName'].replace('RIA-', ''):
+                    cc = True
+                    new_value = user['paypoint'].replace('R', 'RIA-')
+                elif user['paypoint'].startswith('Z') and user['paypoint'].replace('Z', '') != aad_user['companyName'].replace('ZPA-', ''):
+                    cc = True
+                    new_value = user['paypoint'].replace('Z', 'ZPA-')
+                elif user['paypoint'][0] in '1234567890' and user['paypoint'] != aad_user['companyName'].replace('DBCA-', ''):
+                    cc = True
+                    new_value = 'DBCA-{}'.format(user['paypoint'])
+                # TODO: differences for BGPA cost centres.
+                if cc:
+                    discrepancies.append({
+                        'ascender_id': user['employee_id'],
+                        'target': 'Azure AD',
+                        'target_pk': aad_user['objectId'],
+                        'field': 'companyName',
+                        'old_value': aad_user['companyName'],
+                        'new_value': new_value,
+                        'action': 'Update Azure AD user {} companyName to {}'.format(aad_user['objectId'], new_value),
+                    })
+        else:
+            print("{} didn't match any Azure AD user".format(emp_id))
+
+    # TODO: identify any Ascender staff to which we can't match an Azure user.
+    # TODO: check for any Ascender users having a terminated date with an active Azure user.
+    return discrepancies
 
 
 def ms_graph_users(licensed=False):
@@ -28,23 +243,19 @@ def ms_graph_users(licensed=False):
     aad_users = []
 
     for user in users:
-        if user['businessPhones']:
-            phone = user['businessPhones'][0]
-        else:
-            phone = None
         aad_users.append({
             'objectId': user['id'],
             'mail': user['mail'].lower(),
-            'displayName': user['displayName'],
-            'givenName': user['givenName'],
-            'surname': user['surname'],
-            'employeeId': user['employeeId'],
-            'employeeType': user['employeeType'],
-            'jobTitle': user['jobTitle'],
-            'telephoneNumber': phone,
-            'mobilePhone': user['mobilePhone'],
-            'companyName': user['companyName'],
-            'officeLocation': user['officeLocation'],
+            'displayName': user['displayName'] if user['displayName'] else '',
+            'givenName': user['givenName'] if user['givenName'] else '',
+            'surname': user['surname'] if user['surname'] else '',
+            'employeeId': user['employeeId'] if user['employeeId'] else '',
+            'employeeType': user['employeeType'] if user['employeeType'] else '',
+            'jobTitle': user['jobTitle'] if user['jobTitle'] else '',
+            'telephoneNumber': user['businessPhones'][0] if user['businessPhones'] else '',
+            'mobilePhone': user['mobilePhone'] if user['mobilePhone'] else '',
+            'companyName': user['companyName'] if user['companyName'] else '',
+            'officeLocation': user['officeLocation'] if user['officeLocation'] else '',
             'proxyAddresses': [i.lower().replace('smtp:', '') for i in user['proxyAddresses'] if i.lower().startswith('smtp')],
             'accountEnabled': user['accountEnabled'],
             'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
