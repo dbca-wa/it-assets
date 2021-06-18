@@ -165,7 +165,7 @@ def ascender_db_import():
     employee_iter = ascender_employee_fetch()
 
     for eid, jobs in employee_iter:
-        # ASSUMPTION: the "first" object in the list of Alesco jobs for each user is the current one.
+        # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
         job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)

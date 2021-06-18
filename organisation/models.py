@@ -45,9 +45,6 @@ class DepartmentUser(models.Model):
 
     # Fields directly related to the employee, which map to a field in Azure Active Directory.
     # The Azure AD field name is listed after each field.
-    azure_guid = models.CharField(
-        max_length=48, unique=True, null=True, blank=True, verbose_name='Azure GUID',
-        editable=False, help_text='Azure AD ObjectId')  # ObjectId
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
     email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
@@ -61,7 +58,7 @@ class DepartmentUser(models.Model):
         help_text='Legal surname (matches birth certificate/passport/etc.)')  # Surname
     title = models.CharField(
         max_length=128, null=True, blank=True,
-        help_text='Occupation position title (should match Alesco)')  # JobTitle
+        help_text='Occupation position title (should match Ascender position title)')  # JobTitle
     telephone = models.CharField(
         max_length=128, null=True, blank=True, help_text='Work telephone number')  # TelephoneNumber
     mobile_phone = models.CharField(
@@ -88,9 +85,6 @@ class DepartmentUser(models.Model):
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the address book.
-    ad_guid = models.CharField(
-        max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
-        help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
@@ -117,11 +111,10 @@ class DepartmentUser(models.Model):
         null=True, blank=True,
         help_text='Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).')
     working_hours = models.TextField(
-        null=True, blank=True,
-        help_text="Description of normal working hours")
+        null=True, blank=True, help_text="Description of normal working hours")
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES, null=True, blank=True,
-        help_text='Employee network account status (should match Alesco status)')
+        help_text='Employee network account status')
     security_clearance = models.BooleanField(
         default=False, verbose_name='security clearance granted',
         help_text='''Security clearance approved by CC Manager (confidentiality
@@ -129,11 +122,23 @@ class DepartmentUser(models.Model):
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
     username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
+        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
     # Cache of Ascender data
     ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(null=True, editable=False)
+    # Cache of on-premise AD data
+    ad_guid = models.CharField(
+        max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
+        help_text="On-premise AD ObjectGUID")
+    ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
+    ad_data_updated = models.DateTimeField(null=True, editable=False)
+    # Cache of Azure AD data
+    azure_guid = models.CharField(
+        max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
+        editable=False, help_text="Azure AD ObjectId")
+    azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
+    azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
 
     def __str__(self):
         return self.email
