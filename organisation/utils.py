@@ -1,9 +1,15 @@
 from data_storage import AzureBlobStorage
+from datetime import datetime
+from django.conf import settings
 import json
 import os
+import pytz
 import requests
 from itassets.utils import ms_graph_client_token
 from organisation.ascender import ascender_employee_fetch
+from organisation.models import DepartmentUser
+
+TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 def ascender_onprem_ad_diff(container='azuread', json_path='adusers.json'):
@@ -374,3 +380,31 @@ def deptuser_azure_sync(dept_user, azure_user):
     update_deptuser_from_azure(azure_user, dept_user)
     dept_user.generate_ad_actions(azure_user)
     dept_user.audit_ad_actions(azure_user)
+
+
+def onprem_ad_data_import(container='azuread', json_path='adusers.json'):
+    """Utility function to download onprem AD data from blob storage, then copy it to matching DepartmentUser objects.
+    """
+    ad_users = get_azure_users_json(container=container, azure_json_path=json_path)
+    ad_users = {i['ObjectGUID']: i for i in ad_users}
+
+    for k, v in ad_users.items():
+        if DepartmentUser.objects.filter(ad_guid=k).exists():
+            du = DepartmentUser.objects.get(ad_guid=k)
+            du.ad_data = v
+            du.ad_data_updated = TZ.localize(datetime.now())
+            du.save()
+
+
+def azure_ad_data_import():
+    """Utility function to download Azure AD data from MS Graph API, then copy it to matching DepartmentUser objects.
+    """
+    azure_ad_users = ms_graph_users(licensed=True)
+    azure_ad_users = {u['objectId']: u for u in azure_ad_users}
+
+    for k, v in azure_ad_users.items():
+        if DepartmentUser.objects.filter(azure_guid=k).exists():
+            du = DepartmentUser.objects.get(azure_guid=k)
+            du.azure_ad_data = v
+            du.azure_ad_data_updated = TZ.localize(datetime.now())
+            du.save()
