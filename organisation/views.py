@@ -306,3 +306,62 @@ class ConfirmPhoneNos(LoginRequiredMixin, FormView):
         user.save()
         messages.success(self.request, 'Your response have been saved.')
         return super().form_valid(form)
+
+
+class SyncIssues(LoginRequiredMixin, TemplateView):
+    template_name = 'organisation/sync_issues.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Ascender / Active Directory sync issues'
+
+        # Current, active Department users having no employee ID.
+        context['deptuser_no_empid'] = DepartmentUser.objects.filter(
+            active=True,
+            email__contains='@dbca.wa.gov.au',
+            employee_id__isnull=True,
+            account_type__in=[2, 3, 0, 8, 6, 1, None],
+        )
+
+        # Department users not linked with onprem AD or Azure AD.
+        context['deptuser_not_linked'] = []
+        du_users = DepartmentUser.objects.filter(active=True, email__contains='@dbca.wa.gov.au', employee_id__isnull=False)
+        for du in du_users:
+            if du.get_office_licence() and (not du.ad_guid or not du.azure_guid):
+                context['deptuser_not_linked'].append(du)
+
+        # Department users linked to onprem AD but employee ID differs.
+        context['onprem_ad_empid_diff'] = []
+        for du in du_users:
+            if du.ad_data and 'EmployeeID' in du.ad_data and du.ad_data['EmployeeID'] != du.employee_id:
+                context['onprem_ad_empid_diff'].append(du)
+
+        # Department user CC differs from Ascender paypoint.
+        context['deptuser_cc_diff'] = []
+        for du in du_users:
+            if du.ascender_data and 'paypoint' in du.ascender_data and du.ascender_data['paypoint']:
+                if du.cost_centre:  # Case: user has CC set.
+                    if du.ascender_data['paypoint'].startswith('R') and du.ascender_data['paypoint'].replace('R', '') != du.cost_centre.code.replace('RIA-', ''):
+                        context['deptuser_cc_diff'].append([du, du.cost_centre.code, du.ascender_data['paypoint'].replace('R', 'RIA-')])
+                    elif du.ascender_data['paypoint'].startswith('Z') and du.ascender_data['paypoint'].replace('Z', '') != du.cost_centre.code.replace('ZPA-', ''):
+                        context['deptuser_cc_diff'].append([du, du.cost_centre.code, du.ascender_data['paypoint'].replace('Z', 'ZPA-')])
+                    elif du.ascender_data['paypoint'][0] in '1234567890' and du.ascender_data['paypoint'] != du.cost_centre.code.replace('DBCA-', ''):
+                        context['deptuser_cc_diff'].append([du, du.cost_centre.code, 'DBCA-{}'.format(du.ascender_data['paypoint'])])
+                else:  # Case: user has no CC set, but they should.
+                    if du.ascender_data['paypoint'].startswith('R'):
+                        context['deptuser_cc_diff'].append([du, du.cost_centre, du.ascender_data['paypoint'].replace('R', 'RIA-')])
+                    elif du.ascender_data['paypoint'].startswith('Z'):
+                        context['deptuser_cc_diff'].append([du, du.cost_centre, du.ascender_data['paypoint'].replace('Z', 'ZPA-')])
+                    elif du.ascender_data['paypoint'][0] in '1234567890':
+                        context['deptuser_cc_diff'].append([du, du.cost_centre, 'DBCA-{}'.format(du.ascender_data['paypoint'])])
+
+        # Department user title differs from Ascender
+        context['deptuser_title_diff'] = []
+        for du in du_users:
+            title = du.title.upper() if du.title else ''
+            if du.ascender_data and 'occup_pos_title' in du.ascender_data and du.ascender_data['occup_pos_title'] != title:
+                context['deptuser_title_diff'].append(du)
+
+        return context
