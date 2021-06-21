@@ -188,7 +188,7 @@ def get_ascender_matches():
             if data['first_name'] and data['surname']:
                 sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
                 fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
-                if sn_ratio > 70 and fn_ratio > 50:
+                if sn_ratio > 80 and fn_ratio > 65:
                     possible_matches.append([
                         user.pk,
                         user.get_full_name(),
