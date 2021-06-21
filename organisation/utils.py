@@ -246,6 +246,7 @@ def ms_graph_users(licensed=False):
         resp.raise_for_status()
         j = resp.json()
 
+    users = users + j['value']  # Final page
     aad_users = []
 
     for user in users:
