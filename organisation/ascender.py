@@ -157,7 +157,7 @@ def ascender_employee_fetch():
         yield (employee_id, records)
 
 
-def ascender_db_import():
+def ascender_db_import(verbose=False):
     """A task to cache data from Ascender to a matching DepartmentUser object.
     """
     employee_iter = ascender_employee_fetch()
@@ -169,6 +169,9 @@ def ascender_db_import():
             user.ascender_data = jobs[0]
             user.ascender_data_updated = TZ.localize(datetime.now())
             user.save()
+        else:
+            if verbose:
+                print("Could not match Ascender employee ID {} to a department user".format(eid))
 
 
 def get_ascender_matches():

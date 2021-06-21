@@ -9,7 +9,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Querying Ascender database for employee information')
         try:
-            ascender_db_import()
+            ascender_db_import(verbose=True)
             self.stdout.write(self.style.SUCCESS('Completed'))
         except Exception as ex:
             self.stdout.write(self.style.ERROR(ex))
@@ -17,7 +17,7 @@ class Command(BaseCommand):
 
         self.stdout.write('Querying on-premise AD data for employee information')
         try:
-            onprem_ad_data_import()
+            onprem_ad_data_import(verbose=True)
             self.stdout.write(self.style.SUCCESS('Completed'))
         except Exception as ex:
             self.stdout.write(self.style.ERROR(ex))
@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
         self.stdout.write('Querying Azure AD data for employee information')
         try:
-            azure_ad_data_import()
+            azure_ad_data_import(verbose=True)
             self.stdout.write(self.style.SUCCESS('Completed'))
         except Exception as ex:
             self.stdout.write(self.style.ERROR(ex))

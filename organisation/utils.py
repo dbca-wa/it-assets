@@ -383,7 +383,7 @@ def deptuser_azure_sync(dept_user, azure_user):
     dept_user.audit_ad_actions(azure_user)
 
 
-def onprem_ad_data_import(container='azuread', json_path='adusers.json'):
+def onprem_ad_data_import(container='azuread', json_path='adusers.json', verbose=False):
     """Utility function to download onprem AD data from blob storage, then copy it to matching DepartmentUser objects.
     """
     ad_users = get_azure_users_json(container=container, azure_json_path=json_path)
@@ -395,9 +395,12 @@ def onprem_ad_data_import(container='azuread', json_path='adusers.json'):
             du.ad_data = v
             du.ad_data_updated = TZ.localize(datetime.now())
             du.save()
+        else:
+            if verbose:
+                print("Could not match onprem AD GUID {} to a department user".format(k))
 
 
-def azure_ad_data_import():
+def azure_ad_data_import(verbose=False):
     """Utility function to download Azure AD data from MS Graph API, then copy it to matching DepartmentUser objects.
     """
     azure_ad_users = ms_graph_users(licensed=True)
@@ -409,3 +412,6 @@ def azure_ad_data_import():
             du.azure_ad_data = v
             du.azure_ad_data_updated = TZ.localize(datetime.now())
             du.save()
+        else:
+            if verbose:
+                print("Could not match Azure GUID {} to a department user".format(k))
