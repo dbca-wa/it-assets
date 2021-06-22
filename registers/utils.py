@@ -63,6 +63,7 @@ def ms_graph_sharepoint_users():
         resp.raise_for_status()
         j = resp.json()
 
+    sharepoint_users = sharepoint_users + j['value']  # Final page
     return [user['fields'] for user in sharepoint_users]
 
 
@@ -83,4 +84,5 @@ def ms_graph_sharepoint_it_systems():
         resp.raise_for_status()
         j = resp.json()
 
+    it_systems = it_systems + j['value']
     return [system['fields'] for system in it_systems]

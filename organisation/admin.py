@@ -6,6 +6,7 @@ from leaflet.admin import LeafletGeoAdmin
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
+from .utils import departmentuser_ad_sync
 from .views import DepartmentUserExport
 
 
@@ -81,6 +82,9 @@ class DepartmentUserAdmin(VersionAdmin):
                 'manager',
                 'cost_centre',
                 'location',
+                'position_type',
+                'employee_id',
+                'name_update_reference',
             ),
         }),
         ('Other user metadata fields', {
@@ -91,9 +95,6 @@ class DepartmentUserAdmin(VersionAdmin):
                 'extension',
                 'home_phone',
                 'other_phone',
-                'position_type',
-                'employee_id',
-                'name_update_reference',
                 'vip',
                 'executive',
                 'contractor',
@@ -120,6 +121,11 @@ class DepartmentUserAdmin(VersionAdmin):
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
         ] + urls
         return urls
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Run the Azure AD sync actions function.
+        departmentuser_ad_sync(obj)
 
     def clear_ad_guid(self, request, queryset):
         queryset.update(ad_guid=None)

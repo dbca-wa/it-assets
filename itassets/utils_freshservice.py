@@ -106,6 +106,15 @@ def get_freshservice_objects(obj_type, verbose=False):
     return objects
 
 
+def get_freshservice_object(obj_type, id):
+    """Use the Freshservice v2 API to update an object.
+    Accepts an object name (string) and a dict of key values.
+    """
+    url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
+    resp = requests.get(url, auth=FRESHSERVICE_AUTH)
+    return resp  # Return the response, so we can handle unsuccessful responses.
+
+
 def create_freshservice_object(obj_type, data):
     """Use the Freshservice v2 API to create an object.
     Accepts an object name (string) and a dict of key values.

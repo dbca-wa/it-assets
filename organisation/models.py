@@ -45,9 +45,6 @@ class DepartmentUser(models.Model):
 
     # Fields directly related to the employee, which map to a field in Azure Active Directory.
     # The Azure AD field name is listed after each field.
-    azure_guid = models.CharField(
-        max_length=48, unique=True, null=True, blank=True, verbose_name='Azure GUID',
-        editable=False, help_text='Azure AD ObjectId')  # ObjectId
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
     email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
@@ -61,7 +58,7 @@ class DepartmentUser(models.Model):
         help_text='Legal surname (matches birth certificate/passport/etc.)')  # Surname
     title = models.CharField(
         max_length=128, null=True, blank=True,
-        help_text='Occupation position title (should match Alesco)')  # JobTitle
+        help_text='Occupation position title (should match Ascender position title)')  # JobTitle
     telephone = models.CharField(
         max_length=128, null=True, blank=True, help_text='Work telephone number')  # TelephoneNumber
     mobile_phone = models.CharField(
@@ -88,16 +85,13 @@ class DepartmentUser(models.Model):
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the address book.
-    ad_guid = models.CharField(
-        max_length=48, unique=True, null=True, blank=True, verbose_name='AD GUID',
-        help_text='Locally stored AD GUID. This field must match GUID in the AD object for sync to be successful')
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
     position_type = models.PositiveSmallIntegerField(
-        choices=POSITION_TYPE_CHOICES, null=True, blank=True, default=0,
+        choices=POSITION_TYPE_CHOICES, null=True, blank=True,
         help_text='Employee position working arrangement (Ascender employment status)')
     employee_id = models.CharField(
         max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
@@ -117,11 +111,10 @@ class DepartmentUser(models.Model):
         null=True, blank=True,
         help_text='Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).')
     working_hours = models.TextField(
-        default="N/A", null=True, blank=True,
-        help_text="Description of normal working hours")
+        null=True, blank=True, help_text="Description of normal working hours")
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES, null=True, blank=True,
-        help_text='Employee network account status (should match Alesco status)')
+        help_text='Employee network account status')
     security_clearance = models.BooleanField(
         default=False, verbose_name='security clearance granted',
         help_text='''Security clearance approved by CC Manager (confidentiality
@@ -129,11 +122,23 @@ class DepartmentUser(models.Model):
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
     username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')
+        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
     # Cache of Ascender data
     ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(null=True, editable=False)
+    # Cache of on-premise AD data
+    ad_guid = models.CharField(
+        max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
+        help_text="On-premise AD ObjectGUID")
+    ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
+    ad_data_updated = models.DateTimeField(null=True, editable=False)
+    # Cache of Azure AD data
+    azure_guid = models.CharField(
+        max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
+        editable=False, help_text="Azure AD ObjectId")
+    azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
+    azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
 
     def __str__(self):
         return self.email
@@ -173,170 +178,296 @@ class DepartmentUser(models.Model):
         full_name = '{} {}'.format(self.given_name, self.surname)
         return full_name.strip()
 
-    def generate_ad_actions(self, azure_user):
-        """For given Azure AD user and DepartmentUser objects, generate ADAction objects
-        that specify the changes which need to be carried out in order to synchronise AD
-        with IT Assets.
-        ``azure_user`` will be a dict object derived from current Azure AD JSON output.
+    def generate_ad_actions(self):
+        """For this object, generate ADAction objects that specify the changes which need to be
+        carried out in order to synchronise AD (onprem/Azure) with IT Assets.
         """
-        if not self.azure_guid and not self.ad_guid:
-            return []
-
         actions = []
 
-        for field in [
-            ('DisplayName', 'name'),
-            ('GivenName', 'given_name'),
-            ('Surname', 'surname'),
-            ('JobTitle', 'title'),
-            ('TelephoneNumber', 'telephone'),
-            ('Mobile', 'mobile_phone'),
-        ]:
-            # Test if the dept user field value is truthy and the AAD field in falsy, OR if the fields are not equal.
-            if (getattr(self, field[1]) and not azure_user[field[0]]) or azure_user[field[0]] != getattr(self, field[1]):
+        if self.dir_sync_enabled:
+            # On-prem AD
+            if not self.ad_guid or not self.ad_data:
+                return []
 
-                # Second check: consider a dept user field value of None to be equivalent to an AAD value of "N/A".
-                # If so, skip over the field (don't create an ADAction).
-                # This is stupid and I hate it.
-                if not getattr(self, field[1]) and azure_user[field[0]] and azure_user[field[0]].strip().lower() == 'n/a':
-                    continue
-
-                # Get/create a non-completed ADAction for this dept user, for these fields.
-                # This should mean that only one ADAction object is generated for a given field,
-                # even if the value it IT Assets changes more than once before being synced in AD.
-
-                if self.dir_sync_enabled:
-                    # On-prem AD
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field=AZURE_ONPREM_FIELD_MAP[field[0]],
-                        field=field[1],
-                        completed=None,
-                    )
-                else:
-                    # Azure AD
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field=field[0],
-                        field=field[1],
-                        completed=None,
-                    )
-
-                action.ad_field_value = azure_user[field[0]]
-                action.field_value = getattr(self, field[1])
-                action.save()
-                actions.append(action)
-
-        # Manager
-        if self.manager:
-            if not azure_user['Manager'] or azure_user['Manager']['ObjectId'] != self.manager.azure_guid:
+            if 'DisplayName' in self.ad_data and self.ad_data['DisplayName'] != self.name:
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='Manager',
-                    field='manager.email',
+                    ad_field='DisplayName',
+                    ad_field_value=self.ad_data['DisplayName'],
+                    field='name',
+                    field_value=self.name,
                     completed=None,
                 )
-                action.field_value = self.manager.email.lower()
-                action.save()
                 actions.append(action)
 
-        # Cost Centre
-        if self.cost_centre:
-            if not azure_user['CompanyName'] or azure_user['CompanyName'] != self.cost_centre.code:
-                if self.dir_sync_enabled:  # Onprem AD.
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field='Company',
-                        field='cost_centre.code',
-                        completed=None,
-                    )
-                else:
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,  # Azure AD
-                        action_type='Change account field',
-                        ad_field='CompanyName',
-                        field='cost_centre.code',
-                        completed=None,
-                    )
-                action.field_value = self.cost_centre.code
-                action.ad_field_value = azure_user['CompanyName']
-                action.save()
-                actions.append(action)
-
-        # Location
-        if self.location:
-            if not azure_user['PhysicalDeliveryOfficeName'] or azure_user['PhysicalDeliveryOfficeName'] != self.location.name:
-                if self.dir_sync_enabled:  # On-prem AD
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field='Office',
-                        field='location.name',
-                        completed=None,
-                    )
-                else:  # Azure AD
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field='PhysicalDeliveryOfficeName',
-                        field='location.name',
-                        completed=None,
-                    )
-                action.field_value = self.location.name
-                action.ad_field_value = azure_user['PhysicalDeliveryOfficeName']
-                action.save()
-                actions.append(action)
-
-        # StreetAddress
-        if self.location:
-            if not azure_user['StreetAddress'] or azure_user['StreetAddress'] != self.location.address:
+            if 'GivenName' in self.ad_data and self.ad_data['GivenName'] != self.given_name:
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='StreetAddress',
-                    field='location.address',
+                    ad_field='GivenName',
+                    ad_field_value=self.ad_data['GivenName'],
+                    field='given_name',
+                    field_value=self.given_name,
                     completed=None,
                 )
-                action.field_value = self.location.address
-                action.ad_field_value = azure_user['StreetAddress']
-                action.save()
+                actions.append(action)
+
+            if 'Surname' in self.ad_data and self.ad_data['Surname'] != self.surname:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='Surname',
+                    ad_field_value=self.ad_data['Surname'],
+                    field='surname',
+                    field_value=self.surname,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'Title' in self.ad_data and self.ad_data['Title'] != self.title:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='Title',
+                    ad_field_value=self.ad_data['Title'],
+                    field='title',
+                    field_value=self.title,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'telephoneNumber' in self.ad_data and self.ad_data['telephoneNumber'] != self.telephone:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='telephoneNumber',
+                    ad_field_value=self.ad_data['telephoneNumber'],
+                    field='telephone',
+                    field_value=self.telephone,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'Mobile' in self.ad_data and self.ad_data['Mobile'] != self.mobile_phone:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='Mobile',
+                    ad_field_value=self.ad_data['Mobile'],
+                    field='mobile_phone',
+                    field_value=self.mobile_phone,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if self.cost_centre and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='Company',
+                    ad_field_value=self.ad_data['Company'],
+                    field='cost_centre',
+                    field_value=self.cost_centre.code,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if self.location and 'physicalDeliveryOfficeName' in self.ad_data and self.ad_data['physicalDeliveryOfficeName'] != self.location.name:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='physicalDeliveryOfficeName',
+                    ad_field_value=self.ad_data['physicalDeliveryOfficeName'],
+                    field='location',
+                    field_value=self.location.name,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='EmployeeID',
+                    ad_field_value=self.ad_data['EmployeeID'],
+                    field='employee_id',
+                    field_value=self.employee_id,
+                    completed=None,
+                )
+                actions.append(action)
+
+            # TODO: manager
+        else:
+            # Azure AD
+            if not self.azure_guid or not self.azure_ad_data:
+                return []
+
+            if 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='displayName',
+                    ad_field_value=self.azure_ad_data['displayName'],
+                    field='name',
+                    field_value=self.name,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='givenName',
+                    ad_field_value=self.azure_ad_data['givenName'],
+                    field='given_name',
+                    field_value=self.given_name,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='Surname',
+                    ad_field_value=self.azure_ad_data['surname'],
+                    field='surname',
+                    field_value=self.surname,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'jobTitle' in self.azure_ad_data and self.azure_ad_data['jobTitle'] != self.title:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='jobTitle',
+                    ad_field_value=self.azure_ad_data['jobTitle'],
+                    field='title',
+                    field_value=self.title,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'telephoneNumber' in self.azure_ad_data and self.azure_ad_data['telephoneNumber'] != self.telephone:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='telephoneNumber',
+                    ad_field_value=self.azure_ad_data['telephoneNumber'],
+                    field='telephone',
+                    field_value=self.telephone,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'mobilePhone' in self.azure_ad_data and self.azure_ad_data['mobilePhone'] != self.mobile_phone:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='mobilePhone',
+                    ad_field_value=self.azure_ad_data['mobilePhone'],
+                    field='mobile_phone',
+                    field_value=self.mobile_phone,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if self.cost_centre and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='companyName',
+                    ad_field_value=self.azure_ad_data['companyName'],
+                    field='cost_centre',
+                    field_value=self.cost_centre.code,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if self.location and 'officeLocation' in self.azure_ad_data and self.azure_ad_data['officeLocation'] != self.location.name:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='officeLocation',
+                    ad_field_value=self.azure_ad_data['officeLocation'],
+                    field='location',
+                    field_value=self.location.name,
+                    completed=None,
+                )
+                actions.append(action)
+
+            if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
+                action, created = ADAction.objects.get_or_create(
+                    department_user=self,
+                    action_type='Change account field',
+                    ad_field='employeeId',
+                    ad_field_value=self.azure_ad_data['employeeId'],
+                    field='employee_id',
+                    field_value=self.employee_id,
+                    completed=None,
+                )
                 actions.append(action)
 
         return actions
 
-    def audit_ad_actions(self, azure_user):
-        """For given Azure AD user and DepartmentUser objects, check any incomplete ADAction
+    def audit_ad_actions(self):
+        """For this DepartmentUser object, check any incomplete ADAction
         objects that specify changes to be made for the AD user. If the ADAction is no longer
         required (e.g. changes have been completed/reverted), delete the ADAction object.
-        ``azure_user`` will be a dict object derived from current Azure AD JSON output.
         """
         actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
 
-        for action in actions:
-            if action.field == 'manager.email' and azure_user['Manager'] and azure_user['Manager']['ObjectId'] == self.manager.azure_guid:
-                action.delete()
-            elif action.field == 'cost_centre.code' and azure_user['CompanyName'] == self.cost_centre.code:
-                action.delete()
-            elif action.field == 'location.name' and azure_user['PhysicalDeliveryOfficeName'] == self.location.name:
-                action.delete()
-            elif action.field == 'location.address' and azure_user['StreetAddress'] == self.location.address:
-                action.delete()
-            elif action.field == 'name' and azure_user['DisplayName'] == self.name:
-                action.delete()
-            elif action.field == 'given_name' and azure_user['GivenName'] == self.given_name:
-                action.delete()
-            elif action.field == 'surname' and azure_user['Surname'] == self.surname:
-                action.delete()
-            elif action.field == 'title' and azure_user['JobTitle'] == self.title:
-                action.delete()
-            elif action.field == 'telephone' and azure_user['TelephoneNumber'] == self.telephone:
-                action.delete()
-            elif action.field == 'mobile_phone' and azure_user['Mobile'] == self.mobile_phone:
-                action.delete()
+        if self.dir_sync_enabled:
+            # Onprem AD
+            if not self.ad_guid or not self.ad_data:
+                return
+
+            for action in actions:
+                if action.field == 'name' and self.ad_data['DisplayName'] == self.name:
+                    action.delete()
+                elif action.field == 'given_name' and self.ad_data['GivenName'] == self.given_name:
+                    action.delete()
+                elif action.field == 'surname' and self.ad_data['Surname'] == self.surname:
+                    action.delete()
+                elif action.field == 'title' and self.ad_data['Title'] == self.title:
+                    action.delete()
+                elif action.field == 'telephone' and self.ad_data['telephoneNumber'] == self.telephone:
+                    action.delete()
+                elif action.field == 'mobile_phone' and self.ad_data['Mobile'] == self.mobile_phone:
+                    action.delete()
+                elif action.field == 'cost_centre' and self.ad_data['Company'] == self.cost_centre.code:
+                    action.delete()
+                elif action.field == 'location' and self.ad_data['physicalDeliveryOfficeName'] == self.location.name:
+                    action.delete()
+                elif action.field == 'employee_id' and self.ad_data['EmployeeID'] == self.employee_id:
+                    action.delete()
+        else:
+            # Azure AD
+            if not self.azure_guid or not self.azure_ad_data:
+                return
+
+            for action in actions:
+                if action.field == 'name' and self.azure_ad_data['displayName'] == self.name:
+                    action.delete()
+                elif action.field == 'given_name' and self.azure_ad_data['givenName'] == self.given_name:
+                    action.delete()
+                elif action.field == 'surname' and self.azure_ad_data['surname'] == self.surname:
+                    action.delete()
+                elif action.field == 'title' and self.azure_ad_data['jobTitle'] == self.title:
+                    action.delete()
+                elif action.field == 'telephone' and self.azure_ad_data['telephoneNumber'] == self.telephone:
+                    action.delete()
+                elif action.field == 'mobile_phone' and self.azure_ad_data['mobilePhone'] == self.mobile_phone:
+                    action.delete()
+                elif action.field == 'cost_centre' and self.azure_ad_data['companyName'] == self.cost_centre.code:
+                    action.delete()
+                elif action.field == 'location' and self.azure_ad_data['officeLocation'] == self.location.name:
+                    action.delete()
+                elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
+                    action.delete()
 
 
 ACTION_TYPE_CHOICES = (

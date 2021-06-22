@@ -94,6 +94,7 @@ def user_account_export(fileobj, users):
 def department_user_ascender_discrepancies(fileobj, users):
     """For the passed in queryset of DepartmentUser objects, return an Excel spreadsheet
     that contains discrepancies between the user data and their associated Ascender HR data.
+    NOTE: deprecated following PSB Onboarding project.
     """
     with xlsxwriter.Workbook(
         fileobj,
