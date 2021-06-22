@@ -155,7 +155,7 @@ test = ["pytest (>=6.0)", "pytest-cov", "pytest-subtests", "pytest-xdist", "pret
 
 [[package]]
 name = "data-storage"
-version = "3.15"
+version = "3.16"
 description = ""
 category = "main"
 optional = false
@@ -169,12 +169,12 @@ pytz = "*"
 [package.source]
 type = "git"
 url = "https://github.com/dbca-wa/data-storage.git"
-reference = "v3.15"
-resolved_reference = "f11cc24b8c94564ee93b09a445b0aed15afa179b"
+reference = "v3.16"
+resolved_reference = "50097c0f34564cd22f7a7a1ac99b663a997acfd9"
 
 [[package]]
 name = "dbca-utils"
-version = "1.1.2"
+version = "1.1.4"
 description = "Utilities for Django/Python apps"
 category = "main"
 optional = false
@@ -742,7 +742,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "prompt-toolkit"
-version = "3.0.18"
+version = "3.0.19"
 description = "Library for building powerful interactive command lines in Python"
 category = "dev"
 optional = false
@@ -1065,7 +1065,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "65f8a6322a36914abbb648807e57c7b57697cd7723116a6c57e7d3da022cd551"
+content-hash = "bc484f304442250181feca8f7805895684427065fef96d982e2a538a2e54d1ee"
 
 [metadata.files]
 ansicon = [
@@ -1183,7 +1183,7 @@ cryptography = [
 ]
 data-storage = []
 dbca-utils = [
-    {file = "dbca-utils-1.1.2.tar.gz", hash = "sha256:b68aa15955ef78b86478dbaaaccc0e8acd267ce3a0016aaee7aa7a7e9a2bc726"},
+    {file = "dbca-utils-1.1.4.tar.gz", hash = "sha256:b843029d70e200d6f993befc4342e0b28ade0e61acce8a2844a92b19c3b9bda1"},
 ]
 decorator = [
     {file = "decorator-5.0.9-py3-none-any.whl", hash = "sha256:6e5c199c16f7a9f0e3a61a4a54b3d27e7dad0dbdde92b944426cb20914376323"},
@@ -1405,8 +1405,8 @@ pillow = [
     {file = "Pillow-8.2.0.tar.gz", hash = "sha256:a787ab10d7bb5494e5f76536ac460741788f1fbce851068d73a87ca7c35fc3e1"},
 ]
 prompt-toolkit = [
-    {file = "prompt_toolkit-3.0.18-py3-none-any.whl", hash = "sha256:bf00f22079f5fadc949f42ae8ff7f05702826a97059ffcc6281036ad40ac6f04"},
-    {file = "prompt_toolkit-3.0.18.tar.gz", hash = "sha256:e1b4f11b9336a28fa11810bc623c357420f69dfdb6d2dac41ca2c21a55c033bc"},
+    {file = "prompt_toolkit-3.0.19-py3-none-any.whl", hash = "sha256:7089d8d2938043508aa9420ec18ce0922885304cddae87fb96eebca942299f88"},
+    {file = "prompt_toolkit-3.0.19.tar.gz", hash = "sha256:08360ee3a3148bdb5163621709ee322ec34fc4375099afa4bbf751e9b7b7fa4f"},
 ]
 psycopg2-binary = [
     {file = "psycopg2-binary-2.8.6.tar.gz", hash = "sha256:11b9c0ebce097180129e422379b824ae21c8f2a6596b159c7659e2e5a00e1aa0"},
