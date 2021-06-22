@@ -404,7 +404,7 @@ class DepartmentUser(models.Model):
                     department_user=self,
                     action_type='Change account field',
                     ad_field='employeeId',
-                    ad_field_value=self.ad_data['employeeId'],
+                    ad_field_value=self.azure_ad_data['employeeId'],
                     field='employee_id',
                     field_value=self.employee_id,
                     completed=None,
