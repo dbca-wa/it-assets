@@ -157,25 +157,21 @@ def ascender_employee_fetch():
         yield (employee_id, records)
 
 
-def ascender_db_import():
-    """A task to update DepartmentUser field values from Ascender database information.
-    By default, it saves Ascender data in the ascender_data JSON field.
-    If update_dept_user == True, the function will also update several other field values.
+def ascender_db_import(verbose=False):
+    """A task to cache data from Ascender to a matching DepartmentUser object.
     """
     employee_iter = ascender_employee_fetch()
 
     for eid, jobs in employee_iter:
-        # ASSUMPTION: the "first" object in the list of Alesco jobs for each user is the current one.
-        job = jobs[0]
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
-            if not user.ascender_data:
-                user.ascender_data = {}
-            # Don't just replace the ascender_data dict; we also use it for audit purposes.
-            for key, val in job.items():
-                user.ascender_data[key] = val
+            # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
+            user.ascender_data = jobs[0]
             user.ascender_data_updated = TZ.localize(datetime.now())
             user.save()
+        else:
+            if verbose:
+                print("Could not match Ascender employee ID {} to a department user".format(eid))
 
 
 def get_ascender_matches():
@@ -195,7 +191,7 @@ def get_ascender_matches():
             if data['first_name'] and data['surname']:
                 sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
                 fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
-                if sn_ratio > 70 and fn_ratio > 50:
+                if sn_ratio > 80 and fn_ratio > 65:
                     possible_matches.append([
                         user.pk,
                         user.get_full_name(),

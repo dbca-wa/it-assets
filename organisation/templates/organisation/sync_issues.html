@@ -1,0 +1,128 @@
+{% extends "base_b4.html" %}
+
+{% block page_content_inner %}
+<h1>
+    {{ page_title }}
+</h1>
+
+{% if deptuser_no_empid %}
+<h2>IT Assets Department users with no Ascender employee ID</h2>
+<p>It isn't possible to perform any further syncronisation unless this is corrected.</p>
+<p>SOLUTION: update IT Assets department user with the correct employee ID.</p>
+<table class="table table-bordered table-striped table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Cost centre</th>
+            <th>Account type</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in deptuser_no_empid %}
+        <tr>
+            <td>{{ user.get_full_name }}</td>
+            <td>{{ user.cost_centre }}</td>
+            <td>{{ user.get_account_type_display }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if deptuser_not_linked %}
+<h2>Users not linked with onprem AD or Azure AD</h2>
+<p>SOLUTION: investigate why AD user is not being matched (generally email differs).</p>
+<table class="table table-bordered table-striped table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Licence</th>
+            <th>On-prem AD GUID</th>
+            <th>Azure AD GUID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in deptuser_not_linked %}
+        <tr>
+            <td>{{ user.get_full_name }}</td>
+            <td>{{ user.get_office_licence }}</td>
+            <td>{{ user.ad_guid }}</td>
+            <td>{{ user.azure_guid }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if onprem_ad_empid_diff %}
+<h2>Department users linked to onprem AD, but the employee ID differs</h2>
+<p>SOLUTION: confirm the employee ID is correct in IT Assets, then set the correct employee ID in onprem AD.</p>
+<table class="table table-bordered table-striped table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>On-prem AD GUID</th>
+            <th>IT Assets employee ID</th>
+            <th>On-prem AD employee ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in onprem_ad_empid_diff %}
+        <tr>
+            <td>{{ user.get_full_name }}</td>
+            <td>{{ user.ad_guid }}</td>
+            <td>{{ user.employee_id }}</td>
+            <td>{{ user.ad_data.EmployeeID }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if deptuser_cc_diff %}
+<h2>Department user cost centre differs from Ascender paypoint / cost centre</h2>
+<p>SOLUTION: update the IT Assets department user CC to the Ascender CC value.</p>
+<table class="table table-bordered table-striped table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>IT Assets CC</th>
+            <th>Ascender CC</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for diff in deptuser_cc_diff %}
+        <tr>
+            <td>{{ diff.0.get_full_name }}</td>
+            <td>{{ diff.1 }}</td>
+            <td>{{ diff.2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% if deptuser_title_diff %}
+<h2>Department user title differs from Ascender title</h2>
+<p>SOLUTION: update the IT Assets department user title to the Ascender title.</p>
+<table class="table table-bordered table-striped table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>IT Assets title</th>
+            <th>Ascender title</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in deptuser_title_diff %}
+        <tr>
+            <td>{{ user.get_full_name }}</td>
+            <td>{{ user.title }}</td>
+            <td>{{ user.ascender_data.occup_pos_title }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock page_content_inner %}
