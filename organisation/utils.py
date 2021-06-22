@@ -131,8 +131,6 @@ def ascender_onprem_ad_data_diff():
 
     print("Downloading on-prem AD data")
     ad_users = get_azure_users_json(container='azuread', azure_json_path='adusers.json')
-    #ad_users = {i['ObjectGUID']: i for i in ad_users}
-    #aad_users = {u['objectId']: u for u in azure_users}
     discrepancies = []
 
     # Iterate through the Ascender data, checking for mismatches with Azure AD data.
@@ -314,26 +312,25 @@ def update_deptuser_from_onprem_ad(ad_user, dept_user):
     dept_user.save()
 
 
-def update_deptuser_from_azure(azure_user, dept_user):
-    """For given Azure AD user and DepartmentUser objects, update the DepartmentUser object fields
-    with values from Azure (the source of truth for these values).
+def update_deptuser_from_azure(dept_user):
+    """For a given DepartmentUser object, update the DepartmentUser object fields
+    with values from the cached Azure AD data (the source of truth for these values).
     """
-    if azure_user['objectId'] != dept_user.azure_guid:
-        dept_user.azure_guid = azure_user['objectId']
-    if azure_user['accountEnabled'] != dept_user.active:
-        dept_user.active = azure_user['accountEnabled']
-    if azure_user['mail'] != dept_user.email:
-        dept_user.email = azure_user['mail']
-    if azure_user['displayName'] != dept_user.name:
-        dept_user.name = azure_user['displayName']
-    if azure_user['givenName'] != dept_user.given_name:
-        dept_user.given_name = azure_user['givenName']
-    if azure_user['surname'] != dept_user.surname:
-        dept_user.surname = azure_user['surname']
-    if azure_user['onPremisesSyncEnabled'] != dept_user.dir_sync_enabled:
-        dept_user.dir_sync_enabled = azure_user['onPremisesSyncEnabled']
+    if 'accountEnabled' in dept_user.azure_ad_data and dept_user.azure_ad_data['accountEnabled'] != dept_user.active:
+        dept_user.active = dept_user.azure_ad_data['accountEnabled']
+    if 'mail'in dept_user.azure_ad_data and dept_user.azure_ad_data['mail'] != dept_user.email:
+        dept_user.email = dept_user.azure_ad_data['mail']
+    if 'displayName' in dept_user.azure_ad_data and dept_user.azure_ad_data['displayName'] != dept_user.name:
+        dept_user.name = dept_user.azure_ad_data['displayName']
+    if 'givenName' in dept_user.azure_ad_data and dept_user.azure_ad_data['givenName'] != dept_user.given_name:
+        dept_user.given_name = dept_user.azure_ad_data['givenName']
+    if 'surname' in dept_user.azure_ad_data and dept_user.azure_ad_data['surname'] != dept_user.surname:
+        dept_user.surname = dept_user.azure_ad_data['surname']
+    if 'onPremisesSyncEnabled' in dept_user.azure_ad_data and dept_user.azure_ad_data['onPremisesSyncEnabled'] != dept_user.dir_sync_enabled:
+        dept_user.dir_sync_enabled = dept_user.azure_ad_data['onPremisesSyncEnabled']
 
-    dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in azure_user['proxyAddresses'] if i.lower().startswith('smtp')]
+    if 'proxyAddresses' in dept_user.azure_ad_data:
+        dept_user.proxy_addresses = [i.lower().replace('smtp:', '') for i in dept_user.azure_ad_data['proxyAddresses'] if i.lower().startswith('smtp')]
 
     dept_user.assigned_licences = []
     # MS licence SKU reference:
@@ -365,22 +362,24 @@ def update_deptuser_from_azure(azure_user, dept_user):
         '66b55226-6b4f-492c-910c-a3b7a3c9d993': 'MICROSOFT 365 F3',
         '05e9a617-0261-4cee-bb44-138d3ef5d965': 'MICROSOFT 365 E3',
     }
-    for sku in azure_user['assignedLicenses']:
-        if sku in ms_licence_skus:
-            dept_user.assigned_licences.append(ms_licence_skus[sku])
-        else:
-            dept_user.assigned_licences.append(sku)
+    if 'assigned_licences' in dept_user.azure_ad_data:
+        for sku in dept_user.azure_ad_data['assignedLicenses']:
+            if sku in ms_licence_skus:
+                dept_user.assigned_licences.append(ms_licence_skus[sku])
+            else:
+                dept_user.assigned_licences.append(sku)
 
     dept_user.save()
 
 
-def deptuser_azure_sync(dept_user, azure_user):
-    """Utility function to perform all of the steps to sync up a single DepartmentUser and Azure AD.
+def departmentuser_ad_sync(dept_user):
+    """Utility function to perform all of the steps to sync up a single DepartmentUser and Active Directory.
     Function may be run as-is, or queued as an asynchronous task.
     """
-    update_deptuser_from_azure(azure_user, dept_user)
-    dept_user.generate_ad_actions(azure_user)
-    dept_user.audit_ad_actions(azure_user)
+    if dept_user.azure_ad_data:
+        update_deptuser_from_azure(dept_user)
+    dept_user.generate_ad_actions()
+    dept_user.audit_ad_actions()
 
 
 def onprem_ad_data_import(container='azuread', json_path='adusers.json', verbose=False):

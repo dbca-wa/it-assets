@@ -2,13 +2,11 @@ from django import forms
 from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
-from django_q.brokers import get_broker
-from django_q.tasks import async_task
 from leaflet.admin import LeafletGeoAdmin
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
-from .utils import deptuser_azure_sync
+from .utils import departmentuser_ad_sync
 from .views import DepartmentUserExport
 
 
@@ -126,19 +124,8 @@ class DepartmentUserAdmin(VersionAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        # Run the Azure AD sync actions function, async if a django_q broker is available or synchronously if not.
-        broker_available = False
-        try:
-            broker = get_broker()
-            if broker.ping():
-                broker_available = True
-        except Exception:
-            pass
-
-        if broker_available:
-            async_task('organisation.utils.deptuser_azure_sync', obj)
-        else:
-            deptuser_azure_sync(obj)
+        # Run the Azure AD sync actions function.
+        departmentuser_ad_sync(obj)
 
     def clear_ad_guid(self, request, queryset):
         queryset.update(ad_guid=None)
