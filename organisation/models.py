@@ -380,7 +380,7 @@ class DepartmentUser(models.Model):
                     department_user=self,
                     action_type='Change account field',
                     ad_field='companyName',
-                    ad_field_value=self.ad_data['companyName'],
+                    ad_field_value=self.azure_ad_data['companyName'],
                     field='cost_centre',
                     field_value=self.cost_centre.code,
                     completed=None,
