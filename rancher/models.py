@@ -1278,7 +1278,6 @@ class NamespaceListener(object):
                 active_workloads=models.F("active_workloads") + instance.active_workloads,
                 deleted_workloads=models.F("deleted_workloads") + instance.deleted_workloads
             )
-"""
 class ITSystemListener(object):
     @staticmethod
     @receiver(pre_save,sender=ITSystem)
@@ -1305,6 +1304,9 @@ class ITSystemListener(object):
             delattr(instance,"update_workload_itsystem")
             return
 
+        #clean the itsystem of workloads whose itsystem is current itsystem to trigger a rescan of the itsystem in the future.
+        Workload.objects.filter(itsystem=instance).update(itsystem=None)
+        """
         #update the deployment first
         itsystems = [instance]
         for workload in Workload.objects.filter(itsystem__isnull=True,kind=Workload.DEPLOYMENT):
@@ -1323,9 +1325,8 @@ class ITSystemListener(object):
                 for o in qs:
                     o.update_itsystem(itsystems=itsystems)
 
-
+        """
         delattr(instance,"update_workload_itsystem")
-"""
 
 class VulnerabilitiesListener(object):
     @staticmethod
