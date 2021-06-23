@@ -6,7 +6,6 @@ from leaflet.admin import LeafletGeoAdmin
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
-from .utils import departmentuser_ad_sync
 from .views import DepartmentUserExport
 
 
@@ -124,8 +123,11 @@ class DepartmentUserAdmin(VersionAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        # Run the Azure AD sync actions function.
-        departmentuser_ad_sync(obj)
+        # Run the Azure/on-prem AD sync actions.
+        obj.update_deptuser_from_azure()
+        obj.update_deptuser_from_onprem_ad()
+        obj.generate_ad_actions()
+        obj.audit_ad_actions()
 
     def clear_ad_guid(self, request, queryset):
         queryset.update(ad_guid=None)

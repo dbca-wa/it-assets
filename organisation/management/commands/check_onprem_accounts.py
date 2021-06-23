@@ -1,10 +1,10 @@
 from django.core.management.base import BaseCommand
 from organisation.models import DepartmentUser
-from organisation.utils import get_azure_users_json, find_user_in_list, update_deptuser_from_onprem_ad
+from organisation.utils import get_ad_users_json
 
 
 class Command(BaseCommand):
-    help = 'Checks user accounts from onprem AD and links DepartmentUser objects'
+    help = 'Checks user accounts from onprem AD and links DepartmentUser objects (no creation)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -23,13 +23,22 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Comparing Department Users to on-prem AD user accounts'))
-        ad_users = get_azure_users_json(container=options['container'], azure_json_path=options['json_path'])
+        self.stdout.write('Downloading on-prem AD user account data')
+        ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['json_path'])
 
-        for user in DepartmentUser.objects.filter(active=True, ad_guid__isnull=True):
-            ad_user = find_user_in_list(ad_users, user.email)
-            if ad_user:
-                update_deptuser_from_onprem_ad(ad_user, user)
-                self.stdout.write(self.style.SUCCESS('Updated ad_guid for {}'.format(user.email)))
+        self.stdout.write('Comparing Department Users to on-prem AD user accounts')
+        for ad in ad_users:
+            if ad['Enabled'] and 'EmailAddress' in ad and ad['EmailAddress']:
+                if '-admin' in ad['EmailAddress']:  # Skip admin users.
+                    continue
+                if not DepartmentUser.objects.filter(ad_guid=ad['ObjectGUID']).exists():
+                    # No current link to this AD user; try to find a match by email and link it.
+                    if DepartmentUser.objects.filter(email=ad['EmailAddress'].lower()).exists():
+                        du = DepartmentUser.objects.get(email=ad['EmailAddress'].lower())
+                        du.ad_guid = ad['ObjectGUID']
+                        du.username = ad['SamAccountName']
+                        du.ad_data = ad
+                        du.save()
+                        self.stdout.write(self.style.SUCCESS('Updated ad_guid for {}'.format(du)))
 
         self.stdout.write(self.style.SUCCESS('Completed'))

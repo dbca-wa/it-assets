@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from organisation.models import DepartmentUser, ADAction
-from organisation.utils import get_azure_users_json, find_user_in_list
+from organisation.utils import get_ad_users_json, find_user_in_list
 
 
 class Command(BaseCommand):
@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Checking all non-completed AD actions'))
-        ad_users = get_azure_users_json(container=options['container'], azure_json_path=options['json_path'])
+        ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['json_path'])
         user_pks = ADAction.objects.filter(completed__isnull=True).values_list('department_user', flat=True).distinct()
 
         for user in DepartmentUser.objects.filter(pk__in=user_pks):

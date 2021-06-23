@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from organisation.models import DepartmentUser, CostCentre, Location
-from organisation.utils import ms_graph_users, update_deptuser_from_azure
+from organisation.utils import ms_graph_users
 
 
 class Command(BaseCommand):
@@ -48,6 +48,7 @@ class Command(BaseCommand):
 
                     new_user = DepartmentUser.objects.create(
                         azure_guid=az['objectId'],
+                        azure_ad_data=az,
                         active=az['accountEnabled'],
                         email=az['mail'],
                         name=az['displayName'],
@@ -60,14 +61,13 @@ class Command(BaseCommand):
                         location=location,
                         dir_sync_enabled=az['onPremisesSyncEnabled'],
                     )
-                    update_deptuser_from_azure(az, new_user)  # Easier way to set some fields.
                     self.stdout.write(self.style.SUCCESS('Created {}'.format(new_user.email)))
             else:
                 if az['mail']:  # Azure object has an email; proceed.
                     # Update the existing DepartmentUser object fields with values from Azure.
                     user = DepartmentUser.objects.get(azure_guid=az['objectId'])
                     try:
-                        update_deptuser_from_azure(az, user)
+                        user.update_deptuser_from_azure()
                     except:
                         self.stdout.write(
                             self.style.NOTICE(
