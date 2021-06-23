@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 
+from .utils import compare_values
+
 
 class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
@@ -39,6 +41,49 @@ class DepartmentUser(models.Model):
         (2, 'Casual'),
         (3, 'Other'),
     )
+    # This dict maps <local field>: (<Azure AD field>, <onprem AD field>)
+    AD_FIELD_MAP = {
+        'active': ('accountEnabled', 'Enabled'),
+        'name': ('DisplayName', 'displayName'),
+        'given_name': ('GivenName', 'givenName'),
+        'surname': ('Surname', 'surname'),
+        'title': ('jobTitle', 'Title'),
+        'email': ('mail', 'EmailAddress'),
+        'telephone': ('telephoneNumber', 'telephoneNumber'),
+        'mobile_phone': ('mobilePhone', 'Mobile'),
+        'cost_centre': ('companyName', 'Company'),
+        'location': ('physicalDeliveryOfficeName', 'officeLocation'),
+        'employee_id': ('EmployeeID', 'employeeId'),
+    }
+    # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
+    # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
+    MS_LICENCE_SKUS = {
+        'c5928f49-12ba-48f7-ada3-0d743a3601d5': 'VISIO Online Plan 2',  # VISIOCLIENT
+        '1f2f344a-700d-42c9-9427-5cea1d5d7ba6': 'STREAM',
+        'b05e124f-c7cc-45a0-a6aa-8cf78c946968': 'ENTERPRISE MOBILITY + SECURITY E5',  # EMSPREMIUM
+        'c7df2760-2c81-4ef7-b578-5b5392b571df': 'OFFICE 365 E5',  # ENTERPRISEPREMIUM
+        '87bbbc60-4754-4998-8c88-227dca264858': 'POWERAPPS_INDIVIDUAL_USER',
+        '6470687e-a428-4b7a-bef2-8a291ad947c9': 'WINDOWS_STORE',
+        '6fd2c87f-b296-42f0-b197-1e91e994b900': 'OFFICE 365 E3',  # ENTERPRISEPACK
+        'f30db892-07e9-47e9-837c-80727f46fd3d': 'FLOW_FREE',
+        '440eaaa8-b3e0-484b-a8be-62870b9ba70a': 'PHONESYSTEM_VIRTUALUSER',
+        'bc946dac-7877-4271-b2f7-99d2db13cd2c': 'FORMS_PRO',
+        'dcb1a3ae-b33f-4487-846a-a640262fadf4': 'POWERAPPS_VIRAL',
+        '338148b6-1b11-4102-afb9-f92b6cdc0f8d': 'DYN365_ENTERPRISE_P1_IW',
+        '6070a4c8-34c6-4937-8dfb-39bbc6397a60': 'MEETING_ROOM',
+        'a403ebcc-fae0-4ca2-8c8c-7a907fd6c235': 'POWER_BI_STANDARD',
+        '111046dd-295b-4d6d-9724-d52ac90bd1f2': 'Microsoft Defender Advanced Threat Protection',  # WIN_DEF_ATP
+        '710779e8-3d4a-4c88-adb9-386c958d1fdf': 'TEAMS_EXPLORATORY',
+        'efccb6f7-5641-4e0e-bd10-b4976e1bf68e': 'ENTERPRISE MOBILITY + SECURITY E3',  # EMS
+        '90d8b3f8-712e-4f7b-aa1e-62e7ae6cbe96': 'SMB_APPS',
+        'fcecd1f9-a91e-488d-a918-a96cdb6ce2b0': 'AX7_USER_TRIAL',
+        '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RMSBASIC',
+        '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECT ONLINE PROFESSIONAL',  # PROJECTPROFESSIONAL
+        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1',  # STANDARDPACK
+        '06ebc4ee-1bb5-47dd-8120-11324bc54e06': 'MICROSOFT 365 E5',
+        '66b55226-6b4f-492c-910c-a3b7a3c9d993': 'MICROSOFT 365 F3',
+        '05e9a617-0261-4cee-bb44-138d3ef5d965': 'MICROSOFT 365 E3',
+    }
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -174,12 +219,13 @@ class DepartmentUser(models.Model):
         return None
 
     def get_full_name(self):
-        # Return given_name and surname, with a space in between.
+        """Return given_name and surname, with a space in between.
+        """
         full_name = '{} {}'.format(self.given_name, self.surname)
         return full_name.strip()
 
     def generate_ad_actions(self):
-        """For this object, generate ADAction objects that specify the changes which need to be
+        """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
         """
         actions = []
@@ -237,7 +283,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'telephoneNumber' in self.ad_data and self.ad_data['telephoneNumber'] != self.telephone:
+            if 'telephoneNumber' in self.ad_data and not compare_values(self.ad_data['telephoneNumber'], self.telephone):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -249,7 +295,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Mobile' in self.ad_data and self.ad_data['Mobile'] != self.mobile_phone:
+            if 'Mobile' in self.ad_data and not compare_values(self.ad_data['Mobile'], self.mobile_phone):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -351,7 +397,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'telephoneNumber' in self.azure_ad_data and self.azure_ad_data['telephoneNumber'] != self.telephone:
+            if 'telephoneNumber' in self.azure_ad_data and not compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -363,7 +409,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'mobilePhone' in self.azure_ad_data and self.azure_ad_data['mobilePhone'] != self.mobile_phone:
+            if 'mobilePhone' in self.azure_ad_data and not compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -434,9 +480,9 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'title' and self.ad_data['Title'] == self.title:
                     action.delete()
-                elif action.field == 'telephone' and self.ad_data['telephoneNumber'] == self.telephone:
+                elif action.field == 'telephone' and compare_values(self.ad_data['telephoneNumber'], self.telephone):
                     action.delete()
-                elif action.field == 'mobile_phone' and self.ad_data['Mobile'] == self.mobile_phone:
+                elif action.field == 'mobile_phone' and compare_values(self.ad_data['Mobile'], self.mobile_phone):
                     action.delete()
                 elif action.field == 'cost_centre' and self.ad_data['Company'] == self.cost_centre.code:
                     action.delete()
@@ -458,9 +504,9 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'title' and self.azure_ad_data['jobTitle'] == self.title:
                     action.delete()
-                elif action.field == 'telephone' and self.azure_ad_data['telephoneNumber'] == self.telephone:
+                elif action.field == 'telephone' and compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
                     action.delete()
-                elif action.field == 'mobile_phone' and self.azure_ad_data['mobilePhone'] == self.mobile_phone:
+                elif action.field == 'mobile_phone' and compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
                     action.delete()
                 elif action.field == 'cost_centre' and self.azure_ad_data['companyName'] == self.cost_centre.code:
                     action.delete()
@@ -469,28 +515,61 @@ class DepartmentUser(models.Model):
                 elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
                     action.delete()
 
+    def update_deptuser_from_azure(self):
+        """For this DepartmentUser object, update the field values from cached Azure AD data
+        (the source of truth for these values).
+        """
+        if not self.azure_guid or not self.azure_ad_data:
+            return
 
-ACTION_TYPE_CHOICES = (
-    ('Change email', 'Change email'),  # Separate from 'change field' because this is a significant operation.
-    ('Change account field', 'Change account field'),
-    ('Disable account', 'Disable account'),
-    ('Enable account', 'Enable account'),
-)
-# This dict maps Azure AD field names to onprem AD field names.
-AZURE_ONPREM_FIELD_MAP = {
-    'AccountEnabled': 'Enabled',
-    'Mail': 'EmailAddress',
-    'JobTitle': 'Title',
-    'TelephoneNumber': 'OfficePhone',
-    'Mobile': 'MobilePhone',
-    'CompanyName': 'Company',
-}
+        if 'accountEnabled' in self.azure_ad_data and self.azure_ad_data['accountEnabled'] != self.active:
+            self.active = self.azure_ad_data['accountEnabled']
+        if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
+            self.email = self.azure_ad_data['mail']
+        if 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
+            self.name = self.azure_ad_data['displayName']
+        if 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
+            self.given_name = self.azure_ad_data['givenName']
+        if 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
+            self.surname = self.azure_ad_data['surname']
+        if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
+            self.dir_sync_enabled = self.azure_ad_data['onPremisesSyncEnabled']
+        if 'proxyAddresses' in self.azure_ad_data and self.azure_ad_data['proxyAddresses'] != self.proxy_addresses:
+            self.proxy_addresses = self.azure_ad_data['proxyAddresses']
+        # Just replace the assigned_licences value every time (no comparison).
+        self.assigned_licences = []
+        if 'assignedLicenses' in self.azure_ad_data:
+            for sku in self.azure_ad_data['assignedLicenses']:
+                if sku in self.MS_LICENCE_SKUS:
+                    self.assigned_licences.append(self.MS_LICENCE_SKUS[sku])
+                else:
+                    self.assigned_licences.append(sku)
+
+        self.save()
+
+    def update_deptuser_from_onprem_ad(self):
+        """For this DepartmentUser object, update the field values from cached on-premise AD data
+        (the source of truth for these values).
+        """
+        if not self.ad_guid or not self.ad_data:
+            return
+
+        if 'SamAccountName' in self.ad_data and self.ad_data['SamAccountName'] != self.username:
+            self.username = self.ad_data['SamAccountName']
+
+        self.save()
 
 
 class ADAction(models.Model):
     """Represents a single "action" or change that needs to be carried out to the Active Directory
     object which matches a DepartmentUser object.
     """
+    ACTION_TYPE_CHOICES = (
+        ('Change email', 'Change email'),  # Separate from 'change field' because this is a significant operation.
+        ('Change account field', 'Change account field'),
+        ('Disable account', 'Disable account'),
+        ('Enable account', 'Enable account'),
+    )
     created = models.DateTimeField(auto_now_add=True)
     department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
     action_type = models.CharField(max_length=128, choices=ACTION_TYPE_CHOICES)
