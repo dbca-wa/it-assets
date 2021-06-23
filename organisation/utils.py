@@ -196,16 +196,6 @@ def find_user_in_list(user_list, email=None, objectid=None):
     return None
 
 
-def update_deptuser_from_onprem_ad(ad_user, dept_user):
-    """For given onprem AD user and DepartmentUser objects, update the DepartmentUser object fields
-    with values from AD (the source of truth for these values).
-    Currently, only ObjectGUID and SamAccountName should be synced from on-prem AD.
-    """
-    dept_user.ad_guid = ad_user['ObjectGUID']
-    dept_user.username = ad_user['SamAccountName']
-    dept_user.save()
-
-
 def onprem_ad_data_import(container='azuread', json_path='adusers.json', verbose=False):
     """Utility function to download onprem AD data from blob storage, then copy it to matching DepartmentUser objects.
     """
