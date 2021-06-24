@@ -26,19 +26,31 @@ class Command(BaseCommand):
         self.stdout.write('Downloading on-prem AD user account data')
         ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['json_path'])
 
+        if not ad_users:
+            self.stdout.write(self.style.ERROR('No on-prem AD user account data could be downloaded'))
+            return
+
         self.stdout.write('Comparing Department Users to on-prem AD user accounts')
         for ad in ad_users:
             if ad['Enabled'] and 'EmailAddress' in ad and ad['EmailAddress']:
                 if '-admin' in ad['EmailAddress']:  # Skip admin users.
                     continue
                 if not DepartmentUser.objects.filter(ad_guid=ad['ObjectGUID']).exists():
-                    # No current link to this AD user; try to find a match by email and link it.
-                    if DepartmentUser.objects.filter(email=ad['EmailAddress'].lower()).exists():
+                    # No current link to this onprem AD user; try to find a match by email and link it.
+                    if DepartmentUser.objects.filter(ad_guid__isnull=True, email__istartswith=ad['EmailAddress']).exists():
                         du = DepartmentUser.objects.get(email=ad['EmailAddress'].lower())
                         du.ad_guid = ad['ObjectGUID']
-                        du.username = ad['SamAccountName']
                         du.ad_data = ad
                         du.save()
-                        self.stdout.write(self.style.SUCCESS('Updated ad_guid for {}'.format(du)))
+                        du.update_deptuser_from_onprem_ad()
+                        self.stdout.write(
+                            self.style.SUCCESS('Linked existing department user {} with onprem AD object {}'.format(du, ad['ObjectGUID']))
+                        )
+                else:
+                    # An existing department user is linked to this onprem AD user.
+                    du = DepartmentUser.objects.get(ad_guid=ad['ObjectGUID'])
+                    du.ad_data = ad
+                    du.save()
+                    du.update_deptuser_from_onprem_ad()
 
         self.stdout.write(self.style.SUCCESS('Completed'))
