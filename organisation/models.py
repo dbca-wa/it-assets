@@ -93,48 +93,49 @@ class DepartmentUser(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 
-    # Fields directly related to the employee, which map to a field in Azure Active Directory.
-    # The Azure AD field name is listed after each field.
+    # Fields directly related to the employee, which map to a field in Active Directory.
     active = models.BooleanField(
-        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')  # AccountEnabled
-    email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')  # Mail
+        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')
+    email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')
     name = models.CharField(
-        max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')  # DisplayName
+        max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')
     given_name = models.CharField(
         max_length=128, null=True, blank=True,
-        help_text='Legal first name (matches birth certificate/passport/etc.)')  # GivenName
+        help_text='Legal first name (matches birth certificate/passport/etc.)')
     surname = models.CharField(
         max_length=128, null=True, blank=True,
-        help_text='Legal surname (matches birth certificate/passport/etc.)')  # Surname
+        help_text='Legal surname (matches birth certificate/passport/etc.)')
     title = models.CharField(
         max_length=128, null=True, blank=True,
-        help_text='Occupation position title (should match Ascender position title)')  # JobTitle
+        help_text='Occupation position title (should match Ascender position title)')
     telephone = models.CharField(
-        max_length=128, null=True, blank=True, help_text='Work telephone number')  # TelephoneNumber
+        max_length=128, null=True, blank=True, help_text='Work telephone number')
     mobile_phone = models.CharField(
-        max_length=128, null=True, blank=True, help_text='Work mobile number')  # Mobile
+        max_length=128, null=True, blank=True, help_text='Work mobile number')
     manager = models.ForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='manages', help_text='Staff member who manages this employee')  # Manager
+        related_name='manages', help_text='Staff member who manages this employee')
     cost_centre = models.ForeignKey(
         'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
-        help_text='Cost centre to which the employee currently belongs')  # CompanyName
+        help_text='Cost centre to which the employee currently belongs')
+    location = models.ForeignKey(
+        'Location', on_delete=models.PROTECT, null=True, blank=True,
+        help_text='Current physical workplace.')
+    proxy_addresses = ArrayField(base_field=models.CharField(
+        max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
+    assigned_licences = ArrayField(base_field=models.CharField(
+        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')
+    mail_nickname = models.CharField(max_length=128, null=True, blank=True)
+    dir_sync_enabled = models.NullBooleanField(default=None)
+    username = models.CharField(
+        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
+
+    # Metadata fields with no direct equivalent in AD.
+    # They are used for internal reporting and the Address Book.
     org_unit = models.ForeignKey(
         'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
         verbose_name='organisational unit',
-        help_text="The organisational unit to which the employee belongs.")  # NOTE: no AAD field mapping.
-    location = models.ForeignKey(
-        'Location', on_delete=models.PROTECT, null=True, blank=True,
-        help_text='Current physical workplace.')  # PhysicalDeliveryOfficeName, StreetAddress
-    proxy_addresses = ArrayField(base_field=models.CharField(
-        max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')  # ProxyAddresses
-    assigned_licences = ArrayField(base_field=models.CharField(
-        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')  # AssignedLicenses
-    mail_nickname = models.CharField(max_length=128, null=True, blank=True)  # MailNickName
-    dir_sync_enabled = models.NullBooleanField(default=None)  # DirSyncEnabled - indicates that the Azure user is synced to on-prem AD.
-
-    # Metadata fields with no direct equivalent in AD.
-    # They are used for internal reporting and the address book.
+        help_text="The organisational unit to which the employee belongs.")
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
@@ -171,8 +172,6 @@ class DepartmentUser(models.Model):
         agreement, referee check, police clearance, etc.''')
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
-    username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
     # Cache of Ascender data
     ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
