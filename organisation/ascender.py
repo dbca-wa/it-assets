@@ -163,15 +163,20 @@ def ascender_db_import(verbose=False):
     employee_iter = ascender_employee_fetch()
 
     for eid, jobs in employee_iter:
-        if DepartmentUser.objects.filter(employee_id=eid).exists():
-            user = DepartmentUser.objects.get(employee_id=eid)
-            # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
-            user.ascender_data = jobs[0]
-            user.ascender_data_updated = TZ.localize(datetime.now())
-            user.save()
-        else:
-            if verbose:
-                print("Could not match Ascender employee ID {} to a department user".format(eid))
+        # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
+        job = jobs[0]
+        # Only look at non-FPC users.
+        if job['clevel1_id'] != 'FPC':
+            # Only data cache for users having a non-terminated job.
+            if not job['job_term_date'] or datetime.strptime(job['job_term_date'], '%Y-%m-%d').date() >= date.today():
+                if DepartmentUser.objects.filter(employee_id=eid).exists():
+                    user = DepartmentUser.objects.get(employee_id=eid)
+                    user.ascender_data = job
+                    user.ascender_data_updated = TZ.localize(datetime.now())
+                    user.save()
+                else:
+                    if verbose:
+                        print("Could not match Ascender employee ID {} to a department user".format(eid))
 
 
 def get_ascender_matches():

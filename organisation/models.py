@@ -83,6 +83,11 @@ class DepartmentUser(models.Model):
         '06ebc4ee-1bb5-47dd-8120-11324bc54e06': 'MICROSOFT 365 E5',
         '66b55226-6b4f-492c-910c-a3b7a3c9d993': 'MICROSOFT 365 F3',
         '05e9a617-0261-4cee-bb44-138d3ef5d965': 'MICROSOFT 365 E3',
+        'c1ec4a95-1f05-45b3-a911-aa3fa01094f5': 'INTUNE',
+        '3e26ee1f-8a5f-4d52-aee2-b81ce45c8f40': 'AUDIO CONFERENCING',
+        '57ff2da0-773e-42df-b2af-ffb7a2317929': 'MICROSOFT TEAMS',
+        '0feaeb32-d00e-4d66-bd5a-43b5b83db82c': 'SKYPE FOR BUSINESS ONLINE (PLAN 2)',
+        '4828c8ec-dc2e-4779-b502-87ac9ce28ab7': 'SKYPE FOR BUSINESS CLOUD PBX',
     }
 
     date_created = models.DateTimeField(auto_now_add=True)
