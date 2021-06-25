@@ -1,13 +1,10 @@
 from django.contrib.admin import (
     register,
     ModelAdmin,
-    StackedInline,
     SimpleListFilter,
     TabularInline,
-    SimpleListFilter,
 )
 from django.urls import path
-from django_q.tasks import async_task
 from django.db.models import Q
 
 from .models import Host, HostStatus, HostIP, ScanRange, ScanPlugin, ScanPluginParameter
@@ -84,15 +81,6 @@ class HostStatusAdmin(ModelAdmin):
         "ping_scan_range",
     )
     date_hierarchy = "date"
-
-    actions = ("run_full_scan",)
-
-    def run_full_scan(self, request, queryset):
-        async_task("status.utils.run_all")
-        self.message_user(request, "A full scan has been scheduled.")
-
-    run_full_scan.short_description = "Run a full scan"
-
     fieldsets = (
         (
             "Host details",
@@ -188,7 +176,7 @@ class ScanRangeAdmin(ModelAdmin):
     list_display = ("name", "enabled", "range")
     list_filter = ("enabled",)
     ordering = ("range",)
-    actions = ("enable_scan_ranges", "disable_scan_ranges", "ping_sweep")
+    actions = ("enable_scan_ranges", "disable_scan_ranges")
 
     def enable_scan_ranges(self, request, queryset):
         queryset.update(enabled=True)
@@ -202,15 +190,6 @@ class ScanRangeAdmin(ModelAdmin):
 
     disable_scan_ranges.short_description = "Disable scan ranges"
 
-    def ping_sweep(self, request, queryset):
-        for obj in queryset:
-            async_task("status.utils.run_scan", obj.id)
-        self.message_user(
-            request, "A ping sweep has been scheduled for these scan ranges."
-        )
-
-    ping_sweep.short_description = "Run a ping sweep on this scan range"
-
 
 class ScanPluginParameterInline(TabularInline):
     model = ScanPluginParameter
@@ -222,11 +201,9 @@ class ScanPluginAdmin(ModelAdmin):
     list_display = ("name", "enabled", "plugin")
     ordering = ("name",)
     inlines = (ScanPluginParameterInline,)
-
     actions = (
         "enable_scan_plugins",
         "disable_scan_plugins",
-        "run_scan_plugins",
     )
 
     def enable_scan_plugins(self, request, queryset):
@@ -240,10 +217,3 @@ class ScanPluginAdmin(ModelAdmin):
         self.message_user(request, "Scan plugins have been disabled.")
 
     disable_scan_plugins.short_description = "Disable scan plugins"
-
-    def run_scan_plugins(self, request, queryset):
-        for plugin in queryset:
-            async_task("status.utils.run_plugin", plugin.id)
-        self.message_user(request, "The scan plugins have been scheduled to run.")
-
-    run_scan_plugins.short_description = "Run scan plugins"
