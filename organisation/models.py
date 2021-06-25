@@ -126,7 +126,7 @@ class DepartmentUser(models.Model):
     assigned_licences = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')
     mail_nickname = models.CharField(max_length=128, null=True, blank=True)
-    dir_sync_enabled = models.NullBooleanField(default=None)
+    dir_sync_enabled = models.NullBooleanField(default=None)  # True means this account is synced from on-prem to Azure AD.
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
@@ -530,16 +530,11 @@ class DepartmentUser(models.Model):
             self.active = self.azure_ad_data['accountEnabled']
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
             self.email = self.azure_ad_data['mail']
-        if 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
-            self.name = self.azure_ad_data['displayName']
-        if 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
-            self.given_name = self.azure_ad_data['givenName']
-        if 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
-            self.surname = self.azure_ad_data['surname']
         if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
             self.dir_sync_enabled = self.azure_ad_data['onPremisesSyncEnabled']
         if 'proxyAddresses' in self.azure_ad_data and self.azure_ad_data['proxyAddresses'] != self.proxy_addresses:
             self.proxy_addresses = self.azure_ad_data['proxyAddresses']
+
         # Just replace the assigned_licences value every time (no comparison).
         self.assigned_licences = []
         if 'assignedLicenses' in self.azure_ad_data:
