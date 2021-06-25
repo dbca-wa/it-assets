@@ -178,24 +178,6 @@ def get_ad_users_json(container, azure_json_path):
     return json.loads(store.get_content(azure_json_path))
 
 
-def find_user_in_list(user_list, email=None, objectid=None):
-    """For a list of dicts (Azure/onprem AD users), find the first one matching email/objectid (or None).
-    """
-    if email:
-        for user in user_list:
-            if 'mail' in user and user['mail'] and user['mail'].lower() == email.lower():  # Azure AD
-                return user
-            elif 'EmailAddress' in user and user['EmailAddress'] and user['EmailAddress'].lower() == email.lower():  # Onprem AD
-                return user
-    if objectid:
-        for user in user_list:
-            if 'objectId' in user and user['objectId'] and user['objectId'] == objectid:  # Azure AD
-                return user
-            elif 'ObjectGUID' in user and user['ObjectGUID'] and user['ObjectGUID'] == objectid:  # Onprem AD
-                return user
-    return None
-
-
 def onprem_ad_data_import(container='azuread', json_path='adusers.json', verbose=False):
     """Utility function to download onprem AD data from blob storage, then copy it to matching DepartmentUser objects.
     """
