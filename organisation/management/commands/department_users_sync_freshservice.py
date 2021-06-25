@@ -38,6 +38,10 @@ class Command(BaseCommand):
             if not user['givenName'] and not user['surname']:
                 continue
 
+            # Skip disabled Azure AD accounts.
+            if not user['accountEnabled']:
+                continue
+
             # Is there already a matching requester in Freshservice?
             if user['mail'].lower() in requesters_fs:
                 requester = requesters_fs[user['mail'].lower()]

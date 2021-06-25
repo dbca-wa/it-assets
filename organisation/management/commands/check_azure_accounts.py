@@ -7,34 +7,43 @@ class Command(BaseCommand):
     help = 'Checks user accounts from Azure AD and creates/updates linked DepartmentUser objects'
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Comparing Department Users to licensed Azure AD user accounts'))
+        self.stdout.write('Comparing Department Users to licensed Azure AD user accounts')
+        self.stdout.write('Querying Microsoft Graph API for Azure AD users.')
         azure_users = ms_graph_users(licensed=True)
+
+        if not azure_users:
+            self.stdout.write(self.style.ERROR('Microsoft Graph API returned no users'))
+            return
 
         for az in azure_users:
             if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
+                # No existing DepartmentUser is linked to this Azure AD user.
                 if az['mail']:  # Azure object has an email address; proceed.
 
                     # A department user with matching email may already exist in IT Assets with a different azure_guid.
                     # If so, return a warning and skip that user.
-                    if DepartmentUser.objects.filter(email__istartswith=az['mail'], azure_guid__isnull=False).exists():
-                        existing_user = DepartmentUser.objects.filter(email__istartswith=az['mail']).first()
+                    # We'll need to correct this issue manually.
+                    if DepartmentUser.objects.filter(email=az['mail'], azure_guid__isnull=False).exists():
+                        existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
                         self.stdout.write(
-                            self.style.NOTICE(
+                            self.style.WARNING(
                                 'Skipped {}: email exists and already associated with Azure ObjectId {} (this ObjectId is {})'.format(az['mail'], existing_user.azure_guid, az['objectId'])
                             )
                         )
-                        continue
+                        continue  # Skip to the next Azure user.
 
                     # A department user with matching email may already exist in IT Assets with no azure_guid.
-                    # If so, simply associate the Azure AD objectId with that user.
-                    if DepartmentUser.objects.filter(email__istartswith=az['mail'], azure_guid__isnull=True).exists():
-                        existing_user = DepartmentUser.objects.filter(email__istartswith=az['mail']).first()
+                    # If so, associate the Azure AD objectId with that user.
+                    if DepartmentUser.objects.filter(email=az['mail'], azure_guid__isnull=True).exists():
+                        existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
                         existing_user.azure_guid = az['objectId']
+                        existing_user.azure_ad_data = az
                         existing_user.save()
+                        existing_user.update_deptuser_from_azure()
                         self.stdout.write(
-                            self.style.WARNING('Updated existing user {} with Azure objectId {}'.format(az['mail'], az['objectId']))
+                            self.style.SUCCESS('Linked existing user {} with Azure objectId {}'.format(az['mail'], az['objectId']))
                         )
-                        continue
+                        continue  # Skip to the next Azure user.
 
                     if az['companyName'] and CostCentre.objects.filter(code=az['companyName']).exists():
                         cost_centre = CostCentre.objects.get(code=az['companyName'])
@@ -61,18 +70,14 @@ class Command(BaseCommand):
                         location=location,
                         dir_sync_enabled=az['onPremisesSyncEnabled'],
                     )
-                    self.stdout.write(self.style.SUCCESS('Created {}'.format(new_user.email)))
+                    self.stdout.write(self.style.SUCCESS('Created new department user {}'.format(new_user.email)))
             else:
+                # An existing DepartmentUser is linked to this Azure AD user.
                 if az['mail']:  # Azure object has an email; proceed.
                     # Update the existing DepartmentUser object fields with values from Azure.
-                    user = DepartmentUser.objects.get(azure_guid=az['objectId'])
-                    try:
-                        user.update_deptuser_from_azure()
-                    except:
-                        self.stdout.write(
-                            self.style.NOTICE(
-                                'Error during sync of {} with Azure objectId {}'.format(user.email, az['objectId'])
-                            )
-                        )
+                    existing_user = DepartmentUser.objects.get(azure_guid=az['objectId'])
+                    existing_user.azure_ad_data = az
+                    existing_user.save()
+                    existing_user.update_deptuser_from_azure()
 
         self.stdout.write(self.style.SUCCESS('Completed'))

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -30,8 +30,8 @@ class RancherViewsTestCase(TestCase):
             kind='test',
             image='test-image',
             api_version='1',
-            modified=datetime.now(),
-            created=datetime.now(),
+            modified=datetime.now(timezone.utc),
+            created=datetime.now(timezone.utc),
         )
 
     def test_workload_detail(self):
