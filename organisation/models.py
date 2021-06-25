@@ -488,9 +488,9 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'mobile_phone' and compare_values(self.ad_data['Mobile'], self.mobile_phone):
                     action.delete()
-                elif action.field == 'cost_centre' and self.ad_data['Company'] == self.cost_centre.code:
+                elif action.field == 'cost_centre' and (self.cost_centre and self.ad_data['Company'] == self.cost_centre.code):
                     action.delete()
-                elif action.field == 'location' and self.ad_data['physicalDeliveryOfficeName'] == self.location.name:
+                elif action.field == 'location' and (self.location and self.ad_data['physicalDeliveryOfficeName'] == self.location.name):
                     action.delete()
                 elif action.field == 'employee_id' and self.ad_data['EmployeeID'] == self.employee_id:
                     action.delete()
@@ -512,9 +512,9 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'mobile_phone' and compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
                     action.delete()
-                elif action.field == 'cost_centre' and self.azure_ad_data['companyName'] == self.cost_centre.code:
+                elif action.field == 'cost_centre' and (self.cost_centre and self.azure_ad_data['companyName'] == self.cost_centre.code):
                     action.delete()
-                elif action.field == 'location' and self.azure_ad_data['officeLocation'] == self.location.name:
+                elif action.field == 'location' and (self.location and self.azure_ad_data['officeLocation'] == self.location.name):
                     action.delete()
                 elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
                     action.delete()
