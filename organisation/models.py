@@ -231,6 +231,8 @@ class DepartmentUser(models.Model):
     def generate_ad_actions(self):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
+        TODO: refactor this method with reference to the ascender_onprem_diff management commance,
+        once Ascender becomes the source of truth.
         """
         actions = []
 
