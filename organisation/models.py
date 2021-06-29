@@ -630,7 +630,6 @@ class ADAction(models.Model):
                     instructions = 'Set-AzureADUser -ObjectId "{}" -{} $null'.format(self.department_user.azure_guid, self.ad_field)
             instructions = 'Connect-AzureAD\n' + instructions
 
-        instructions = '<pre><code class="language-powershell">{}</code></pre>'.format(instructions)
         return instructions
 
 
