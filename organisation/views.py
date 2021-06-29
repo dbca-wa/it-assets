@@ -317,12 +317,14 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
         context['site_acronym'] = 'OIM'
         context['page_title'] = 'Ascender / Active Directory sync issues'
 
-        # Current, active Department users having no employee ID.
+        # Current, active Department users having an M365 licence but no employee ID.
         context['deptuser_no_empid'] = DepartmentUser.objects.filter(
             active=True,
-            email__contains='@dbca.wa.gov.au',
+            email__icontains='@dbca.wa.gov.au',
             employee_id__isnull=True,
             account_type__in=[2, 3, 0, 8, 6, 1, None],
+            azure_guid__isnull=False,
+            assigned_licences__contains=['MICROSOFT 365 E5'],
         )
 
         # Department users not linked with onprem AD or Azure AD.
