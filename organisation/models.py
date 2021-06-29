@@ -125,7 +125,6 @@ class DepartmentUser(models.Model):
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
     assigned_licences = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')
-    mail_nickname = models.CharField(max_length=128, null=True, blank=True)
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
@@ -231,7 +230,7 @@ class DepartmentUser(models.Model):
     def generate_ad_actions(self):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
-        TODO: refactor this method with reference to the ascender_onprem_diff management commance,
+        TODO: refactor this method with reference to the ascender_onprem_diff management command,
         once Ascender becomes the source of truth.
         """
         actions = []
@@ -313,7 +312,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if self.cost_centre and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+            if 'Company' in self.ad_data and (self.cost_centre is None or self.cost_centre.code != self.ad_data['Company']):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
