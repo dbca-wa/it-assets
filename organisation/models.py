@@ -126,7 +126,6 @@ class DepartmentUser(models.Model):
     assigned_licences = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')
     mail_nickname = models.CharField(max_length=128, null=True, blank=True)
-    dir_sync_enabled = models.NullBooleanField(default=None)  # True means this account is synced from on-prem to Azure AD.
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
@@ -188,6 +187,7 @@ class DepartmentUser(models.Model):
         editable=False, help_text="Azure AD ObjectId")
     azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
+    dir_sync_enabled = models.NullBooleanField(default=None)  # True means this account is synced from on-prem to Azure AD.
 
     def __str__(self):
         return self.email
@@ -293,7 +293,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='telephoneNumber',
+                    ad_field='OfficePhone',
                     ad_field_value=self.ad_data['telephoneNumber'],
                     field='telephone',
                     field_value=self.telephone,
@@ -305,7 +305,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='Mobile',
+                    ad_field='MobilePhone',
                     ad_field_value=self.ad_data['Mobile'],
                     field='mobile_phone',
                     field_value=self.mobile_phone,
@@ -329,7 +329,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='physicalDeliveryOfficeName',
+                    ad_field='Office',
                     ad_field_value=self.ad_data['physicalDeliveryOfficeName'],
                     field='location',
                     field_value=self.location.name,
@@ -359,7 +359,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='displayName',
+                    ad_field='DisplayName',
                     ad_field_value=self.azure_ad_data['displayName'],
                     field='name',
                     field_value=self.name,
@@ -371,7 +371,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='givenName',
+                    ad_field='GivenName',
                     ad_field_value=self.azure_ad_data['givenName'],
                     field='given_name',
                     field_value=self.given_name,
@@ -395,7 +395,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='jobTitle',
+                    ad_field='JobTitle',
                     ad_field_value=self.azure_ad_data['jobTitle'],
                     field='title',
                     field_value=self.title,
@@ -407,7 +407,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='telephoneNumber',
+                    ad_field='TelephoneNumber',
                     ad_field_value=self.azure_ad_data['telephoneNumber'],
                     field='telephone',
                     field_value=self.telephone,
@@ -419,7 +419,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='mobilePhone',
+                    ad_field='Mobile',
                     ad_field_value=self.azure_ad_data['mobilePhone'],
                     field='mobile_phone',
                     field_value=self.mobile_phone,
@@ -431,7 +431,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='companyName',
+                    ad_field='CompanyName',
                     ad_field_value=self.azure_ad_data['companyName'],
                     field='cost_centre',
                     field_value=self.cost_centre.code,
@@ -443,7 +443,7 @@ class DepartmentUser(models.Model):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='officeLocation',
+                    ad_field='StreetAddress',
                     ad_field_value=self.azure_ad_data['officeLocation'],
                     field='location',
                     field_value=self.location.name,
@@ -451,6 +451,8 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
+            """
+            TODO: determine how to set employee_id for Azure AD users.
             if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
@@ -462,6 +464,7 @@ class DepartmentUser(models.Model):
                     completed=None,
                 )
                 actions.append(action)
+            """
 
         return actions
 
@@ -601,6 +604,35 @@ class ADAction(models.Model):
     @property
     def action(self):
         return '{} {} to {}'.format(self.action_type, self.ad_field, self.field_value)
+
+    def powershell_instructions(self):
+        """Returns a PowerShell command to update the relevant Active Directory.
+        """
+        if self.department_user.dir_sync_enabled:  # Powershell instructions for onprem AD.
+            if not self.department_user.ad_guid:
+                return ''
+            if self.ad_field == 'Manager':
+                instructions = '$manager = Get-ADUser -Identity {}\nSet-ADUser -Identity {} -Manager $manager'.format(
+                    self.department_user.manager.ad_guid, self.department_user.ad_guid)
+            else:
+                if self.field_value:
+                    instructions = 'Set-ADUser -Identity {} -{} "{}"'.format(self.department_user.ad_guid, self.ad_field, self.field_value)
+                else:
+                    instructions = 'Set-ADUser -Identity {} -{} $null'.format(self.department_user.ad_guid, self.ad_field)
+        else:  # Powershell instructions for Azure AD.
+            if self.ad_field == 'Manager':
+                instructions = 'Set-AzureADUserManager -ObjectId "{}" -RefObjectId "{}"'.format(self.department_user.azure_guid, self.department_user.manager.azure_guid)
+            elif self.ad_field == 'EmployeeId':
+                instructions = 'Set-AzureADUserExtension -ObjectId "{}" -ExtensionName "EmployeeId" -ExtensionValue "{}"'.format(self.department_user.azure_guid, self.field_value)
+            else:
+                if self.field_value:
+                    instructions = 'Set-AzureADUser -ObjectId "{}" -{} "{}"'.format(self.department_user.azure_guid, self.ad_field, self.field_value)
+                else:
+                    instructions = 'Set-AzureADUser -ObjectId "{}" -{} $null'.format(self.department_user.azure_guid, self.ad_field)
+            instructions = 'Connect-AzureAD\n' + instructions
+
+        instructions = '<pre><code class="language-powershell">{}</code></pre>'.format(instructions)
+        return instructions
 
 
 class Location(models.Model):
