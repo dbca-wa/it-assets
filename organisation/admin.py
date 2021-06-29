@@ -110,6 +110,7 @@ class DepartmentUserAdmin(VersionAdmin):
                 'ad_guid',
                 'assigned_licences',
                 'proxy_addresses',
+                'dir_sync_enabled',
             ),
         }),
     )
