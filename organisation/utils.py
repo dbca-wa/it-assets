@@ -4,6 +4,7 @@ from django.conf import settings
 import json
 import os
 import pytz
+import re
 import requests
 from itassets.utils import ms_graph_client_token
 
@@ -243,3 +244,14 @@ def compare_values(a, b):
         return True
 
     return a == b
+
+
+def parse_windows_ts(s):
+    """Parse the string repr of Windows timestamp output, a 64-bit value representing the number of
+    100-nanoseconds elapsed since January 1, 1601 (UTC).
+    """
+    try:
+        match = re.search('(?P<timestamp>[0-9]+)', s)
+        return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
+    except:
+        return None
