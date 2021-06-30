@@ -56,7 +56,7 @@ class DepartmentUserAdmin(VersionAdmin):
     raw_id_fields = ('manager',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
-        'assigned_licences', 'proxy_addresses',
+        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled',
     )
     fieldsets = (
         ('Active Directory account fields', {
