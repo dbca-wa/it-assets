@@ -12,6 +12,7 @@ from itassets.utils import breadcrumbs_list
 from .forms import ConfirmPhoneNosForm
 from .models import DepartmentUser, Location, OrgUnit, ADAction
 from .reports import department_user_export, user_account_export
+from .utils import parse_windows_ts
 
 
 class AddressBook(TemplateView):
@@ -339,6 +340,17 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
         for du in du_users:
             if du.ad_data and 'EmployeeID' in du.ad_data and du.ad_data['EmployeeID'] != du.employee_id:
                 context['onprem_ad_empid_diff'].append(du)
+
+        # Department user Ascender expiry date differs from onprem AD expiry date.
+        context['deptuser_expdate_diff'] = []
+        for du in du_users:
+            if du.ascender_data and du.ad_data:
+                if du.ascender_data['job_term_date'] and du.ad_data['AccountExpirationDate']:
+                    ascender_date = datetime.strptime(du.ascender_data['job_term_date'], '%Y-%m-%d').date()
+                    onprem_date = parse_windows_ts(du.ad_data['AccountExpirationDate']).date()
+                    delta = ascender_date - onprem_date
+                    if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
+                        context['deptuser_expdate_diff'].append([du, ascender_date, onprem_date])
 
         # Department user CC differs from Ascender paypoint.
         context['deptuser_cc_diff'] = []

@@ -4,6 +4,7 @@ from django.conf import settings
 import json
 import os
 import pytz
+import re
 import requests
 from itassets.utils import ms_graph_client_token
 
@@ -19,16 +20,23 @@ def ascender_onprem_ad_data_diff(container='azuread', json_path='adusers.json'):
     # Iterate through DepartmentUsers and check for mismatches between Ascender and onprem AD data.
     for user in DepartmentUser.objects.filter(employee_id__isnull=False, ascender_data__isnull=False, ad_guid__isnull=False, ad_data__isnull=False):
 
-        # First name.
-        if user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
+        # First name - check against preferred name, then first name.
+        name_mismatch = False
+        if user.ascender_data['preferred_name']:
+            if user.ad_data['GivenName'].upper() != user.ascender_data['preferred_name'].upper() and user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
+                name_mismatch = True
+        else:
+            if user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
+                name_mismatch = True
+        if name_mismatch:
             discrepancies.append({
                 'ascender_id': user.employee_id,
                 'target': 'On-premise AD',
                 'target_pk': user.ad_guid,
                 'field': 'GivenName',
                 'old_value': user.ad_data['GivenName'],
-                'new_value': user.ascender_data['first_name'],
-                'action': 'Update onprem AD user {} GivenName to {}'.format(user.ad_guid, user.ascender_data['first_name']),
+                'new_value': user.ascender_data['preferred_name'] if user.ascender_data['preferred_name'] else user.ascender_data['first_name'],
+                'action': 'Update onprem AD user {} GivenName to {}'.format(user.ad_guid, user.ascender_data['preferred_name'] if user.ascender_data['preferred_name'] else user.ascender_data['first_name']),
             })
 
         # Surname.
@@ -57,10 +65,30 @@ def ascender_onprem_ad_data_diff(container='azuread', json_path='adusers.json'):
                 'ascender_id': user.employee_id,
                 'target': 'On-premise AD',
                 'target_pk': user.ad_guid,
-                'field': 'telephoneNumber',
+                'field': 'OfficePhone',
                 'old_value': user.ad_data['telephoneNumber'],
                 'new_value': user.ascender_data['work_phone_no'],
-                'action': 'Update onprem AD user {} telephoneNumber to {}'.format(user.ad_guid, user.ascender_data['work_phone_no']),
+                'action': 'Update onprem AD user {} OfficePhone to {}'.format(user.ad_guid, user.ascender_data['work_phone_no']),
+            })
+
+        # Mobile number (disregard differences in spaces).
+        if user.ad_data['Mobile']:
+            ad_mob = user.ad_data['Mobile'].replace(' ', '')
+        else:
+            ad_mob = ''
+        if user.ascender_data['work_mobile_phone_no']:
+            asc_mob = user.ascender_data['work_mobile_phone_no'].replace(' ', '')
+        else:
+            asc_mob = ''
+        if ad_mob != asc_mob:
+            discrepancies.append({
+                'ascender_id': user.employee_id,
+                'target': 'On-premise AD',
+                'target_pk': user.ad_guid,
+                'field': 'MobilePhone',
+                'old_value': user.ad_data['Mobile'],
+                'new_value': user.ascender_data['work_mobile_phone_no'],
+                'action': 'Update onprem AD user {} MobilePhone to {}'.format(user.ad_guid, user.ascender_data['work_mobile_phone_no']),
             })
 
         # Title
@@ -216,3 +244,14 @@ def compare_values(a, b):
         return True
 
     return a == b
+
+
+def parse_windows_ts(s):
+    """Parse the string repr of Windows timestamp output, a 64-bit value representing the number of
+    100-nanoseconds elapsed since January 1, 1601 (UTC).
+    """
+    try:
+        match = re.search('(?P<timestamp>[0-9]+)', s)
+        return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
+    except:
+        return None

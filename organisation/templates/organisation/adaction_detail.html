@@ -55,7 +55,7 @@
     </p>
 {% endif %}
 
-{{ object.powershell_instructions|safe }}
+<pre><code class="language-powershell">{{ object.powershell_instructions }}</code></pre>
 
 <p>
     <a href="{% url 'ad_action_complete' pk=object.pk %}" class="btn btn-primary"><i class="fas fa-check"></i> Mark as completed</a>
