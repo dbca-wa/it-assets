@@ -79,6 +79,28 @@
 </table>
 {% endif %}
 
+{% if deptuser_expdate_diff %}
+<h2>Department user on-premise AD expiry differs from Ascender job expiry</h2>
+<table class="table table-bordered table-striped table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Ascender expiry date</th>
+            <th>On-prem AD expiry date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for diff in deptuser_expdate_diff %}
+        <tr>
+            <td>{{ diff.0.get_full_name }}</td>
+            <td>{{ diff.1|date:"d-M-Y" }}</td>
+            <td>{{ diff.2|date:"d-M-Y" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
 {% if deptuser_cc_diff %}
 <h2>Department user cost centre differs from Ascender paypoint / cost centre</h2>
 <p>SOLUTION: update the IT Assets department user CC to the Ascender CC value.</p>
