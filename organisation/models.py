@@ -41,20 +41,6 @@ class DepartmentUser(models.Model):
         (2, 'Casual'),
         (3, 'Other'),
     )
-    # This dict maps <local field>: (<Azure AD field>, <onprem AD field>)
-    AD_FIELD_MAP = {
-        'active': ('accountEnabled', 'Enabled'),
-        'name': ('DisplayName', 'displayName'),
-        'given_name': ('GivenName', 'givenName'),
-        'surname': ('Surname', 'surname'),
-        'title': ('jobTitle', 'Title'),
-        'email': ('mail', 'EmailAddress'),
-        'telephone': ('telephoneNumber', 'telephoneNumber'),
-        'mobile_phone': ('mobilePhone', 'Mobile'),
-        'cost_centre': ('companyName', 'Company'),
-        'location': ('physicalDeliveryOfficeName', 'officeLocation'),
-        'employee_id': ('EmployeeID', 'employeeId'),
-    }
     # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     MS_LICENCE_SKUS = {
