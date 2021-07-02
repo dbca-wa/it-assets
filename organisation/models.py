@@ -436,20 +436,17 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            """
-            TODO: determine how to set employee_id for Azure AD users.
             if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='employeeId',
+                    ad_field='EmployeeId',
                     ad_field_value=self.azure_ad_data['employeeId'],
                     field='employee_id',
                     field_value=self.employee_id,
                     completed=None,
                 )
                 actions.append(action)
-            """
 
         return actions
 
@@ -526,6 +523,7 @@ class DepartmentUser(models.Model):
             self.proxy_addresses = self.azure_ad_data['proxyAddresses']
 
         # Just replace the assigned_licences value every time (no comparison).
+        # We replace the SKU GUID values with (known) human-readable licence types, as appropriate.
         self.assigned_licences = []
         if 'assignedLicenses' in self.azure_ad_data:
             for sku in self.azure_ad_data['assignedLicenses']:
@@ -622,12 +620,6 @@ class ADAction(models.Model):
 class Location(models.Model):
     """A model to represent a physical location.
     """
-    #VOIP_PLATFORM_CHOICES = (
-    #    ('3CX', '3CX'),
-    #    ('CUCM', 'CUCM'),
-    #    ('Teams', 'Teams'),
-    #)
-
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
