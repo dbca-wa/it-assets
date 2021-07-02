@@ -1,5 +1,7 @@
-from fuzzywuzzy import fuzz
+from datetime import datetime
 import xlsxwriter
+
+from .utils import parse_windows_ts
 
 
 def department_user_export(fileobj, users):
@@ -93,9 +95,9 @@ def user_account_export(fileobj, users):
 
 def department_user_ascender_discrepancies(fileobj, users):
     """For the passed in queryset of DepartmentUser objects, return an Excel spreadsheet
-    that contains discrepancies between the user data and their associated Ascender HR data.
-    NOTE: deprecated following PSB Onboarding project.
+    that contains discrepancies between the user data and their associated Ascender data.
     """
+    from .models import DepartmentUser
     with xlsxwriter.Workbook(
         fileobj,
         {
@@ -104,118 +106,168 @@ def department_user_ascender_discrepancies(fileobj, users):
             'remove_timezone': True,
         },
     ) as workbook:
+        # Worksheet 1: department users having no Ascender employee ID.
+        no_empid_sheet = workbook.add_worksheet('Users without employee ID')
+        no_empid_sheet.write_row('A1', (
+            'NAME', 'COST CENTRE', 'ACCOUNT TYPE', 'MICROSOFT LICENCES',
+        ))
+        row = 1
+        # Exclude the obvious "non-user" accounts, plus volunteers and alumni.
+        excludes = DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+        excludes.extend([7, 1])
+        qs = users.filter(
+            active=True,
+            email__icontains='@dbca.wa.gov.au',
+            employee_id__isnull=True,
+            azure_guid__isnull=False,
+            assigned_licences__contains=['MICROSOFT 365 E5'],
+        ).exclude(
+            account_type__in=excludes,
+        ).order_by(
+            'given_name',
+            'surname',
+        )
+        for user in qs:
+            no_empid_sheet.write_row(row, 0, [
+                user.get_full_name(),
+                user.cost_centre.code if user.cost_centre else '',
+                user.get_account_type_display(),
+                ', '.join(user.assigned_licences),
+            ])
+            row += 1
+
+        no_empid_sheet.set_column('A:A', 30)
+        no_empid_sheet.set_column('B:B', 14)
+        no_empid_sheet.set_column('C:C', 44)
+        no_empid_sheet.set_column('D:D', 56)
+
+        # Worksheet 2: discrepancies between department user on-prem AD data and Ascender.
         users_sheet = workbook.add_worksheet('Discrepancies')
         users_sheet.write_row('A1', (
-            'NAME', 'ACCOUNT TYPE', 'IT ASSETS FIELD', 'IT ASSETS VALUE', 'ASCENDER VALUE',
+            'NAME', 'ACCOUNT TYPE', 'ATTRIBUTE', 'ACTIVE DIRECTORY VALUE', 'ASCENDER VALUE',
         ))
         row = 1
 
-        for user in users:
-            # Employee number is missing:
-            if not user.employee_id and user.account_type not in [3, 6, 7, 1]:
+        qs = DepartmentUser.objects.filter(
+            active=True,
+            email__contains='@dbca.wa.gov.au',
+            employee_id__isnull=False,
+            ascender_data__isnull=False,
+            ad_guid__isnull=False,
+            ad_data__isnull=False,
+            azure_guid__isnull=False,
+            assigned_licences__contains=['MICROSOFT 365 E5'],
+        ).exclude(
+            account_type__in=excludes,
+        ).order_by(
+            'given_name',
+            'surname',
+        )
+        for user in qs:
+            # Expiry date
+            if user.ascender_data['job_term_date'] and user.ad_data['AccountExpirationDate']:
+                ascender_date = datetime.strptime(user.ascender_data['job_term_date'], '%Y-%m-%d').date()
+                onprem_date = parse_windows_ts(user.ad_data['AccountExpirationDate']).date()
+                delta = ascender_date - onprem_date
+                if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'Expiry date',
+                        onprem_date.strftime("%d/%b/%Y"),
+                        ascender_date.strftime("%d/%b/%Y"),
+                    ])
+                    row += 1
+
+            # Cost centre
+            if 'paypoint' in user.ascender_data and user.ascender_data['paypoint']:
+                cc_diff = False
+                if user.cost_centre:  # Case: user has CC set.
+                    if user.ascender_data['paypoint'].startswith('R') and user.ascender_data['paypoint'].replace('R', '') != user.cost_centre.code.replace('RIA-', ''):
+                        cc_diff = True
+                    elif user.ascender_data['paypoint'].startswith('Z') and user.ascender_data['paypoint'].replace('Z', '') != user.cost_centre.code.replace('ZPA-', ''):
+                        cc_diff = True
+                    elif user.ascender_data['paypoint'][0] in '1234567890' and user.ascender_data['paypoint'] != user.cost_centre.code.replace('DBCA-', ''):
+                        cc_diff = True
+                else:  # Case: user has no CC set, but they should.
+                    if user.ascender_data['paypoint'].startswith('R'):
+                        cc_diff = True
+                    elif user.ascender_data['paypoint'].startswith('Z'):
+                        cc_diff = True
+                    elif user.ascender_data['paypoint'][0] in '1234567890':
+                        cc_diff = True
+                if cc_diff:
+                    users_sheet.write_row(row, 0, [
+                        user.get_full_name(),
+                        user.get_account_type_display(),
+                        'Cost centre',
+                        user.cost_centre.code if user.cost_centre else '',
+                        user.ascender_data['paypoint'],
+                    ])
+                    row += 1
+
+            # Title
+            title = user.title.upper() if user.title else ''
+            if 'occup_pos_title' in user.ascender_data and user.ascender_data['occup_pos_title'].upper() != title:
                 users_sheet.write_row(row, 0, [
                     user.get_full_name(),
                     user.get_account_type_display(),
-                    'employee_id',
-                    '',
-                    '',
+                    'Title',
+                    user.title,
+                    user.ascender_data['occup_pos_title'],
                 ])
                 row += 1
-                continue  # Skip further checking on this user.
-
-            # If we haven't cached Ascender data for the user yet, skip them.
-            if not user.ascender_data:
-                continue
 
             # First name.
-            if 'first_name' in user.ascender_data:
-                r = fuzz.ratio(user.ascender_data['first_name'].upper(), user.given_name.upper())
-                if r < 90:
-                    users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
-                        user.get_account_type_display(),
-                        'given_name',
-                        user.given_name,
-                        user.ascender_data['first_name'],
-                    ])
-                    row += 1
+            if 'first_name' in user.ascender_data and user.ascender_data['first_name'].upper() != user.given_name.upper():
+                users_sheet.write_row(row, 0, [
+                    user.get_full_name(),
+                    user.get_account_type_display(),
+                    'First name',
+                    user.given_name,
+                    user.ascender_data['first_name'],
+                ])
+                row += 1
 
             # Surname.
-            if 'surname' in user.ascender_data:
-                r = fuzz.ratio(user.ascender_data['surname'].upper(), user.surname.upper())
-                if r < 90:
-                    users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
-                        user.get_account_type_display(),
-                        'surname',
-                        user.surname,
-                        user.ascender_data['surname'],
-                    ])
-                    row += 1
+            if 'surname' in user.ascender_data and user.ascender_data['surname'].upper() != user.surname.upper():
+                users_sheet.write_row(row, 0, [
+                    user.get_full_name(),
+                    user.get_account_type_display(),
+                    'Surname',
+                    user.surname,
+                    user.ascender_data['surname'],
+                ])
+                row += 1
 
-            # Preferred name.
-            if 'preferred_name' in user.ascender_data and user.preferred_name:
-                r = fuzz.ratio(user.ascender_data['preferred_name'].upper(), user.preferred_name.upper())
-                if r < 90:
+            # Telephone number.
+            if 'work_phone_no' in user.ascender_data and (user.ascender_data['work_phone_no'] or user.telephone):
+                # Remove spaces, brackets and any 08 prefix from comparison values.
+                if user.ascender_data['work_phone_no']:
+                    t1 = user.ascender_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
+                    if t1.startswith('08'):
+                        t1 = t1[2:]
+                else:
+                    t1 = ''
+                if user.telephone:
+                    t2 = user.telephone.replace('(', '').replace(')', '').replace(' ', '')
+                    if t2.startswith('08'):
+                        t2 = t2[2:]
+                else:
+                    t2 = ''
+                if t1 != t2:
                     users_sheet.write_row(row, 0, [
                         user.get_full_name(),
                         user.get_account_type_display(),
-                        'preferred_name',
-                        user.preferred_name,
-                        user.ascender_data['preferred_name'],
-                    ])
-                    row += 1
-
-            # Phone number.
-            if 'work_phone_no' in user.ascender_data and user.ascender_data['work_phone_no'] and user.telephone:
-                # Remove spaces, brackets and 08 prefix from comparison values.
-                t1 = user.ascender_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
-                if t1.startswith('08'):
-                    t1 = t1[2:]
-                t2 = user.telephone.replace('(', '').replace(')', '').replace(' ', '')
-                if t2.startswith('08'):
-                    t2 = t2[2:]
-                ratio = fuzz.ratio(t1, t2)
-                if ratio <= 90:
-                    users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
-                        user.get_account_type_display(),
-                        'telephone',
+                        'Telephone',
                         user.telephone,
                         user.ascender_data['work_phone_no'],
                     ])
                     row += 1
 
-            # Cost centre
-            if 'paypoint' in user.ascender_data:
-                cc = False
-                if user.ascender_data['paypoint'].startswith('R') and user.ascender_data['paypoint'].replace('R', '') != user.cost_centre.code.replace('RIA-', ''):
-                    cc = True
-                elif user.ascender_data['paypoint'].startswith('Z') and user.ascender_data['paypoint'].replace('Z', '') != user.cost_centre.code.replace('ZPA-', ''):
-                    cc = True
-                elif user.cost_centre.code.startswith('DBCA') and user.ascender_data['paypoint'] != user.cost_centre.code.replace('DBCA-', ''):
-                    cc = True
-                if cc:
-                    users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
-                        user.get_account_type_display(),
-                        'cost_centre',
-                        user.cost_centre.code,
-                        user.ascender_data['paypoint'],
-                    ])
-                    row += 1
-
-            # Title - use fuzzy string matching to find mismatches that are reasonably different.
-            if 'occup_pos_title' in user.ascender_data:
-                ratio = fuzz.ratio(user.ascender_data['occup_pos_title'].upper(), user.title.upper())
-                if ratio <= 90:
-                    users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
-                        user.get_account_type_display(),
-                        'title',
-                        user.title,
-                        user.ascender_data['occup_pos_title'],
-                    ])
-                    row += 1
+        users_sheet.set_column('A:A', 30)
+        users_sheet.set_column('B:B', 44)
+        users_sheet.set_column('C:C', 25)
+        users_sheet.set_column('D:E', 50)
 
     return fileobj

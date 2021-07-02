@@ -11,7 +11,7 @@ from itassets.utils import breadcrumbs_list
 
 from .forms import ConfirmPhoneNosForm
 from .models import DepartmentUser, Location, OrgUnit, ADAction
-from .reports import department_user_export, user_account_export
+from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
 from .utils import parse_windows_ts
 
 
@@ -379,3 +379,14 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
                 context['deptuser_title_diff'].append(du)
 
         return context
+
+
+class DepartmentUserAscenderDiscrepancyExport(View):
+    """A custom view to export discrepancies between Ascender and department user data to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=ascender_ad_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+        users = DepartmentUser.objects.all()
+        response = department_user_ascender_discrepancies(response, users)
+        return response
