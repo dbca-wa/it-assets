@@ -128,7 +128,9 @@ class DepartmentUserAdmin(VersionAdmin):
         # Run the Azure/on-prem AD sync actions.
         obj.update_deptuser_from_azure()
         obj.update_deptuser_from_onprem_ad()
-        obj.generate_ad_actions()
+        actions = obj.generate_ad_actions()
+        if actions:
+            self.message_user(request, "AD action(s) have been generated for {}".format(obj))
         obj.audit_ad_actions()
 
     def clear_ad_guid(self, request, queryset):

@@ -334,7 +334,20 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            # TODO: manager
+            if 'Manager' in self.ad_data:
+                if DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists():
+                    manager = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
+                    if self.manager != manager:
+                        action, created = ADAction.objects.get_or_create(
+                            department_user=self,
+                            action_type='Change account field',
+                            ad_field='Manager',
+                            ad_field_value=self.manager.ad_guid,
+                            field='manager',
+                            field_value=self.manager.email,
+                            completed=None,
+                        )
+                        actions.append(action)
         else:
             # Azure AD
             if not self.azure_guid or not self.azure_ad_data:
@@ -447,6 +460,21 @@ class DepartmentUser(models.Model):
                     completed=None,
                 )
                 actions.append(action)
+
+            if 'manager' in self.azure_ad_data:
+                if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
+                    manager = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
+                    if self.manager != manager:
+                        action, created = ADAction.objects.get_or_create(
+                            department_user=self,
+                            action_type='Change account field',
+                            ad_field='Manager',
+                            ad_field_value=self.manager.ad_guid,
+                            field='manager',
+                            field_value=self.manager.email,
+                            completed=None,
+                        )
+                        actions.append(action)
 
         return actions
 
