@@ -41,20 +41,6 @@ class DepartmentUser(models.Model):
         (2, 'Casual'),
         (3, 'Other'),
     )
-    # This dict maps <local field>: (<Azure AD field>, <onprem AD field>)
-    AD_FIELD_MAP = {
-        'active': ('accountEnabled', 'Enabled'),
-        'name': ('DisplayName', 'displayName'),
-        'given_name': ('GivenName', 'givenName'),
-        'surname': ('Surname', 'surname'),
-        'title': ('jobTitle', 'Title'),
-        'email': ('mail', 'EmailAddress'),
-        'telephone': ('telephoneNumber', 'telephoneNumber'),
-        'mobile_phone': ('mobilePhone', 'Mobile'),
-        'cost_centre': ('companyName', 'Company'),
-        'location': ('physicalDeliveryOfficeName', 'officeLocation'),
-        'employee_id': ('EmployeeID', 'employeeId'),
-    }
     # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     MS_LICENCE_SKUS = {
@@ -348,7 +334,20 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            # TODO: manager
+            if 'Manager' in self.ad_data and self.ad_data['Manager']:
+                if DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists():
+                    manager = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
+                    if self.manager != manager:
+                        action, created = ADAction.objects.get_or_create(
+                            department_user=self,
+                            action_type='Change account field',
+                            ad_field='Manager',
+                            ad_field_value=self.manager.ad_guid,
+                            field='manager',
+                            field_value=self.manager.email,
+                            completed=None,
+                        )
+                        actions.append(action)
         else:
             # Azure AD
             if not self.azure_guid or not self.azure_ad_data:
@@ -450,20 +449,32 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            """
-            TODO: determine how to set employee_id for Azure AD users.
             if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
-                    ad_field='employeeId',
+                    ad_field='EmployeeId',
                     ad_field_value=self.azure_ad_data['employeeId'],
                     field='employee_id',
                     field_value=self.employee_id,
                     completed=None,
                 )
                 actions.append(action)
-            """
+
+            if 'manager' in self.azure_ad_data and self.azure_ad_data['manager']:
+                if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
+                    manager = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
+                    if self.manager != manager:
+                        action, created = ADAction.objects.get_or_create(
+                            department_user=self,
+                            action_type='Change account field',
+                            ad_field='Manager',
+                            ad_field_value=self.manager.ad_guid,
+                            field='manager',
+                            field_value=self.manager.email,
+                            completed=None,
+                        )
+                        actions.append(action)
 
         return actions
 
@@ -540,6 +551,7 @@ class DepartmentUser(models.Model):
             self.proxy_addresses = self.azure_ad_data['proxyAddresses']
 
         # Just replace the assigned_licences value every time (no comparison).
+        # We replace the SKU GUID values with (known) human-readable licence types, as appropriate.
         self.assigned_licences = []
         if 'assignedLicenses' in self.azure_ad_data:
             for sku in self.azure_ad_data['assignedLicenses']:
@@ -636,12 +648,6 @@ class ADAction(models.Model):
 class Location(models.Model):
     """A model to represent a physical location.
     """
-    #VOIP_PLATFORM_CHOICES = (
-    #    ('3CX', '3CX'),
-    #    ('CUCM', 'CUCM'),
-    #    ('Teams', 'Teams'),
-    #)
-
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,

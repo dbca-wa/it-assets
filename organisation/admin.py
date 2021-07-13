@@ -6,7 +6,7 @@ from leaflet.admin import LeafletGeoAdmin
 from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
-from .views import DepartmentUserExport
+from .views import DepartmentUserExport, DepartmentUserAscenderDiscrepancyExport
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -119,6 +119,7 @@ class DepartmentUserAdmin(VersionAdmin):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
+            path('ascender-discrepancies/', DepartmentUserAscenderDiscrepancyExport.as_view(), name='ascender_discrepancies'),
         ] + urls
         return urls
 
@@ -127,7 +128,9 @@ class DepartmentUserAdmin(VersionAdmin):
         # Run the Azure/on-prem AD sync actions.
         obj.update_deptuser_from_azure()
         obj.update_deptuser_from_onprem_ad()
-        obj.generate_ad_actions()
+        actions = obj.generate_ad_actions()
+        if actions:
+            self.message_user(request, "AD action(s) have been generated for {}".format(obj))
         obj.audit_ad_actions()
 
     def clear_ad_guid(self, request, queryset):

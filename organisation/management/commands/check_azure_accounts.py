@@ -4,7 +4,7 @@ from organisation.utils import ms_graph_users
 
 
 class Command(BaseCommand):
-    help = 'Checks user accounts from Azure AD and creates/updates linked DepartmentUser objects'
+    help = 'Checks licensed user accounts from Azure AD and creates/updates linked DepartmentUser objects'
 
     def handle(self, *args, **options):
         self.stdout.write('Comparing Department Users to licensed Azure AD user accounts')
