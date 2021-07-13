@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <title>Weekly change calendar ({{ start|date:"D, j M Y" }})</title>
+        <title>Change calendar ({{ start|date:"D, j M Y" }})</title>
         <!-- Basic CSS, copied from purecss.io -->
         <style type="text/css">
             html{font-family:sans-serif;-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;}
@@ -22,7 +22,7 @@
     </head>
 
     <body>
-        <h1>Weekly change calendar starting {{ start|date:"l, j F Y" }}</h1>
+        <h1>Change calendar starting {{ start|date:"l, j F Y" }}, ending {{ end|date:"l, j F Y" }}</h1>
 
         {% if object_list %}
             <table class="pure-table">
