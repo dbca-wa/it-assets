@@ -1,14 +1,15 @@
 from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
-import json
+from io import BytesIO
 import os
 from tempfile import NamedTemporaryFile
 
-from organisation.utils import ascender_onprem_ad_data_diff
+from organisation.models import DepartmentUser
+from organisation.reports import department_user_ascender_discrepancies
 
 
 class Command(BaseCommand):
-    help = 'Generates a diff file between Ascender and on-premise AD data and uploads to Azure blob storage'
+    help = 'Generates an Excel spreadsheet containing discrepancies between department user and Ascender data and uploads to Azure blob storage'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -23,16 +24,17 @@ class Command(BaseCommand):
             action='store',
             dest='path',
             required=True,
-            help='JSON upload path'
+            help='Upload file path'
         )
 
     def handle(self, *args, **options):
-        self.stdout.write('Generating diff between Ascender and on-premise AD data')
-        discrepancies = ascender_onprem_ad_data_diff()
+        self.stdout.write('Generating discrepancies between department user and Ascender data')
+        users = DepartmentUser.objects.all()
+        spreadsheet = department_user_ascender_discrepancies(BytesIO(), users)
         f = NamedTemporaryFile()
-        f.write(json.dumps(discrepancies, indent=4).encode('utf-8'))
+        f.write(spreadsheet.getbuffer())
 
-        self.stdout.write('Uploading diff JSON to Azure blob storage')
+        self.stdout.write('Uploading discrepancies to Azure blob storage')
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
         store = AzureBlobStorage(connect_string, options['container'])
         store.upload_file(options['path'], f.name)
