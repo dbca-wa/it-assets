@@ -334,7 +334,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Manager' in self.ad_data:
+            if 'Manager' in self.ad_data and self.ad_data['Manager']:
                 if DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists():
                     manager = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
                     if self.manager != manager:
@@ -461,7 +461,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'manager' in self.azure_ad_data:
+            if 'manager' in self.azure_ad_data and self.azure_ad_data['manager']:
                 if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
                     manager = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
                     if self.manager != manager:
