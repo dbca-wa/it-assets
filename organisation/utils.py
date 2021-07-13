@@ -149,7 +149,7 @@ def ms_graph_users(licensed=False):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
@@ -167,6 +167,7 @@ def ms_graph_users(licensed=False):
         aad_users.append({
             'objectId': user['id'],
             'mail': user['mail'].lower(),
+            'userPrincipalName': user['userPrincipalName'],
             'displayName': user['displayName'] if user['displayName'] else None,
             'givenName': user['givenName'] if user['givenName'] else None,
             'surname': user['surname'] if user['surname'] else None,
