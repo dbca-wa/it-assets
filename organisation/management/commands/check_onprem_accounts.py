@@ -32,7 +32,8 @@ class Command(BaseCommand):
 
         self.stdout.write('Comparing Department Users to on-prem AD user accounts')
         for ad in ad_users:
-            if ad['Enabled'] and 'EmailAddress' in ad and ad['EmailAddress']:
+            # Only check enabled (active) AD accounts which have an email address.
+            if 'Enabled' in ad and ad['Enabled'] and 'EmailAddress' in ad and ad['EmailAddress']:
                 if '-admin' in ad['EmailAddress']:  # Skip admin users.
                     continue
                 if not DepartmentUser.objects.filter(ad_guid=ad['ObjectGUID']).exists():
