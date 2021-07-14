@@ -298,26 +298,26 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Company' in self.ad_data and (self.cost_centre is None or self.cost_centre.code != self.ad_data['Company']):
+            if 'Company' in self.ad_data and ((self.cost_centre is None and self.ad_data['Company']) or (self.cost_centre.code != self.ad_data['Company'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='Company',
                     ad_field_value=self.ad_data['Company'],
                     field='cost_centre',
-                    field_value=self.cost_centre.code,
+                    field_value=self.cost_centre.code if self.cost_centre else None,
                     completed=None,
                 )
                 actions.append(action)
 
-            if self.location and 'physicalDeliveryOfficeName' in self.ad_data and self.ad_data['physicalDeliveryOfficeName'] != self.location.name:
+            if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location is None and self.ad_data['physicalDeliveryOfficeName']) or (self.location.name != self.ad_data['physicalDeliveryOfficeName'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='Office',
                     ad_field_value=self.ad_data['physicalDeliveryOfficeName'],
                     field='location',
-                    field_value=self.location.name,
+                    field_value=self.location.name if self.location else None,
                     completed=None,
                 )
                 actions.append(action)
@@ -425,26 +425,26 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if self.cost_centre and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+            if 'companyName' in self.azure_ad_data and ((self.cost_centre is None and self.azure_ad_data['companyName']) or (self.azure_ad_data['companyName'] != self.cost_centre.code)):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='CompanyName',
                     ad_field_value=self.azure_ad_data['companyName'],
                     field='cost_centre',
-                    field_value=self.cost_centre.code,
+                    field_value=self.cost_centre.code if self.cost_centre else None,
                     completed=None,
                 )
                 actions.append(action)
 
-            if self.location and 'officeLocation' in self.azure_ad_data and self.azure_ad_data['officeLocation'] != self.location.name:
+            if 'officeLocation' in self.azure_ad_data and ((self.location is None and self.azure_ad_data['officeLocation']) or (self.azure_ad_data['officeLocation'] != self.location.name)):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='StreetAddress',
                     ad_field_value=self.azure_ad_data['officeLocation'],
                     field='location',
-                    field_value=self.location.name,
+                    field_value=self.location.name if self.location else None,
                     completed=None,
                 )
                 actions.append(action)
