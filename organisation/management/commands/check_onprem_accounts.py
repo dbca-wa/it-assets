@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from django.core.management.base import BaseCommand
 from organisation.models import DepartmentUser
 from organisation.utils import get_ad_users_json
@@ -15,16 +16,16 @@ class Command(BaseCommand):
             help='Azure container name'
         )
         parser.add_argument(
-            '--json_path',
+            '--path',
             action='store',
-            dest='json_path',
+            dest='path',
             required=True,
             help='JSON output file path'
         )
 
     def handle(self, *args, **options):
         self.stdout.write('Downloading on-prem AD user account data')
-        ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['json_path'])
+        ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['path'])
 
         if not ad_users:
             self.stdout.write(self.style.ERROR('No on-prem AD user account data could be downloaded'))
@@ -42,6 +43,7 @@ class Command(BaseCommand):
                         du = DepartmentUser.objects.get(email=ad['EmailAddress'].lower())
                         du.ad_guid = ad['ObjectGUID']
                         du.ad_data = ad
+                        du.ad_data_updated = datetime.now(timezone.utc)
                         du.save()
                         du.update_deptuser_from_onprem_ad()
                         self.stdout.write(
@@ -51,6 +53,7 @@ class Command(BaseCommand):
                     # An existing department user is linked to this onprem AD user.
                     du = DepartmentUser.objects.get(ad_guid=ad['ObjectGUID'])
                     du.ad_data = ad
+                    du.ad_data_updated = datetime.now(timezone.utc)
                     du.save()
                     du.update_deptuser_from_onprem_ad()
 

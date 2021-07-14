@@ -534,6 +534,11 @@ class DepartmentUser(models.Model):
                 elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
                     action.delete()
 
+    def update_from_ascender_data(self):
+        """NOTE: stub function.
+        """
+        pass
+
     def update_deptuser_from_azure(self):
         """For this DepartmentUser object, update the field values from cached Azure AD data
         (the source of truth for these values).

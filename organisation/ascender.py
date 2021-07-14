@@ -158,7 +158,7 @@ def ascender_employee_fetch():
 
 
 def ascender_db_import(verbose=False):
-    """A task to cache data from Ascender to a matching DepartmentUser object.
+    """A utility function to cache data from Ascender to a matching DepartmentUser object.
     """
     employee_iter = ascender_employee_fetch()
 
