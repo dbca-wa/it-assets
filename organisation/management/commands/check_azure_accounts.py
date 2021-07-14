@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from django.core.management.base import BaseCommand
 from organisation.models import DepartmentUser, CostCentre, Location
 from organisation.utils import ms_graph_users
@@ -7,18 +8,18 @@ class Command(BaseCommand):
     help = 'Checks licensed user accounts from Azure AD and creates/updates linked DepartmentUser objects'
 
     def handle(self, *args, **options):
-        self.stdout.write('Comparing Department Users to licensed Azure AD user accounts')
-        self.stdout.write('Querying Microsoft Graph API for Azure AD users.')
+        self.stdout.write('Querying Microsoft Graph API for licensed Azure AD user accounts')
         azure_users = ms_graph_users(licensed=True)
 
         if not azure_users:
-            self.stdout.write(self.style.ERROR('Microsoft Graph API returned no users'))
+            self.stdout.write(self.style.ERROR('Microsoft Graph API returned no data'))
             return
 
+        self.stdout.write('Comparing Department Users to Azure AD user accounts')
         for az in azure_users:
-            if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
-                # No existing DepartmentUser is linked to this Azure AD user.
-                if az['mail']:  # Azure object has an email address; proceed.
+            if az['mail']:  # Azure object has an email address; proceed.
+                if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
+                    # No existing DepartmentUser is linked to this Azure AD user.
 
                     # A department user with matching email may already exist in IT Assets with a different azure_guid.
                     # If so, return a warning and skip that user.
@@ -38,6 +39,7 @@ class Command(BaseCommand):
                         existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
                         existing_user.azure_guid = az['objectId']
                         existing_user.azure_ad_data = az
+                        existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                         existing_user.save()
                         existing_user.update_deptuser_from_azure()
                         self.stdout.write(
@@ -58,6 +60,7 @@ class Command(BaseCommand):
                     new_user = DepartmentUser.objects.create(
                         azure_guid=az['objectId'],
                         azure_ad_data=az,
+                        azure_ad_data_updated=datetime.now(timezone.utc),
                         active=az['accountEnabled'],
                         email=az['mail'],
                         name=az['displayName'],
@@ -71,12 +74,12 @@ class Command(BaseCommand):
                         dir_sync_enabled=az['onPremisesSyncEnabled'],
                     )
                     self.stdout.write(self.style.SUCCESS('Created new department user {}'.format(new_user.email)))
-            else:
-                # An existing DepartmentUser is linked to this Azure AD user.
-                if az['mail']:  # Azure object has an email; proceed.
+                else:
+                    # An existing DepartmentUser is linked to this Azure AD user.
                     # Update the existing DepartmentUser object fields with values from Azure.
                     existing_user = DepartmentUser.objects.get(azure_guid=az['objectId'])
                     existing_user.azure_ad_data = az
+                    existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                     existing_user.save()
                     existing_user.update_deptuser_from_azure()
 

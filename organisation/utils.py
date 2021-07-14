@@ -11,7 +11,7 @@ from itassets.utils import ms_graph_client_token
 TZ = pytz.timezone(settings.TIME_ZONE)
 
 
-def ascender_onprem_ad_data_diff(container='azuread', json_path='adusers.json'):
+def ascender_onprem_ad_data_diff():
     """A utility function to compare on-premise AD user account data with Ascender HR data.
     """
     from .models import DepartmentUser
@@ -149,7 +149,7 @@ def ms_graph_users(licensed=False):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
@@ -167,21 +167,22 @@ def ms_graph_users(licensed=False):
         aad_users.append({
             'objectId': user['id'],
             'mail': user['mail'].lower(),
-            'displayName': user['displayName'] if user['displayName'] else '',
-            'givenName': user['givenName'] if user['givenName'] else '',
-            'surname': user['surname'] if user['surname'] else '',
-            'employeeId': user['employeeId'] if user['employeeId'] else '',
-            'employeeType': user['employeeType'] if user['employeeType'] else '',
-            'jobTitle': user['jobTitle'] if user['jobTitle'] else '',
-            'telephoneNumber': user['businessPhones'][0] if user['businessPhones'] else '',
-            'mobilePhone': user['mobilePhone'] if user['mobilePhone'] else '',
-            'companyName': user['companyName'] if user['companyName'] else '',
-            'officeLocation': user['officeLocation'] if user['officeLocation'] else '',
+            'userPrincipalName': user['userPrincipalName'],
+            'displayName': user['displayName'] if user['displayName'] else None,
+            'givenName': user['givenName'] if user['givenName'] else None,
+            'surname': user['surname'] if user['surname'] else None,
+            'employeeId': user['employeeId'] if user['employeeId'] else None,
+            'employeeType': user['employeeType'] if user['employeeType'] else None,
+            'jobTitle': user['jobTitle'] if user['jobTitle'] else None,
+            'telephoneNumber': user['businessPhones'][0] if user['businessPhones'] else None,
+            'mobilePhone': user['mobilePhone'] if user['mobilePhone'] else None,
+            'companyName': user['companyName'] if user['companyName'] else None,
+            'officeLocation': user['officeLocation'] if user['officeLocation'] else None,
             'proxyAddresses': [i.lower().replace('smtp:', '') for i in user['proxyAddresses'] if i.lower().startswith('smtp')],
             'accountEnabled': user['accountEnabled'],
             'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
             'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
-            'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else '',
+            'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
         })
 
     if licensed:
