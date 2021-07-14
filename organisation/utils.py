@@ -11,7 +11,7 @@ from itassets.utils import ms_graph_client_token
 TZ = pytz.timezone(settings.TIME_ZONE)
 
 
-def ascender_onprem_ad_data_diff(container='azuread', json_path='adusers.json'):
+def ascender_onprem_ad_data_diff():
     """A utility function to compare on-premise AD user account data with Ascender HR data.
     """
     from .models import DepartmentUser
