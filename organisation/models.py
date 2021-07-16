@@ -100,12 +100,15 @@ class DepartmentUser(models.Model):
         max_length=128, null=True, blank=True, help_text='Work mobile number')
     manager = models.ForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         related_name='manages', help_text='Staff member who manages this employee')
     cost_centre = models.ForeignKey(
         'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         help_text='Cost centre to which the employee currently belongs')
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         help_text='Current physical workplace.')
     proxy_addresses = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
@@ -118,6 +121,7 @@ class DepartmentUser(models.Model):
     # They are used for internal reporting and the Address Book.
     org_unit = models.ForeignKey(
         'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         verbose_name='organisational unit',
         help_text="The organisational unit to which the employee belongs.")
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
