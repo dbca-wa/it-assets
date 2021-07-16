@@ -100,12 +100,15 @@ class DepartmentUser(models.Model):
         max_length=128, null=True, blank=True, help_text='Work mobile number')
     manager = models.ForeignKey(
         'self', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         related_name='manages', help_text='Staff member who manages this employee')
     cost_centre = models.ForeignKey(
         'organisation.CostCentre', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         help_text='Cost centre to which the employee currently belongs')
     location = models.ForeignKey(
         'Location', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         help_text='Current physical workplace.')
     proxy_addresses = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
@@ -118,6 +121,7 @@ class DepartmentUser(models.Model):
     # They are used for internal reporting and the Address Book.
     org_unit = models.ForeignKey(
         'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
+        limit_choices_to={'active': True},
         verbose_name='organisational unit',
         help_text="The organisational unit to which the employee belongs.")
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
@@ -210,7 +214,7 @@ class DepartmentUser(models.Model):
     def get_full_name(self):
         """Return given_name and surname, with a space in between.
         """
-        full_name = '{} {}'.format(self.given_name, self.surname)
+        full_name = '{} {}'.format(self.given_name if self.given_name else '', self.surname if self.surname else '')
         return full_name.strip()
 
     def generate_ad_actions(self):
@@ -298,26 +302,26 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Company' in self.ad_data and (self.cost_centre is None or self.cost_centre.code != self.ad_data['Company']):
+            if 'Company' in self.ad_data and ((self.cost_centre is None and self.ad_data['Company']) or (self.cost_centre.code != self.ad_data['Company'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='Company',
                     ad_field_value=self.ad_data['Company'],
                     field='cost_centre',
-                    field_value=self.cost_centre.code,
+                    field_value=self.cost_centre.code if self.cost_centre else None,
                     completed=None,
                 )
                 actions.append(action)
 
-            if self.location and 'physicalDeliveryOfficeName' in self.ad_data and self.ad_data['physicalDeliveryOfficeName'] != self.location.name:
+            if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location is None and self.ad_data['physicalDeliveryOfficeName']) or (self.location.name != self.ad_data['physicalDeliveryOfficeName'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='Office',
                     ad_field_value=self.ad_data['physicalDeliveryOfficeName'],
                     field='location',
-                    field_value=self.location.name,
+                    field_value=self.location.name if self.location else None,
                     completed=None,
                 )
                 actions.append(action)
@@ -334,20 +338,23 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Manager' in self.ad_data and self.ad_data['Manager']:
-                if DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists():
-                    manager = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
-                    if self.manager != manager:
-                        action, created = ADAction.objects.get_or_create(
-                            department_user=self,
-                            action_type='Change account field',
-                            ad_field='Manager',
-                            ad_field_value=self.manager.ad_guid,
-                            field='manager',
-                            field_value=self.manager.email,
-                            completed=None,
-                        )
-                        actions.append(action)
+            if 'Manager' in self.ad_data:
+                if self.ad_data['Manager'] and DepartmentUser.objects.filter(active=True, ad_data__DistinguishedName=self.ad_data['Manager']).exists():
+                    manager_ad = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
+                else:
+                    manager_ad = None
+
+                if self.manager != manager_ad:
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='Manager',
+                        ad_field_value=self.manager.ad_guid if self.manager else None,
+                        field='manager',
+                        field_value=self.manager.email if self.manager else None,
+                        completed=None,
+                    )
+                    actions.append(action)
         else:
             # Azure AD
             if not self.azure_guid or not self.azure_ad_data:
@@ -425,26 +432,26 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if self.cost_centre and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+            if 'companyName' in self.azure_ad_data and ((self.cost_centre is None and self.azure_ad_data['companyName']) or (self.azure_ad_data['companyName'] != self.cost_centre.code)):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='CompanyName',
                     ad_field_value=self.azure_ad_data['companyName'],
                     field='cost_centre',
-                    field_value=self.cost_centre.code,
+                    field_value=self.cost_centre.code if self.cost_centre else None,
                     completed=None,
                 )
                 actions.append(action)
 
-            if self.location and 'officeLocation' in self.azure_ad_data and self.azure_ad_data['officeLocation'] != self.location.name:
+            if 'officeLocation' in self.azure_ad_data and ((self.location is None and self.azure_ad_data['officeLocation']) or (self.azure_ad_data['officeLocation'] != self.location.name)):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
                     ad_field='StreetAddress',
                     ad_field_value=self.azure_ad_data['officeLocation'],
                     field='location',
-                    field_value=self.location.name,
+                    field_value=self.location.name if self.location else None,
                     completed=None,
                 )
                 actions.append(action)
@@ -461,20 +468,23 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'manager' in self.azure_ad_data and self.azure_ad_data['manager']:
-                if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
-                    manager = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
-                    if self.manager != manager:
-                        action, created = ADAction.objects.get_or_create(
-                            department_user=self,
-                            action_type='Change account field',
-                            ad_field='Manager',
-                            ad_field_value=self.manager.ad_guid,
-                            field='manager',
-                            field_value=self.manager.email,
-                            completed=None,
-                        )
-                        actions.append(action)
+            if 'manager' in self.azure_ad_data:
+                if self.azure_ad_data['manager'] and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
+                    manager_ad = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
+                else:
+                    manager_ad = None
+
+                if self.manager != manager_ad:
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='Manager',
+                        ad_field_value=self.manager.ad_guid if self.manager else None,
+                        field='manager',
+                        field_value=self.manager.email if self.manager else None,
+                        completed=None,
+                    )
+                    actions.append(action)
 
         return actions
 
@@ -535,9 +545,16 @@ class DepartmentUser(models.Model):
                     action.delete()
 
     def update_from_ascender_data(self):
-        """NOTE: stub function.
+        """For this DepartmentUser object, update the field values from cached Ascender data
+        (the source of truth for these values).
         """
-        pass
+        if not self.employee_id or not self.ascender_data:
+            return
+
+        if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
+            self.cost_centre = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+
+        self.save()
 
     def update_deptuser_from_azure(self):
         """For this DepartmentUser object, update the field values from cached Azure AD data
@@ -578,6 +595,14 @@ class DepartmentUser(models.Model):
             self.username = self.ad_data['SamAccountName']
 
         self.save()
+
+    def get_onprem_ad_domain(self):
+        """If this user has onprem AD data cached, attempt to return the AD domain from their DistinguishedName.
+        """
+        if self.ad_data and 'DistinguishedName' in self.ad_data:
+            return '.'.join([i.replace('DC=', '') for i in self.ad_data['DistinguishedName'].split(',') if i.startswith('DC=')])
+
+        return None
 
 
 class ADAction(models.Model):

@@ -125,7 +125,8 @@ class DepartmentUserAdmin(VersionAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        # Run the Azure/on-prem AD sync actions.
+        # Run the Ascender/Azure AD/on-prem AD update actions.
+        obj.update_from_ascender_data()
         obj.update_deptuser_from_azure()
         obj.update_deptuser_from_onprem_ad()
         actions = obj.generate_ad_actions()
@@ -184,7 +185,7 @@ class ADActionAdmin(ModelAdmin):
 
 @register(Location)
 class LocationAdmin(LeafletGeoAdmin):
-    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager')
+    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager', 'active')
     list_filter = ('active',)
     raw_id_fields = ('manager',)
     search_fields = ('name', 'address', 'phone', 'fax', 'email', 'manager__email')
