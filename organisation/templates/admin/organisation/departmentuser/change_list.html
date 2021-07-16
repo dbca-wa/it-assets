@@ -1,6 +1,7 @@
 {% extends "reversion/change_list.html" %}
 
 {% block object-tools-items %}
+    {% if not is_popup %}
     <li>
         <a href="{% url 'admin:ascender_discrepancies' %}">Ascender data discrepancies</a>
     </li>
@@ -10,5 +11,6 @@
     <li>
         <a href="{% url 'admin:departmentuser_export' %}">Download active Department Users</a>
     </li>
+    {% endif %}
     {{ block.super }}
 {% endblock %}
