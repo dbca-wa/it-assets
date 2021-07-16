@@ -184,7 +184,7 @@ class ADActionAdmin(ModelAdmin):
 
 @register(Location)
 class LocationAdmin(LeafletGeoAdmin):
-    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager')
+    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager', 'active')
     list_filter = ('active',)
     raw_id_fields = ('manager',)
     search_fields = ('name', 'address', 'phone', 'fax', 'email', 'manager__email')
