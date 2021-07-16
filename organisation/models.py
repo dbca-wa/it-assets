@@ -210,7 +210,7 @@ class DepartmentUser(models.Model):
     def get_full_name(self):
         """Return given_name and surname, with a space in between.
         """
-        full_name = '{} {}'.format(self.given_name, self.surname)
+        full_name = '{} {}'.format(self.given_name if self.given_name else '', self.surname if self.surname else '')
         return full_name.strip()
 
     def generate_ad_actions(self):
@@ -334,20 +334,23 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Manager' in self.ad_data and self.ad_data['Manager']:
-                if DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists():
-                    manager = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
-                    if self.manager != manager:
-                        action, created = ADAction.objects.get_or_create(
-                            department_user=self,
-                            action_type='Change account field',
-                            ad_field='Manager',
-                            ad_field_value=self.manager.ad_guid,
-                            field='manager',
-                            field_value=self.manager.email,
-                            completed=None,
-                        )
-                        actions.append(action)
+            if 'Manager' in self.ad_data:
+                if self.ad_data['Manager'] and DepartmentUser.objects.filter(active=True, ad_data__DistinguishedName=self.ad_data['Manager']).exists():
+                    manager_ad = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager'])
+                else:
+                    manager_ad = None
+
+                if self.manager != manager_ad:
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='Manager',
+                        ad_field_value=self.manager.ad_guid if self.manager else None,
+                        field='manager',
+                        field_value=self.manager.email if self.manager else None,
+                        completed=None,
+                    )
+                    actions.append(action)
         else:
             # Azure AD
             if not self.azure_guid or not self.azure_ad_data:
@@ -461,20 +464,23 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'manager' in self.azure_ad_data and self.azure_ad_data['manager']:
-                if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
-                    manager = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
-                    if self.manager != manager:
-                        action, created = ADAction.objects.get_or_create(
-                            department_user=self,
-                            action_type='Change account field',
-                            ad_field='Manager',
-                            ad_field_value=self.manager.ad_guid,
-                            field='manager',
-                            field_value=self.manager.email,
-                            completed=None,
-                        )
-                        actions.append(action)
+            if 'manager' in self.azure_ad_data:
+                if self.azure_ad_data['manager'] and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
+                    manager_ad = DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id'])
+                else:
+                    manager_ad = None
+
+                if self.manager != manager_ad:
+                    action, created = ADAction.objects.get_or_create(
+                        department_user=self,
+                        action_type='Change account field',
+                        ad_field='Manager',
+                        ad_field_value=self.manager.ad_guid if self.manager else None,
+                        field='manager',
+                        field_value=self.manager.email if self.manager else None,
+                        completed=None,
+                    )
+                    actions.append(action)
 
         return actions
 
@@ -578,6 +584,14 @@ class DepartmentUser(models.Model):
             self.username = self.ad_data['SamAccountName']
 
         self.save()
+
+    def get_onprem_ad_domain(self):
+        """If this user has onprem AD data cached, attempt to return the AD domain from their DistinguishedName.
+        """
+        if self.ad_data and 'DistinguishedName' in self.ad_data:
+            return '.'.join([i.replace('DC=', '') for i in self.ad_data['DistinguishedName'].split(',') if i.startswith('DC=')])
+
+        return None
 
 
 class ADAction(models.Model):
