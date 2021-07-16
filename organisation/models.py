@@ -545,9 +545,16 @@ class DepartmentUser(models.Model):
                     action.delete()
 
     def update_from_ascender_data(self):
-        """NOTE: stub function.
+        """For this DepartmentUser object, update the field values from cached Ascender data
+        (the source of truth for these values).
         """
-        pass
+        if not self.employee_id or not self.ascender_data:
+            return
+
+        if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
+            self.cost_centre = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+
+        self.save()
 
     def update_deptuser_from_azure(self):
         """For this DepartmentUser object, update the field values from cached Azure AD data
