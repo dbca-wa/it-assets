@@ -199,7 +199,7 @@ class DepartmentUser(models.Model):
             return self.org_unit.division_unit
         return self.org_unit
 
-    def get_office_licence(self):
+    def get_licence(self):
         """Return Microsoft 365 licence description consistent with other OIM communications.
         """
         if self.assigned_licences:
