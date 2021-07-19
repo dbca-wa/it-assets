@@ -31,6 +31,10 @@
             <th>Synced to on-prem AD?</th>
             <td>{% if object.department_user.dir_sync_enabled %}Yes{% else %}No (cloud-only account){% endif %}</td>
         </tr>
+        <tr>
+            <th>On-prem AD domain</th>
+            <td>{{ object.department_user.get_onprem_ad_domain }}</td>
+        </tr>
     </tbody>
 
 </table>
