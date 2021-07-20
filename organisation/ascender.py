@@ -193,7 +193,7 @@ def get_ascender_matches():
 
     for user in dept_users:
         for data in ascender_jobs:
-            if data['first_name'] and data['surname']:
+            if data['first_name'] and data['surname'] and not DepartmentUser.objects.filter(employee_id=data['employee_id']).exists():
                 sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
                 fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
                 if sn_ratio > 80 and fn_ratio > 65:
