@@ -615,6 +615,9 @@ class DepartmentUserLog(models.Model):
     department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
     log = JSONField(default=dict, editable=False)
 
+    def __str__(self):
+        return '{} {}'.format(self.department_user, self.created.isoformat())
+
 
 class ADAction(models.Model):
     """Represents a single "action" or change that needs to be carried out to the Active Directory
