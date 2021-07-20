@@ -1,9 +1,8 @@
-from django.contrib.admin import register, TabularInline
+from django.contrib.admin import register, ModelAdmin, TabularInline
 from django.urls import path, reverse
 from django.forms import Form, FileField
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
-from reversion.admin import VersionAdmin
 from io import BytesIO
 
 from .models import Vendor, HardwareModel, HardwareAsset, HardwareInvoice
@@ -11,7 +10,7 @@ from .views import HardwareAssetExport
 
 
 #@register(Vendor)
-class VendorAdmin(VersionAdmin):
+class VendorAdmin(ModelAdmin):
     list_display = (
         'name', 'account_rep', 'contact_email', 'contact_phone', 'website',
         'hardware_assets')
@@ -22,7 +21,7 @@ class VendorAdmin(VersionAdmin):
 
 
 #@register(HardwareModel)
-class HardwareModelAdmin(VersionAdmin):
+class HardwareModelAdmin(ModelAdmin):
     list_display = ('model_no', 'model_type', 'vendor')
     list_filter = ('model_type',)
     search_fields = ('vendor__name', 'model_type', 'model_no')
@@ -34,7 +33,7 @@ class HardwareInvoiceInline(TabularInline):
 
 
 #@register(HardwareAsset)
-class HardwareAssetAdmin(VersionAdmin):
+class HardwareAssetAdmin(ModelAdmin):
     date_hierarchy = 'date_purchased'
     inlines = [HardwareInvoiceInline]
     fieldsets = (
