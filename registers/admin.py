@@ -6,7 +6,6 @@ from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleList
 from django.core.mail import EmailMultiAlternatives
 from django.urls import path
 from pytz import timezone
-from reversion.admin import VersionAdmin
 
 from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
