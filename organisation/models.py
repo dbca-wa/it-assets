@@ -607,6 +607,15 @@ class DepartmentUser(models.Model):
         return None
 
 
+class DepartmentUserLog(models.Model):
+    """Represents an event carried out on a DepartmentUser object that may need to be reported
+    for audit purposes, e.g. change of security access due to change of position.
+    """
+    created = models.DateTimeField(auto_now_add=True)
+    department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
+    log = JSONField(default=dict, editable=False)
+
+
 class ADAction(models.Model):
     """Represents a single "action" or change that needs to be carried out to the Active Directory
     object which matches a DepartmentUser object.
