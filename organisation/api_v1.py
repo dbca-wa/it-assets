@@ -150,7 +150,7 @@ class DepartmentUserResource(DjangoResource):
                 'name': u.name,
                 'email': u.email,
                 'cost_centre': u.cost_centre.code if u.cost_centre else None,
-                'o365_licence': u.get_office_licence(),
+                'o365_licence': u.get_licence(),
                 'active': u.active,
                 'shared': u.shared_account,
             })

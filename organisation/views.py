@@ -152,7 +152,7 @@ class LicenseAPIResource(View):
                 'name': user.name,
                 'email': user.email,
                 'cost_centre': user.cost_centre.code if user.cost_centre else None,
-                'microsoft_365_licence': user.get_office_licence(),
+                'microsoft_365_licence': user.get_licence(),
                 'active': user.active,
                 'shared': user.shared_account,
             } for user in queryset
@@ -332,7 +332,7 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
         context['deptuser_not_linked'] = []
         du_users = DepartmentUser.objects.filter(active=True, email__contains='@dbca.wa.gov.au', employee_id__isnull=False)
         for du in du_users:
-            if du.get_office_licence() and (not du.ad_guid or not du.azure_guid):
+            if du.get_licence() and (not du.ad_guid or not du.azure_guid):
                 context['deptuser_not_linked'].append(du)
 
         # Department users linked to onprem AD but employee ID differs.

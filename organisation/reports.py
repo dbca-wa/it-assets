@@ -36,7 +36,7 @@ def department_user_export(fileobj, users):
                 i.cost_centre.business_manager.get_full_name() if i.cost_centre and i.cost_centre.business_manager else '',
                 i.cost_centre.business_manager.email if i.cost_centre and i.cost_centre.business_manager else '',
                 i.active,
-                i.get_office_licence(),
+                i.get_licence(),
                 i.telephone,
                 i.mobile_phone,
             ])

@@ -3,7 +3,7 @@ from django.conf import settings
 from fuzzywuzzy import fuzz
 import psycopg2
 import pytz
-from organisation.models import DepartmentUser
+from organisation.models import DepartmentUser, DepartmentUserLog
 
 TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
@@ -171,6 +171,21 @@ def ascender_db_import(verbose=False):
             if not job['job_term_date'] or datetime.strptime(job['job_term_date'], '%Y-%m-%d').date() >= date.today():
                 if DepartmentUser.objects.filter(employee_id=eid).exists():
                     user = DepartmentUser.objects.get(employee_id=eid)
+
+                    # Check if the user already has Ascender data cached. If so, check if the position_no
+                    # value has changed. In that instance, create a DepartmentUserLog object.
+                    if user.ascender_data and 'position_no' in user.ascender_data and user.ascender_data['position_no'] != job['position_no']:
+                        DepartmentUserLog.objects.create(
+                            department_user=user,
+                            log={
+                                'ascender_field': 'position_no',
+                                'old_value': user.ascender_data['position_no'],
+                                'new_value': job['position_no'],
+                            },
+                        )
+                        if verbose:
+                            print("Generated log for {} (changed position_no)".format(user))
+
                     user.ascender_data = job
                     user.ascender_data_updated = TZ.localize(datetime.now())
                     user.save()
@@ -193,7 +208,7 @@ def get_ascender_matches():
 
     for user in dept_users:
         for data in ascender_jobs:
-            if data['first_name'] and data['surname']:
+            if data['first_name'] and data['surname'] and not DepartmentUser.objects.filter(employee_id=data['employee_id']).exists():
                 sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
                 fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
                 if sn_ratio > 80 and fn_ratio > 65:

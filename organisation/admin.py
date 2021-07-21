@@ -3,7 +3,6 @@ from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
 from leaflet.admin import LeafletGeoAdmin
-from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
 from .views import DepartmentUserExport, DepartmentUserAscenderDiscrepancyExport
@@ -26,7 +25,7 @@ class DepartmentUserForm(forms.ModelForm):
 
 
 @register(DepartmentUser)
-class DepartmentUserAdmin(VersionAdmin):
+class DepartmentUserAdmin(ModelAdmin):
 
     class AssignedLicenceFilter(SimpleListFilter):
         title = 'assigned licences'

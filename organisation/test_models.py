@@ -54,20 +54,20 @@ class DepartmentUserTestCase(TestCase):
         self.assertFalse(self.user.employee_id)
         self.assertTrue(self.user.shared_account)
 
-    def test_get_office_licence(self):
-        self.assertFalse(self.user.get_office_licence())
+    def test_get_licence(self):
+        self.assertFalse(self.user.get_licence())
         self.user.assigned_licences = ['MICROSOFT 365 E5', 'foo']
         self.user.save()
-        self.assertEqual(self.user.get_office_licence(), 'On-premise')
+        self.assertEqual(self.user.get_licence(), 'On-premise')
         self.user.assigned_licences = ['OFFICE 365 E5']
         self.user.save()
-        self.assertEqual(self.user.get_office_licence(), 'On-premise')
+        self.assertEqual(self.user.get_licence(), 'On-premise')
         self.user.assigned_licences = ['OFFICE 365 E1', 'bar']
         self.user.save()
-        self.assertEqual(self.user.get_office_licence(), 'Cloud')
+        self.assertEqual(self.user.get_licence(), 'Cloud')
         self.user.assigned_licences = ['foo', 'bar']
         self.user.save()
-        self.assertFalse(self.user.get_office_licence())
+        self.assertFalse(self.user.get_licence())
 
     def test_get_full_name(self):
         self.assertEqual(self.user.get_full_name(), '{} {}'.format(self.user.given_name, self.user.surname))

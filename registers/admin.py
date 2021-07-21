@@ -6,7 +6,6 @@ from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleList
 from django.core.mail import EmailMultiAlternatives
 from django.urls import path
 from pytz import timezone
-from reversion.admin import VersionAdmin
 
 from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
@@ -27,7 +26,7 @@ class ITSystemForm(forms.ModelForm):
 
 
 @register(ITSystem)
-class ITSystemAdmin(ModelDescMixin, VersionAdmin):
+class ITSystemAdmin(ModelDescMixin, ModelAdmin):
 
     class PlatformFilter(SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for platform.
