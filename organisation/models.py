@@ -521,6 +521,8 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'employee_id' and self.ad_data['EmployeeID'] == self.employee_id:
                     action.delete()
+                elif action.field == 'manager' and DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists() and self.manager == DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager']):
+                    action.delete()
         else:
             # Azure AD
             if not self.azure_guid or not self.azure_ad_data:
@@ -544,6 +546,8 @@ class DepartmentUser(models.Model):
                 elif action.field == 'location' and (self.location and self.azure_ad_data['officeLocation'] == self.location.name):
                     action.delete()
                 elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
+                    action.delete()
+                elif action.field == 'manager' and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists() and self.manager == DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id']):
                     action.delete()
 
     def update_from_ascender_data(self):
