@@ -38,6 +38,8 @@ FOREIGN_TABLE_FIELDS = (
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
+    "extended_lv",
+    ("ext_lv_end_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
