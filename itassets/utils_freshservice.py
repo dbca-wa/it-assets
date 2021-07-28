@@ -8,7 +8,7 @@ import requests
 FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, 'X')
 
 
-def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
+def get_freshservice_objects_curl(obj_type, query=None):
     """The `requests` library has a (normally very useful) feature of normalising
     quotes in request URIs (https://github.com/kennethreitz/requests/blob/master/requests/utils.py#L604).
     The Freshservice V2 API on the other hand requires that
@@ -21,9 +21,6 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
     if query:
         url = url + '?query="{}"'.format(query)
-
-    if verbose:
-        print('Querying headers')
 
     # First, make a query to get the count of results.
     out = check_output([
@@ -54,15 +51,10 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
 
     pages = ceil(count / 30)  # Always 30 results/page for filter queries.
     objects = []
-    if verbose:
-        print("{} objects, {} pages".format(count, pages))
 
     # Starting at 1, call the API
     for i in range(1, pages + 1):
         url_page = url + '&include=type_fields&page={}'.format(i)
-        if verbose:
-            print('Querying {}'.format(url_page))
-
         out = check_output([
             'curl',
             '--silent',
@@ -77,7 +69,7 @@ def get_freshservice_objects_curl(obj_type, query=None, verbose=False):
     return objects
 
 
-def get_freshservice_objects(obj_type, verbose=False):
+def get_freshservice_objects(obj_type):
     """Query the Freshservice v2 API for objects of a defined type.
     """
     url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
@@ -89,15 +81,10 @@ def get_freshservice_objects(obj_type, verbose=False):
     further_results = True
 
     while further_results:
-        if verbose:
-            print('Querying page {}'.format(params['page']))
-
         resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
 
         if 'link' not in resp.headers:  # No further paginated results.
             further_results = False
-            if verbose:
-                print('Done!')
 
         objects.extend(resp.json()[obj_type])
         params['page'] += 1
