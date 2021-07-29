@@ -8,13 +8,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Querying Freshservice for requesters')
-        requesters_fs = get_freshservice_objects(obj_type='requesters', verbose=True)
+        requesters_fs = get_freshservice_objects(obj_type='requesters')
         requesters_fs = {r['primary_email']: r for r in requesters_fs}
         self.stdout.write('Querying Freshservice for agents')
-        agents_fs = get_freshservice_objects(obj_type='agents', verbose=True)
+        agents_fs = get_freshservice_objects(obj_type='agents')
         agents_fs = {r['email']: r for r in agents_fs}
         self.stdout.write('Querying Freshservice for departments')
-        departments_fs = get_freshservice_objects(obj_type='departments', verbose=True)
+        departments_fs = get_freshservice_objects(obj_type='departments')
         departments_fs = {d['name']: d for d in departments_fs}
 
         if not requesters_fs:
