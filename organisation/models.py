@@ -77,6 +77,74 @@ class DepartmentUser(models.Model):
         '19ec0d23-8335-4cbd-94ac-6050e30712fa': 'EXCHANGE ONLINE (PLAN 2)',
         '2347355b-4e81-41a4-9c22-55057a399791': 'MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW',
     }
+    # A map of codes in the EMP_STATUS field to descriptive text.
+    EMP_STATUS_MAP = {
+        "ADV": "ADVERTISED VACANCY",
+        "BD": "Board",
+        "CAS": "CASUAL EMPLOYEES",
+        "CCFA": "COMMITTEE-BOARD MEMBERS FIXED TERM CONTRACT  AUTO",
+        "CD": "CADET",
+        "CEP": "COMMONWEALTH EMPLOYMENT PROGRAM",
+        "CFA": "FIXED TERM CONTRACT FULL-TIME AUTO",
+        "CFAS": "CONTRACT F-TIME AUTO SENIOR EXECUTIVE SERVICE",
+        "CFT": "FIXED TERM CONTRACT FULL-TIME TSHEET",
+        "CJA": "FIXED TERM CONTRACT JOB SHARE AUTO",
+        "CJT": "FIXED TERM CONTRACT JOBSHARE TSHEET",
+        "CO": "COMMITTEE (DO NOT USE- USE CCFA)",
+        "CON": "EXTERNAL CONTRACTOR",
+        "CPA": "FIXED TERM CONTRACT PART-TIME AUTO",
+        "CPAS": "CONTRACT P-TIME AUTO SENIOR EXECUTIVE SERVICE",
+        "CPT": "FIXED TERM CONTRACT PART-TIME TSHEET",
+        "ECAS": "EXTERNAL FUND CASUAL",
+        "ECFA": "FIXED TERM CONTRACT EXT. FUND F/TIME AUTO",
+        "ECFT": "FIXED TERM CONTRACT EXT. FUND F/TIME TSHEET",
+        "ECJA": "FIXED TERM CONTRACT EXT. FUND JOBSHARE AUTO",
+        "ECJT": "FIXED TERM CONTRACT EXT. FUND JOBSHARE TSHEET",
+        "ECPA": "FIXED TERM CONTRACT EXT. FUND P/TIME AUTO",
+        "ECPT": "FIXED TERM CONTRACT EXT. FUND P/TIME TSHEET",
+        "EPFA": "EXTERNAL FUND PERMANENT FULL-TIME AUTO",
+        "EPFT": "EXTERNAL FUND FULL-TIME TSHEET",
+        "EPJA": "EXTERNAL FUND PERMANENT JOBSHARE AUTO",
+        "EPJT": "EXTERNAL FUND PERMANENT JOBSHARE TSHEEET",
+        "EPPA": "EXTERNAL FUND PERMANENT PART-TIME AUTO",
+        "EPPT": "EXTERNAL FUND PERMANENT PART-TIME TSHEET",
+        "EXT": "EXTERNAL PERSON (NON EMPLOYEE)",
+        "GRCA": "GRADUATE RECRUIT FIXED TERM CONTRACT AUTO",
+        "JOB": "JOBSKILLS",
+        "NON": "NON EMPLOYEE",
+        "NOPAY": "NO PAY ALLOWED",
+        "NPAYC": "CASUAL NO PAY ALLOWED",
+        "NPAYF": "FULLTIME NO PAY ALLOWED",
+        "NPAYP": "PARTTIME NO PAY ALLOWED",
+        "NPAYT": "CONTRACT NO PAY ALLOWED (SEAS,CONT)",
+        "PFA": "PERMANENT FULL-TIME AUTO",
+        "PFAE": "PERMANENT FULL-TIME AUTO EXECUTIVE COUNCIL APPOINT",
+        "PFAS": "PERMANENT FULL-TIME AUTO SENIOR EXECUTIVE SERVICE",
+        "PFT": "PERMANENT FULL-TIME TSHEET",
+        "PJA": "PERMANENT JOB SHARE AUTO",
+        "PJT": "PERMANENT JOBSHARE TSHEET",
+        "PPA": "PERMANENT PART-TIME AUTO",
+        "PPAS": "PERMANENT PART-TIME AUTO SENIOR EXECUTIVE SERVICE",
+        "PPRTA":  "PERMANENT P-TIME AUTO (RELINQUISH  ROR to FT)",
+        "PPT": "PERMANENT PART-TIME TSHEET",
+        "SCFA": "SECONDMENT FULL-TIME AUTO",
+        "SEAP": "SEASONAL EMPLOYMENT (PERMANENT)",
+        "SEAS": "SEASONAL EMPLOYMENT",
+        "SES": "Senior Executive Service",
+        "SFTC": "SPONSORED FIXED TERM CONTRACT AUTO",
+        "SFTT": "SECONDMENT FULL-TIME TSHEET",
+        "SN": "SUPERNUMERY",
+        "SPFA": "PERMANENT FT SPECIAL CONDITIO AUTO",
+        "SPFT": "PERMANENT FT SPECIAL CONDITIONS  TS",
+        "SPTA": "SECONDMENT PART-TIME AUTO",
+        "SPTT": "SECONDMENT PART-TIME TSHEET",
+        "TEMP": "TEMPORARY EMPLOYMENT",
+        "TERM": "TERMINATED",
+        "TRAIN": "TRAINEE",
+        "V": "VOLUNTEER",
+        "WWR": "WEEKEND WEATHER READER",
+        "Z": "Non-Resident",
+    }
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -131,6 +199,7 @@ class DepartmentUser(models.Model):
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
+    # TODO: deprecated position_type in favour of Ascender data cache.
     position_type = models.PositiveSmallIntegerField(
         choices=POSITION_TYPE_CHOICES, null=True, blank=True,
         help_text='Employee position working arrangement (Ascender employment status)')
@@ -218,6 +287,14 @@ class DepartmentUser(models.Model):
         """
         full_name = '{} {}'.format(self.given_name if self.given_name else '', self.surname if self.surname else '')
         return full_name.strip()
+
+    def get_employment_status(self):
+        """Given cached Ascender data, return a description of a user's employment status.
+        """
+        if self.ascender_data and 'emp_status' in self.ascender_data and self.ascender_data['emp_status']:
+            if self.ascender_data['emp_status'] in self.EMP_STATUS_MAP:
+                return self.EMP_STATUS_MAP[self.ascender_data['emp_status']]
+        return ''
 
     def generate_ad_actions(self):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
