@@ -125,7 +125,7 @@ class DepartmentUser(models.Model):
         "PJT": "PERMANENT JOBSHARE TSHEET",
         "PPA": "PERMANENT PART-TIME AUTO",
         "PPAS": "PERMANENT PART-TIME AUTO SENIOR EXECUTIVE SERVICE",
-        "PPRTA":  "PERMANENT P-TIME AUTO (RELINQUISH  ROR to FT)",
+        "PPRTA": "PERMANENT P-TIME AUTO (RELINQUISH ROR to FT)",
         "PPT": "PERMANENT PART-TIME TSHEET",
         "SCFA": "SECONDMENT FULL-TIME AUTO",
         "SEAP": "SEASONAL EMPLOYMENT (PERMANENT)",
@@ -381,7 +381,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Company' in self.ad_data and ((self.cost_centre is None and self.ad_data['Company']) or (self.cost_centre.code != self.ad_data['Company'])):
+            if 'Company' in self.ad_data and ((self.cost_centre and self.cost_centre.code != self.ad_data['Company']) or (not self.cost_centre and self.ad_data['Company'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -393,7 +393,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location is None and self.ad_data['physicalDeliveryOfficeName']) or (self.location.name != self.ad_data['physicalDeliveryOfficeName'])):
+            if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location and self.location.name != self.ad_data['physicalDeliveryOfficeName']) or (not self.location and self.ad_data['physicalDeliveryOfficeName'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -511,7 +511,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'companyName' in self.azure_ad_data and ((self.cost_centre is None and self.azure_ad_data['companyName']) or (self.azure_ad_data['companyName'] != self.cost_centre.code)):
+            if 'companyName' in self.azure_ad_data and ((self.cost_centre and self.cost_centre.code != self.azure_ad_data['companyName']) or (not self.cost_centre and self.azure_ad_data['companyName'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
@@ -523,7 +523,7 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'officeLocation' in self.azure_ad_data and ((self.location is None and self.azure_ad_data['officeLocation']) or (self.azure_ad_data['officeLocation'] != self.location.name)):
+            if 'officeLocation' in self.azure_ad_data and ((self.location and self.location.name != self.azure_ad_data['officeLocation']) or (not self.location and self.azure_ad_data['officeLocation'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
                     action_type='Change account field',
