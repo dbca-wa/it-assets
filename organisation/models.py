@@ -697,7 +697,11 @@ class DepartmentUserLog(models.Model):
     log = JSONField(default=dict, editable=False)
 
     def __str__(self):
-        return '{} {}'.format(self.department_user, self.created.isoformat())
+        return '{} {} {}'.format(
+            self.created.isoformat(),
+            self.department_user,
+            self.log,
+        )
 
 
 class ADAction(models.Model):
