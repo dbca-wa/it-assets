@@ -624,8 +624,9 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
                     action.delete()
-                elif action.field == 'manager' and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists() and self.manager == DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id']):
-                    action.delete()
+                elif action.field == 'manager' and self.azure_ad_data and 'manager' in self.azure_ad_data and self.azure_ad_data['manager']:
+                    if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists() and self.manager == DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id']):
+                        action.delete()
 
     def update_from_ascender_data(self):
         """For this DepartmentUser object, update the field values from cached Ascender data
