@@ -49,9 +49,9 @@ mixer = "6.1.3"
 msal = "1.12.0"
 
 [tool.poetry.dev-dependencies]
-ipython = "^7.20.0"
+ipython = "^7.23.0"
 ipdb = "^0.13.3"
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=1.1.6"]
 build-backend = "poetry.masonry.api"
