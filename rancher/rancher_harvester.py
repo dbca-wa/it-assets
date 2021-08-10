@@ -1490,7 +1490,8 @@ def harvest_all(reconsume=False):
         else:
             modeldata.sync_dependent_tree(workload_changetime=now,rescan=False,cluster_lock_sessions=lock_sessions.items())
         #set workload's itsystem
-        modeldata.set_workload_itsystem()
+        if need_clean:
+            modeldata.set_workload_itsystem()
 
         return consume_results
     finally:
