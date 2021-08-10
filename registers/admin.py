@@ -9,7 +9,6 @@ from django.urls import path
 from django_json_widget.widgets import JSONEditorWidget
 
 from pytz import timezone
-from reversion.admin import VersionAdmin
 
 from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
@@ -39,7 +38,7 @@ class ITSystemForm(forms.ModelForm):
 
 
 @register(ITSystem)
-class ITSystemAdmin(RequestMixin,ModelDescMixin, VersionAdmin):
+class ITSystemAdmin(RequestMixin,ModelDescMixin, ModelAdmin):
 
     class PlatformFilter(SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for platform.

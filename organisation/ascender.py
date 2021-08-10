@@ -3,7 +3,7 @@ from django.conf import settings
 from fuzzywuzzy import fuzz
 import psycopg2
 import pytz
-from organisation.models import DepartmentUser
+from organisation.models import DepartmentUser, DepartmentUserLog
 
 TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
@@ -38,6 +38,8 @@ FOREIGN_TABLE_FIELDS = (
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
+    "extended_lv",
+    ("ext_lv_end_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
@@ -158,20 +160,40 @@ def ascender_employee_fetch():
 
 
 def ascender_db_import(verbose=False):
-    """A task to cache data from Ascender to a matching DepartmentUser object.
+    """A utility function to cache data from Ascender to a matching DepartmentUser object.
     """
     employee_iter = ascender_employee_fetch()
 
     for eid, jobs in employee_iter:
-        if DepartmentUser.objects.filter(employee_id=eid).exists():
-            user = DepartmentUser.objects.get(employee_id=eid)
-            # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
-            user.ascender_data = jobs[0]
-            user.ascender_data_updated = TZ.localize(datetime.now())
-            user.save()
-        else:
-            if verbose:
-                print("Could not match Ascender employee ID {} to a department user".format(eid))
+        # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
+        job = jobs[0]
+        # Only look at non-FPC users.
+        if job['clevel1_id'] != 'FPC':
+            # Only data cache for users having a non-terminated job.
+            if not job['job_term_date'] or datetime.strptime(job['job_term_date'], '%Y-%m-%d').date() >= date.today():
+                if DepartmentUser.objects.filter(employee_id=eid).exists():
+                    user = DepartmentUser.objects.get(employee_id=eid)
+
+                    # Check if the user already has Ascender data cached. If so, check if the position_no
+                    # value has changed. In that instance, create a DepartmentUserLog object.
+                    if user.ascender_data and 'position_no' in user.ascender_data and user.ascender_data['position_no'] != job['position_no']:
+                        DepartmentUserLog.objects.create(
+                            department_user=user,
+                            log={
+                                'ascender_field': 'position_no',
+                                'old_value': user.ascender_data['position_no'],
+                                'new_value': job['position_no'],
+                            },
+                        )
+                        if verbose:
+                            print("Generated log for {} (changed position_no)".format(user))
+
+                    user.ascender_data = job
+                    user.ascender_data_updated = TZ.localize(datetime.now())
+                    user.save()
+                else:
+                    if verbose:
+                        print("Could not match Ascender employee ID {} to a department user".format(eid))
 
 
 def get_ascender_matches():
@@ -188,7 +210,7 @@ def get_ascender_matches():
 
     for user in dept_users:
         for data in ascender_jobs:
-            if data['first_name'] and data['surname']:
+            if data['first_name'] and data['surname'] and not DepartmentUser.objects.filter(employee_id=data['employee_id']).exists():
                 sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
                 fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
                 if sn_ratio > 80 and fn_ratio > 65:

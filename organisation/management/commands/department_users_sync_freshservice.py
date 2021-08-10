@@ -10,6 +10,10 @@ class Command(BaseCommand):
         self.stdout.write('Querying Freshservice for requesters')
         requesters_fs = get_freshservice_objects(obj_type='requesters')
         requesters_fs = {r['primary_email']: r for r in requesters_fs}
+        self.stdout.write('Querying Freshservice for agents')
+        agents_fs = get_freshservice_objects(obj_type='agents')
+        agents_fs = {r['email']: r for r in agents_fs}
+        self.stdout.write('Querying Freshservice for departments')
         departments_fs = get_freshservice_objects(obj_type='departments')
         departments_fs = {d['name']: d for d in departments_fs}
 
@@ -34,20 +38,30 @@ class Command(BaseCommand):
             if not user['givenName'] and not user['surname']:
                 continue
 
+            # Skip disabled Azure AD accounts.
+            if not user['accountEnabled']:
+                continue
+
             # Is there already a matching requester in Freshservice?
             if user['mail'].lower() in requesters_fs:
                 requester = requesters_fs[user['mail'].lower()]
+            else:
+                requester = None
+            # Is there already a matching agent in Freshservice?
+            if user['mail'].lower() in agents_fs:
+                agent = agents_fs[user['mail'].lower()]
+            else:
+                agent = None
 
             if requester:  # Freshservice requester exists, check for any updates.
                 data = {}
-
-                if requester['first_name'] != user['givenName']:
+                if requester['first_name'] and requester['first_name'] != user['givenName']:
                     data['first_name'] = user['givenName']
                     self.stdout.write('Updating requester {} first_name to {}'.format(requester['primary_email'], user['givenName']))
-                if requester['last_name'] != user['surname']:
+                if requester['last_name'] and requester['last_name'] != user['surname']:
                     data['last_name'] = user['surname']
                     self.stdout.write('Updating requester {} last_name to {}'.format(requester['primary_email'], user['surname']))
-                if requester['job_title'] != user['jobTitle']:
+                if user['jobTitle'] and requester['job_title'] != user['jobTitle']:
                     data['job_title'] = user['jobTitle']
                     self.stdout.write('Updating requester {} job_title to {}'.format(requester['primary_email'], user['jobTitle']))
                 if user['telephoneNumber'] and requester['work_phone_number'] != user['telephoneNumber']:
@@ -59,12 +73,36 @@ class Command(BaseCommand):
                     dept = departments_fs[user['companyName']]
                     if dept['id'] not in requester['department_ids']:
                         data['department_ids'] = [dept['id']]
-
                 if data:
                     # Update the Freshservice requester.
                     resp = update_freshservice_object('requesters', requester['id'], data)
                     resp.raise_for_status()
-                    self.stdout.write('Updated Freshdesk requester {}'.format(requester['primary_email']))
+
+            elif agent:
+                data = {}
+                if user['givenName'] and agent['first_name'] != user['givenName']:
+                    data['first_name'] = user['givenName']
+                    self.stdout.write('Updating agent {} first_name to {}'.format(agent['email'], user['givenName']))
+                if user['surname'] and agent['last_name'] != user['surname']:
+                    data['last_name'] = user['surname']
+                    self.stdout.write('Updating agent {} last_name to {}'.format(agent['email'], user['surname']))
+                if user['jobTitle'] and agent['job_title'] != user['jobTitle']:
+                    data['job_title'] = user['jobTitle']
+                    self.stdout.write('Updating agent {} job_title to {}'.format(agent['email'], user['jobTitle']))
+                if user['telephoneNumber'] and agent['work_phone_number'] != user['telephoneNumber']:
+                    data['work_phone_number'] = user['telephoneNumber']
+                    self.stdout.write('Updating agent {} work_phone_number to {}'.format(agent['email'], user['telephoneNumber']))
+                # Freshservice agent department - this is a bit different to the fields above.
+                # We use this to record the agent cost centre.
+                if user['companyName'] and user['companyName'] in departments_fs:
+                    dept = departments_fs[user['companyName']]
+                    if dept['id'] not in agent['department_ids']:
+                        data['department_ids'] = [dept['id']]
+                if data:
+                    # Update the Freshservice agent.
+                    resp = update_freshservice_object('agents', agent['id'], data)
+                    resp.raise_for_status()
+
             else:
                 data = {
                     'primary_email': user['mail'].lower(),

@@ -27,3 +27,12 @@ class DepartmentUserAdminTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.has_header("Content-Disposition"))
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_departmentuser_ascender_discrepancies(self):
+        """Test the DepartmentUserExport admin view
+        """
+        url = reverse('admin:ascender_discrepancies')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.has_header("Content-Disposition"))
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

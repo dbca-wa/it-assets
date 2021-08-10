@@ -22,14 +22,18 @@
             <td>{{ object.department_user }}</td>
         </tr>
         {% if object.department_user.cost_centre and object.department_user.cost_centre.division_name %}
-        <tr>
-            <th>Division</th>
-            <td>{{ object.department_user.cost_centre.get_division_name_display }}</td>
-        </tr>
+            <tr>
+                <th>Division</th>
+                <td>{{ object.department_user.cost_centre.get_division_name_display }}</td>
+            </tr>
         {% endif %}
         <tr>
             <th>Synced to on-prem AD?</th>
             <td>{% if object.department_user.dir_sync_enabled %}Yes{% else %}No (cloud-only account){% endif %}</td>
+        </tr>
+        <tr>
+            <th>On-prem AD domain</th>
+            <td>{{ object.department_user.get_onprem_ad_domain }}</td>
         </tr>
     </tbody>
 
@@ -37,56 +41,25 @@
 
 <h1>PowerShell instructions</h1>
 {% if object.department_user.dir_sync_enabled %}
-<p>
-    This user account is synced to <strong>on-premises Active Directory</strong>.
-    Carry out the instructions below on a suitable management host.
-</p>
-{% if not object.department_user.ad_guid %}
-<p>
-    <strong>NOTE: Department User has no on-premises Active Directory GUID associated.</strong>
-    Ensure that the on-prem account exists and wait for the user's AD GUID to be automatically
-    synced into IT Assets (should take less than 15 minutes).
-</p>
-{% endif %}
+    <p>
+        This user account is synced to <strong>on-premises Active Directory</strong>.
+        Carry out the instructions below on a suitable management host.
+    </p>
+    {% if not object.department_user.ad_guid %}
+        <p>
+            <strong>NOTE: Department User has no on-premises Active Directory GUID associated.</strong>
+            Ensure that the on-prem account exists and wait for the user's AD GUID to be automatically
+            synced into IT Assets (should take less than 15 minutes).
+        </p>
+    {% endif %}
 {% else %}
-<p>
-    This user acount in online-only in <strong>Azure Active Directory</strong>.
-    Carry out the instructions below on a suitable management host.
-</p>
+    <p>
+        This user acount in online-only in <strong>Azure Active Directory</strong>.
+        Carry out the instructions below on a suitable management host.
+    </p>
 {% endif %}
 
-{% if object.department_user.dir_sync_enabled %}
-
-{% if object.department_user.ad_guid %}
-<pre><code class="language-powershell">
-{% if object.ad_field == "Manager" %}
-$manager = Get-ADUser -Identity {{ object.department_user.manager.ad_guid }}
-Set-ADUser -Identity {{ object.department_user.ad_guid }} -Manager $manager
-{% else %}
-{% if object.field_value %}
-Set-ADUser -Identity {{ object.department_user.ad_guid }} -{{ object.ad_field }} "{{ object.field_value }}"
-{% else %}
-Set-ADUser -Identity {{ object.department_user.ad_guid }} -{{ object.ad_field }} $null
-{% endif %}
-{% endif %}
-</code></pre>
-{% endif %}
-{% else %}
-<pre><code class="language-powershell">
-Connect-AzureAD
-{% if object.ad_field == "Manager" %}
-Set-AzureADUserManager -ObjectId "{{ object.department_user.azure_guid }}" -RefObjectId "{{ object.department_user.manager.azure_guid }}"
-{% elif object.ad_field == "CompanyName" %}
-Set-AzureADUserExtension -ObjectId "{{ object.department_user.azure_guid }}" -ExtensionName "CompanyName" -ExtensionValue "{{ object.field_value }}"
-{% else %}
-{% if object.field_value %}
-Set-AzureADUser -ObjectId "{{ object.department_user.azure_guid}}" -{{ object.ad_field }} "{{ object.field_value }}"
-{% else %}
-Set-AzureADUser -ObjectId "{{ object.department_user.azure_guid}}" -{{ object.ad_field }} $null
-{% endif %}
-{% endif %}
-</code></pre>
-{% endif %}
+<pre><code class="language-powershell">{{ object.powershell_instructions }}</code></pre>
 
 <p>
     <a href="{% url 'ad_action_complete' pk=object.pk %}" class="btn btn-primary"><i class="fas fa-check"></i> Mark as completed</a>

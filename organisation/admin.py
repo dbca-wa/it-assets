@@ -3,11 +3,9 @@ from django.contrib.admin import register, ModelAdmin, SimpleListFilter
 from django.urls import path, reverse
 from django.utils.html import format_html
 from leaflet.admin import LeafletGeoAdmin
-from reversion.admin import VersionAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
-from .utils import departmentuser_ad_sync
-from .views import DepartmentUserExport
+from .views import DepartmentUserExport, DepartmentUserAscenderDiscrepancyExport
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -27,7 +25,7 @@ class DepartmentUserForm(forms.ModelForm):
 
 
 @register(DepartmentUser)
-class DepartmentUserAdmin(VersionAdmin):
+class DepartmentUserAdmin(ModelAdmin):
 
     class AssignedLicenceFilter(SimpleListFilter):
         title = 'assigned licences'
@@ -57,7 +55,7 @@ class DepartmentUserAdmin(VersionAdmin):
     raw_id_fields = ('manager',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
-        'assigned_licences', 'proxy_addresses',
+        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled',
     )
     fieldsets = (
         ('Active Directory account fields', {
@@ -111,6 +109,7 @@ class DepartmentUserAdmin(VersionAdmin):
                 'ad_guid',
                 'assigned_licences',
                 'proxy_addresses',
+                # 'dir_sync_enabled',
             ),
         }),
     )
@@ -119,13 +118,20 @@ class DepartmentUserAdmin(VersionAdmin):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
+            path('ascender-discrepancies/', DepartmentUserAscenderDiscrepancyExport.as_view(), name='ascender_discrepancies'),
         ] + urls
         return urls
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        # Run the Azure AD sync actions function.
-        departmentuser_ad_sync(obj)
+        # Run the Ascender/Azure AD/on-prem AD update actions.
+        obj.update_from_ascender_data()
+        obj.update_deptuser_from_azure()
+        obj.update_deptuser_from_onprem_ad()
+        actions = obj.generate_ad_actions()
+        if actions:
+            self.message_user(request, "AD action(s) have been generated for {}".format(obj))
+        obj.audit_ad_actions()
 
     def clear_ad_guid(self, request, queryset):
         queryset.update(ad_guid=None)
@@ -178,7 +184,7 @@ class ADActionAdmin(ModelAdmin):
 
 @register(Location)
 class LocationAdmin(LeafletGeoAdmin):
-    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager')
+    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager', 'active')
     list_filter = ('active',)
     raw_id_fields = ('manager',)
     search_fields = ('name', 'address', 'phone', 'fax', 'email', 'manager__email')

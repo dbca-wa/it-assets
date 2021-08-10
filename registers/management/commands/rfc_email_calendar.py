@@ -11,7 +11,7 @@ from texttable import Texttable
 
 
 class Command(BaseCommand):
-    help = 'Emails the weekly change calendar to users in the "CAB members" group (plus optional additional recipients)'
+    help = 'Emails a calendar of scheduled RFCs to users'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -20,14 +20,28 @@ class Command(BaseCommand):
             default=None,
             type=str,
             help='Date from which to start the calendar in format YYYY-MM-DD',
-            dest='datestring',
+            dest='start_date',
+        )
+        parser.add_argument(
+            '--days',
+            action='store',
+            default=7,
+            type=int,
+            help='Number of days that the calendar should include',
+            dest='days',
+        )
+        parser.add_argument(
+            '--cab-members',
+            action='store_true',
+            help='Deliver the calendar to CAB members',
+            dest='cab_members',
         )
         parser.add_argument(
             '--emails',
             action='store',
             default=None,
             type=str,
-            help='Comma-separated list of additional emails to which to deliver the report',
+            help='Comma-separated list of emails to which to deliver the calendar',
             dest='emails',
         )
         parser.add_argument(
@@ -36,15 +50,27 @@ class Command(BaseCommand):
             help='Change calendar to contain RFCs having all status types, not just those relevant to CAB',
             dest='all_rfcs',
         )
+        parser.add_argument(
+            '--scheduled',
+            action='store_true',
+            help='Change calendar to contain RFCs having only "Scheduled for CAB" status',
+            dest='scheduled',
+        )
+        parser.add_argument(
+            '--ready',
+            action='store_true',
+            help='Change calendar to contain RFCs having only "Ready for implementation" status',
+            dest='ready',
+        )
 
     def handle(self, *args, **options):
         try:
             d = date.today()
-            if options['datestring']:
+            if options['start_date']:
                 try:
-                    d = datetime.strptime(options['datestring'], '%Y-%m-%d').date()
+                    d = datetime.strptime(options['start_date'], '%Y-%m-%d').date()
                 except ValueError:
-                    raise CommandError('Invalid date value: {} (use format YYYY-MM-DD)'.format(options['datestring']))
+                    raise CommandError('Invalid date value: {} (use format YYYY-MM-DD)'.format(options['start_date']))
 
             emails = None
             if options['emails']:
@@ -53,12 +79,17 @@ class Command(BaseCommand):
                 except ValueError:
                     raise CommandError('Invalid emails value: {} (use comma-separated string)'.format(options['emails']))
 
-            week_start = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
-            week_end = week_start + timedelta(days=7)
+            start_date = datetime.combine(d, datetime.min.time()).astimezone(timezone(settings.TIME_ZONE))
+            end_date = start_date + timedelta(days=options['days'])
+
             if 'all_rfcs' in options and options['all_rfcs']:
-                rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end]).order_by('planned_start')
+                rfcs = ChangeRequest.objects.filter(planned_start__range=[start_date, end_date]).order_by('planned_start')
+            elif 'scheduled' in options and options['scheduled']:
+                rfcs = ChangeRequest.objects.filter(planned_start__range=[start_date, end_date], status=2).order_by('planned_start')
+            elif 'ready' in options and options['ready']:
+                rfcs = ChangeRequest.objects.filter(planned_start__range=[start_date, end_date], status=3).order_by('planned_start')
             else:
-                rfcs = ChangeRequest.objects.filter(planned_start__range=[week_start, week_end], status__in=[2, 3]).order_by('planned_start')
+                rfcs = ChangeRequest.objects.filter(planned_start__range=[start_date, end_date], status__in=[2, 3]).order_by('planned_start')
 
             if Site.objects.filter(name='Change Requests').exists():
                 domain = Site.objects.get(name='Change Requests').domain
@@ -71,7 +102,8 @@ class Command(BaseCommand):
 
             # Construct the HTML and plaintext email content to send.
             context = {
-                'start': week_start,
+                'start': start_date,
+                'end': end_date,
                 'object_list': rfcs,
                 'domain': domain,
             }
@@ -98,16 +130,21 @@ class Command(BaseCommand):
             table.add_rows(rows, header=True)
             text_content = table.draw()
 
-            # Email the CAB members group.
-            if not Group.objects.filter(name='CAB members').exists():
-                raise CommandError('"CAB members" group does not exist.')
-            cab = Group.objects.get(name='CAB members')
-            subject = 'Weekly change calendar starting {}'.format(week_start.strftime('%A, %d %b %Y'))
-            recipients = list(User.objects.filter(groups__in=[cab], is_active=True).values_list('email', flat=True))
+            subject = 'Change calendar starting {}'.format(start_date.strftime('%A, %d %b %Y'))
+            recipients = []
 
-            # Optional additional email recipients.
+            # Email the CAB members group.
+            if options['cab_members']:
+                if not Group.objects.filter(name='CAB members').exists():
+                    raise CommandError('"CAB members" group does not exist.')
+                cab = Group.objects.get(name='CAB members')
+                recipients = recipients + list(User.objects.filter(groups__in=[cab], is_active=True).values_list('email', flat=True))
+
+            # Additional email recipients.
             if emails:
                 recipients = recipients + emails
+
+            recipients = set(recipients)
 
             msg = EmailMultiAlternatives(
                 subject=subject,

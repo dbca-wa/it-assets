@@ -11,7 +11,8 @@ from itassets.utils import breadcrumbs_list
 
 from .forms import ConfirmPhoneNosForm
 from .models import DepartmentUser, Location, OrgUnit, ADAction
-from .reports import department_user_export, user_account_export
+from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
+from .utils import parse_windows_ts
 
 
 class AddressBook(TemplateView):
@@ -151,7 +152,7 @@ class LicenseAPIResource(View):
                 'name': user.name,
                 'email': user.email,
                 'cost_centre': user.cost_centre.code if user.cost_centre else None,
-                'microsoft_365_licence': user.get_office_licence(),
+                'microsoft_365_licence': user.get_licence(),
                 'active': user.active,
                 'shared': user.shared_account,
             } for user in queryset
@@ -317,19 +318,21 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
         context['site_acronym'] = 'OIM'
         context['page_title'] = 'Ascender / Active Directory sync issues'
 
-        # Current, active Department users having no employee ID.
+        # Current, active Department users having an M365 licence but no employee ID.
         context['deptuser_no_empid'] = DepartmentUser.objects.filter(
             active=True,
-            email__contains='@dbca.wa.gov.au',
+            email__icontains='@dbca.wa.gov.au',
             employee_id__isnull=True,
             account_type__in=[2, 3, 0, 8, 6, 1, None],
+            azure_guid__isnull=False,
+            assigned_licences__contains=['MICROSOFT 365 E5'],
         )
 
         # Department users not linked with onprem AD or Azure AD.
         context['deptuser_not_linked'] = []
         du_users = DepartmentUser.objects.filter(active=True, email__contains='@dbca.wa.gov.au', employee_id__isnull=False)
         for du in du_users:
-            if du.get_office_licence() and (not du.ad_guid or not du.azure_guid):
+            if du.get_licence() and (not du.ad_guid or not du.azure_guid):
                 context['deptuser_not_linked'].append(du)
 
         # Department users linked to onprem AD but employee ID differs.
@@ -337,6 +340,17 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
         for du in du_users:
             if du.ad_data and 'EmployeeID' in du.ad_data and du.ad_data['EmployeeID'] != du.employee_id:
                 context['onprem_ad_empid_diff'].append(du)
+
+        # Department user Ascender expiry date differs from onprem AD expiry date.
+        context['deptuser_expdate_diff'] = []
+        for du in du_users:
+            if du.ascender_data and du.ad_data:
+                if du.ascender_data['job_term_date'] and du.ad_data['AccountExpirationDate']:
+                    ascender_date = datetime.strptime(du.ascender_data['job_term_date'], '%Y-%m-%d').date()
+                    onprem_date = parse_windows_ts(du.ad_data['AccountExpirationDate']).date()
+                    delta = ascender_date - onprem_date
+                    if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
+                        context['deptuser_expdate_diff'].append([du, ascender_date, onprem_date])
 
         # Department user CC differs from Ascender paypoint.
         context['deptuser_cc_diff'] = []
@@ -365,3 +379,14 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
                 context['deptuser_title_diff'].append(du)
 
         return context
+
+
+class DepartmentUserAscenderDiscrepancyExport(View):
+    """A custom view to export discrepancies between Ascender and department user data to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=ascender_ad_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+        users = DepartmentUser.objects.all()
+        response = department_user_ascender_discrepancies(response, users)
+        return response
