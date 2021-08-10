@@ -1,4 +1,5 @@
 import logging
+import traceback
 import json
 
 from django.conf import settings
@@ -13,6 +14,7 @@ from django_q.tasks import async_task
 
 from . import models
 from . import rancher_harvester
+from . import forms
 from .decorators import  add_changelink,many2manyinline
 
 logger = logging.getLogger(__name__)
@@ -52,12 +54,12 @@ class DatetimeMixin(object):
             return timezone.localtime(obj.created).strftime("%Y-%m-%d %H:%M:%S")
     _created.short_description = "Created"
 
-    def _refreshed(self,obj):
-        if not obj or not obj.refreshed :
+    def _updated(self,obj):
+        if not obj or not obj.updated :
             return ""
         else:
-            return timezone.localtime(obj.refreshed).strftime("%Y-%m-%d %H:%M:%S")
-    _refreshed.short_description = "Refreshed"
+            return timezone.localtime(obj.updated).strftime("%Y-%m-%d %H:%M:%S")
+    _updated.short_description = "updated"
 
     def _starttime(self,obj):
         if not obj or not obj.starttime :
@@ -94,12 +96,19 @@ class DatetimeMixin(object):
             return timezone.localtime(obj.added).strftime("%Y-%m-%d %H:%M:%S")
     _added.short_description = "Added"
 
+    def _resource_scaned(self,obj):
+        if not obj or not obj.resource_scaned :
+            return ""
+        else:
+            return timezone.localtime(obj.resource_scaned).strftime("%Y-%m-%d %H:%M:%S")
+    _resource_scaned.short_description = "resource_scaned"
+
 class EnvValueMixin(object):
     def _value(self,obj):
         if not obj or not obj.value :
             return ""
         else:
-            return mark_safe("<pre style='white-space:normal'>{}</pre>".format(obj.value))
+            return mark_safe("<pre style='white-space:pre-wrap'>{}</pre>".format(obj.value))
     _value.short_description = "Value"
 
 class ContainerImageLinkMixin(object):
@@ -176,6 +185,8 @@ class NamespaceLinkMixin(object):
             return ""
         else:
             namespace = self.get_namespace(obj)
+            if not namespace:
+                return ""
             url = reverse(self.namespace_change_url_name, args=(namespace.id,))
             return mark_safe("<A href='{}'>{}</A>".format(url,namespace.name))
     _namespace.short_description = "Namespace"
@@ -192,19 +203,6 @@ class VolumeLinkMixin(object):
             url = reverse(self.volume_change_url_name, args=(volume.id,))
             return mark_safe("<A href='{}'>volume</A>".format(url))
     _volume.short_description = "Volume"
-
-
-class DatabaseLinkMixin(object):
-    database_change_url_name = 'admin:{}_{}_change'.format(models.Database._meta.app_label,models.Database._meta.model_name)
-    get_database = staticmethod(lambda obj:obj.database)
-    def _database(self,obj):
-        if not obj :
-            return ""
-        else:
-            database = self.get_database(obj)
-            url = reverse(self.database_change_url_name, args=(database.id,))
-            return mark_safe("<A href='{}'>{}</A>".format(url,database.name))
-    _database.short_description = "Database"
 
 
 class ContainersLinkMixin(object):
@@ -594,13 +592,13 @@ class ExistingStatusFilter(admin.SimpleListFilter):
 
 @admin.register(models.Namespace)
 class NamespaceAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,WorkloadsLinkMixin,ProjectLinkMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else  ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted')
+    list_display = ('name','_cluster','_project',"system_namespace","_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else  ('name','_cluster','_project',"system_namespace","_workloads",'_active_workloads','_deleted_workloads','_deleted')
 
-    readonly_fields = ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('name','_cluster','_project',"_workloads",'_active_workloads','_deleted_workloads','_deleted')
+    readonly_fields = ('name','_cluster','_project',"system_namespace","_workloads",'_active_workloads','_deleted_workloads','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('name','_cluster','_project',"system_namespace","_workloads",'_active_workloads','_deleted_workloads','_deleted')
 
     fields = readonly_fields
     ordering = ('cluster__name','project__name','name')
-    list_filter = ('project',ExistingStatusFilter)
+    list_filter = ('project','system_namespace',ExistingStatusFilter)
 
     inlines = [WorkloadInline4Namespace]
 
@@ -613,18 +611,62 @@ class NamespaceAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMix
     def has_change_permission(self, request, obj=None):
         return False
 
+class SecretItemInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
+    model = models.SecretItem
+    readonly_fields = ('name','_value','_modified','_created','_updated')
+    fields = readonly_fields
+    ordering = ('name',)
+
+@admin.register(models.Secret)
+class SecretAdmin(RequestMixin,DeletedMixin,LookupAllowedMixin,ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster',"_project","_namespace","_deleted","_modified","_created","_updated")
+    readonly_fields = ('name','_cluster',"_project","_namespace","_references","_deleted","_modified","_created","_updated")
+    ordering = ('cluster__name','name')
+    list_filter = ('cluster',)
+
+    search_fields = ['name']
+
+    inlines = [SecretItemInline]
+
+    workload_change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
+    def _references(self,obj):
+        if not obj :
+            return ""
+        result = None
+        for item in models.WorkloadEnv.objects.filter(secret=obj).order_by("workload","name"):
+            url = reverse(self.workload_change_url_name, args=(item.workload.id,))
+            if result:
+                result = "<A href={0}>{1}.{2}<>".format(url,item.workload.item.name)
+            else:
+                result = "{3}<br><A href={0}>{1}.{2}<>".format(url,item.workload.item.name,result)
+
+        return mark_safe(result)
+    _references.short_description = "References"
+
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
 class ConfigMapItemInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
     model = models.ConfigMapItem
-    readonly_fields = ('name','_value','_modified','_created','_refreshed')
+    readonly_fields = ('name','_value','_modified','_created','_updated')
     fields = readonly_fields
     ordering = ('name',)
 
 @admin.register(models.ConfigMap)
-class ConfigMapAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
-    list_display = ('name','_cluster',"_namespace","_modified","_created","_refreshed")
+class ConfigMapAdmin(DeletedMixin,LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ('name','_cluster',"_namespace","_deleted","_modified","_created","_updated")
     readonly_fields = list_display
     ordering = ('cluster__name','namespace__name','name')
     list_filter = ('cluster','namespace')
+
+    search_fields = ['name']
 
     inlines = [ConfigMapItemInline]
 
@@ -685,8 +727,8 @@ class PersistentVolumeAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,Dat
 
 
 class WorkloadEnvInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
-    readonly_fields = ('name','_value','_configmap','_modified','_created')
-    fields = ('name','_value',"_configmap",'_modified')
+    readonly_fields = ('name','_value','_configmap','_secret','_modified','_created')
+    fields = ('name','_value',"_configmap","_secret",'_modified')
     model = models.WorkloadEnv
     classes = ["collapse"]
 
@@ -702,6 +744,17 @@ class WorkloadEnvInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
                 return mark_safe("<A href='{}'>{}</A>".format(url,obj.configmap))
     _configmap.short_description = "Config Map"
 
+    secret_change_url_name = 'admin:{}_{}_change'.format(models.Secret._meta.app_label,models.Secret._meta.model_name)
+    def _secret(self,obj):
+        if not obj or not obj.secret:
+            return ""
+        else:
+            url = reverse(self.secret_change_url_name, args=(obj.secret.id,))
+            if obj.secretitem:
+                return mark_safe("<A href='{}'>{}</A>".format(url,obj.secretitem))
+            else:
+                return mark_safe("<A href='{}'>{}</A>".format(url,obj.secret))
+    _secret.short_description = "Secret"
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -768,41 +821,13 @@ class WorkloadVolumeInline(DeletedMixin,VolumeLinkMixin,admin.TabularInline):
         return False
 
 
-class WorkloadDatabaseInline1(DeletedMixin,DatabaseLinkMixin,admin.TabularInline):
-    model = models.WorkloadDatabase
-    readonly_fields = ('_server','_port','_database','schema','user',"password",'config_items','_deleted')
-    fields = readonly_fields
-    ordering = ('workload',)
-
-    def _server(self,obj):
-        if not obj :
-            return ""
-        else:
-            return obj.database.server.host
-    _server.short_description = "Server"
-
-    def _port(self,obj):
-        if not obj :
-            return ""
-        else:
-            return obj.database.server.port
-    _port.short_description = "Port"
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
 class WorkloadInline4Image(RequestMixin,DeletedMixin,ClusterLinkMixin,ProjectLinkMixin,WorkloadLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.TabularInline):
     model = models.Workload
     readonly_fields = ('_name_with_link','_cluster','_project','_namespace', 'kind','image','itsystem',"suspend","_modified","_deleted")
     fields = readonly_fields
     ordering = ('name',)
     get_workload = staticmethod(lambda obj:obj)
+    classes = ["collapse"]
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -1064,6 +1089,7 @@ class VulnerabilityInline4Image(RequestMixin,admin.TabularInline):
     fields = readonly_fields
     #fields = readonly_fields
     ordering = ('-vulnerability__severity','vulnerability__vulnerabilityid','vulnerability__pkgname')
+    classes = ["collapse"]
 
     def get_queryset(self, request):
         qs =  super().get_queryset(request)
@@ -1081,16 +1107,16 @@ class VulnerabilityInline4Image(RequestMixin,admin.TabularInline):
 
 @admin.register(models.ContainerImage)
 class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsLinkMixin, admin.ModelAdmin):
-    list_display = ('imageid', 'account', 'name', 'tag','_workloads','os', 'scan_status', '_scan_summary', '_scaned' )
-    readonly_fields = ('imageid', 'account', 'name', 'tag','_workloads','os','_added', 'scan_status', '_scan_summary', '_scaned',"_scan_result","_scan_message" )
+    list_display = ('imageid',"_account","_name",'tag','_workloads','os', 'scan_status', '_scan_summary', '_scaned' )
+    readonly_fields = ('imageid',"_account","_name", 'tag','_workloads','os','_added', 'scan_status', '_scan_summary', '_scaned',"_scan_result","_scan_message" )
 
-    list_filter = ("account","scan_status","os")
-    ordering = ('account','name','tag')
+    list_filter = ("imagefamily__account","scan_status","os")
+    ordering = ('imagefamily__account','imagefamily__name','tag')
     exclude = ("vulnerabilities",)
 
     actions = ('scan',)
 
-    search_fields = ['name']
+    search_fields = ['imagefamily__name']
 
     inlines = [ VulnerabilityInline4Image,WorkloadInline4Image]
 
@@ -1101,6 +1127,20 @@ class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsL
             qs = qs.defer("scan_result","scan_message","vulnerabilities")
 
         return qs
+
+    def _account(self,obj):
+        if not obj or not obj.imagefamily:
+            return ""
+        else:
+            return obj.imagefamily.account
+    _account.short_description = "Account"
+
+    def _name(self,obj):
+        if not obj or not obj.imagefamily:
+            return ""
+        else:
+            return obj.imagefamily.name
+    _name.short_description = "Name"
 
     def _scan_result(self,obj):
         if not obj:
@@ -1145,28 +1185,41 @@ class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsL
     def has_delete_permission(self, request, obj=None):
         return False
 
+class WorkloadResourceInline(DatetimeMixin,admin.TabularInline):
+    model = models.WorkloadResource
+    readonly_fields = ('resource_type','resource_id','config_items','config_source','properties','_updated',"_created")
+    fields = readonly_fields
+    ordering = ('resource_type','resource_id',)
+    classes = ["collapse"]
+
 @admin.register(models.Workload)
 class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,ContainerImageLinkMixin,DatetimeMixin, admin.ModelAdmin):
     list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage','itsystem', '_containers','_running_status', '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage','itsystem', '_containers','_running_status', '_modified','_deleted')
 
     list_display_links = None
 
-    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule','_containers','_running_status', '_modified',"suspend","added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule','_containers','_running_status', '_modified',"suspend")
+    readonly_fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule','_containers','_running_status', '_modified',"suspend","added_by_log",'_resource_dependent_tree','_workload_dependent_tree') if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage','_replicas','schedule','_containers','_running_status', '_modified',"suspend",'_resource_dependent_tree','_workload_dependent_tree')
 
-    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule', '_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule','_containers','_running_status',"suspend", '_modified','_deleted')
+    fields = ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule', '_containers','_running_status',"suspend", '_modified','_deleted',"added_by_log",'_resource_dependent_tree','_workload_dependent_tree') if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name', '_cluster', '_project', '_namespace', 'kind', '_containerimage', "_replicas",'schedule','_containers','_running_status',"suspend", '_modified','_deleted','_resource_dependent_tree','_workload_dependent_tree')
 
     ordering = ('cluster__name', 'project__name', 'namespace__name', 'name',)
     list_filter = ('cluster',ExistingStatusFilter,"kind", 'namespace')
     search_fields = ['name', 'project__name', 'namespace__name']
     get_workload = staticmethod(lambda obj: obj)
 
-    inlines = [WorkloadDatabaseInline1, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
+    inlines = [WorkloadResourceInline, WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
+    #inlines = [WorkloadListeningInline, WorkloadEnvInline, WorkloadVolumeInline]
 
+    actions = ('scan_dependency','populate_resource_tree','populate_workload_tree')
+
+    change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
     list_url_name = '{}_{}_changelist'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
     def get_queryset(self, request):
         qs =  super().get_queryset(request)
+        qs = qs.select_related("itsystem","cluster","project","namespace")
         if resolve(request.path_info).url_name == self.list_url_name:
-            qs = qs.defer("containerimage")
+            #qs = qs.only('name', 'cluster__name', 'project__projectid',"project__name", 'namespace__name', 'kind', 'image',"containerimage_id",'itsystem__name', 'latest_containers', 'modified','deleted',"added_by_log")
+            pass
 
         return qs
 
@@ -1179,6 +1232,204 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
             return ""
     _replicas.short_description = "Replicas"
 
+    _htmlid = 0
+    def get_tree_nodeid(self,nodetype):
+        self._htmlid += 1
+        return "{}_{}".format(nodetype,self._htmlid)
+
+    def _format_resource_tree(self,tree,indent=0):
+        dep_html = ""
+        for dependent_type,dependent_type_name,type_dependents in tree[3]:
+            type_tree_html = ""
+            for dependent_pk,dependent_display,sub_dep_trees  in type_dependents:
+                if sub_dep_trees:
+                    resource_tree_id = self.get_tree_nodeid("res")
+                    sub_tree_html = "".join(self._format_resource_tree(sub_tree,indent + 48) for sub_tree in sub_dep_trees)
+                    type_tree_html = "{0}<div style='margin-left:{3}px'><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{4}'))\" style='margin-right:5px'>{1}</div><div id='{4}' style='display:none'>{2}</div>".format(
+                        type_tree_html,dependent_display,sub_tree_html,indent+32,resource_tree_id
+                    )
+                else:
+                    type_tree_html = "{0}<div style='margin-left:{2}px'>{1}</div>".format(
+                        type_tree_html,dependent_display,indent+32
+                    )
+
+            type_tree_id = self.get_tree_nodeid("restype")
+            dep_html = "{0}<div style='margin-left:{2}px'><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{4}'))\" style='margin-right:5px'>{1}</div><div id='{4}' style='display:none'>{3}</div>".format(
+                dep_html,dependent_type_name,indent + 16,type_tree_html,type_tree_id
+            )
+
+        output_html = ""
+
+        workload_url = reverse(self.change_url_name, args=(tree[0],))
+        workload_name = "<A href='{0}'>{1}</A>".format(workload_url,tree[1])
+        if indent > 0:
+            if tree[3]:
+                tree_id = self.get_tree_nodeid("tree")
+                if tree[2]:
+                    tree_html = "<div style='margin-left:{1}px'><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{3}'))\" style='margin-right:5px'>{0}</div><div id='{3}' style='display:none'>{2}</div>".format(
+                        workload_name,indent,dep_html,tree_id
+                    )
+                else:
+                    tree_html = "<div style='margin-left:{1}px;text-decoration-line: line-through;color:red'><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{3}'))\" style='margin-right:5px'>{0}</div><div id='{3}' style='display:none;'>{2}</div>".format(
+                        workload_name,indent,dep_html,tree_id
+                    )
+
+            else:
+                if tree[2]:
+                    tree_html = "<div style='margin-left:{1}px'>{0}</div>".format(workload_name,indent)
+                else:
+                    tree_html = "<div style='margin-left:{1}px;text-decoration-line: line-through;color:red'>{0}</div>".format(workload_name,indent)
+
+        elif dep_html:
+            tree_html = dep_html
+        else:
+            tree_html = ""
+
+        return tree_html
+
+    def _resource_dependent_tree(self,obj):
+        if not obj:
+            return ""
+        else:
+            try:
+                try:
+                    tree = obj.dependenttree.restree
+                except:
+                    tree = None
+                if tree:
+                    if obj.toggle_tree_js:
+                        return mark_safe(self._format_resource_tree(tree))
+                    else:
+                        obj.toggle_tree_js = True
+                        return mark_safe("""
+<script type="text/javascript">
+    var $=django.jQuery;
+    function toggle_tree(image,tree) {{
+        tree.toggle()
+        if (tree.is(":visible")) {{
+            image.src = "/static/img/minus.svg"
+        }} else {{
+            image.src = "/static/img/plus.svg"
+        }}
+    }}
+</script>
+{}
+
+""".format(self._format_resource_tree(tree)))
+                else:
+                    return ""
+            except:
+                traceback.print_exc()
+                raise
+    _resource_dependent_tree.short_description = "Resource Dependent Tree"
+
+    def _format_workload_tree(self,tree,dependents=None,indent=0):
+        dep_html = ""
+        for dep_dependents,dep_workload_tree in tree[3]:
+            
+            dep_html = "{0}{1}".format(dep_html,self._format_workload_tree(dep_workload_tree,dependents=dep_dependents,indent=indent + 16))
+
+
+        dependents_html = ""
+        if dependents:
+            dep_id = self.get_tree_nodeid("wl_dep")
+            dependents_html = "<img src='/static/img/link.svg' onclick=\"$('#{1}').toggle()\" style='margin-left:5px'><div id='{1}' style='display:none'>{0}</div>".format(
+                "".join("<div style='margin-left:32px;color:blue'>- {} : {}</div>".format(dep[1],dep[3]) for dep in dependents),
+                dep_id
+            )
+                
+        output_html = ""
+        if indent == 0:
+            workload_name = tree[1]
+        else:
+            workload_url = reverse(self.change_url_name, args=(tree[0],))
+            workload_name = "<A href='{0}'>{1}</A>".format(workload_url,tree[1])
+        if tree[3]:
+            tree_id = self.get_tree_nodeid("wl_node")
+            if tree[2]:
+                tree_html = "<div style='margin-left:{1}px;'><span><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{3}'))\" style='margin-right:5px'>{0}</span>{4}</div><div id='{3}' style='display:none;'>{2}</div>".format(
+                    workload_name,indent,dep_html,tree_id,dependents_html
+                )
+            else:
+                tree_html = "<div style='margin-left:{1}px;'><span style='text-decoration-line: line-through;color:red'><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{3}'))\" style='margin-right:5px'>{0}</span>{4}</div><div id='{3}' style='display:none;'>{2}</div>".format(
+                    workload_name,indent,dep_html,tree_id,dependents_html
+                )
+
+        else:
+            if tree[2]:
+                tree_html = "<div style='margin-left:{1}px;'><span>{0}</span>{2}</div>".format(workload_name,indent,dependents_html)
+            else:
+                tree_html = "<div style='margin-left:{1}px;'><span style='text-decoration-line: line-through;color:red'>{0}</span>{2}</div>".format(workload_name,indent,dependents_html)
+
+
+        return tree_html
+
+    def _workload_dependent_tree(self,obj):
+        if not obj:
+            return ""
+        else:
+            try:
+                try: 
+                    tree = obj.dependenttree.wltree
+                except:
+                    tree = None
+                if tree:
+                    if obj.toggle_tree_js:
+                        return mark_safe(self._format_workload_tree(tree))
+                    else:
+                        obj.toggle_tree_js = True
+                        return mark_safe("""
+<script type="text/javascript">
+    var $=django.jQuery;
+    function toggle_tree(image,tree) {{
+        tree.toggle()
+        if (tree.is(":visible")) {{
+            image.src = "/static/img/minus.svg"
+        }} else {{
+            image.src = "/static/img/plus.svg"
+        }}
+    }}
+</script>
+{}
+
+""".format(self._format_workload_tree(tree)))
+                else:
+                    return ""
+            except:
+                traceback.print_exc()
+                raise
+    _workload_dependent_tree.short_description = "Workload Dependent Tree"
+
+    def scan_dependency(self, request, queryset):
+        for workload in queryset:
+            try:
+                workload.scan_dependency(rescan=True)
+                self.message_user(request, "Succeed to scan the dependency of the workload '{}'".format(workload))
+            except Exception as ex:
+                self.message_user(request, "Failed to scan the dependency of the workload '{}'. {}".format(workload,str(ex)),level=messages.ERROR)
+
+    scan_dependency.short_description = 'Scan Dependency'
+
+    def populate_resource_tree(self, request, queryset):
+        for workload in queryset:
+            try:
+                workload.populate_resource_dependent_tree(depth=1)
+                self.message_user(request, "Succeed to poplate the resource dependent tree for the workload '{}'".format(workload))
+            except Exception as ex:
+                self.message_user(request, "Failed to populate the resource dependent tree for the workload '{}'. {}".format(workload,str(ex)),level=messages.ERROR)
+
+    populate_resource_tree.short_description = 'Populate Resource Dependent Tree'
+
+    def populate_workload_tree(self, request, queryset):
+        for workload in queryset:
+            try:
+                workload.populate_workload_dependent_tree()
+                self.message_user(request, "Succeed to poplate the workload dependent tree for the workload '{}'".format(workload))
+            except Exception as ex:
+                self.message_user(request, "Failed to populate the workload dependent tree for the workload '{}'. {}".format(workload,str(ex)),level=messages.ERROR)
+
+    populate_workload_tree.short_description = 'Populate workload Dependent Tree'
+
     def has_change_permission(self, request, obj=None):
         return False
 
@@ -1188,85 +1439,6 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
     def has_delete_permission(self, request, obj=None):
         return False
 
-
-class WorkloadDatabaseInline2(DeletedMixin,WorkloadInlineMixin,admin.TabularInline):
-    model = models.WorkloadDatabase
-    readonly_fields = ('_workload','_cluster','_project','_namespace','user',"password",'config_items','_deleted')
-    fields = readonly_fields
-    ordering = ('workload',)
-    get_cluster = staticmethod(lambda obj:obj.workload.cluster)
-    get_project = staticmethod(lambda obj:obj.workload.project)
-    get_namespace = staticmethod(lambda obj:obj.workload.namespace)
-
-
-@admin.register(models.Database)
-class DatabaseAdmin(admin.ModelAdmin):
-    list_display = ('name','_server','_ip','_internal_name','_internal_port')
-    readonly_fields = ('name','_server_name','_ip','_internal_name','_internal_port','_workload')
-    ordering = ('server__host','name')
-    list_filter = ('server','name')
-    search_fields = ['name']
-
-    inlines = [WorkloadDatabaseInline2]
-
-    def _ip(self,obj):
-        if not obj :
-            return ""
-        else:
-            return obj.server.ip
-    _ip.short_description = "IP"
-
-    def _server_name(self,obj):
-        if not obj :
-            return ""
-        elif obj.server.other_names:
-            return "{} :[{}]".format(obj.server.host," , ".join(obj.server.other_names))
-        else:
-            return obj.server.host
-    _server_name.short_description = "Server"
-
-    def _server(self,obj):
-        if not obj :
-            return ""
-        elif obj.server.other_names:
-            return "{} , {}".format(obj.server.host," , ".join(obj.server.other_names))
-        else:
-            return obj.server.host
-    _server.short_description = "server"
-
-    def _internal_name(self,obj):
-        if not obj :
-            return ""
-        else:
-            return obj.server.internal_name
-    _internal_name.short_descrinternal_nametion = "Internal Name"
-
-    def _internal_port(self,obj):
-        if not obj :
-            return ""
-        else:
-            return obj.server.internal_port
-    _internal_port.short_descrtion = "Internal Port"
-
-    workload_change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
-    def _workload(self,obj):
-        if not obj :
-            return ""
-        elif not obj.server.workload:
-            return ""
-        else:
-            url = reverse(self.workload_change_url_name, args=(obj.server.workload.id,))
-            return mark_safe("<A href='{}'>{}</A><A href='{}' style='margin-left:50px' target='manage_workload'><img src='/static/img/view.jpg' width=16 height=16></A><A href='{}' target='manage_workload' style='margin-left:20px'><img src='/static/img/setting.jpg' width=16 height=16></A>".format(url,obj.server.workload.name,obj.server.workload.viewurl,obj.server.workload.managementurl))
-    _workload.short_description = "Workload"
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
 
 class RunningStatusFilter(admin.SimpleListFilter):
     # Human-readable title which will be displayed in the
@@ -1523,6 +1695,58 @@ class HarvesterAdmin(DatetimeMixin,admin.ModelAdmin):
         else:
             return "{} ...".format(obj.message[:150])
     _short_message.short_description = "message"
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(models.EnvScanModule)
+class EnvScanModuleAdmin(DatetimeMixin,admin.ModelAdmin):
+    list_display = ("resource_type","priority","multi","active","_modified","_added")
+
+    readonly_fields = ("_modified","_added")
+
+    list_filter = ("resource_type",)
+
+    form = forms.EnvScanModuleForm
+
+@admin.register(models.ContainerImageFamily)
+class ContainerImageFamilyAdmin(DatetimeMixin,admin.ModelAdmin):
+    list_display = ("account","name","_modified","_added")
+
+    readonly_fields = ("account","name","_modified","_added")
+
+    fields = ("account","name","config","_modified","_added")
+
+    list_filter = ("account",)
+    search_fields = ['name']
+
+    form = forms.ContainerImageFamilyForm
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+@admin.register(models.WorkloadResource)
+class WorkloadResourceAdmin(DatetimeMixin,admin.ModelAdmin):
+    list_display = ("workload","imagefamily","resource_type","config_items","resource_id","config_source","_updated","_created")
+
+    readonly_fields = ("workload","imagefamily","resource_type","config_items","resource_id","config_source","properties","scan_module","_updated","_created")
+
+    list_filter = ("imagefamily","resource_type")
+    search_fields = ['workload__name','resource_id']
+
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        qs = qs.select_related('workload',"imagefamily").only("resource_type","config_items","resource_id","config_source","properties","scan_module","updated","created","workload__cluster__name","workload__namespace__name","workload__name","imagefamily__account","imagefamily__name")
+        return qs
 
     def has_change_permission(self, request, obj=None):
         return False

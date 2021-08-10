@@ -32,7 +32,7 @@ log_levels = [
     (re.compile("(^|\s+)(level|lvl)\s*=\s*info\s+",re.IGNORECASE),(models.ContainerLog.INFO,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*warn(ing)?\s+",re.IGNORECASE),(models.ContainerLog.WARNING,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*error\s+",re.IGNORECASE),(models.ContainerLog.ERROR,True)),
-    (re.compile("(exception|error|failed|wrong|err|traceback)\s+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
+    (re.compile("(exception|error|failed|wrong|err|traceback)[~a-zA-Z0-9]+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
 def get_client(cache=True):

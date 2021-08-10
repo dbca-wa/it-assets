@@ -1,4 +1,5 @@
 import datetime
+import re
 import  json
 from data_storage.utils import get_property
 from django.utils import timezone
@@ -84,6 +85,25 @@ def parse_json(s,null={}):
     else:
         return s
 
+
+ip_re = re.compile("^[0-9]{1,3}(\.[0-9]{1,3}){3,3}$")
+def parse_host(host):
+    """
+    Return (domain,hostname,ip) if have
+    """
+    ip = None
+    if ip_re.search(host):
+        #ip address
+        hostname = host
+        ip = host
+        domain = None
+    elif "." in host:
+        hostname,domain = host.split(".",1)
+    else:
+        hostname = host
+        domain = None
+
+    return (domain,hostname,ip)
 
 
 

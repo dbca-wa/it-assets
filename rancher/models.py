@@ -1,19 +1,67 @@
 import subprocess
+import sys
+import imp
 import json
 import logging
 import re
+import itertools
+import traceback
+
 from django.db import models,transaction
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.urls import reverse
 from django.utils import timezone
-from django.db.models.signals import pre_save,pre_delete,m2m_changed,post_save
+from django.core.exceptions import ValidationError,FieldDoesNotExist
+from django.db.models.signals import pre_save,pre_delete,m2m_changed,post_save,post_delete
 from django.dispatch import receiver
 
 from registers.models import ITSystem
 from . import utils
+from .utils import set_field
 
 logger = logging.getLogger(__name__)
+
+class DbObjectMixin(object):
+    """
+    A mixin class to provide property "db_obj" which is the object with same id in database
+    Return None if the object is a new instance.
+    
+    """
+    _db_obj = None
+
+    _editable_columns = []
+
+    @property
+    def db_obj(self):
+        if not self.id:
+            return None
+
+        if not self._db_obj:
+            self._db_obj = self.__class__.objects.get(id=self.id)
+        return self._db_obj
+
+    def save(self,update_fields=None,*args,**kwargs):
+        if not self.changed_columns(update_fields):
+            return
+
+        logger.debug("Try to save the changed {}({})".format(self.__class__.__name__,self))
+        with transaction.atomic():
+            super().save(update_fields=update_fields,*args,**kwargs)
+
+    def changed_columns(self,update_fields=None):
+        if self.id is None:
+            return self._editable_columns
+
+        changed_columns = []
+        for name in self._editable_columns:
+            if update_fields and name not in update_fields:
+                continue
+            if getattr(self,name) != getattr(self.db_obj,name):
+                changed_columns.append(name)
+
+        return changed_columns
+
 
 class Cluster(models.Model):
 
@@ -55,7 +103,7 @@ class Cluster(models.Model):
 
     class Meta:
         ordering = ["name"]
-        verbose_name_plural = "{}{}".format(" " * 10,"Clusters")
+        verbose_name_plural = "{}{}".format(" " * 13,"Clusters")
 
 
 class Project(models.Model):
@@ -101,10 +149,12 @@ class Project(models.Model):
     class Meta:
         unique_together = [["cluster","projectid"]]
         ordering = ["cluster__name",'name']
-        verbose_name_plural = "{}{}".format(" " * 9,"Projects")
+        verbose_name_plural = "{}{}".format(" " * 12,"Projects")
 
 class DeletedMixin(models.Model):
     deleted = models.DateTimeField(editable=False,null=True,db_index=True)
+
+    has_updated_field = None
 
     @property
     def is_deleted(self):
@@ -112,7 +162,16 @@ class DeletedMixin(models.Model):
 
     def logically_delete(self):
         self.deleted = timezone.now()
-        self.save(update_fields=["deleted"])
+        if self.__class__.has_updated_field is None:
+            try:
+                field = self._meta.get_field("updated")
+                self.__class__.has_updated_field = True
+            except FieldDoesNotExist as ex:
+                self.__class__.has_updated_field = False
+        if self.__class__.has_updated_field:
+            self.save(update_fields=["deleted","updated"])
+        else:
+            self.save(update_fields=["deleted"])
 
 
     class Meta:
@@ -122,12 +181,13 @@ class Namespace(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='namespaces',editable=False)
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='namespaces',editable=False,null=True)
     name = models.CharField(max_length=64,editable=False)
+    system_namespace = models.BooleanField(editable=False,default=False)
     added_by_log = models.BooleanField(editable=False,default=False)
     active_workloads = models.PositiveIntegerField(editable=False,default=0)
     deleted_workloads = models.PositiveIntegerField(editable=False,default=0)
     api_version = models.CharField(max_length=64,editable=False,null=True)
     modified = models.DateTimeField(editable=False,null=True)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(editable=False,null=True)
 
     @classmethod
@@ -163,7 +223,7 @@ class Namespace(DeletedMixin,models.Model):
     class Meta:
         unique_together = [["cluster","name"]]
         ordering = ["cluster__name",'name']
-        verbose_name_plural = "{}{}".format(" " * 8,"Namespaces")
+        verbose_name_plural = "{}{}".format(" " * 11,"Namespaces")
 
 
 class PersistentVolume(DeletedMixin,models.Model):
@@ -182,7 +242,7 @@ class PersistentVolume(DeletedMixin,models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return "{}:{}".format(self.cluster.name,self.name)
@@ -190,9 +250,44 @@ class PersistentVolume(DeletedMixin,models.Model):
     class Meta:
         unique_together = [["cluster","name"],["cluster","volumepath"],["cluster","uuid"]]
         ordering = ["cluster__name",'name']
-        verbose_name_plural = "{}{}".format(" " * 6,"Persistent volumes")
+        verbose_name_plural = "{}{}".format(" " * 8,"Persistent volumes")
 
-class ConfigMap(models.Model):
+class Secret(DeletedMixin,models.Model):
+    cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='secrets',editable=False)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='secrets',editable=False,null=True)
+    namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='secrets',editable=False,null=True)
+    name = models.CharField(max_length=128,editable=False)
+    api_version = models.CharField(max_length=64,editable=False)
+
+    modified = models.DateTimeField(editable=False)
+    created = models.DateTimeField(editable=False)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "{}:{}".format(self.namespace,self.name)
+
+    class Meta:
+        unique_together = [["cluster","project","name"]]
+        ordering = ["cluster__name","project",'name']
+        verbose_name_plural = "{}{}".format(" " * 10,"Secrets")
+
+class SecretItem(models.Model):
+    secret = models.ForeignKey(Secret, on_delete=models.CASCADE, related_name='items',editable=False)
+    name = models.CharField(max_length=128,editable=False)
+    value = models.TextField(max_length=1024,editable=False,null=True)
+
+    modified = models.DateTimeField(editable=False)
+    created = models.DateTimeField(editable=False)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "{}.{}".format(self.secret,self.name)
+
+    class Meta:
+        unique_together = [["secret","name"]]
+        ordering = ["secret",'name']
+
+class ConfigMap(DeletedMixin,models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.PROTECT, related_name='configmaps',editable=False)
     namespace = models.ForeignKey(Namespace, on_delete=models.PROTECT, related_name='configmaps',editable=False)
     name = models.CharField(max_length=128,editable=False)
@@ -200,7 +295,7 @@ class ConfigMap(models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return "{}:{}".format(self.namespace,self.name)
@@ -208,7 +303,7 @@ class ConfigMap(models.Model):
     class Meta:
         unique_together = [["cluster","namespace","name"]]
         ordering = ["cluster__name","namespace__name",'name']
-        verbose_name_plural = "{}{}".format(" " * 7,"Config maps")
+        verbose_name_plural = "{}{}".format(" " * 9,"Config maps")
 
 class ConfigMapItem(models.Model):
     configmap = models.ForeignKey(ConfigMap, on_delete=models.CASCADE, related_name='items',editable=False)
@@ -217,7 +312,7 @@ class ConfigMapItem(models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return "{}.{}".format(self.configmap,self.name)
@@ -238,7 +333,7 @@ class PersistentVolumeClaim(DeletedMixin,models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         if self.volume:
@@ -260,7 +355,7 @@ class Ingress(DeletedMixin,models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return "{}.{}".format(self.namespace,self.name)
@@ -284,7 +379,7 @@ class IngressRule(models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     @property
     def is_deleted(self):
@@ -360,7 +455,7 @@ class OperatingSystem(models.Model):
     class Meta:
         unique_together = [["name","version"]]
         ordering = ['name','version']
-        verbose_name_plural = "{}{}".format(" " * 3,"OperatingSystems")
+        verbose_name_plural = "{}{}".format(" " * 6,"OperatingSystems")
 
 class Vulnerability(models.Model):
     LOW = 2
@@ -433,9 +528,145 @@ class Vulnerability(models.Model):
         unique_together = [["vulnerabilityid","pkgname","installedversion"]]
         index_together = [["pkgname","installedversion"],["severity","pkgname","installedversion"]]
         ordering = ['severity','pkgname','installedversion','vulnerabilityid']
-        verbose_name_plural = "{}{}".format(" " * 2,"Vulnerabilities")
+        verbose_name_plural = "{}{}".format(" " * 5,"Vulnerabilities")
+
+class ContainerImageFamily(DeletedMixin,models.Model):
+    account = models.CharField(max_length=64,null=True,db_index=True,editable=False)
+    name = models.CharField(max_length=128, editable=False)
+    config = JSONField(null=False,default=dict)
+    added = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    def scan_resource(self,rescan=True,scan_modules=None):
+        """
+        Return workloads which resource has been changed ;otherwise return []
+        """
+        logger.debug("Scan resources for image family '{}'.".format(self))
+        if not scan_modules: 
+            scan_modules = list(EnvScanModule.objects.filter(active=True).order_by("-priority"))
+
+        resource_changed_wls = []
+        for workload in Workload.objects.filter(containerimage__imagefamily=self):
+            if workload.scan_resource(rescan=rescan,scan_modules=scan_modules):
+                resource_changed_wls.append(workload)
+
+        return resource_changed_wls
+
+    def __str__(self):
+        if self.account:
+            return "{}/{}".format(self.account,self.name)  
+        else:
+            return self.name
+
+    class Meta:
+        unique_together = [["account","name"]]
+        ordering = ['account','name']
+        verbose_name_plural = "{}{}".format(" " * 4,"Image Families")
 
 
+class EnvScanModule(DbObjectMixin,models.Model):
+    FILESYSTEM = 1
+    BLOBSTORAGE = 2
+    RESTAPI = 3
+    EMAILSERVER = 4
+
+    MEMORYCACHES = 10
+    MEMCACHED = 11
+    REDIS = 12
+
+    DATABASES = 20
+    POSTGRES = 21
+    ORACLE = 22
+    MYSQL = 23
+
+    SERVICES = 999
+    
+    RESOURCE_TYPES = (
+        (POSTGRES,"Postgres"),
+        (ORACLE,"Oracle"),
+        (MYSQL,"MySQL"),
+        (FILESYSTEM,"File System"),
+        (BLOBSTORAGE,"Blob Storage"),
+        (RESTAPI,"REST Api"),
+        (EMAILSERVER,"Email Server"),
+        (MEMCACHED,"Memcached"),
+        (REDIS,"Redis"),
+    )
+
+    MODULE_RESOURCE_TYPES = (
+        (DATABASES,"Databases"),
+        (POSTGRES,"Postgres"),
+        (ORACLE,"Oracle"),
+        (MYSQL,"MySQL"),
+        (FILESYSTEM,"File System"),
+        (BLOBSTORAGE,"Blob Storage"),
+        (RESTAPI,"REST Api"),
+        (EMAILSERVER,"Email Server"),
+        (MEMCACHED,"Memcached"),
+        (REDIS,"Redis"),
+        (SERVICES,"Services"),
+    )
+
+    _pattern_re = None
+    _scan_func = None
+    _scan_module = None
+    _module_id = 1
+
+    _editable_columns = ["resource_type","priority","multi","sourcecode","active"]
+
+    resource_type = models.PositiveSmallIntegerField(choices=MODULE_RESOURCE_TYPES)
+    priority = models.PositiveSmallIntegerField(default=0)
+    multi = models.BooleanField(default=False,help_text="Apply to single env variable if False; otherwise apply to all env variables")
+    sourcecode = models.TextField(help_text="""The source code of a python module.
+    This module must declare a method 'scan' with the following requirements.
+    Parameters:
+        1. multi is False, module must contain a function 'scan(env_name,env_value)'
+        2. multi is True, module must contain a function 'scan(envs)' envs is a list of tuple(env_name,env_value)
+    Return:
+        If succeed
+            1. if multi is False, return a dictionary with key 'resource_type'
+            2. if multi is True, return a list of dictionary with keys 'resource_type' and 'env_items'
+        If failed, return None
+""")
+    active = models.BooleanField(default=True)
+    modified = models.DateTimeField(auto_now=True)
+    added = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        #validate scan_func
+        scan_function = self.scan_function
+
+    def scan(self,*args):
+
+        try:
+            return self.scan_function(*args)
+        except :
+            logger.error("Failed to execute the scan module({})".format(self))
+            raise
+
+    @property
+    def scan_function(self):
+        if not self.sourcecode:
+            return None
+        if not self._scan_module:
+            try:
+                if self.pk:
+                    module_name = "envscan_{}".format(self.pk)
+                else:
+                    self.__class__._module_id += 1
+                    module_name = "envscan__{}".format(self.__class__._module_id)
+                scan_module = imp.new_module(module_name)
+                exec(self.sourcecode,scan_module.__dict__)
+                self._scan_module = scan_module
+            except Exception as ex:
+                raise ValidationError("Scan module is invalid.{}".format(str(ex)))
+
+        return self._scan_module.scan
+
+    class Meta:
+        ordering = ['-priority']
+        verbose_name_plural = "{}{}".format(" " * 14,"Env Scan Modules")
 
 class ContainerImage(DeletedMixin,models.Model):
     NOT_SCANED = 0
@@ -459,9 +690,8 @@ class ContainerImage(DeletedMixin,models.Model):
         (CRITICAL_RISK,"Critical Risk"),
         (UNKNOWN_RISK,"Unknown Risk")
     )
-    account = models.CharField(max_length=64,null=True,db_index=True,editable=False)
-    name = models.CharField(max_length=128, editable=False)
     tag = models.CharField(max_length=64, editable=False,null=True)
+    imagefamily = models.ForeignKey(ContainerImageFamily, on_delete=models.PROTECT, related_name='containerimages', editable=False,null=False)
     os = models.ForeignKey(OperatingSystem, on_delete=models.PROTECT, related_name='containerimages', editable=False,null=True)
     workloads = models.PositiveSmallIntegerField(default=0,editable=False)
     scan_status = models.SmallIntegerField(choices=STATUSES,editable=False,db_index=True,default=NOT_SCANED)
@@ -475,6 +705,7 @@ class ContainerImage(DeletedMixin,models.Model):
     unknowns = models.SmallIntegerField(editable=False,default=0)
     added = models.DateTimeField(auto_now=True)
     vulnerabilities = models.ManyToManyField(Vulnerability,editable=False)
+    resource_scaned = models.DateTimeField(null=True)
 
 
     @classmethod
@@ -498,7 +729,9 @@ class ContainerImage(DeletedMixin,models.Model):
             image_name = image_without_tag
 
 
-        image,created = ContainerImage.objects.get_or_create(account=account,name=image_name,tag=image_tag)
+        imagefamily,created = ContainerImageFamily.objects.get_or_create(account=account,name=image_name)
+
+        image,created = ContainerImage.objects.update_or_create(imagefamily=imagefamily,tag=image_tag)
         if image.scan_status == cls.NOT_SCANED  and scan:
             image.scan()
         return image
@@ -632,27 +865,24 @@ class ContainerImage(DeletedMixin,models.Model):
 
     @property
     def imageid(self):
-        if self.account:
-            if self.tag:
-                return "{}/{}:{}".format(self.account,self.name, self.tag)
-            else:
-                return "{}/{}".format(self.account,self.name)
-        elif self.tag:
-            return "{}:{}".format(self.name,self.tag)
+        if self.tag:
+            return "{}:{}".format(str(self.imagefamily),self.tag)
         else:
-            return self.name
+            return str(self.imagefamily)
 
     def __str__(self):
         return self.imageid
 
     class Meta:
-        unique_together = [["account","name","tag"]]
-        ordering = ['account','name','tag']
-        verbose_name_plural = "{}{}".format(" " * 1,"Images")
+        unique_together = [["imagefamily","tag"]]
+        ordering = ['imagefamily__account','imagefamily__name','tag']
+        verbose_name_plural = "{}{}".format(" " * 3,"Images")
 
 
 
 class Workload(DeletedMixin,models.Model):
+    toggle_tree_js = False
+
     ERROR = 4
     WARNING = 2
     INFO = 1
@@ -671,7 +901,7 @@ class Workload(DeletedMixin,models.Model):
     latest_containers = ArrayField(ArrayField(models.IntegerField(),size=3), editable=False,null=True)
 
     replicas = models.PositiveSmallIntegerField(editable=False, null=True)
-    containerimage = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, related_name='workloadset', editable=False,null=True)
+    containerimage = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, related_name='workloadset', editable=False,null=False)
     image = models.CharField(max_length=128, editable=False)
     image_pullpolicy = models.CharField(max_length=64, editable=False, null=True)
     cmd = models.CharField(max_length=2048, editable=False, null=True)
@@ -685,10 +915,671 @@ class Workload(DeletedMixin,models.Model):
 
     added_by_log = models.BooleanField(editable=False,default=False)
 
+    resource_scaned = models.DateTimeField(editable=False,null=True,db_index=True)
+    resource_changed = models.DateTimeField(editable=False,null=True)
+    dependency_scaned = models.DateTimeField(editable=False,null=True)
+    dependency_changed = models.DateTimeField(editable=False,null=True)
+    dependency_scan_requested = models.DateTimeField(editable=False,null=True)
+
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
+    def scan_resource(self,rescan=False,scan_modules=None,scan_time=timezone.now()):
+        """
+        Scan  the resource if required
+        Return True if resource changed; otherwise return False
+        """
+        logger.debug("Scan resources for workload '{}'.".format(self))
+        if not rescan and self.resource_scaned and self.resource_scaned >= self.updated and self.resource_scaned >= self.containerimage.imagefamily.modified:
+            if scan_modules:
+                if all(self.resource_scaned >= m.modified for m in scan_modules):
+                    logger.debug("The resources for workload '{}' was already scaned,ignore!".format(self))
+                    if not self.resource_changed:
+                        self.resource_changed = self.resource_scaned
+                        self.save(update_fields=["resource_changed"])
+                    return False
+            else:
+                scan_module = EnvScanModule.objects.filter(active=True).order_by("-modified").first()
+                if self.resource_scaned and self.resource_scaned >= scan_module.modified:
+                    logger.debug("The resources for workload '{}' was already scaned,ignore.".format(self))
+                    if not self.resource_changed:
+                        self.resource_changed = self.resource_scaned
+                        self.save(update_fields=["resource_changed"])
+                    return False
+
+        if not scan_modules: 
+            scan_modules = list(EnvScanModule.objects.filter(active=True).order_by("-priority"))
+
+        #get the default value from configuration
+        envitems = {}
+        imagefamily = self.containerimage.imagefamily
+        if imagefamily.config and imagefamily.config.get("default_values"):
+            for k,v in imagefamily.config.get("default_values").items():
+                if imagefamily.config.get("ignored_envitems") and k in imagefamily.config.get("ignored_envitems"):
+                    continue
+                envitems[k] = v
+
+        #load all env items of this workload
+        qs = WorkloadEnv.objects.filter(workload=self)
+        for envitem in qs:
+            if imagefamily.config.get("ignored_envitems") and envitem.name in imagefamily.config.get("ignored_envitems"):
+                continue
+            envitems[envitem.name] = envitem.value
+
+        resource_changed = False
+        res_ids = set()
+
+        def _update_or_create(resource_type,config_items,resource_id,config_source,properties):
+            resobj,created = WorkloadResource.objects.get_or_create(workload=self,resource_type=resource_type,config_items=config_items,resource_id=resource_id,defaults={
+                "imagefamily":self.containerimage.imagefamily,
+                "config_source":config_source,
+                "properties":properties
+            })
+            res_ids.add(resobj.id)
+            if created:
+                return True
+
+            update_fields = []
+            set_field(resobj,"imagefamily",self.containerimage.imagefamily,update_fields)
+            set_field(resobj,"config_source",config_source,update_fields)
+            set_field(resobj,"properties",properties,update_fields)
+            if update_fields:
+                update_fields.append("updated")
+                resobj.save(update_fields=update_fields)
+                return True
+            else:
+                return False
+
+        #scan the predeclared resource items.
+        if imagefamily.config.get("resources"):
+            for res in imagefamily.config.get("resources"):
+                if isinstance(res["config_items"],(list,tuple)):
+                    config_items = res["config_items"]
+                else:
+                    config_items = [res["config_items"]]
+
+                if not all(item in envitems for item in config_items):
+                    #some env item is not declared 
+                    continue
+                config_values = [envitems[item] for item in config_items]
+
+                resource_id = (res.get("resource_id") or ",".join("{}" for item in config_items)).format(*config_values)
+                if res.get("config_source"):
+                    config_source = getattr(WorkloadResource,res.get("config_source").upper())
+                else:
+                    config_source = WorkloadResource.ENV
+
+                resource_type = getattr(EnvScanModule,res.get("resource_type").upper())
+                properties = {}
+                for key,value in (res.get("properties") or {}):
+                    properties[key] = value.format(*config_values)
+                resource_changed = _update_or_create(resource_type,config_items,resource_id,config_source,properties) or resource_changed
+
+            #remove declared env items from envitems
+            for res in imagefamily.config.get("resources"):
+                if isinstance(res["config_items"],(list,tuple)):
+                    config_items = res["config_items"]
+                else:
+                    config_items = [res["config_items"]]
+                for item in config_items:
+                    if item in envitems:
+                        del envitems[item]
+
+        processed_envs = set()
+        resource_configs = imagefamily.config.get("resource_configs",{})
+
+        for name,value in envitems.items():
+            for m in scan_modules:
+                if m.multi:
+                    continue
+                scan_result = m.scan(name,value,resource_configs.get(name))
+                if not scan_result:
+                    continue
+
+
+                if isinstance(scan_result,(list,tuple)):
+                    for result in scan_result:
+                        resource_changed = _update_or_create(result["resource_type"],[name],result["resource_id"],result.get("config_source",WorkloadResource.ENV),result.get("properties") or {}) or resource_changed
+                else:
+                    resource_changed = _update_or_create(scan_result["resource_type"],[name],scan_result["resource_id"],scan_result.get("config_source",WorkloadResource.ENV),scan_result.get("properties") or {}) or resource_changed
+
+                processed_envs.add(name)
+        #remove processed env items from envitems
+        for name in processed_envs:
+            del envitems[name]
+        processed_envs.clear()
+
+        #scan all env items using scan modules with multi is True
+        for m in scan_modules:
+            if not m.multi:
+                continue
+            scan_result = m.scan(self,envitems.items(),resource_configs )
+            if not scan_result:
+                continue
+
+            for result in scan_result:
+                resource_changed = _update_or_create(result["resource_type"],result["config_items"],result["resource_id"],result.get("config_source",WorkloadResource.ENV),result.get("properties") or {}) or resource_changed
+                for item in result["config_items"]:
+                    processed_envs.add(item)
+
+        #remove processed env items from envitems
+        for name in processed_envs:
+            del envitems[name]
+        processed_envs.clear()
+
+        del_objs = WorkloadResource.objects.filter(workload=self).exclude(id__in=res_ids).delete()
+        if del_objs[0]:
+            resource_changed = True
+
+        self.resource_scaned = scan_time
+        if resource_changed or not self.resource_changed:
+            self.resource_changed = self.resource_scaned
+            self.save(update_fields=["resource_scaned","resource_changed"])
+            return True
+        else:
+            self.save(update_fields=["resource_scaned"])
+            return False
+
+    def scan_dependency(self,rescan=False,scan_time=timezone.now()):
+        """
+        Scan workload's dependency, and also scan the related workload's dependency
+        Return True if scaned otherwise return False
+        """
+        tasks=set()
+        tasks.add(self)
+        def _update_or_create(workload,dependency_type,dependency_pk,dependency_id,dependency_display,dependent_workloads,del_dependent_workloads,update_by_request):
+            with transaction.atomic():
+                if dependent_workloads:
+                    dependent_workloads.sort()
+                elif dependent_workloads is None:
+                    dependent_workloads = []
+    
+                if del_dependent_workloads:
+                    del_dependent_workloads.sort()
+                elif del_dependent_workloads is None:
+                    del_dependent_workloads = []
+    
+                dependency_id = str(dependency_id)
+                dependency_display = str(dependency_display)
+    
+                dependency,created = WorkloadDependency.objects.get_or_create(
+                    workload=workload,
+                    dependency_type=dependency_type,
+                    dependency_pk=dependency_pk,
+                    defaults = {
+                        "imagefamily":workload.containerimage.imagefamily,
+                        "dependency_id":dependency_id,
+                        "dependency_display":dependency_display,
+                        "dependent_workloads" : dependent_workloads,
+                        "del_dependent_workloads" : del_dependent_workloads
+                    }
+                )
+                if created:
+                    #trigger related workloads to rescan dependency
+                    if not update_by_request:
+                        affected_workloads = set()
+                        for i in dependent_workloads:
+                            affected_workloads.add(i)
+                        for i in del_dependent_workloads:
+                            affected_workloads.add(i)
+                        for obj in Workload.objects.filter(id__in=affected_workloads,dependency_scaned__lt=workload.resource_changed):
+                            obj.dependency_scan_requested = workload.resource_changed
+                            obj.save(update_fields=["dependency_scan_requested"])
+                            tasks.add(obj)
+                    return (dependency,True)
+    
+                update_fields = []
+                previous_workloads = dependency.dependent_workloads
+                previous_del_workloads = dependency.del_dependent_workloads
+                set_field(dependency,"imagefamily",workload.containerimage.imagefamily,update_fields)
+                set_field(dependency,"dependency_id",dependency_id,update_fields)
+                set_field(dependency,"dependency_display",dependency_display,update_fields)
+                set_field(dependency,"dependent_workloads",dependent_workloads,update_fields)
+                set_field(dependency,"del_dependent_workloads",del_dependent_workloads,update_fields)
+                if update_fields:
+                    update_fields.append("updated")
+                    dependency.save(update_fields=update_fields)
+                    #trigger related workloads to rescan dependency
+                    if not update_by_request:
+                        affected_workloads = set()
+                        for i in previous_workloads:
+                            affected_workloads.add(i)
+                        for i in previous_del_workloads:
+                            affected_workloads.add(i)
+                        for i in dependent_workloads:
+                            affected_workloads.add(i)
+                        for i in del_dependent_workloads:
+                            affected_workloads.add(i)
+                        for obj in Workload.objects.filter(id__in=affected_workloads,dependency_scaned__lt=workload.resource_changed):
+                            obj.dependency_scan_requested = workload.resource_changed
+                            obj.save(update_fields=["dependency_scan_requested"])
+                            tasks.add(obj)
+                    return (dependency,True)
+                else:
+                    return (dependency,False)
+
+        def _scan(workload):
+            logger.debug("Scan dependency for workload '{}'.".format(workload))
+            if not workload.resource_changed:
+                return False
+    
+            if not rescan and workload.dependency_scaned and workload.dependency_scaned >= workload.resource_changed and (not workload.dependency_scan_requested or workload.dependency_scan_requested < workload.dependency_scaned):
+                #already scaned, no need to scan again
+                update_fields = []
+                if workload.dependency_scan_requested :
+                    workload.dependency_scan_requested = None
+                    update_fields.append("dependency_scan_requested")
+                if not workload.dependency_changed:
+                    workload.dependency_changed = workload.dependency_scaned
+                    update_fields.append("dependency_changed")
+                if update_fields:
+                    workload.save(update_fields=update_fields)
+                return False
+    
+            if workload.dependency_scaned and workload.dependency_scaned >= workload.resource_changed and (workload.dependency_scan_requested and workload.dependency_scan_requested > workload.dependency_scaned):
+                update_by_request = True
+            else:
+                update_by_request = False
+    
+            #find all dependencies through imagefamily
+            dependency_ids = set()
+            dependency_changed = False
+            del_workload_ids = []
+            workload_ids = []
+            for w in Workload.objects.filter(containerimage__imagefamily=workload.containerimage.imagefamily).exclude(id=workload.id).only("id","deleted"):
+                if w.deleted:
+                    del_workload_ids.append(w.id)
+                else:
+                    workload_ids.append(w.id)
+            if workload_ids or del_workload_ids:
+                dependency,dep_changed =_update_or_create(
+                    workload,
+                    WorkloadDependency.IMAGEFAMILY,
+                    workload.containerimage.imagefamily.id,
+                    workload.containerimage.imagefamily,
+                    workload.containerimage.imagefamily,
+                    workload_ids,
+                    del_workload_ids,
+                    update_by_request
+                )
+                dependency_ids.add(dependency.id)
+                dependency_changed = dependency_changed or dep_changed
+    
+            #find all resource dependencies
+            dependency = None
+            for resource in WorkloadResource.objects.filter(workload=workload).order_by("resource_type","resource_id"):
+                if dependency and dependency.dependency_type == resource.resource_type and dependency.dependency_id == resource.resource_id:
+                    #already processed
+                    continue
+                workload_ids.clear()
+                del_workload_ids.clear()
+                if resource.resource_type == EnvScanModule.FILESYSTEM:
+                    for dep_resource in WorkloadResource.objects.filter(resource_type=resource.resource_type,resource_id__startswith=resource.properties["root_path"]).exclude(workload=workload):
+                        if dep_resource.resource_id.startswith(resource.resource_id) or resource.resource_id.startswith(dep_resource.resource_id):
+                            if dep_resource.workload.deleted:
+                                if dep_resource.workload.id not in del_workload_ids:
+                                    del_workload_ids.append(dep_resource.workload.id)
+                            else:
+                                if dep_resource.workload.id not in workload_ids:
+                                    workload_ids.append(dep_resource.workload.id)
+                elif (
+                    (resource.resource_type in [EnvScanModule.REDIS] ) or
+                    (resource.resource_type > EnvScanModule.DATABASES and resource.resource_type < (EnvScanModule.DATABASES + 10))
+                ):
+                    if resource.config_source == WorkloadResource.SERVICE:
+                        if "." in resource.resource_id:
+                            #resource_id contains workspace name
+                            qs = WorkloadResource.objects.filter(resource_type=resource.resource_type,resource_id__startswith=resource.resource_id).exclude(config_source = WorkloadResource.SERVICE)
+                        else:
+                            #resource_id does not contain workspace name, must in the same workspace
+                            qs = WorkloadResource.objects.filter(
+                                workload__namespace=resource.workload.namespace,
+                                resource_type=resource.resource_type,
+                                resource_id__startswith=resource.resource_id
+                            ).exclude(config_source = WorkloadResource.SERVICE)
+    
+                        for dep_resource in qs:
+                            if dep_resource.workload.deleted:
+                                if dep_resource.workload.id not in del_workload_ids:
+                                    del_workload_ids.append(dep_resource.workload.id)
+                            else:
+                                if dep_resource.workload.id not in workload_ids:
+                                    workload_ids.append(dep_resource.workload.id)
+    
+    
+                    else:
+                        resource_id,db_name = resource.resource_id.rsplit("/",1)
+                        resource_id = "{}/".format(resource_id)
+                        if "." in resource.resource_id:
+                            #resource_id contains workspace name
+                            qs = WorkloadResource.objects.filter(config_source = WorkloadResource.SERVICE,resource_type=resource.resource_type,resource_id=resource_id).exclude(workload=workload)
+                        else:
+                            #resource_id does not contain workspace name, must in the same workspace
+                            qs = WorkloadResource.objects.filter(
+                                workload__namespace=resource.workload.namespace,
+                                config_source = WorkloadResource.SERVICE,
+                                resource_type=resource.resource_type,resource_id=resource_id
+                            ).exclude(workload=workload)
+    
+                        for dep_resource in qs:
+                            if dep_resource.workload.deleted:
+                                if dep_resource.workload.id not in del_workload_ids:
+                                    del_workload_ids.append(dep_resource.workload.id)
+                            else:
+                                if dep_resource.workload.id not in workload_ids:
+                                    workload_ids.append(dep_resource.workload.id)
+                            if "." in dep_resource.resource_id:
+                                qs2 = WorkloadResource.objects.filter(
+                                    resource_type=dep_resource.resource_type,
+                                    resource_id="{}{}".format(dep_resource.resource_id,db_name)
+                                ).exclude(config_source=WorkloadResource.SERVICE).exclude(workload=self)
+                            else:
+                                qs2 = WorkloadResource.objects.filter(
+                                    workload__namespace=dep_resource.workload.namespace,
+                                    resource_type=dep_resource.resource_type,
+                                    resource_id="{}{}".format(dep_resource.resource_id,db_name)
+                                ).exclude(config_source=WorkloadResource.SERVICE).exclude(workload=self)
+
+                            for dep_res2 in qs2:
+                                if dep_res2.workload.deleted:
+                                    if dep_res2.workload.id not in del_workload_ids:
+                                        del_workload_ids.append(dep_res2.workload.id)
+                                else:
+                                    if dep_res2.workload.id not in workload_ids:
+                                        workload_ids.append(dep_res2.workload.id)
+
+                else:
+                    for dep_resource in WorkloadResource.objects.filter(resource_type=resource.resource_type,resource_id=resource.resource_id).exclude(workload=workload):
+                        if dep_resource.workload.deleted:
+                            if dep_resource.workload.id not in del_workload_ids:
+                                del_workload_ids.append(dep_resource.workload.id)
+                        else:
+                            if dep_resource.workload.id not in workload_ids:
+                                workload_ids.append(dep_resource.workload.id)
+    
+    
+                dependency,dep_changed = _update_or_create(
+                    workload,
+                    resource.resource_type,
+                    resource.id,
+                    resource.resource_id,
+                    "{1}({0})".format(resource.resource_id,(resource.properties or {}).get("name")) if resource.resource_type == EnvScanModule.FILESYSTEM else resource.resource_id,
+                    workload_ids,
+                    del_workload_ids,
+                    update_by_request
+                )
+                dependency_ids.add(dependency.id)
+                dependency_changed = dependency_changed or dep_changed
+
+    
+            #delete the removed dependencies
+            for obj in WorkloadDependency.objects.filter(workload=workload).exclude(id__in=dependency_ids):
+                with transaction.atomic():
+                    obj.delete()
+                    affected_workloads = set()
+                    for i in obj.dependent_workloads:
+                        affected_workloads.add(i)
+                    for i in obj.del_dependent_workloads:
+                        affected_workloads.add(i)
+                    for obj in Workload.objects.filter(id__in=affected_workloads,dependency_scaned__lt=workload.resource_changed):
+                        obj.dependency_scan_requested = workload.resource_changed
+                        obj.save(update_fields=["dependency_scan_requested"])
+                        tasks.add(obj)
+                dependency_changed = True
+    
+            workload.dependency_scaned = scan_time
+            workload.dependency_scan_requested = None
+            if dependency_changed or not workload.dependency_changed:
+                workload.dependency_changed = workload.dependency_scaned
+                workload.save(update_fields=["dependency_scaned","dependency_scan_requested","dependency_changed"])
+                return True
+            else:
+                workload.save(update_fields=["dependency_scaned","dependency_scan_requested"])
+                return False
+
+        changed = False
+        while tasks:
+            workload = tasks.pop()
+            if workload == self:
+                changed = _scan(workload) or changed
+            else:
+                _scan(workload)
+
+        return changed
+
+
+
+
+    def populate_workload_dependent_tree(self,depth=None,workload_cache={},dependency_cache={},tree=None,populate_time=timezone.now()):
+        """
+        Tree data structure
+        [workload's id, workload's name,active?,[
+            ([(dependent type,dependent type name,dependent_pk,dependent_display),...],sub workload dependent tree),
+            ...
+        ]
+        """
+        tree = tree or WorkloadDependentTree.objects.filter(workload=self).defer("restree","restree_wls","restree_created","restree_updated","wltree").first()
+        if not tree:
+            tree = WorkloadDependentTree(workload=self,imagefamily=self.containerimage.imagefamily)
+
+        dep_tree = [self.id,str(self),False if self.deleted else True,None]
+        resolved_workloads = set()
+        new_resolved_workloads = set()
+        workloadids = set()
+
+        tasks = [(self,[],dep_tree)]
+
+        def _run(task):
+            workload = task[0]
+            tree_path = task[1]
+            dep_tree = task[2]
+            workloadids.add(workload.id)
+            if depth and len(tree_path) >= depth:
+                dep_tree[3] = []
+                return
+
+            tree_path = list(tree_path)
+
+            dep_datas = dependency_cache.get(workload.id)
+            if not dep_datas:
+                if workload.containerimage.imagefamily == self.containerimage.imagefamily:
+                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).order_by("dependency_type","dependency_id"))
+                else:
+                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).exclude(dependency_type=WorkloadDependency.IMAGEFAMILY).order_by("dependency_type","dependency_id"))
+                dependency_cache[workload.id] = dep_datas
+
+            tree_path.append((workload.id,workload.containerimage.imagefamily.id))
+
+            workload_dep_trees = {}
+            for dep in dep_datas:
+                for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
+                    if (workload.id,dep_workload_id) in resolved_workloads:
+                        continue
+
+                    new_resolved_workloads.add((workload.id,dep_workload_id))
+                    new_resolved_workloads.add((dep_workload_id,workload.id))
+
+                    dep_workload = workload_cache.get(dep_workload_id)
+                    if not dep_workload:
+                        dep_workload = Workload.objects.get(id=dep_workload_id)
+                        workload_cache[dep_workload_id] = dep_workload
+
+                    if dep_workload_id not in workload_dep_trees:
+                        sub_dep_tree = [dep_workload_id,str(dep_workload),False if dep_workload.deleted else True,None]
+                        workload_dep_trees[dep_workload_id] = (
+                            [(dep.dependency_type,dep.get_dependency_type_display(),dep.dependency_pk,dep.dependency_display)],
+                            sub_dep_tree
+                        )
+                        tasks.append((dep_workload,tree_path,sub_dep_tree))
+                    else:
+                        workload_dep_trees[dep_workload_id][0].append((dep.dependency_type,dep.get_dependency_type_display(),dep.dependency_pk,dep.dependency_display))
+
+            dep_tree[3] = list(workload_dep_trees.values())
+            dep_tree[3].sort(key=lambda o:"{1}-{0}".format(o[1][1],0 if o[1][2] else 1))
+        tree_path_len = 0
+        while tasks:
+            task = tasks.pop(0)
+            if len(task[1]) != tree_path_len:
+                if new_resolved_workloads:
+                    for o in new_resolved_workloads:
+                        resolved_workloads.add(o)
+                    new_resolved_workloads.clear()
+                tree_path_len = len(task[1])
+
+            _run(task)
+
+        
+        tree.wltree = dep_tree
+        tree.wltree_wls = list(workloadids)
+        tree.wltree_wls.sort()
+        tree.wltree_created = tree.wltree_created or populate_time
+        tree.wltree_updated = populate_time
+        tree.wltree_update_requested = None
+        if tree.pk:
+            tree.save(update_fields=["wltree","wltree_wls","wltree_created","wltree_updated","wltree_update_requested"])
+        else:
+            tree.save()
+
+        return tree
+            
+    def populate_resource_dependent_tree(self,depth=None,workload_cache={},dependency_cache={},tree=None,populate_time=timezone.now()):
+        """
+        Tree data structure
+        [workload's id, workload's name,active?,[
+            [dependent type,dependent type name,[
+                [dependent_pk,dependent_id, [
+                    [sub dependent tree]
+                    ... #more dependent tree of workloads which are dpendent on the same resource
+                ]]
+
+                ... #more dependent tree of workloads which are dependent on the same resource type
+            ]] 
+            ... #more dependent tree of workloads which are dependent on the different resource type
+        ]]
+        """
+        tree = tree or WorkloadDependentTree.objects.filter(workload=self).defer("wltree","wltree_wls","wltree_created","wltree_updated","restree").first()
+        if not tree:
+            tree = WorkloadDependentTree(workload=self,imagefamily=self.containerimage.imagefamily)
+
+        dep_tree = [self.id,str(self),False if self.deleted else True,None]
+        resolved_dependencies = set()
+        new_resolved_dependencies = set()
+        workloadids = set()
+
+        tasks = [(self,[],dep_tree)]
+
+        def _run(task):
+            workload = task[0]
+            tree_path = task[1]
+            dep_tree = task[2]
+            workloadids.add(workload.id)
+            if depth and len(tree_path) >= depth:
+                dep_tree[3] = []
+                return
+
+            tree_path = list(tree_path)
+
+            dep_datas = dependency_cache.get(workload.id)
+            if not dep_datas:
+                if workload.containerimage.imagefamily == self.containerimage.imagefamily:
+                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).order_by("dependency_type","dependency_id"))
+                else:
+                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).exclude(dependency_type=WorkloadDependency.IMAGEFAMILY).order_by("dependency_type","dependency_id"))
+                dependency_cache[workload.id] = dep_datas
+
+            tree_path.append((workload.id,workload.containerimage.imagefamily.id))
+
+            dependencies = []
+            dep_tree[3] = dependencies
+            workload_dep_trees = {}
+            for dep in dep_datas:
+                if (dep.dependency_type,dep.dependency_id) in resolved_dependencies:
+                    #already resolved
+                    continue
+                new_resolved_dependencies.add((dep.dependency_type,dep.dependency_id))
+
+                if not dependencies or dependencies[-1][0] != dep.dependency_type:
+                    sub_dep_trees = []
+                    dependencies.append((dep.dependency_type,dep.get_dependency_type_display(),[(dep.dependency_pk,dep.dependency_display,sub_dep_trees)]))
+                    for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
+                        dep_workload = workload_cache.get(dep_workload_id)
+                        if not dep_workload:
+                            dep_workload = Workload.objects.get(id=dep_workload_id)
+                            workload_cache[dep_workload_id] = dep_workload
+
+                        if dep.dependency_type == WorkloadDependency.IMAGEFAMILY:
+                            dep_workload_name = "{}({})".format(str(dep_workload),dep_workload.containerimage.tag)
+                        else:
+                            dep_workload_name = str(dep_workload)
+
+                        sub_dep_tree = [dep_workload_id,dep_workload_name,False if dep_workload.deleted else True,None]
+                        tasks.append((dep_workload,tree_path,sub_dep_tree))
+                        sub_dep_trees.append(sub_dep_tree)
+                elif dependencies[-1][2][-1][0] != dep.dependency_pk:
+                    sub_dep_trees = []
+                    dependencies[-1][2].append((dep.dependency_pk,dep.dependency_display,sub_dep_trees))
+                    for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
+                        dep_workload = workload_cache.get(dep_workload_id)
+                        if not dep_workload:
+                            dep_workload = Workload.objects.get(id=dep_workload_id)
+                            workload_cache[dep_workload_id] = dep_workload
+
+                        if dep.dependency_type == WorkloadDependency.IMAGEFAMILY:
+                            dep_workload_name = "{}({})".format(str(dep_workload),dep_workload.containerimage.tag)
+                        else:
+                            dep_workload_name = str(dep_workload)
+
+                        sub_dep_tree = [dep_workload_id,dep_workload_name,False if dep_workload.deleted else True,None]
+                        tasks.append((dep_workload,tree_path,sub_dep_tree))
+                        sub_dep_trees.append(sub_dep_tree)
+                else:
+                    sub_dep_trees = dependencies[-1][2][-1][2]
+                    for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
+                        if any(dep_workload_id == o[0] for o in sub_dep_trees):
+                            #already included
+                            continue
+
+                        dep_workload = workload_cache.get(dep_workload_id)
+                        if not dep_workload:
+                            dep_workload = Workload.objects.get(id=dep_workload_id)
+                            workload_cache[dep_workload_id] = dep_workload
+
+                        if dep.dependency_type == WorkloadDependency.IMAGEFAMILY:
+                            dep_workload_name = "{}({})".format(str(dep_workload),dep_workload.containerimage.tag)
+                        else:
+                            dep_workload_name = str(dep_workload)
+
+                        sub_dep_tree = [dep_workload_id,dep_workload_name,False if dep_workload.deleted else True,None]
+                        tasks.append((dep_workload,tree_path,sub_dep_tree))
+                        sub_dep_trees.append(sub_dep_tree)
+
+
+        tree_path_len = 0
+        while tasks:
+            task = tasks.pop(0)
+            if len(task[1]) != tree_path_len:
+                if new_resolved_dependencies:
+                    for o in new_resolved_dependencies:
+                        resolved_dependencies.add(o)
+                    new_resolved_dependencies.clear()
+                tree_path_len = len(task[1])
+
+            _run(task)
+
+        tree.restree = dep_tree
+        tree.restree_wls = list(workloadids)
+        tree.restree_wls.sort()
+        tree.restree_created = tree.restree_created or populate_time
+        tree.restree_updated = populate_time
+        tree.restree_update_requested = None
+        if tree.pk:
+            tree.save(update_fields=["restree","restree_wls","restree_created","restree_updated","restree_update_requested"])
+        else:
+            tree.save()
+        return tree
+            
+            
     def get_absolute_url(self):
         return reverse('workload_detail', kwargs={'pk': self.pk})
 
@@ -707,131 +1598,6 @@ class Workload(DeletedMixin,models.Model):
             return "{0}/p/{1}:{2}/workloads/run?group=namespace&namespaceId={4}&upgrade=true&workloadId={3}:{4}:{5}".format(settings.GET_CLUSTER_MANAGEMENT_URL(self.cluster.name),self.cluster.clusterid,self.project.projectid,self.kind.lower(),self.namespace.name,self.name)
 
 
-    def update_itsystem(self,itsystems=None,refresh=False):
-        """
-        Update workload's property 'itsystem'  if required
-        refresh: always update it's itsystem even if it has already been set.
-        return True if updated; otherwise return False
-        """
-        if self.itsystem and not refresh:
-            return False
-
-        webserver = self.find_related_webserver()
-        if self != webserver:
-            if webserver:
-                webserver.update_itsystem(itsystems=itsystems)
-                if self.itsystem == webserver.itsystem:
-                    #itsystem is not changed
-                    return False
-                self.itsystem = webserver.itsystem
-            elif self.itsystem:
-                self.itsystem = None
-            else:
-                #itsystem is not changed
-                return False
-            self.save(update_fields=["itsystem"])
-            return True
-            
-        itsystems = itsystems or list(ITSystem.objects.all().only("name","acronym","extra_data"))
-        itsystem = None
-        version = None
-        for listener in WorkloadListening.objects.filter(workload=self,ingress_rule__isnull=False).order_by("ingress_rule__hostname"):
-            hostname = listener.ingress_rule.hostname
-            for obj in itsystems:
-                #if obj.name.lower().startswith("parkstay"):
-                #    import ipdb;ipdb.set_trace()
-                if isinstance(obj.extra_data,str):
-                    print("itsystem({}<{}>):{}({})".format(obj.name,obj.id,obj.extra_data.__class__,obj.extra_data))
-                    #extra data  is not a dictionary, changee it to dictionary
-                    obj.extra_data = utils.parse_json(obj.extra_data)
-                    obj.save(update_fields=["extra_data"])
-                if obj.extra_data and hostname in (obj.extra_data.get("url_synonyms") or []):
-                    #hostname in url_synonyms; this is the itsystem linked to the workload
-                    itsystem = obj
-                    version = "prod"
-                    break
-                synonyms = obj.extra_data.get("synonyms") if obj.extra_data else None
-                if not synonyms and obj.acronym:
-                    #synonyms is not configured, use "acronym" as the default 'synonyms'
-                    synonyms = [obj.acronym]
-
-                if not  synonyms:
-                    continue
-    
-                synonyms.sort(reverse=True,key=lambda o:len(o))
-                for synonym in synonyms:
-                    system_re = re.compile( "{}(?P<api>api)?(-(?P<version>[a-z0-9]+(-[a-z0-9]+)*))?\.(dbca|dpaw)\.wa\.gov\.au".format(synonym.lower()))
-                    m = system_re.search(hostname)
-                    if m:
-                        #the host name matchs the synonym. 
-                        if itsystem:
-                            if len(m.group("version")) < len(version):
-                                #found another itsystem which version's length is less than the previous found it system. use the current it system as the it system linked to the workload
-                                itsystem = obj
-                                version = m.group("version")
-                        else:
-                            #didn't find a matched it system, use this as the it system linked to the workload
-                            itsystem = obj
-                            version = m.group("version")
-                        break
-            if itsystem:
-                break
-        if self.itsystem == itsystem:
-            #itsystem is not changed
-            return False
-
-        self.itsystem = itsystem
-        self.save(update_fields=["itsystem"])
-        return True
-
-    def find_related_webserver(self):
-        if self.kind == self.DEPLOYMENT and WorkloadListening.objects.filter(workload=self,ingress_rule__isnull=False).exists():
-            return self
-
-        if not self.containerimage:
-            return None
-        #try to find the deployment with the same image
-        deployment = Workload.objects.filter(kind=self.DEPLOYMENT,containerimage=self.containerimage).first()
-        if deployment and WorkloadListening.objects.filter(workload=deployment,ingress_rule__isnull=False).exists():
-            return deployment
-
-        qs = Workload.objects.filter(kind=self.DEPLOYMENT)
-        if self.containerimage.account:
-            qs = qs.filter(containerimage__account = self.containerimage.account)
-        else:
-            qs = qs.filter(containerimage__account__isnull=True)
-
-        qs = qs.filter(containerimage__name = self.containerimage.name)
-        #try to find the deployment which image has the same account and name but tag is not 'latest'
-        deployments = list(o for o in (qs if self.containerimage.tag == "latest" else qs.exclude(containerimage__tag="latest")) if WorkloadListening.objects.filter(workload=o,ingress_rule__isnull=False).exists())
-
-        #try to find the deployment which image has the same account and name, and alos its tag is 'latest'
-        if not deployments and self.containerimage.tag != "latest":
-            deployments = list(o for o in qs.filter(containerimage__tag="latest") if WorkloadListening.objects.filter(workload=o,ingress_rule__isnull=False).exists())
-
-        if not deployments:
-            return None
-        elif len(deployments) == 1:
-            return deployments[0]
-
-        #found more than one deployments, try to find the match one
-        workload_version = None
-        for version in ("uat","dev","prod"):
-            if version in self.name.lower():
-                workload_version = version
-                break
-
-        for deployment in deployments:
-            if workload_version:
-                if workload_version in deployment.name.lower():
-                    return deployment
-            else:
-                if not any(v in deployment.name for v in ("uat","dev","prod")):
-                    return deployment
-
-        #can't find the match one, choose the first one
-        return deployments[0]
-        
     def save(self,*args,**kwargs):
         with transaction.atomic():
             return super().save(*args,**kwargs)
@@ -845,8 +1611,75 @@ class Workload(DeletedMixin,models.Model):
     class Meta:
         unique_together = [["cluster", "namespace", "name","kind"]]
         ordering = ["cluster__name", 'namespace', 'name']
-        verbose_name_plural = "{}{}".format(" " * 5,"Workloads")
+        verbose_name_plural = "{}{}".format(" " * 7,"Workloads")
 
+class WorkloadResource(models.Model):
+    ENV = 1
+    WORKLOADVOLUME = 2
+    SERVICE = 4
+
+    CONFIG_SOURCES = (
+        (ENV,"Env"),
+        (WORKLOADVOLUME,"Workload Volume"),
+        (ENV | WORKLOADVOLUME,"Env & Workload Volume"),
+        (SERVICE,"Service")
+    )
+
+    workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='resources',editable=False)
+    imagefamily = models.ForeignKey(ContainerImageFamily,on_delete=models.PROTECT,related_name="resources",editable=False)
+    config_items = ArrayField(models.CharField(max_length=128,editable=False))
+    resource_type = models.PositiveSmallIntegerField(choices=EnvScanModule.RESOURCE_TYPES,editable=False)
+    resource_id = models.CharField(max_length=512,editable=False,db_index=True)
+    config_source = models.PositiveSmallIntegerField(choices=CONFIG_SOURCES,editable=False)
+    properties = JSONField(null=False,default=dict)
+    scan_module = models.ForeignKey(EnvScanModule, on_delete=models.PROTECT, related_name='resources', editable=False,null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return "{0}.{1} is {2}:{3}".format(self.workload,self.config_items,self.get_resource_type_display(),self.resource_id)
+
+    class Meta:
+        unique_together = [["workload","resource_type","config_items","resource_id"]]
+        ordering = ['imagefamily','workload','resource_type','config_items']
+        verbose_name_plural = "{}{}".format(" " * 2,"Workload Resources")
+
+class WorkloadDependency(models.Model):
+    IMAGEFAMILY  = 999
+
+    DEPENDENCY_TYPES = tuple(list(EnvScanModule.RESOURCE_TYPES) + [(IMAGEFAMILY,"Image Family")])
+
+    workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='dependencies',editable=False)
+    imagefamily = models.ForeignKey(ContainerImageFamily,on_delete=models.PROTECT,related_name="dependencies",editable=False)
+    dependency_type = models.PositiveSmallIntegerField(choices=DEPENDENCY_TYPES,editable=False)
+    dependency_pk = models.IntegerField(editable=False)
+    dependency_id = models.CharField(max_length=512,editable=False)
+    dependency_display = models.CharField(max_length=512,editable=False)
+    dependent_workloads = ArrayField(models.IntegerField(editable=False),db_index=True)
+    del_dependent_workloads = ArrayField(models.IntegerField(editable=False),db_index=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [["workload","dependency_type","dependency_pk"]]
+        ordering = ["workload","dependency_type","dependency_id"]
+        verbose_name_plural = "{}{}".format(" " * 1,"Workload Dependencies")
+
+class WorkloadDependentTree(models.Model):
+    workload = models.OneToOneField(Workload, on_delete=models.CASCADE, related_name='dependenttree',editable=False)
+    imagefamily = models.ForeignKey(ContainerImageFamily,on_delete=models.PROTECT,related_name="dependenttrees",editable=False)
+
+    restree = JSONField(editable=False,null=True)
+    restree_wls = ArrayField(models.IntegerField(null=False),editable=False,null=True)
+    restree_created = models.DateTimeField(editable=False,null=True)
+    restree_updated = models.DateTimeField(editable=False,null=True)
+    restree_update_requested = models.DateTimeField(editable=False,null=True)
+
+    wltree = JSONField(editable=False,null=True)
+    wltree_wls = ArrayField(models.IntegerField(null=False),editable=False,null=True)
+    wltree_created = models.DateTimeField(editable=False,null=True)
+    wltree_updated = models.DateTimeField(editable=False,null=True)
+    wltree_update_requested = models.DateTimeField(editable=False,null=True)
 
 class WorkloadListening(models.Model):
     workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='listenings',editable=False)
@@ -859,7 +1692,7 @@ class WorkloadListening(models.Model):
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     @property
     def is_deleted(self):
@@ -890,12 +1723,15 @@ class WorkloadEnv(models.Model):
     configmap = models.ForeignKey(ConfigMap, on_delete=models.CASCADE, related_name='workloadenvs',editable=False,null=True)
     configmapitem = models.ForeignKey(ConfigMapItem, on_delete=models.CASCADE, related_name='workloadenvs',editable=False,null=True)
 
+    secret = models.ForeignKey(Secret, on_delete=models.CASCADE, related_name='workloadenvs',editable=False,null=True)
+    secretitem = models.ForeignKey(SecretItem, on_delete=models.CASCADE, related_name='workloadenvs',editable=False,null=True)
+
     name = models.CharField(max_length=128,editable=False)
     value = models.TextField(editable=False,null=True)
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     @property
     def is_deleted(self):
@@ -923,13 +1759,13 @@ class WorkloadVolume(models.Model):
     volume_claim = models.ForeignKey(PersistentVolumeClaim, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
     volume = models.ForeignKey(PersistentVolume, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
     volumepath = models.CharField(max_length=612,editable=False,null=True)
-    other_config = models.TextField(null=True)
+    other_config = JSONField(null=True)
 
     writable = models.BooleanField(default=False,editable=False)
 
     modified = models.DateTimeField(editable=False)
     created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(auto_now=True)
 
     @property
     def is_deleted(self):
@@ -957,96 +1793,6 @@ class WorkloadVolume(models.Model):
     class Meta:
         unique_together = [["workload","name"],["workload","mountpath"]]
         ordering = ["workload",'name']
-
-
-class DatabaseServer(models.Model):
-    POSTGRES = "posgres"
-    MYSQL = "mysql"
-    ORACLE = "oracle"
-    SERVER_KINDS = (
-        (POSTGRES,POSTGRES),
-        (MYSQL,MYSQL),
-        (ORACLE,ORACLE),
-    )
-    host = models.CharField(max_length=128,editable=False)
-    ip = models.CharField(max_length=32,editable=False,null=True)
-    port = models.PositiveIntegerField(editable=False,null=True)
-    internal_name = models.CharField(max_length=128,editable=False,null=True)
-    internal_port = models.PositiveIntegerField(editable=False,null=True)
-    workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
-    other_names = ArrayField(models.CharField(max_length=128),editable=False,null=True)
-    kind = models.CharField(max_length=16,choices=SERVER_KINDS,null=True)
-
-    modified = models.DateTimeField(editable=False)
-    created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        if self.kind == "postgres" and self.port == 5432:
-            return self.host
-        else:
-            return "{}:{}".format(self.host,self.port)
-
-    class Meta:
-        index_together = [["host","port"],["internal_name","internal_port"]]
-        ordering = ['host','port']
-
-class Database(models.Model):
-    server = models.ForeignKey(DatabaseServer, on_delete=models.CASCADE, related_name='databases',editable=False)
-    name = models.CharField(max_length=128,editable=False)
-
-    created = models.DateTimeField(editable=False)
-
-    def __str__(self):
-        return "{}/{}".format(self.server,self.name)
-
-    class Meta:
-        ordering = ['server','name']
-        verbose_name_plural = "{}{}".format(" " * 4,"Databases")
-
-
-class DatabaseUser(models.Model):
-    server = models.ForeignKey(DatabaseServer, on_delete=models.CASCADE, related_name='users',editable=False)
-    user = models.CharField(max_length=128,editable=False)
-    password = models.CharField(max_length=128,editable=False,null=True)
-
-    modified = models.DateTimeField(editable=False)
-    created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.user
-
-    class Meta:
-        unique_together = [["server","user"]]
-        ordering = ['server','user']
-
-
-class WorkloadDatabase(models.Model):
-    workload = models.ForeignKey(Workload, on_delete=models.CASCADE, related_name='databases',editable=False)
-    database = models.ForeignKey(Database, on_delete=models.PROTECT, related_name='+',editable=False)
-    user = models.ForeignKey(DatabaseUser, on_delete=models.PROTECT, related_name='+',editable=False)
-
-    password = models.CharField(max_length=128,editable=False,null=True)
-    schema = models.CharField(max_length=128,editable=False,null=True)
-
-    config_items = models.CharField(max_length=256,editable=False)
-
-    modified = models.DateTimeField(editable=False)
-    created = models.DateTimeField(editable=False)
-    refreshed = models.DateTimeField(auto_now=True)
-
-    @property
-    def is_deleted(self):
-        return self.workload.is_deleted
-
-    @property
-    def deleted(self):
-        return self.workload.deleted
-
-    class Meta:
-        unique_together = [["workload","database","config_items"]]
-        ordering = ['workload','database']
 
 class Container(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.CASCADE, related_name='containers',editable=False)
@@ -1136,6 +1882,7 @@ class Harvester(models.Model):
         ordering = ["name","starttime"]
         verbose_name_plural = "{}{}".format(" " * 0,"Harvesting jobs")
 
+
 class WorkloadListener(object):
     @staticmethod
     def update_workloads(instance,update_fields,existing_obj):
@@ -1193,6 +1940,12 @@ class WorkloadListener(object):
         WorkloadListener.update_workloads(instance,update_fields,existing_obj)
         WorkloadListener.update_image_workloads(instance,update_fields,existing_obj)
 
+        if instance.pk and (True if instance.deleted else False) != (True if existing_obj.deleted else False):
+            affected_workloads = set()
+            for o in WorkloadDependency.objects.filter(models.Q(dependent_workloads__contains=[instance.id]) | models.Q(del_dependent_workloads__contains=[instance.id])):
+                affected_workloads.add(o.workload)
+            WorkloadDependentTree.objects.filter(workload__in=affected_workloads).update(wltree_update_requested=timezone.now(),restree_update_requested=timezone.now())
+
     @staticmethod
     def delete_workloads(instance):
         if instance.deleted:
@@ -1217,6 +1970,11 @@ class WorkloadListener(object):
     def pre_delete(sender,instance,**kwargs):
         WorkloadListener.delete_workloads(instance)
         WorkloadListener.delete_image_workloads(instance)
+
+        affected_workloads = set()
+        for o in WorkloadDependency.objects.filter(models.Q(dependent_workloads__contains=[instance.id]) | models.Q(del_dependent_workloads__contains=[instance.id])):
+            affected_workloads.add(o.workload)
+        WorkloadDependentTree.objects.filter(workload__in=affected_workloads).update(wltree_update_requested=timezone.now(),restree_update_requested=timezone.now())
 
 class ContainerImageListener(object):
     @staticmethod

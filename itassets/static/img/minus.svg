@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   id="svg2"
+   sodipodi:docname="minus.svg.svg"
+   inkscape:export-filename="/datas/wiki/add.png"
+   viewBox="0 0 12 12"
+   sodipodi:version="0.32"
+   inkscape:export-xdpi="90.000000"
+   version="1.0"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   inkscape:export-ydpi="90.000000"
+   inkscape:version="1.1 (c68e22c387, 2021-05-23)"
+   width="12"
+   height="12"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs4">
+    <linearGradient
+       id="linearGradient2452"
+       y2="57.588001"
+       gradientUnits="userSpaceOnUse"
+       x2="27.493999"
+       gradientTransform="matrix(0.58147,-0.58147,0.58147,0.58147,-5.2146,32.001)"
+       y1="6.2061"
+       x1="36.304001"
+       inkscape:collect="always">
+      <stop
+         id="stop1354"
+         style="stop-color:#179807"
+         offset="0" />
+      <stop
+         id="stop1356"
+         style="stop-color:#0b5102"
+         offset="1" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient2454"
+       y2="57.789001"
+       gradientUnits="userSpaceOnUse"
+       x2="27.573999"
+       gradientTransform="matrix(0.58147,-0.58147,0.58147,0.58147,-5.2092,32)"
+       y1="6.1829"
+       x1="36.464001"
+       inkscape:collect="always">
+      <stop
+         id="stop1367"
+         style="stop-color:#24f00a"
+         offset="0" />
+      <stop
+         id="stop1370"
+         style="stop-color:#0b6400"
+         offset="1" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient2456"
+       y2="49.282001"
+       gradientUnits="userSpaceOnUse"
+       x2="27.469"
+       gradientTransform="matrix(0.58147,-0.58147,0.58147,0.58147,-5.2141,32)"
+       y1="19.205999"
+       x1="32.682999"
+       inkscape:collect="always">
+      <stop
+         id="stop1380"
+         style="stop-color:#b0ffa5"
+         offset="0" />
+      <stop
+         id="stop1382"
+         style="stop-color:#26bc14;stop-opacity:.44706"
+         offset="1" />
+    </linearGradient>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     bordercolor="#666666"
+     inkscape:grid-points="true"
+     inkscape:pageshadow="2"
+     inkscape:window-y="32"
+     pagecolor="#ffffff"
+     inkscape:window-height="1017"
+     inkscape:grid-bbox="true"
+     inkscape:zoom="13.333333"
+     inkscape:window-x="1912"
+     showgrid="false"
+     borderopacity="1.0"
+     inkscape:current-layer="layer1"
+     inkscape:cx="9.6750002"
+     inkscape:cy="17.9625"
+     showguides="false"
+     inkscape:window-width="1920"
+     inkscape:pageopacity="0.0"
+     inkscape:document-units="px"
+     inkscape:pagecheckerboard="0"
+     inkscape:window-maximized="1">
+    <inkscape:grid
+       id="GridFromPre046Settings"
+       opacity=".2"
+       visible="true"
+       color="#0000ff"
+       enabled="true"
+       originy="0px"
+       originx="0px"
+       empspacing="4"
+       spacingy="1px"
+       spacingx="1px"
+       empopacity="0.4"
+       type="xygrid"
+       empcolor="#0000ff" />
+  </sodipodi:namedview>
+  <g
+     id="layer1"
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer">
+    <g
+       id="g2447"
+       transform="matrix(0.33360009,0,0,0.3784568,-4.7122011,-5.8856055)">
+      <path
+         id="path1349"
+         sodipodi:nodetypes="csccsccsccscc"
+         style="fill:url(#linearGradient2452)"
+         d="m 15.562,27.656 c -0.279,-10e-4 -0.552,0.115 -0.75,0.313 -0.197,0.198 -0.313,0.47 -0.312,0.75 v 6.562 c -0.002,0.034 -0.002,0.091 0,0.125 0.051,0.543 0.518,0.943 1.062,0.938 h 32.876 c 0.279,10e-4 0.552,-0.115 0.75,-0.313 0.197,-0.198 0.313,-0.47 0.312,-0.75 v -6.562 c 10e-4,-0.28 -0.115,-0.552 -0.312,-0.75 -0.198,-0.198 -0.471,-0.314 -0.75,-0.313 z" />
+      <path
+         id="path1468"
+         sodipodi:nodetypes="cscccccccc"
+         style="fill:url(#linearGradient2454)"
+         d="m 16.219,28.469 c -0.312,-0.007 -0.611,0.145 -0.781,0.406 -0.087,0.148 -0.132,0.328 -0.126,0.5 v 5.25 c 0.003,0.496 0.411,0.904 0.907,0.906 h 31.562 c 0.496,-0.002 0.904,-0.41 0.907,-0.906 v -5.25 c -0.003,-0.496 -0.411,-0.904 -0.907,-0.906 z" />
+      <path
+         id="path1472"
+         sodipodi:nodetypes="cssccssccssccsscc"
+         style="fill:url(#linearGradient2456)"
+         d="m 16.219,29.125 c -0.044,0.002 -0.089,0.007 -0.125,0.031 -0.044,0.023 -0.103,0.05 -0.125,0.094 -0.014,0.032 -10e-4,0.09 0,0.125 v 5.25 c 0.002,0.044 0.006,0.089 0.031,0.125 0.023,0.044 0.05,0.102 0.094,0.125 0.032,0.014 0.09,10e-4 0.125,0 h 31.562 c 0.044,-0.002 0.089,-0.007 0.125,-0.031 0.044,-0.023 0.103,-0.05 0.125,-0.094 0.014,-0.032 10e-4,-0.09 0,-0.125 v -5.25 C 48.029,29.331 48.025,29.286 48,29.25 c -0.023,-0.044 -0.05,-0.102 -0.094,-0.125 -0.032,-0.014 -0.09,-0.001 -0.125,0 z" />
+    </g>
+  </g>
+  <metadata
+     id="metadata46">
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/publicdomain/zero/1.0/" />
+        <dc:publisher>
+          <cc:Agent
+             rdf:about="http://openclipart.org/">
+            <dc:title>Openclipart</dc:title>
+          </cc:Agent>
+        </dc:publisher>
+        <dc:title>remove</dc:title>
+        <dc:date>2008-05-26T12:07:33</dc:date>
+        <dc:description />
+        <dc:source>https://openclipart.org/detail/17049/remove-by-jean_victor_balin</dc:source>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>jean_victor_balin</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>delete</rdf:li>
+            <rdf:li>icon</rdf:li>
+            <rdf:li>moins</rdf:li>
+            <rdf:li>remove</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/publicdomain/zero/1.0/">
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Reproduction" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#Distribution" />
+        <cc:permits
+           rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>
+

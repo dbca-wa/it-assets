@@ -1,4 +1,5 @@
 import yaml
+import base64
 import itertools
 import re
 import logging
@@ -20,7 +21,7 @@ from . import modeldata
 
 logger = logging.getLogger(__name__)
 
-RANCHER_FILE_RE=re.compile("(^|/)(ingress-|cronjob-|deployment-|daemonset-|persistentvolumeclaim-|persistentvolume-|namespace-|statefulset-|configmap-).+\.(yaml|yml)$")
+RANCHER_FILE_RE=re.compile("(^|/)(ingress-|cronjob-|deployment-|daemonset-|persistentvolumeclaim-|persistentvolume-|namespace-|statefulset-|configmap-|secret-).+\.(yaml|yml)$")
 
 VOLUMN_RE=re.compile("(^|/)persistentvolume-.+\.(yaml|yml)$")
 VOLUMN_CLAIM_RE=re.compile("(^|/)persistentvolumeclaim.+\.(yaml|yml)$")
@@ -31,6 +32,7 @@ NAMESPACE_RE=re.compile("(^|/)namespace-.+\.(yaml|yml)$")
 INGRESS_RE=re.compile("(^|/)ingress-.+\.(yaml|yml)$")
 STATEFULSET_RE=re.compile("(^|/)statefulset-.+\.(yaml|yml)$")
 CONFIGMAP_RE=re.compile("(^|/)configmap-.+\.(yaml|yml)$")
+SECRET_RE=re.compile("(^|/)secret-.+\.(yaml|yml)$")
 
 harvestername = "clusterconfig({})"
 
@@ -90,9 +92,18 @@ def update_project(cluster,projectid):
     return obj
 
 def update_namespace(cluster,status,metadata,config):
-    namespace_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
+    project_name = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
+    name = get_property(config,("metadata","name"))
+    if not name:
+        return
 
-    name = config["metadata"]["name"] or ""
+    """
+    project_id = get_property(config,("metadata","labels","field.cattle.io/projectId"))
+    if not project_id:
+        #can't find the project id. it is not a valid namespace, ignore
+        return
+    """
+
     try:
         obj = models.Namespace.objects.get(cluster=cluster,name=name)
     except ObjectDoesNotExist as ex:
@@ -102,6 +113,7 @@ def update_namespace(cluster,status,metadata,config):
         ("deleted",None,lambda obj:None),
         ("added_by_log",None,lambda obj:False),
         ("api_version","apiVersion",None),
+        ("system_namespace",("metadata","annotations","management.cattle.io/system-namespace"),lambda v: True if v and v.lower() == "true" else False),
         ("project",("metadata","labels","field.cattle.io/projectId"),lambda val:update_project(cluster,val)),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
     ])
@@ -110,7 +122,7 @@ def update_namespace(cluster,status,metadata,config):
         obj.save()
         logger.debug("Create namespace({})".format(obj))
     elif update_fields:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update namespace({}),update_fields={}".format(obj,update_fields))
         if "project" in update_fields :
@@ -127,8 +139,8 @@ def update_namespace(cluster,status,metadata,config):
 
 
     #try to update the clusterid if it is empty or not match
-    if namespace_id and ":" in namespace_id:
-        cluster_id,project_id = namespace_id.split(':',1)
+    if project_name and ":" in project_name:
+        cluster_id,project_id = project_name.split(':',1)
         if project_id == obj.project.projectid:
             if cluster.clusterid != cluster_id:
                 cluster.clusterid = cluster_id
@@ -142,15 +154,144 @@ def delete_namespace(cluster,status,metadata,config):
         obj.logically_delete()
         logger.info("Logically delete namespace({}.{})".format(cluster,name))
 
-    """
-    del_objs = models.Namespace.objects.filter(cluster=cluster,name=name).delete()
+def update_secret(cluster,status,metadata,config):
+    project_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
+    namespace = get_property(config,("metadata","namespace"))
+    if project_id and namespace:
+        #project scope secret
+        if project_id.endswith(namespace):
+            try:
+                project = models.Project.objects.get(cluster=cluster,projectid=namespace)
+            except ObjectDoesNotExist as ex:
+                logger.error("Project({}) does not exist".format(namespace))
+                raise
+            namespace = None
+        else:
+            #namespace-scope secret created by system from project-scope secret
+            return
+    else:
+        try:
+            namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+        except ObjectDoesNotExist as ex:
+            logger.error("Namespace({}) does not exist".format(namespace))
+            raise
+        project = None
+
+    name = config["metadata"]["name"]
+    try:
+        if project:
+            obj = models.Secret.objects.get(cluster=cluster,project=project,name=name)
+        elif namespace.project:
+            obj = models.Secret.objects.get(cluster=cluster,project=namespace.project,name=name)
+        else:
+            obj = models.Secret.objects.get(cluster=cluster,project__isnull=True,name=name)
+
+    except ObjectDoesNotExist as ex:
+        if project:
+            obj = models.Secret(cluster=cluster,project=project,name=name)
+        else:
+            obj = models.Secret(cluster=cluster,project=namespace.project,name=name)
+
+    update_fields = set_fields_from_config(obj,config,[
+        ("api_version","apiVersion",None),
+        ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
+    ])
+    set_field(obj,"namespace",namespace,update_fields)
+
+    created = False
+    if obj.pk is None:
+        obj.created = obj.modified
+        obj.save()
+        created = True
+        logger.debug("Create secret({})".format(obj))
+   
+    items_changed = False
+    #save secret items
+    config_ids = []
+    for key,value in config.get("data",{}).items():
+        try:
+            item = models.SecretItem.objects.get(secret=obj,name=key)
+        except ObjectDoesNotExist as ex:
+            item = models.SecretItem(secret=obj,name=key)
+        try:
+            value = base64.b64decode(value).decode()
+        except:
+            pass
+
+        config_ids.append(item.id)
+
+        item_update_fields = set_fields(item,[
+            ("value",value)
+        ])
+        if item.pk is None:
+            item.created = obj.modified
+            item.modified = obj.modified
+            item.save()
+            items_changed = True
+        elif item_update_fields:
+            item_update_fields.append("updated")
+            item_update_fields.append("modified")
+            item.modified = obj.modified
+            item.save(update_fields=item_update_fields)
+            items_changed = True
+
+    del_objs = models.SecretItem.objects.filter(secret=obj).exclude(id__in=config_ids).delete()
     if del_objs[0]:
-        logger.info("Delete namespace({}),deleted objects = {}".format(name,del_objs))
-    """
+        items_changed = True
+
+    if created:
+        pass
+    elif update_fields or items_changed:
+        update_fields.append("updated")
+        obj.save(update_fields=update_fields)
+        logger.debug("Update secret({}),update_fields={}".format(obj,update_fields))
+    else:
+        logger.debug("The secret({}) is not changed".format(obj))
+
+        
+def delete_secret(cluster,status,metadata,config):
+    project_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
+    namespace = get_property(config,("metadata","namespace"))
+    if project_id and namespace:
+        #project scope secret
+        if project_id.endswith(namespace):
+            try:
+                project = models.Project.objects.get(cluster=cluster,projectid=namespace)
+            except ObjectDoesNotExist as ex:
+                logger.error("Project({}) does not exist".format(namespace))
+                raise
+            namespace = None
+        else:
+            #namespace-scope secret created by system from project-scope secret
+            return
+    else:
+        try:
+            namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+        except ObjectDoesNotExist as ex:
+            logger.error("Namespace({}) does not exist".format(namespace))
+            raise
+        project = None
+
+    name = config["metadata"]["name"]
+
+    if project:
+        obj = models.Secret.objects.filter(cluster=cluster,project=project,name=name).first()
+    elif namespace.project:
+        obj = models.Secret.objects.filter(cluster=cluster,project=namespace.project,name=name).first()
+    else:
+        obj = models.Secret.objects.filter(cluster=cluster,project__isnull=True,name=name).first()
+
+    if obj:
+        obj.logically_delete()
+        logger.info("Logically delete secret({}.{})".format(cluster,obj))
 
 def update_configmap(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
 
     name = config["metadata"]["name"]
 
@@ -163,23 +304,23 @@ def update_configmap(cluster,status,metadata,config):
         ("api_version","apiVersion",None),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) )
     ])
+    created = False
     if obj.pk is None:
         obj.created = obj.modified
         obj.save()
+        created = True
         logger.debug("Create configmap({})".format(obj))
-    elif update_fields:
-        update_fields.append("refreshed")
-        obj.save(update_fields=update_fields)
-        logger.debug("Update configmap({}),update_fields={}".format(obj,update_fields))
-    else:
-        logger.debug("The configmap({}) is not changed".format(obj))
-    
+   
+    items_changed = False
     #save configmap items
+    config_ids = []
     for key,value in config.get("data",{}).items():
         try:
             item = models.ConfigMapItem.objects.get(configmap=obj,name=key)
         except ObjectDoesNotExist as ex:
             item = models.ConfigMapItem(configmap=obj,name=key)
+
+        config_ids.append(item.id)
 
         item_update_fields = set_fields(item,[
             ("value",value)
@@ -188,11 +329,27 @@ def update_configmap(cluster,status,metadata,config):
             item.created = obj.modified
             item.modified = obj.modified
             item.save()
+            items_changed = True
         elif item_update_fields:
-            item_update_fields.append("refreshed")
+            item_update_fields.append("updated")
             item_update_fields.append("modified")
             item.modified = obj.modified
             item.save(update_fields=item_update_fields)
+            items_changed = True
+
+    del_objs = models.ConfigMapItem.objects.filter(configmap=obj).exclude(id__in=config_ids).delete()
+    if del_objs[0]:
+        items_changed = True
+
+    if created:
+        pass
+    elif update_fields or items_changed:
+        update_fields.append("updated")
+        obj.save(update_fields=update_fields)
+        logger.debug("Update configmap({}),update_fields={}".format(obj,update_fields))
+    else:
+        logger.debug("The configmap({}) is not changed".format(obj))
+
         
 def delete_configmap(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -201,9 +358,10 @@ def delete_configmap(cluster,status,metadata,config):
         return
     
     name = config["metadata"]["name"]
-    del_objs = models.ConfigMap.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
-    if del_objs[0]:
-        logger.info("Delete models.ConfigMap({}.{}),deleted objects = {}".format(namespace,name,del_objs))
+    obj = models.ConfigMap.objects.filter(cluster=cluster,namespace=namespace,name=name).first()
+    if obj:
+        obj.logically_delete()
+        logger.info("Logically delete configmap({}.{})".format(cluster,obj))
 
 def _get_ingress_protocol(val):
     if "http" in val:
@@ -213,14 +371,20 @@ def _get_ingress_protocol(val):
 
 
 def update_ingress_rules(ingress,configs):
+    """
+    Return True if some rules have been changed/deleted ;otherwise return False
+    """
     if not configs:
         del_objs = models.IngressRule.objects.filter(ingress=ingress).delete()
         if del_objs[0]:
             logger.debug("Delete the rules for models.Ingress({}),deleted objects = {}".format(ingress,del_objs))
-        return
+            return True
+        else:
+            return False
 
     name = None
     rule_ids = []
+    rules_changed = False
     for config in configs:
         hostname = config["host"]
         protocol = _get_ingress_protocol(config)
@@ -239,27 +403,35 @@ def update_ingress_rules(ingress,configs):
                 obj.modified = ingress.modified
                 obj.created = ingress.modified
                 obj.save()
-                rule_ids.append(obj.pk)
+                rules_changed = True
                 logger.debug("Create deployment workload env({})".format(obj))
             elif update_fields:
                 obj.modified = ingress.modified
                 update_fields.append("modified")
-                update_fields.append("refreshed")
+                update_fields.append("updated")
                 obj.save(update_fields=update_fields)
-                rule_ids.append(obj.pk)
+                rules_changed = True
                 logger.debug("Update the deployment workload env({}),update_fields={}".format(obj,update_fields))
             else:
-                rule_ids.append(obj.pk)
                 logger.debug("The deployment workload env({}) is not changed".format(obj))
+            rule_ids.append(obj.pk)
 
     del_objs = models.IngressRule.objects.filter(ingress=ingress).exclude(pk__in=rule_ids).delete()
     if del_objs[0]:
         logger.debug("Delete the rules for models.Ingress({}),deleted objects = {}".format(ingress,del_objs))
+        rules_changed = True
+
+    return rules_changed
 
 
 def update_ingress(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     try:
         obj = models.Ingress.objects.get(cluster=cluster,namespace=namespace,name=name)
@@ -271,20 +443,24 @@ def update_ingress(cluster,status,metadata,config):
         ("project",None,lambda val:namespace.project),
         ("modified",("metadata","creationTimestamp"),lambda dtstr:timezone.localtime(datetime.strptime(dtstr,"%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.timezone(offset=timedelta(hours=0)))) ),
     ])
-
+    created = False
     if obj.pk is None:
         obj.created = obj.modified
         obj.save()
+        created = True
         logger.debug("Create models.Ingress({})".format(obj))
-    elif update_fields:
-        update_fields.append("refreshed")
+
+    #update rules
+    rules_changed = update_ingress_rules(obj,get_property(config,("spec","rules")))
+
+    if created:
+        pass
+    elif update_fields or rules_changed:
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update models.Ingress({}),update_fields={}".format(obj,update_fields))
     else:
         logger.debug("The models.Ingress({}) is not changed".format(obj))
-
-    #update rules
-    update_ingress_rules(obj,get_property(config,("spec","rules")))
 
 def delete_ingress(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -296,11 +472,6 @@ def delete_ingress(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete models.Ingress({}.{})".format(namespace,name))
-    """
-    del_objs = models.Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
-    if del_objs[0]:
-        logger.info("Delete models.Ingress({}),deleted objects = {}".format(name,del_objs))
-    """
 
 def _get_volume_uuid(val):
     if val.startswith("pvc-"):
@@ -368,7 +539,7 @@ def update_volume(cluster,status,metadata,config):
         obj.save()
         logger.debug("Create models.PersistentVolume({})".format(obj))
     elif update_fields:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update models.PersistentVolume({}),update_fields={}".format(obj,update_fields))
     else:
@@ -381,15 +552,15 @@ def delete_volume(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically Delete models.PersistentVolume({}.{})".format(cluster,name))
-    """
-    del_objs = models.PersistentVolume.objects.filter(cluster=cluster,name=name).delete()
-    if del_objs[0]:
-        logger.info("Delete models.PersistentVolume({}),deleted objects = {}".format(name,del_objs))
-    """
 
 def update_volume_claim(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     try:
         obj = models.PersistentVolumeClaim.objects.get(cluster=cluster,namespace=namespace,name=name)
@@ -409,7 +580,7 @@ def update_volume_claim(cluster,status,metadata,config):
         obj.save()
         logger.debug("Create models.PersistentVolumeClaim({})".format(obj))
     elif update_fields:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update models.PersistentVolumeClaim({}),update_fields={}".format(obj,update_fields))
     else:
@@ -425,12 +596,8 @@ def delete_volume_claim(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete models.PersistentVolumeClaim({}.{})".format(namespace,name))
-    """
-    del_objs = models.PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).delete()
-    if del_objs[0]:
-        logger.info("Delete models.PersistentVolumeClaim({}),deleted objects = {}".format(name,del_objs))
-    """
 
+env_var_re = re.compile("^[a-zA-Z0-9_\-\.]+$")
 def update_workload_envs(workload,config,env_configs,envfrom_configs=None):
     """
     Return True if some env is updated;otherwise return False
@@ -465,43 +632,54 @@ def update_workload_envs(workload,config,env_configs,envfrom_configs=None):
         else:
             return (yaml.dump(env_config),None,None)
 
-    updated = False
-    name = None
     env_ids = []
     env_names = []
-    #update env from env_configs
-    for env_config in env_configs or []:
-        name = env_config["name"]
-        env_names.append(name)
+    def _save_env(workload,k,v,ref,refitem):
+        """
+        Return True if env changed;otherwise return False
+        """
         try:
-            obj = models.WorkloadEnv.objects.get(workload=workload,name=name)
+            obj = models.WorkloadEnv.objects.get(workload=workload,name=k)
         except ObjectDoesNotExist as ex:
-            obj = models.WorkloadEnv(workload=workload,name=name)
-
-        value,configmap,configmapitem = _get_env_value(env_config)
+            obj = models.WorkloadEnv(workload=workload,name=k)
 
         update_fields = set_fields(obj,[
-            ("value",value),
-            ("configmap",configmap),
-            ("configmapitem",configmapitem)
+            ("value",v),
+            ("configmap",ref if (ref and isinstance(ref,models.ConfigMap)) else None),
+            ("configmapitem",refitem if (refitem and isinstance(refitem,models.ConfigMapItem)) else None),
+            ("secret",ref if (ref and isinstance(ref,models.Secret)) else None),
+            ("secretitem",refitem if (refitem and isinstance(refitem,models.SecretItem)) else None)
         ])
 
+        changed = False
         if obj.pk is None:
             obj.modified = workload.modified
             obj.created = workload.modified
             obj.save()
-            updated = True
-            logger.debug("Create deployment workload env({})".format(obj))
+            changed = True
+            logger.debug("Create workload env({})".format(obj))
         elif update_fields:
             obj.modified = workload.modified
             update_fields.append("modified")
-            update_fields.append("refreshed")
+            update_fields.append("updated")
             obj.save(update_fields=update_fields)
-            updated = True
-            logger.debug("Update the deployment workload env({}),update_fields={}".format(obj,update_fields))
+            changed = True
+            logger.debug("Update the workload env({}),update_fields={}".format(obj,update_fields))
         else:
-            logger.debug("The deployment workload env({}) is not changed".format(obj))
+            logger.debug("The workload env({}) is not changed".format(obj))
         env_ids.append(obj.id)
+
+        return changed
+
+
+    updated = False
+    name = None
+    #update env from env_configs
+    for env_config in env_configs or []:
+        name = env_config["name"]
+        env_names.append(name)
+        value,configmap,configitem = _get_env_value(env_config)
+        updated = _save_env(workload,name,value,configmap,configitem) or updated
 
     #update env from envfrom_configs
     for envfrom_config in envfrom_configs or []:
@@ -517,33 +695,51 @@ def update_workload_envs(workload,config,env_configs,envfrom_configs=None):
                 if configitem.name in env_names:
                     #already declared in workload,ignore
                     continue
-                try:
-                    obj = models.WorkloadEnv.objects.get(workload=workload,name=configitem.name)
-                except ObjectDoesNotExist as ex:
-                    obj = models.WorkloadEnv(workload=workload,name=configitem.name)
+                updated = _save_env(workload,configitem.name,configitem.value,configmap,configitem) or updated
 
-                update_fields = set_fields(obj,[
-                    ("value",configitem.value),
-                    ("configmap",configmap),
-                    ("configmapitem",configitem)
-                ])
+        if "secretRef" in envfrom_config:
+            #env from secret
+            prefix = envfrom_config.get("prefix") or None
+            secret_name = envfrom_config["secretRef"]["name"]
+            secret = models.Secret.objects.get(cluster=workload.cluster,name=secret_name)
+            secretitem_qs = models.SecretItem.objects.filter(secret=secret)
+            if prefix:
+                secretitem_qs = secretitem_qs.filter(name__startswith=prefix)
+            for item in secretitem_qs:
+                if item.name in env_names:
+                    #already declared in workload,ignore
+                    continue
+                updated = _save_env(workload,item.name,item.value,secret,item) or updated
 
-                if obj.pk is None:
-                    obj.modified = workload.modified
-                    obj.created = workload.modified
-                    obj.save()
-                    updated = True
-                    logger.debug("Create deployment workload env({})".format(obj))
-                elif update_fields:
-                    obj.modified = workload.modified
-                    update_fields.append("modified")
-                    update_fields.append("refreshed")
-                    obj.save(update_fields=update_fields)
-                    updated = True
-                    logger.debug("Update the deployment workload env({}),update_fields={}".format(obj,update_fields))
-                else:
-                    logger.debug("The deployment workload env({}) is not changed".format(obj))
-                env_ids.append(obj.id)
+    #update env from configmap volume
+    for volume in models.WorkloadVolume.objects.filter(volume_claim__isnull=True,volume__isnull=True,volumepath__isnull=True):
+        if "configMap" not in volume.other_config or not volume.other_config["configMap"].get("name"):
+            continue
+        configmap = models.ConfigMap.objects.filter(cluster=workload.cluster,namespace=workload.namespace,name=volume.other_config["configMap"]["name"]).first()
+        if not configmap:
+            continue
+        for configitem in models.ConfigMapItem.objects.filter(configmap=configmap):
+            value = configitem.value
+            if not value:
+                continue
+            value = value.strip()
+            if not value:
+                continue
+
+            for line in value.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                datas = line.split("=",1)
+                if len(datas) != 2:
+                    continue
+                k,v = datas
+                k = k.strip()
+                v = v.strip()
+                if not env_var_re.search(k):
+                    continue
+
+                updated = _save_env(workload,k,v,configmap,configitem) or updated
 
     del_objs = models.WorkloadEnv.objects.filter(workload=workload).exclude(id__in=env_ids).delete()
     if del_objs[0]:
@@ -588,7 +784,12 @@ def update_workload_listenings(workload,config):
         if "ingressName" in listen_config:
             #ingress router
             ingress_namespace,ingressname = listen_config["ingressName"].split(":")
-            ingress_namespace = models.Namespace.objects.get(cluster=workload.cluster,name=ingress_namespace)
+            try:
+                ingress_namespace = models.Namespace.objects.get(cluster=workload.cluster,name=ingress_namespace)
+            except:
+                logger.error("Namespace({}.{}) does not exist".format(workload.cluster,ingress_namespace))
+                raise
+
             ingress = models.Ingress.objects.get(cluster=workload.cluster,namespace=ingress_namespace,name=ingressname)
             ingress_rule = models.IngressRule.objects.get(ingress=ingress,servicename=listen_config["serviceName"])
             try:
@@ -653,7 +854,7 @@ def update_workload_listenings(workload,config):
         elif update_fields:
             obj.modified = workload.modified
             update_fields.append("modified")
-            update_fields.append("refreshed")
+            update_fields.append("updated")
             obj.save(update_fields=update_fields)
             updated = True
             logger.debug("Update the workload listening({}),update_fields={}".format(obj,update_fields))
@@ -728,7 +929,7 @@ def update_workload_volumes(workload,config,spec_config):
             if writable and obj.volume:
                 writable = obj.volume.writable
         else:
-            set_field(obj,"other_config", yaml.dump(volume_config),update_fields)
+            set_field(obj,"other_config", volume_config,update_fields)
 
         set_field(obj,"writable",writable,update_fields)
 
@@ -741,7 +942,7 @@ def update_workload_volumes(workload,config,spec_config):
         elif update_fields:
             obj.modified = workload.modified
             update_fields.append("modified")
-            update_fields.append("refreshed")
+            update_fields.append("updated")
             obj.save(update_fields=update_fields)
             updated = True
             logger.debug("Update the deployment workload volume({}),update_fields={}".format(obj,update_fields))
@@ -751,7 +952,12 @@ def update_workload_volumes(workload,config,spec_config):
 
 def update_deployment(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
     imageid = get_property(config,("spec","template","spec","containers",0,"image"))
@@ -785,19 +991,19 @@ def update_deployment(cluster,status,metadata,config):
         created = True
         logger.debug("Create deployment workload({})".format(obj))
 
-    #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom")))
-
     #update listenings
-    updated = update_workload_listenings(obj,config) or updated
+    updated = update_workload_listenings(obj,config)
 
     #update volumes
     updated = update_workload_volumes(obj,config,get_property(config,("spec","template","spec"))) or updated
 
+    #update envs
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom"))) or updated
+
     if created:
         pass
     elif update_fields or updated:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update the deployment workload({}),update_fields={}".format(obj,update_fields))
     else:
@@ -814,15 +1020,15 @@ def delete_deployment(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the deployment workload({2}:{0}.{1})".format(namespace,name,kind))
-    """
-    del_objs = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
-    if del_objs[0]:
-        logger.info("Delete the deployment workload({}),deleted objects = {}".format(name,del_objs))
-    """
 
 def update_cronjob(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
     imageid = get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"image"))
@@ -857,19 +1063,19 @@ def update_cronjob(cluster,status,metadata,config):
         created = True
         logger.debug("Create cronjob workload({})".format(obj))
 
-    #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"env")),get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"envFrom")))
-
     #delete all listening objects
-    updated = update_workload_listenings(obj,config) or updated
+    updated = update_workload_listenings(obj,config) 
 
     #update volumes
     updated = update_workload_volumes(obj,config,get_property(config,("spec","jobTemplate","spec","template","spec"))) or updated
 
+    #update envs
+    updated = update_workload_envs(obj,config,get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"env")),get_property(config,("spec","jobTemplate","spec","template","spec","containers",0,"envFrom"))) or updated
+
     if created:
         pass
     elif update_fields or updated:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update the cronjob workload({}),update_fields={}".format(obj,update_fields))
     else:
@@ -886,15 +1092,15 @@ def delete_cronjob(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the cronjob workload({2}:{0}.{1})".format(namespace,name,kind))
-    """
-    del_objs = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
-    if del_objs[0]:
-        logger.info("Delete the cronjob workload({}),deleted objects = {}".format(name,del_objs))
-    """
 
 def update_daemonset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
     imageid = get_property(config,("spec","template","spec","containers",0,"image"))
@@ -931,19 +1137,19 @@ def update_daemonset(cluster,status,metadata,config):
         created = True
         logger.debug("Create daemonset workload({})".format(obj))
 
-    #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom")))
-
     #delete all listening objects
-    updated = update_workload_listenings(obj,config) or updated
+    updated = update_workload_listenings(obj,config)
 
     #update volumes
     updated = update_workload_volumes(obj,config,get_property(config,("spec","template","spec"))) or updated
 
+    #update envs
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom"))) or updated
+
     if created:
         pass
     elif update_fields or updated:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update the daemon workload({}),update_fields={}".format(obj,update_fields))
     else:
@@ -960,15 +1166,15 @@ def delete_daemonset(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the daemonset workload({2}:{0}.{1})".format(namespace,name,kind))
-    """
-    del_objs = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
-    if del_objs[0]:
-        logger.info("Delete the daemonset workload({}),deleted objects = {}".format(name,del_objs))
-    """
 
 def update_statefulset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = get_property(config,"kind")
     imageid = get_property(config,("spec","template","spec","containers",0,"image"))
@@ -1005,49 +1211,21 @@ def update_statefulset(cluster,status,metadata,config):
         created = True
         logger.debug("Create statefulset workload({})".format(obj))
 
-    #update envs
-    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom")))
-
     #update listenings
-    updated = update_workload_listenings(obj,config) or updated
+    updated = update_workload_listenings(obj,config)
 
     #update volumes
     updated = update_workload_volumes(obj,config,get_property(config,("spec","template","spec"))) or updated
 
+    #update envs
+    updated = update_workload_envs(obj,config,get_property(config,("spec","template","spec","containers",0,"env")),get_property(config,("spec","template","spec","containers",0,"envFrom"))) or updated
+
     #update database server if it is a database server
     image_name_lower = obj.image.lower()
-    for key,dbtype,default_port in (
-        ("postgis",models.DatabaseServer.POSTGRES,5432),
-        ("postgres",models.DatabaseServer.POSTGRES,5432),
-        ("mysql",models.DatabaseServer.MYSQL,3306),
-        ("oracle",models.DatabaseServer.ORACLE,1521)
-    ):
-        if key not in image_name_lower:
-            continue
-
-        #postgres related image
-        listening =  obj.listenings.first()
-        if listening:
-            listen_port = listening.listen_port
-            internal_port = listening.container_port
-        elif "admin" in obj.name:
-            #is a database admin
-            continue
-        else:
-            listen_port = None
-            internal_port = default_port
-        #it is a postgres server
-        database_server = update_databaseserver(obj.cluster.name,dbtype,listen_port,obj.modified,
-            ip=obj.cluster.ip,
-            internal_name="{}/{}".format(obj.namespace.name,obj.name),
-            internal_port=internal_port,
-            workload=obj
-        )
-        break
     if created:
         pass
     elif update_fields or updated:
-        update_fields.append("refreshed")
+        update_fields.append("updated")
         obj.save(update_fields=update_fields)
         logger.debug("Update the statefulset workload({}),update_fields={}".format(obj,update_fields))
     else:
@@ -1064,480 +1242,10 @@ def delete_statefulset(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the statefulset workload({2}:{0}.{1})".format(namespace,name,kind))
-    """
-    del_objs = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).delete()
-    if del_objs[0]:
-        logger.info("Delete the statefulset workload({}),deleted objects = {}".format(name,del_objs))
-    """
-
-def update_databaseserver(hostname,kind,port,modified,host=None,ip=None,internal_name=None,internal_port=None,workload=None):
-    if not port:
-        port = None
-    else:
-        port = int(port)
-    try:
-        if port:
-            server = models.DatabaseServer.objects.get(host=hostname,port=port)
-        elif internal_name:
-            server = models.DatabaseServer.objects.get(host=hostname,internal_name=internal_name)
-        else:
-            server = models.DatabaseServer.objects.get(host=hostname)
-    except ObjectDoesNotExist as ex:
-        server = models.DatabaseServer(host=hostname,port=port,modified=modified)
-    update_fields = []
-    set_field(server,"ip", ip,update_fields)
-    set_field(server,"kind", kind,update_fields)
-    set_field(server,"workload", workload,update_fields)
-    if internal_name:
-        set_field(server,"internal_name",internal_name,update_fields)
-    if internal_port:
-        set_field(server,"internal_port",internal_port,update_fields)
-    if host and host != hostname and (not server.other_names or host not in server.other_names):
-        if server.other_names:
-            server.other_names.append(host)
-        else:
-            server.other_names = [host]
-        update_fields.append("other_names")
-
-    if server.pk is None:
-        server.created = server.modified
-        server.save()
-        logger.debug("Create database server({})".format(server))
-    elif update_fields:
-        update_fields.append("refreshed")
-        server.save(update_fields=update_fields)
-        logger.debug("Update database server({}),update_fields={}".format(server,update_fields))
-    else:
-        logger.debug("The database server({}) is not changed".format(server))
-
-    return server
-
-
-def update_database(server,name,modified):
-    try:
-        database = models.Database.objects.get(server=server,name=name)
-    except ObjectDoesNotExist as ex:
-        database = models.Database(server=server,name=name,created=modified)
-        database.save()
-
-    return database
-
-def update_databaseuser(server,user,password,modified):
-    try:
-        database_user = models.DatabaseUser.objects.get(server=server,user=user)
-    except ObjectDoesNotExist as ex:
-        database_user = models.DatabaseUser(server=server,user=user,modified=modified)
-    update_fields = []
-    set_field(database_user,"password", password,update_fields)
-    if database_user.pk is None:
-        database_user.created = database_user.modified
-        database_user.save()
-        logger.debug("Create database user({})".format(database_user))
-    elif update_fields:
-        update_fields.append("refreshed")
-        database_user.save(update_fields=update_fields)
-        logger.debug("Update database user({}),update_fields={}".format(database_user,update_fields))
-    else:
-        logger.debug("The database user({}) is not changed".format(database_user))
-
-    return database_user
-
-def update_workloaddatabase(workload,database,user,password,config_items,modified,schema=None):
-    """
-    Return the workloaddatabase object
-    """
-    try:
-        workload_database = models.WorkloadDatabase.objects.get(workload=workload,database=database,config_items=config_items)
-    except ObjectDoesNotExist as ex:
-        workload_database = models.WorkloadDatabase(workload=workload,database=database,modified=modified,config_items=config_items)
-    update_fields = []
-    set_field(workload_database,"user", user,update_fields)
-    set_field(workload_database,"password", password,update_fields)
-    set_field(workload_database,"schema", schema,update_fields)
-    if workload_database.pk is None:
-        workload_database.created = workload_database.modified
-        workload_database.save()
-        logger.debug("Create database({1}) for workload({0})".format(workload,database))
-    elif update_fields:
-        update_fields.append("refreshed")
-        workload_database.save(update_fields=update_fields)
-        logger.debug("Update database({1}) for workload({0}),update_fields={2}".format(workload,database,update_fields))
-    else:
-        logger.debug("The database({1}) for workload({0}) is not changed".format(workload,database))
-
-    return workload_database
-
-
-ip_re = re.compile("^[0-9]{1,3}(\.[0-9]{1,3}){3,3}$")
-postgres_connection_string_re = re.compile('^\s*(?P<database>(postgis)|(postgres))://(?P<user>[a-zA-Z0-9@\-_\.]+)(:(?P<password>[0-9a-zA-Z]+))?@(?P<host>[a-zA-Z0-9\-\_\.@]+)(:(?P<port>[1-9][0-9]*))?/(?P<dbname>[0-9a-zA-Z\-_]+)?\s*$')
-
-database_env_re = re.compile("(db|database|host|server)",re.IGNORECASE)
-database_user_re = re.compile("[_\-]?(user[_\-]?name|user[_\-]?account|user|account)[_\-]?",re.IGNORECASE)
-database_password_re = re.compile("[_\-]?(password|passwd|pass)[_\-]?",re.IGNORECASE)
-database_dbname_re = re.compile("[_\-]?(name)[_\-]?",re.IGNORECASE)
-database_schema_re = re.compile("[_\-]?(schema)[_\-]?",re.IGNORECASE)
-database_port_re = re.compile("[_\-]?port[_\-]?",re.IGNORECASE)
-database_server_re = re.compile("[_\-]?(host|server)[_\-]?",re.IGNORECASE)
-
-oracle_connection_re = re.compile("^(?P<host>[a-zA-Z0-9_\-\.\@]+)(:(?P<port>[0-9]+))?/(?P<dbname>[a-zA-Z0-9_\-]+)$")
-
-
-def parse_host(host):
-    """
-    Return hostname and ip if have
-    """
-    ip = None
-    if ip_re.search(host):
-        #ip address
-        hostname = host
-        ip = host
-        domain = None
-    elif "." in host:
-        hostname,domain = host.split(".",1)
-    else:
-        hostname = host
-        domain = None
-
-    return (hostname,ip)
-
-def analysis_workloadenv(cluster=None,refresh_time=None):
-    #parse pgsql connection string
-    qs =  models.WorkloadEnv.objects.all()
-    if cluster:
-        qs = qs.filter(workload__cluster = cluster)
-
-    if refresh_time:
-        qs = qs.filter(workload__refreshed__gte = refresh_time)
-
-    logger.debug("Begin to find postgres database connection string from single environment variable")
-    qs = qs.order_by("workload","name")
-    processed_envs = {}
-    for env_obj in qs:
-        if not env_obj.value:
-            continue
-        m = postgres_connection_string_re.search(env_obj.value)
-        if not m:
-            #not a postgres connection string
-            continue
-        user = m.group("user")
-        password = m.group("password")
-        host = m.group("host")
-        port = int(m.group("port") or 5432)
-        dbname = m.group("dbname")
-        #get or create the database server
-        #check whether the database is a internal database
-        server = models.DatabaseServer.objects.filter(internal_name="{}/{}".format(env_obj.workload.namespace.name,host)).first()
-        if not server:
-            #not a internal database
-            hostname,ip = parse_host(host)
-            server = update_databaseserver(hostname,models.DatabaseServer.POSTGRES,port,env_obj.modified,host=host,ip=ip)
-
-        #get or create the database
-        database = update_database(server,dbname,env_obj.modified)
-
-        #get or create the database user
-        database_user = update_databaseuser(server,user,password,env_obj.modified)
-
-        #creata workloaddatabase
-        workload_database = update_workloaddatabase(env_obj.workload,database,database_user,password,env_obj.name,env_obj.modified)
-        processed_envs[env_obj.id] = workload_database.id
-
-    logger.debug("Begin to find database connection string from multiple environment variables")
-    previous_workload = None
-    databases = [[],[],[],[],[],[],[]] #[hosts, ports, dbnames,schemas,users,passwords, envs] ;  each env is a tuple (env,prefix,sufix,processed?)
-    config_values = [None,None,None,None,None,None,None] #host, port, dbname,schema,user,password, last modified
-    config_items = [None,None,None,None,None,None] #host, port, dbname,schema,user,password, last modified
-    existing_workload_databases = []
-
-    for env_obj in itertools.chain(qs,[models.WorkloadEnv(workload=models.Workload(id=-1),name='test',value=None)]):
-        if not previous_workload:
-            previous_workload = env_obj.workload
-        elif previous_workload != env_obj.workload:
-            if databases[4]:
-                config_databases = []
-                run_times = 0
-                while run_times < 2:
-                    run_times += 1
-                    for user_config in databases[4]:
-                        if user_config[3]:
-                            #this database user is already processed
-                            continue
-                        kind = None
-                        
-                        config_values[4] = user_config[0].value
-                        config_items[4] = user_config[0].name
-                        config_values[6] = user_config[0].modified
-
-                        config_values[0] = config_values[1] = config_values[2] = config_values[3] = config_values[5] = None
-                        config_items[0]  = config_items[1]  = config_items[2]  = config_items[3]  = config_items[5]  = None
-                        #try to find the host
-                        if len(databases[0]) == 1 and len(databases[4]) == 1:
-                            #has only one configration,use it directly
-                            config_values[0] = databases[0][0][0].value
-                            config_items[0] = databases[0][0][0].name
-                            if config_values[6] < databases[0][0][0].modified:
-                                config_values[6] = databases[0][0][0].modified
-                        elif len(databases[0]) > 0:
-                            for server_config in databases[0]:
-                                if server_config[3]:
-                                    continue
-                                #check whether name pattern is matched or not
-                                if (
-                                    (user_config[1] and server_config[1] and (user_config[1].startswith(server_config[1]) or server_config[1].startswith(user_config[1])))
-                                    or (user_config[2] and server_config[2] and (user_config[2].startswith(server_config[2]) or server_config[2].startswith(user_config[2])))
-                                ):
-                                    #server env variable has the same prefix or sufix as the user variable name
-                                    config_values[0] = server_config[0].value
-                                    config_items[0] = server_config[0].name
-                                    if config_values[6] < server_config[0].modified:
-                                        config_values[6] = server_config[0].modified
-                                    server_config[3] = True
-                                    break
-                            if not config_values[0]:
-                                #can't locate the server
-                                if run_times == 1:
-                                    #the first round only locates the server through name pattern
-                                    continue
-                                else:
-                                    #try to use the unused configured server host as its host
-                                    for server_config in databases[0]:
-                                        if server_config[3]:
-                                            continue
-                                        config_values[0] = server_config[0].value
-                                        config_items[0] = server_config[0].name
-                                        if config_values[6] < server_config[0].modified:
-                                            config_values[6] = server_config[0].modified
-                                        server_config[3] = True
-                                        break
-                                    if not config_values[0]:
-                                        #try to find a host configuration from more database configrations
-                                        for server_config in databases[6]:
-                                            if server_config[3]:
-                                                continue
-                                            m = oracle_connection_re.search(server_config[0].value)
-                                            if m:
-                                                #is a oracle connection
-                                                matched = True
-                                                kind = models.DatabaseServer.ORACLE
-                                                config_values[1] = int(m.group("port") or 1521)
-                                                config_items[1] = None
-                                                config_values[2] = m.group("dbname")
-                                                config_items[2] = None
-                                                config_values[0] = m.group("host")
-                                                if config_values[6] < server_config[0].modified:
-                                                    config_values[6] = server_config[0].modified
-                                                server_config[3] = True
-                                                break
-
-                                            matched = False
-                                            hostname,ip = parse_host(server_config[0].value)
-                                            if models.DatabaseServer.objects.filter(host=hostname).exists():
-                                                #is a database host
-                                                matched = True
-
-                                            if not matched:
-                                                 try:
-                                                     if socket.gethostbyname(server_config[0].value):
-                                                         #is a host
-                                                        matched = True
-                                                 except:
-                                                    pass
-                                            if not matched:
-                                                continue
-                                            config_values[0] = server_config[0].value
-                                            config_items[0] = server_config[0].name
-                                            if config_values[6] < server_config[0].modified:
-                                                config_values[6] = server_config[0].modified
-                                            server_config[3] = True
-                                            break
-
-                        #try to find the schema
-                        if config_values[3]:
-                            pass
-                        elif len(databases[3]) == 1 and len(databases[4]) == 1:
-                            #has only one configration,use it directly
-                            config_values[3] = databases[3][0][0].value
-                            config_items[3] = databases[3][0][0].name
-                            if config_values[6] < databases[3][0][0].modified:
-                                config_values[6] = databases[3][0][0].modified
-                        elif len(databases[3]) > 0:
-                            for schema_config in databases[3]:
-                                if schema_config[3]:
-                                    continue
-                                #check whether name pattern is matched or not
-                                if (
-                                    (user_config[1] and schema_config[1] and (user_config[1].startswith(schema_config[1]) or schema_config[1].startswith(user_config[1])))
-                                    or (user_config[2] and schema_config[2] and (user_config[2].startswith(schema_config[2]) or schema_config[2].startswith(user_config[2])))
-                                ):
-                                    config_values[3] = schema_config[0].value
-                                    config_items[3] = schema_config[0].name
-                                    if config_values[6] < schema_config[0].modified:
-                                        config_values[6] = schema_config[0].modified
-                                    schema_config[3] = True
-                                    break
-
-                        #try to find the password
-                        if config_values[5]:
-                            pass
-                        elif len(databases[5]) == 1 and len(databases[4]) == 1:
-                            #has only one configration,use it directly
-                            config_values[5] = databases[5][0][0].value
-                            config_items[5] = databases[5][0][0].name
-                            if config_values[6] < databases[5][0][0].modified:
-                                config_values[6] = databases[5][0][0].modified
-                        elif len(databases[5]) > 0:
-                            for pass_config in databases[5]:
-                                if pass_config[3]:
-                                    continue
-                                #check whether name pattern is matched or not
-                                if (
-                                    (user_config[1] and pass_config[1] and (user_config[1].startswith(pass_config[1]) or pass_config[1].startswith(user_config[1])))
-                                    or (user_config[2] and pass_config[2] and (user_config[2].startswith(pass_config[2]) or pass_config[2].startswith(user_config[2])))
-                                ):
-                                    config_values[5] = pass_config[0].value
-                                    config_items[5] = pass_config[0].name
-                                    if config_values[6] < pass_config[0].modified:
-                                        config_values[6] = pass_config[0].modified
-                                    pass_config[3] = True
-                                    break
-                        #try to find the dbname
-                        if config_values[2]:
-                            pass
-                        elif len(databases[2]) == 1 and len(databases[4]) == 1:
-                            #has only one configration,use it directly
-                            config_values[2] = databases[2][0][0].value
-                            config_items[2] = databases[2][0][0].name
-                            if config_values[6] < databases[2][0][0].modified:
-                                config_values[6] = databases[2][0][0].modified
-                        elif len(databases[2]) > 0:
-                            for dbname_config in databases[2]:
-                                if dbname_config[3]:
-                                    continue
-                                #check whether name pattern is matched or not
-                                if (
-                                    (user_config[1] and dbname_config[1] and (user_config[1].startswith(dbname_config[1]) or dbname_config[1].startswith(user_config[1])))
-                                    or (user_config[2] and dbname_config[2] and (user_config[2].startswith(dbname_config[2]) or dbname_config[2].startswith(user_config[2])))
-                                ):
-                                    config_values[2] = dbname_config[0].value
-                                    config_items[2] = dbname_config[0].name
-                                    if config_values[6] < dbname_config[0].modified:
-                                        config_values[6] = dbname_config[0].modified
-                                    dbname_config[3] = True
-                                    break
-
-                            if not config_values[2]:
-                                logger.warning("Can't find the dbname for dbuser({}={})".format(user_config[0].name,user_config[0].value))
-                                continue
-
-                        #try to find the port
-                        if config_values[1]:
-                            pass
-                        elif len(databases[1]) == 1 and len(databases[4]) == 1:
-                            #has only one configration,use it directly
-                            config_values[1] = int(databases[1][0][0].value) if databases[1][0][0].value else None
-                            config_items[1] = databases[1][0][0].name
-                            if config_values[6] < databases[1][0][0].modified:
-                                config_values[6] = databases[1][0][0].modified
-                        elif len(databases[1]) > 0:
-                            for port_config in databases[1]:
-                                if port_config[3]:
-                                    continue
-                                #check whether name pattern is matched or not
-                                if (
-                                    (user_config[1] and port_config[1] and (user_config[1].startswith(port_config[1]) or port_config[1].startswith(user_config[1])))
-                                    or (user_config[2] and port_config[2] and (user_config[2].startswith(port_config[2]) or port_config[2].startswith(user_config[2])))
-                                ):
-                                    config_values[1] = int(port_config[0].value) if port_config[0].value else None
-                                    config_items[1] = port_config[0].name
-                                    if config_values[6] < port_config[0].modified:
-                                        config_values[6] = port_config[0].modified
-                                    port_config[3] = True
-                                    break
-
-                        hostname,ip = parse_host(config_values[0])
-                        if config_values[1]:
-                            server = models.DatabaseServer.objects.filter(host=hostname,port=config_values[1]).first()
-                        elif models.DatabaseServer.objects.filter(host=hostname).count() == 1:
-                            server = models.DatabaseServer.objects.filter(host=hostname).first()
-                        if server:
-                            kind = server.kind
-                            if not config_values[1]:
-                                config_values[1] = server.port
-                        elif not kind:
-                            if any(name in hostname for name in ("pgsql","postgres","postgis","pg")):
-                                kind = models.DatabaseServer.POSTGRES
-                                if not config_values[1]:
-                                    config_values[1] = 5432
-                            elif any(name in hostname for name in ("mysql","my")):
-                                kind = models.DatabaseServer.MYSQL
-                                if not config_values[1]:
-                                    config_values[1] = 3306
-                            elif any(name in hostname for name in ("oracle","ora")):
-                                kind = models.DatabaseServer.ORACLE
-                                if not config_values[1]:
-                                    config_values[1] = 1521
-
-                        user_config[3] = True
-
-                        if not config_values[2]:
-                            logger.warning("Can't find the dbname ,workload({})={} ,related envs = {}".format( previous_workload.id,previous_workload.name,[i for i in config_items if i]))
-                            config_values[2] = "_default_"
-
-                        server = models.DatabaseServer.objects.filter(internal_name="{}/{}".format(previous_workload.namespace.name,hostname)).first()
-                        if not server:
-                            #not a internal database
-                            server = update_databaseserver(hostname,kind,config_values[1],config_values[6],host=config_values[0],ip=ip)
-
-                        #get or create the database
-                        database = update_database(server,config_values[2],config_values[6])
-
-                        #get or create the database user
-                        database_user = update_databaseuser(server,config_values[4],config_values[5],config_values[6])
-
-                        #creata workloaddatabase
-                        workload_database = update_workloaddatabase(previous_workload,database,database_user,config_values[5],",".join(name for name in config_items if name),config_values[6],schema=config_values[3])
-                        existing_workload_databases.append(workload_database.id)
-
-            #delete non-existing workload databases
-            del_objs = models.WorkloadDatabase.objects.filter(workload=previous_workload).exclude(id__in=existing_workload_databases).delete()
-            if del_objs[0]:
-                logger.debug("Delete the databases for workload({}),deleted objects = {}".format(previous_workload,del_objs))
-
-            #clean the existing workload databases
-            existing_workload_databases.clear()
-
-            #clean previous data
-            for field_list in databases:
-                field_list.clear()
-            previous_workload = env_obj.workload
-
-        if not env_obj.value:
-            continue
-        if env_obj.id not in processed_envs and not database_env_re.search(env_obj.name):
-            continue
-
-        if env_obj.id in processed_envs:
-            existing_workload_databases.append(processed_envs[env_obj.id])
-            continue
-
-        for field_re,field_list  in (
-            (database_server_re,databases[0]),
-            (database_port_re,databases[1]),
-            (database_user_re,databases[4]),
-            (database_dbname_re,databases[2]),
-            (database_schema_re,databases[3]),
-            (database_password_re,databases[5]),
-            (database_env_re,databases[6])
-        ):
-            m = field_re.search(env_obj.name)
-            if not m:
-                continue
-            prefix,suffix = env_obj.name.split(m.group(),1)
-            field_list.append([env_obj,prefix.lower(),suffix.lower(),False])
-            break
 
 process_func_map = {
     10:update_namespace,
+    13:update_secret,
     15:update_configmap,
     20:update_volume,
     30:update_volume_claim,
@@ -1554,12 +1262,15 @@ process_func_map = {
     120:delete_volume_claim,
     130:delete_volume,
     135:delete_configmap,
+    137:delete_secret,
     140:delete_namespace
 }
 
 def resource_type(status,resource_id):
     if status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and NAMESPACE_RE.search(resource_id):
         return 10
+    elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and SECRET_RE.search(resource_id):
+        return 13
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and CONFIGMAP_RE.search(resource_id):
         return 15
     elif status in (ResourceConsumeClient.NEW,ResourceConsumeClient.UPDATED,ResourceConsumeClient.NOT_CHANGED) and VOLUMN_RE.search(resource_id):
@@ -1592,6 +1303,8 @@ def resource_type(status,resource_id):
         return 130
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and CONFIGMAP_RE.search(resource_id):
         return 135
+    elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and SECRET_RE.search(resource_id):
+        return 137
     elif status in (ResourceConsumeClient.LOGICALLY_DELETED,ResourceConsumeClient.PHYSICALLY_DELETED) and NAMESPACE_RE.search(resource_id):
         return 140
     else:
@@ -1601,7 +1314,7 @@ def sort_key(val):
     return resource_type(val[0],val[1][0])
 
 
-def process_rancher(cluster):
+def process_rancher(cluster,lock_session):
     def _func(status,metadata,config_file):
         process_func = process_func_map[resource_type(status,metadata["resource_id"])]
         if config_file:
@@ -1609,30 +1322,14 @@ def process_rancher(cluster):
                 config = yaml.load(f.read())
             with transaction.atomic():
                 process_func(cluster,status,metadata,config)
+        lock_session.renew_if_needed()
 
     return _func
 
 def resource_filter(resource_id):
     return True if RANCHER_FILE_RE.search(resource_id) else False
 
-def clean_expired_rancher_data():
-    for func in (
-        modeldata.clean_expired_deleted_data,
-        modeldata.clean_orphan_projects,
-        modeldata.clean_orphan_namespaces,
-        modeldata.check_aborted_harvester,
-        modeldata.clean_expired_harvester,
-        modeldata.clean_unused_oss,
-        modeldata.clean_unreferenced_vulnerabilities,
-        modeldata.clean_unreferenced_images,
-        modeldata.set_workload_itsystem
-    ):
-        try:
-            func()
-        except:
-            logger.error("Failed to call method({}) to clean data.{}".format(func,traceback.format_exc()))
-
-def _harvest(cluster,reconsume=False):
+def _harvest(cluster,lock_session,reconsume=False,lock_exception=None):
     harvest_result = [None,False]
     def _post_consume(client_consume_status,consume_result):
         now = timezone.localtime()
@@ -1662,53 +1359,54 @@ def _harvest(cluster,reconsume=False):
             return harvest_result
         
         try:
-            with LockSession(get_client(cluster.name),3000,2000) as lock_session:
-                now = timezone.now()
-                result = get_client(cluster.name).consume(process_rancher(cluster),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False,f_post_consume=_post_consume)
-                #analysis the workload env.
-                logger.debug("Begin to analysis workload env")
-                analysis_workloadenv(cluster,now)
-                cluster.refreshed = timezone.now()
-                if result[1]:
-                    if result[0]:
-                        message = """Failed to refresh cluster({}),
-        {} configuration files were consumed successfully.
-        {}
-        {} configuration files were failed to consume
-        {}"""
-                        message = message.format(
-                            cluster.name,
-                            len(result[0]),
-                            "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
-                            len(result[1]),
-                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
-                        )
-                    else:
-                        message = """Failed to refresh cluster({}),{} configuration files were failed to consume
-        {}"""
-                        message = message.format(
-                            cluster.name,
-                            len(result[1]),
-                            "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
-                        )
-                elif result[0]:
-                    message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
-        {}"""
+            #try to get the lock here and relase the lock at the end
+            if lock_exception:
+                raise lock_exception
+            now = timezone.now()
+            result = get_client(cluster.name).consume(process_rancher(cluster,lock_session),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False,f_post_consume=_post_consume)
+            #analysis the workload env.
+            logger.debug("Begin to analysis workload env")
+            cluster.updated = timezone.now()
+            if result[1]:
+                if result[0]:
+                    message = """Failed to refresh cluster({}),
+    {} configuration files were consumed successfully.
+    {}
+    {} configuration files were failed to consume
+    {}"""
                     message = message.format(
                         cluster.name,
                         len(result[0]),
-                        "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
+                        "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]]),
+                        len(result[1]),
+                        "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
                     )
                 else:
-                    message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
-        
-                harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
+                    message = """Failed to refresh cluster({}),{} configuration files were failed to consume
+    {}"""
+                    message = message.format(
+                        cluster.name,
+                        len(result[1]),
+                        "\n        ".join(["Failed to harvest {} resource '{}'.{}".format(resource_status_name,resource_ids,msg) for resource_status,resource_status_name,resource_ids,msg in result[1]])
+                    )
+            elif result[0]:
+                message = """Succeed to refresh cluster({}), {} configuration files were consumed successfully.
+    {}"""
+                message = message.format(
+                    cluster.name,
+                    len(result[0]),
+                    "\n        ".join(["Succeed to harvest {} resource '{}'".format(resource_status_name,resource_ids) for resource_status,resource_status_name,resource_ids in result[0]])
+                )
+            else:
+                message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
+    
+            harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
 
-                if len(result[0]) or len(result[1]):
-                    cluster.added_by_log = False
-                    cluster.save(update_fields=["added_by_log"])
-                harvest_result[0] = result
-                return harvest_result
+            if len(result[0]) or len(result[1]):
+                cluster.added_by_log = False
+                cluster.save(update_fields=["added_by_log"])
+            harvest_result[0] = result
+            return harvest_result
         except exceptions.AlreadyLocked as ex: 
             harvester.status = models.Harvester.SKIPPED
             message = "The previous harvest process is still running.{}".format(str(ex))
@@ -1729,23 +1427,78 @@ def _harvest(cluster,reconsume=False):
         harvester.last_heartbeat = harvester.endtime
         harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
 
-def harvest(cluster,reconsume=False):
-    harvest_result = _harvest(cluster,reconsume=reconsume)
-    if harvest_result[1]:
-        clean_expired_rancher_data()
+def harvest(cluster,lock_session,reconsume=False,lock_exception=None):
+    harvest_result = _harvest(cluster,lock_session,reconsume=reconsume,lock_exception=lock_exception)
 
     return harvest_result[0]
 
 def harvest_all(reconsume=False):
     consume_results = []
+    now = timezone.now()
     need_clean = False
-    for cluster in models.Cluster.objects.filter(added_by_log=False):
-        harvest_result = _harvest(cluster,reconsume=reconsume)
-        if harvest_result[1]:
-            need_clean = True
-        consume_results.append((cluster,harvest_result[0]))
+    lock_sessions = {}
 
-    if need_clean:
-        clean_expired_rancher_data()
+    def _renew_locks():
+        for cluster,lock_session in lock_sessions:
+            lock_session.renew_if_needed()
+    try:
+        lock_exception = None
+        
+        #try to acquire the lock for all clusters before processing
+        for cluster in models.Cluster.objects.filter(added_by_log=False):
+            try:
+                lock_session = LockSession(get_client(cluster.name),3000,1500)
+                lock_sessions[cluster] = lock_session
+            except exceptions.AlreadyLocked as ex: 
+                #can't acquire one cluster's lock. and quit the process
+                lock_exception = ex
+                break
 
-    return consume_results
+        #harvest the changed configurations
+        for cluster in models.Cluster.objects.filter(added_by_log=False):
+            harvest_result = _harvest(cluster,lock_sessions.get(cluster),reconsume=reconsume,lock_exception=lock_exception)
+            if harvest_result[1]:
+                need_clean = True
+            consume_results.append((cluster,harvest_result[0]))
+    
+        if lock_exception:
+            #found lock exception, quit the process
+            return consume_results
+
+        if need_clean:
+            for func in (
+                modeldata.clean_expired_deleted_data,
+                modeldata.clean_orphan_projects,
+                modeldata.clean_orphan_namespaces,
+                modeldata.check_aborted_harvester,
+                modeldata.clean_expired_harvester,
+                modeldata.clean_unused_oss,
+                modeldata.clean_unreferenced_vulnerabilities,
+                modeldata.clean_unreferenced_images,
+            ):
+                try:
+                    func()
+                except:
+                    logger.error("Failed to call method({}) to clean data.{}".format(func,traceback.format_exc()))
+                _renew_locks()
+
+        #sync dependent tree
+        scan_module = models.EnvScanModule.objects.filter(active=True).order_by("-modified").defer("sourcecode").first()
+        wl = models.Workload.objects.all().order_by("-resource_scaned").first()
+        if scan_module and wl and wl.resource_scaned < scan_module.modified:
+            modeldata.sync_dependent_tree(rescan=False,cluster_lock_sessions=lock_sessions.items())
+        else:
+            modeldata.sync_dependent_tree(workload_changetime=now,rescan=False,cluster_lock_sessions=lock_sessions.items())
+        #set workload's itsystem
+        modeldata.set_workload_itsystem()
+
+        return consume_results
+    finally:
+        #release the locks
+        for cluster,lock_session in lock_sessions.items():
+            try:
+                lock_session.release()
+            except Exception as ex:
+                logger.error("Failed to release the lock.{}".format(str(ex)))
+
+
