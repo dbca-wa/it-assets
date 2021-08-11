@@ -35,7 +35,7 @@ def create_image_from_workload(apps,schema_editor):
         cursor.execute("select id,image from {} where containerimage_id is null".format(models.Workload._meta.db_table))
         for row in cursor.fetchall():
             print("Create image from workload({})".format(row[0]))
-            containerimage,created = models.ContainerImage.parse_imageid(row[1],scan=False)
+            containerimage= models.ContainerImage.parse_imageid(row[1],scan=False)
             cursor.execute("update {0} set containerimage_id={2} where id={1}".format(models.Workload._meta.db_table,row[0],containerimage.id))
 
 def tansform_other_config_to_json(apps,schema_editor):
@@ -48,7 +48,7 @@ def tansform_other_config_to_json(apps,schema_editor):
 
         cursor.execute("select id,other_config_old from {}".format(models.WorkloadVolume._meta.db_table))
         for row in cursor.fetchall():
-            if not row[1]:
+            if row[1]:
                 other_config = json.dumps(yaml.load(row[1]))
             else:
                 other_config = 'null'
@@ -62,6 +62,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AlterField(
+            model_name='ContainerImage',
+            name='account',
+            field=django_models.CharField(max_length=128,editable=False, null=True),
+        ),
+        migrations.AlterField(
+            model_name='ContainerImage',
+            name='name',
+            field=django_models.CharField(max_length=64,editable=False, null=True),
+        ),
         #create imagefamily from image
         migrations.RunPython(create_imagefamily_from_image),
         #create image from workload
