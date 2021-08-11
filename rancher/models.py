@@ -1192,19 +1192,19 @@ class Workload(DeletedMixin,models.Model):
                     del_workload_ids.append(w.id)
                 else:
                     workload_ids.append(w.id)
-            if workload_ids or del_workload_ids:
-                dependency,dep_changed =_update_or_create(
-                    workload,
-                    WorkloadDependency.IMAGEFAMILY,
-                    workload.containerimage.imagefamily.id,
-                    workload.containerimage.imagefamily,
-                    workload.containerimage.imagefamily,
-                    workload_ids,
-                    del_workload_ids,
-                    update_by_request
-                )
-                dependency_ids.add(dependency.id)
-                dependency_changed = dependency_changed or dep_changed
+
+            dependency,dep_changed =_update_or_create(
+                workload,
+                WorkloadDependency.IMAGEFAMILY,
+                workload.containerimage.imagefamily.id,
+                workload.containerimage.imagefamily,
+                workload.containerimage.imagefamily,
+                workload_ids,
+                del_workload_ids,
+                update_by_request
+            )
+            dependency_ids.add(dependency.id)
+            dependency_changed = dependency_changed or dep_changed
     
             #find all resource dependencies
             dependency = None
@@ -1261,8 +1261,10 @@ class Workload(DeletedMixin,models.Model):
                                 config_source = WorkloadResource.SERVICE,
                                 resource_type=resource.resource_type,resource_id=resource_id
                             ).exclude(workload=workload)
-    
+                        is_local_db = False
+                        #assume the database is local database
                         for dep_resource in qs:
+                            is_local_db = True
                             if dep_resource.workload.deleted:
                                 if dep_resource.workload.id not in del_workload_ids:
                                     del_workload_ids.append(dep_resource.workload.id)
@@ -1288,7 +1290,15 @@ class Workload(DeletedMixin,models.Model):
                                 else:
                                     if dep_res2.workload.id not in workload_ids:
                                         workload_ids.append(dep_res2.workload.id)
-
+                        if not is_local_db:
+                            #it is a shared database.
+                            for dep_resource in WorkloadResource.objects.filter(resource_type=resource.resource_type,resource_id=resource.resource_id).exclude(workload=workload):
+                                if dep_resource.workload.deleted:
+                                    if dep_resource.workload.id not in del_workload_ids:
+                                        del_workload_ids.append(dep_resource.workload.id)
+                                else:
+                                    if dep_resource.workload.id not in workload_ids:
+                                        workload_ids.append(dep_resource.workload.id)
                 else:
                     for dep_resource in WorkloadResource.objects.filter(resource_type=resource.resource_type,resource_id=resource.resource_id).exclude(workload=workload):
                         if dep_resource.workload.deleted:
@@ -1383,16 +1393,16 @@ class Workload(DeletedMixin,models.Model):
 
             dep_datas = dependency_cache.get(workload.id)
             if not dep_datas:
-                if workload.containerimage.imagefamily == self.containerimage.imagefamily:
-                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).order_by("dependency_type","dependency_id"))
-                else:
-                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).exclude(dependency_type=WorkloadDependency.IMAGEFAMILY).order_by("dependency_type","dependency_id"))
+                dep_datas = list(WorkloadDependency.objects.filter(workload=workload).order_by("dependency_type","dependency_id"))
                 dependency_cache[workload.id] = dep_datas
 
             tree_path.append((workload.id,workload.containerimage.imagefamily.id))
 
             workload_dep_trees = {}
             for dep in dep_datas:
+                if dep.dependency_type == WorkloadDependency.IMAGEFAMILY and workload.containerimage.imagefamily != self.containerimage.imagefamily:
+                    continue
+
                 for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
                     if (workload.id,dep_workload_id) in resolved_workloads:
                         continue
@@ -1482,10 +1492,7 @@ class Workload(DeletedMixin,models.Model):
 
             dep_datas = dependency_cache.get(workload.id)
             if not dep_datas:
-                if workload.containerimage.imagefamily == self.containerimage.imagefamily:
-                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).order_by("dependency_type","dependency_id"))
-                else:
-                    dep_datas = list(WorkloadDependency.objects.filter(workload=workload).exclude(dependency_type=WorkloadDependency.IMAGEFAMILY).order_by("dependency_type","dependency_id"))
+                dep_datas = list(WorkloadDependency.objects.filter(workload=workload).order_by("dependency_type","dependency_id"))
                 dependency_cache[workload.id] = dep_datas
 
             tree_path.append((workload.id,workload.containerimage.imagefamily.id))
@@ -1493,13 +1500,19 @@ class Workload(DeletedMixin,models.Model):
             dependencies = []
             dep_tree[3] = dependencies
             workload_dep_trees = {}
+            sub_dep_trees = None
             for dep in dep_datas:
+                if dep.dependency_type == WorkloadDependency.IMAGEFAMILY and workload.containerimage.imagefamily != self.containerimage.imagefamily:
+                    continue
+
                 if (dep.dependency_type,dep.dependency_id) in resolved_dependencies:
                     #already resolved
                     continue
                 new_resolved_dependencies.add((dep.dependency_type,dep.dependency_id))
 
                 if not dependencies or dependencies[-1][0] != dep.dependency_type:
+                    if sub_dep_trees:
+                        sub_dep_trees.sort(key=lambda o:"{1}-{0}".format(o[1],0 if o[2] else 1))
                     sub_dep_trees = []
                     dependencies.append((dep.dependency_type,dep.get_dependency_type_display(),[(dep.dependency_pk,dep.dependency_display,sub_dep_trees)]))
                     for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
@@ -1517,6 +1530,8 @@ class Workload(DeletedMixin,models.Model):
                         tasks.append((dep_workload,tree_path,sub_dep_tree))
                         sub_dep_trees.append(sub_dep_tree)
                 elif dependencies[-1][2][-1][0] != dep.dependency_pk:
+                    if sub_dep_trees:
+                        sub_dep_trees.sort(key=lambda o:"{1}-{0}".format(o[1],0 if o[2] else 1))
                     sub_dep_trees = []
                     dependencies[-1][2].append((dep.dependency_pk,dep.dependency_display,sub_dep_trees))
                     for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
@@ -1553,6 +1568,9 @@ class Workload(DeletedMixin,models.Model):
                         sub_dep_tree = [dep_workload_id,dep_workload_name,False if dep_workload.deleted else True,None]
                         tasks.append((dep_workload,tree_path,sub_dep_tree))
                         sub_dep_trees.append(sub_dep_tree)
+
+            if sub_dep_trees:
+                sub_dep_trees.sort(key=lambda o:"{1}-{0}".format(o[1],0 if o[2] else 1))
 
 
         tree_path_len = 0
