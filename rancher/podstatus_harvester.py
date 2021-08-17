@@ -246,7 +246,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
             context["namespaces"] = context.get("namespaces",{})
             context["workloads"] = context.get("workloads",{})
 
-            #consume nginx config file
+            #consume pod status file
             result = get_client().consume(process_status(context))
     
             if result[1]:

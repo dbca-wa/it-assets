@@ -1,14 +1,18 @@
 from datetime  import datetime,timedelta
+import re
 import logging
 import traceback
 
 from django.db.models import F,Q
+from django.db import transaction
 from django.conf import settings
 from django.utils import timezone
 
-from data_storage import LockSession
+from data_storage import LockSession,exceptions
 
 from . import models
+from . import utils
+from registers.models import ITSystem
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +77,11 @@ def reset_workload_latestcontainers(sync=True,workloads=None):
     else:
         _reset_workload_latestcontainers(workloads)
 
+def reset_containerimage_workloads():
+    for img in models.ContainerImage.objects.select_related("imagefamily").only("imagefamily","tag","workloads").all():
+        logger.debug("Processing container image({1}<{0}>)".format(img.id,img))
+        img.workloads = models.Workload.objects.filter(containerimage=img).only("name").count()
+        img.save(update_fields=["workloads"])
 
 def reset_project_property():
     """
@@ -311,6 +320,11 @@ def clean_expired_deleted_data():
     deleted_rows = models.Workload.objects.filter(deleted__lt=expired_time).delete()
     logger.info("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
 
+    deleted_rows = models.Secret.objects.filter(deleted__lt=expired_time).delete()
+    logger.info("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
+
+    deleted_rows = models.ConfigMap.objects.filter(deleted__lt=expired_time).delete()
+    logger.info("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
 
     deleted_rows = models.PersistentVolumeClaim.objects.filter(volume__deleted__lt=expired_time).delete()
     logger.info("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
@@ -532,3 +546,257 @@ def reparse_image_scan_result(scan=False):
     for image in qs:
         image.scan(rescan=False,reparse=True)
         print("Succeed to parse the scan result of the container image '{}'".format(image.imageid))
+
+def set_workload_itsystem(refresh=False,qs=None):
+    itsystems = list(ITSystem.objects.all().only("name","acronym","extra_data"))
+
+    if not qs:
+        qs = models.Workload.objects.all()
+        if not refresh:
+            qs = qs.filter(itsystem__isnull=True)
+
+    processed_ids = set()
+    #update web server depolyment first
+    for workload in qs.filter(kind=models.Workload.DEPLOYMENT):
+        itsystem = None
+        version = None
+        is_webserver = False
+        for listener in models.WorkloadListening.objects.filter(workload=workload,ingress_rule__isnull=False).order_by("ingress_rule__hostname"):
+            hostname = listener.ingress_rule.hostname
+            is_webserver = True
+            for obj in itsystems:
+                #if obj.name.lower().startswith("parkstay"):
+                #    import ipdb;ipdb.set_trace()
+                if isinstance(obj.extra_data,str):
+                    #extra data  is not a dictionary, changee it to dictionary
+                    obj.extra_data = utils.parse_json(obj.extra_data)
+                    obj.save(update_fields=["extra_data"])
+
+                if obj.extra_data and hostname in (obj.extra_data.get("url_synonyms") or []):
+                    #hostname in url_synonyms; this is the itsystem linked to the workload
+                    itsystem = obj
+                    version = "prod"
+                    break
+                synonyms = obj.extra_data.get("synonyms") if obj.extra_data else None
+                if not synonyms and obj.acronym:
+                    #synonyms is not configured, use "acronym" as the default 'synonyms'
+                    synonyms = [obj.acronym]
+
+                if not  synonyms:
+                    continue
+    
+                synonyms.sort(reverse=True,key=lambda o:len(o))
+                for synonym in synonyms:
+                    system_re = re.compile( "{}(?P<api>api)?(-(?P<version>[a-z0-9]+(-[a-z0-9]+)*))?\.(dbca|dpaw)\.wa\.gov\.au".format(synonym.lower()))
+                    m = system_re.search(hostname)
+                    if m:
+                        #the host name matchs the synonym. 
+                        if itsystem:
+                            if len(m.group("version")) < len(version):
+                                #found another itsystem which version's length is less than the previous found it system. use the current it system as the it system linked to the workload
+                                itsystem = obj
+                                version = m.group("version")
+                        else:
+                            #didn't find a matched it system, use this as the it system linked to the workload
+                            itsystem = obj
+                            version = m.group("version")
+                        break
+            if itsystem:
+                break
+
+
+        if is_webserver:
+            processed_ids.add(workload.id)
+            if workload.itsystem != itsystem:
+                workload.itsystem = itsystem
+                workload.save(update_fields=["itsystem"])
+
+            if itsystem:
+                logger.debug("Find the itsystem({2}) for workoad({0}<{1}>)".format(workload,workload.id,itsystem))
+            else:
+                logger.debug("Can't find the itsystem for workoad({0}<{1}>)".format(workload,workload.id))
+
+    #update other workloads
+    for workload in qs.exclude(id__in=processed_ids):
+        #find the itsysetm of a workload from the web server workload which is belonging to the same image family 
+        wl = models.Workload.objects.filter(containerimage__imagefamily=workload.containerimage.imagefamily,itsystem__isnull=False).first()
+        if wl:
+            workload.itsystme = wl.itsystem
+            workload.save(update_fields=["itsystem"])
+            logger.debug("Find the itsystem({2}) for workoad({0}<{1}>)".format(workload,workload.id,itsystem))
+            continue
+
+        #set the itsystem of a database workoad to the it system of the web server workoad which is belonging to the same workspace
+        #find the local db resource
+        resources =  list(o for o in models.WorkloadResource.objects.filter(workload=workload,resource_type__gte=models.EnvScanModule.DATABASES,resource_type__lt=(models.EnvScanModule.DATABASES + 10),config_source=models.WorkloadResource.SERVICE) if "." not in o.resource_id and o.workload.name in o.resource_id)
+
+        if resources:
+            db_res = resources[0]
+            #it is a database workload
+            res = models.WorkloadResource.objects.filter(
+                workload__namespace=workload.namespace,
+                resource_type=db_res.resource_type,
+                resource_id__startswith=db_res.resource_id,
+                workload__itsystem__isnull=False
+            ).exclude(config_source=models.WorkloadResource.SERVICE).first()
+            if res:
+                workload.itsystem = res.workload.itsystem
+                workload.save(update_fields=["itsystem"])
+                logger.debug("Find the itsystem({2}) for workoad({0}<{1}>)".format(workload,workload.id,res.workload.itsystem))
+                continue
+
+        logger.debug("Can't find the itsystem for workoad({0}<{1}>)".format(workload,workload.id))
+
+def release_rancher_storage_lock(cluster=None):
+    from .rancher_harvester import get_client
+    qs = models.Cluster.objects.all()
+    if cluster:
+        if isinstance(cluster,Cluster):
+            qs = qs.filter(cluster_id = cluster.id)
+        else:
+            qs = qs.filter(cluster_id = cluster)
+
+    for cluster in models.Cluster.objects.filter(added_by_log=False):
+        get_client(cluster.name).release_lock()
+
+def update_workload_dependent_tree(workload,wl_cache={},dependency_cache={},renew_locks=None):
+    dep_wls = [workload]
+    dep_ids = set()
+    dep_ids.add(workload.id)
+    populate_time = timezone.now()
+
+    def _update_tree(wl):
+        tree = models.WorkloadDependentTree.objects.filter(workload=wl).defer("restree","wltree").first()
+
+        if tree and tree.wltree_updated and tree.wltree_updated >= wl.dependency_changed and (not tree.wltree_update_requested or tree.wltree_update_requested < tree.wltree_updated):
+            logger.debug("The workload dependent tree for workload({}<{}>) has been populated before, ignore".format(wl,wl.id))
+            if tree.wltree_update_requested:
+                tree.wltree_update_requested = None
+                tree.save(update_fields=["wltree_update_requested"])
+
+            return
+
+        #workload dependent tree not populated before or outdated or have a update request
+        logger.debug("Populate workload dependent tree for workload({}<{}>)".format(wl,wl.id))
+        #populate the workload dependent tree
+        tree = wl.populate_workload_dependent_tree(depth=3,workload_cache=wl_cache,dependency_cache=dependency_cache,tree=tree,populate_time=populate_time)
+        if renew_locks:
+            renew_locks()
+
+        #the update is not triggered by a update request, find all dependent workloads and request to update their workload dependent tree if required
+        for wlid in tree.wltree_wls:
+            dep_wl = wl_cache.get(wlid)
+            if not dep_wl:
+                dep_wl = models.Workload.objects.get(id=wlid)
+                wl_cache[dep_wl.id] = dep_wl
+
+            if dep_wl.id not in dep_ids:
+                dep_wls.append(dep_wl)
+                dep_ids.add(dep_wl.id)
+
+    while dep_wls:
+        _update_tree(dep_wls.pop(0))
+
+def update_resource_dependent_tree(workload,wl_cache={},dependency_cache={},renew_locks=None):
+    dep_wls = [workload]
+    dep_ids = set()
+    dep_ids.add(workload.id)
+    populate_time = timezone.now()
+    def _update_tree(wl):
+        tree = models.WorkloadDependentTree.objects.filter(workload=wl).defer("restree","wltree").first()
+
+        if tree and tree.restree_updated and tree.restree_updated >= wl.dependency_changed and (not tree.restree_update_requested or tree.restree_update_requested < tree.restree_updated):
+            logger.debug("The resource dependent tree for workload({}<{}>) has been populated before, ignore".format(wl,wl.id))
+            if tree.restree_update_requested:
+                tree.restree_update_requested = None
+                tree.save(update_fields=["restree_update_requested"])
+
+            return
+
+        logger.debug("Populate resource dependent tree for workload({}<{}>)".format(wl,wl.id))
+        #workload dependent tree not populated before or outdated or have a update request
+        #populate the workload dependent tree
+        tree = wl.populate_resource_dependent_tree(depth=1,workload_cache=wl_cache,dependency_cache=dependency_cache,tree=tree,populate_time=populate_time)
+        if renew_locks:
+            renew_locks()
+        #the update is not triggered by a update request, find all dependent workloads and request to update their workload dependent tree if required
+        for wlid in tree.restree_wls:
+            dep_wl = wl_cache.get(wlid)
+            if not dep_wl:
+                dep_wl = models.Workload.objects.get(id=wlid)
+                wl_cache[dep_wl.id] = dep_wl
+
+            if dep_wl.id not in dep_ids:
+                dep_wls.append(dep_wl)
+                dep_ids.add(dep_wl.id)
+    
+    while dep_wls:
+        _update_tree(dep_wls.pop(0))
+
+
+def sync_dependent_tree(workload_changetime=None,cluster_lock_sessions = None,rescan=False,rescan_resource=False,rescan_dependency=False):
+    """
+    Sync the dependent tree if required.
+    This function is synchronized against the rancher configuration storage 
+    cluster_lock_sessions is a list of tuple(cluster, cluster_lock_session)
+    workload_changetime if not none, the workloads which were changed after latest_workload_changetime will be processed
+    """
+    from .rancher_harvester import get_client
+    release_lock = False
+    try:
+        if not cluster_lock_sessions:
+            cluster_lock_sessions = []
+            release_lock = True
+            for cluster in models.Cluster.objects.filter(added_by_log=False):
+                cluster_lock_sessions.append((cluster,LockSession(get_client(cluster.name),3000,1500)))
+
+        def _renew_locks():
+            for cluster,lock_session in cluster_lock_sessions:
+                lock_session.renew_if_needed()
+    
+        scan_time = timezone.now()
+        scan_modules = list(models.EnvScanModule.objects.filter(active=True).order_by("-priority"))
+        qs = models.Workload.objects.filter(cluster__in=[o[0] for o in cluster_lock_sessions])
+        if workload_changetime:
+            qs = qs.filter(Q(updated__gte=workload_changetime) | Q(deleted__gte=workload_changetime))
+        qs = qs.order_by("cluster__name","namespace__name","name")
+    
+        wl_cache = {}
+        dependency_cache = {}
+        wls = []
+        #scan resources if required
+        for wl in qs:
+            logger.debug("Scan resource for workload({}<{}>)".format(wl,wl.id))
+            try:
+                wl.scan_resource(rescan = rescan_resource,scan_modules = scan_modules,scan_time=scan_time)
+            except:
+                logger.error("Failed to scan the resource of the workload({}).{}".format(wl,traceback.format_exc()))
+            
+            _renew_locks()
+            wl_cache[wl.id] = wl
+            wls.append(wl)
+    
+        #rescan dependency if required
+        for wl in wls:
+            logger.debug("Scan dependency for workload({}<{}>)".format(wl,wl.id))
+            wl.scan_dependency(rescan=rescan_dependency,f_renew_lock=_renew_locks)
+
+
+        # repopulate the dependent tree 
+        dep_wlids = set()
+        dep_wls = []
+        now = timezone.now()
+        for wl in wls:
+            dependency_cache.clear()
+            update_workload_dependent_tree(wl,wl_cache=wl_cache,dependency_cache=dependency_cache,renew_locks=_renew_locks)
+            update_resource_dependent_tree(wl,wl_cache=wl_cache,dependency_cache=dependency_cache,renew_locks=_renew_locks)
+    finally:
+        #release the locks
+        if release_lock:
+            for cluster,lock_session in cluster_lock_sessions:
+                try:
+                    lock_session.release()
+                except Exception as ex:
+                    logger.error("Failed to release the lock.{}".format(str(ex)))
+
+

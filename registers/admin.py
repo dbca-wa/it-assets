@@ -5,17 +5,29 @@ from django.contrib import messages
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
 from django.core.mail import EmailMultiAlternatives
 from django.urls import path
+
+from django_json_widget.widgets import JSONEditorWidget
+
 from pytz import timezone
 
 from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
 from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
 
+class RequestMixin(object):
+    request = None
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        self.request = request
+        return qs
 
 class ITSystemForm(forms.ModelForm):
     class Meta:
         model = ITSystem
         exclude = []
+        widgets = {
+            'extra_data': JSONEditorWidget
+        }
 
     def clean_biller_code(self):
         # Validation on the biller_code field - must be unique (ignore null values).
@@ -26,7 +38,7 @@ class ITSystemForm(forms.ModelForm):
 
 
 @register(ITSystem)
-class ITSystemAdmin(ModelDescMixin, ModelAdmin):
+class ITSystemAdmin(RequestMixin,ModelDescMixin, ModelAdmin):
 
     class PlatformFilter(SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for platform.
@@ -74,7 +86,7 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
     )
     raw_id_fields = (
         'owner', 'technology_custodian', 'information_custodian', 'cost_centre', 'bh_support', 'ah_support')
-    fieldsets = (
+    _fieldsets = [
         ('Overview', {
             'description': '<span class="errornote">Data in these fields is maintained in SharePoint.</span>''',
             'fields': (
@@ -117,11 +129,26 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
                 'retention_comments',
             ),
         }),
-    )
+    ]
+    _fieldsets_security = _fieldsets + [(
+        'Meta Data', {
+            'description': '<span class="errornote">Data in these fields is used as metadata.</span>',
+            'fields': (
+                'extra_data',
+            ),
+        }
+    )]
     # Override the default reversion/change_list.html template to add export links:
     change_list_template = 'admin/registers/itsystem/change_list.html'
     form = ITSystemForm  # Use the custom ModelForm.
     save_on_top = True
+
+    @property
+    def fieldsets(self):
+        if self.request and self.request.user.groups.filter(name="SECURITY").exists():
+            return self._fieldsets_security
+        else:
+            return self._fieldsets
 
     def get_urls(self):
         urls = super(ITSystemAdmin, self).get_urls()

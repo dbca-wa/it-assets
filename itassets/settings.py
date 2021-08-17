@@ -33,6 +33,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'django_json_widget',
     # Third-party applications:
     'django_extensions',
     'corsheaders',
@@ -129,6 +130,8 @@ RANCHER_STORAGE_CONNECTION_STRING = env("RANCHER_STORAGE_CONNECTION_STRING", Non
 RANCHER_CONTAINER = env("RANCHER_CONTAINER", None)
 RANCHER_RESOURCE_NAME = env("RANCHER_RESOURCE_NAME", None)
 RANCHER_MANAGEMENT_URL = env("RANCHER_MANAGEMENT_URL", default="https://rks.dbca.wa.gov.au")
+RANCHER_MAX_CONSUME_TIME = env("RANCHER_MAX_CONSUME_TIME", default=3000)
+
 CLUSTERS_MANAGEMENT_URL = {}
 
 def GET_CLUSTER_MANAGEMENT_URL(clustername):

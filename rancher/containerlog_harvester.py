@@ -32,7 +32,7 @@ log_levels = [
     (re.compile("(^|\s+)(level|lvl)\s*=\s*info\s+",re.IGNORECASE),(models.ContainerLog.INFO,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*warn(ing)?\s+",re.IGNORECASE),(models.ContainerLog.WARNING,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*error\s+",re.IGNORECASE),(models.ContainerLog.ERROR,True)),
-    (re.compile("(exception|error|failed|wrong|err|traceback)\s+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
+    (re.compile("(exception|error|failed|wrong|err|traceback)[~a-zA-Z0-9]+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
 def get_client(cache=True):
@@ -385,7 +385,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 context["resourceclients"] = context.get("resourceclients",{})
                 context["clusters"] = context.get("clusters",{})
                 context["workloads"] = context.get("workloads",{})
-                #consume nginx config file
+                #consume container log file
                 result = get_client().consume(process_status(context),f_post_consume=_post_consume)
         
                 if result[1]:
