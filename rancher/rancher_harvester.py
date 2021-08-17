@@ -95,7 +95,7 @@ def update_namespace(cluster,status,metadata,config):
     project_name = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
     name = get_property(config,("metadata","name"))
     if not name:
-        return
+        return None
 
     """
     project_id = get_property(config,("metadata","labels","field.cattle.io/projectId"))
@@ -146,6 +146,8 @@ def update_namespace(cluster,status,metadata,config):
                 cluster.clusterid = cluster_id
                 cluster.save(update_fields=["clusterid"])
 
+    return obj
+
 def delete_namespace(cluster,status,metadata,config):
     name = config["metadata"]["name"]
     
@@ -153,6 +155,8 @@ def delete_namespace(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete namespace({}.{})".format(cluster,name))
+
+    return obj
 
 def update_secret(cluster,status,metadata,config):
     project_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
@@ -168,7 +172,7 @@ def update_secret(cluster,status,metadata,config):
             namespace = None
         else:
             #namespace-scope secret created by system from project-scope secret
-            return
+            return None
     else:
         try:
             namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
@@ -248,6 +252,8 @@ def update_secret(cluster,status,metadata,config):
     else:
         logger.debug("The secret({}) is not changed".format(obj))
 
+    return obj
+
         
 def delete_secret(cluster,status,metadata,config):
     project_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
@@ -263,7 +269,7 @@ def delete_secret(cluster,status,metadata,config):
             namespace = None
         else:
             #namespace-scope secret created by system from project-scope secret
-            return
+            return None
     else:
         try:
             namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
@@ -284,6 +290,8 @@ def delete_secret(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete secret({}.{})".format(cluster,obj))
+
+    return obj
 
 def update_configmap(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -350,18 +358,24 @@ def update_configmap(cluster,status,metadata,config):
     else:
         logger.debug("The configmap({}) is not changed".format(obj))
 
+    return obj
+
         
 def delete_configmap(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
     
     name = config["metadata"]["name"]
     obj = models.ConfigMap.objects.filter(cluster=cluster,namespace=namespace,name=name).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete configmap({}.{})".format(cluster,obj))
+
+    return obj
 
 def _get_ingress_protocol(val):
     if "http" in val:
@@ -462,16 +476,23 @@ def update_ingress(cluster,status,metadata,config):
     else:
         logger.debug("The models.Ingress({}) is not changed".format(obj))
 
+    return obj
+
 def delete_ingress(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     obj = models.Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).first() 
     if obj:
         obj.logically_delete()
         logger.info("Logically delete models.Ingress({}.{})".format(namespace,name))
+
+    return obj
 
 def _get_volume_uuid(val):
     if val.startswith("pvc-"):
@@ -519,6 +540,7 @@ def update_volume(cluster,status,metadata,config):
         obj = models.PersistentVolume.objects.get(cluster=cluster,name=name)
     except ObjectDoesNotExist as ex:
         obj = models.PersistentVolume(cluster=cluster,name=name)
+
     update_fields = set_fields_from_config(obj,config,[
         ("deleted",None,lambda obj:None),
         ("api_version","apiVersion",None),
@@ -545,6 +567,8 @@ def update_volume(cluster,status,metadata,config):
     else:
         logger.debug("The models.PersistentVolume({}) is not changed".format(obj))
 
+    return obj
+
 
 def delete_volume(cluster,status,metadata,config):
     name = config["metadata"]["name"]
@@ -552,6 +576,8 @@ def delete_volume(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically Delete models.PersistentVolume({}.{})".format(cluster,name))
+
+    return obj
 
 def update_volume_claim(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -586,16 +612,23 @@ def update_volume_claim(cluster,status,metadata,config):
     else:
         logger.debug("The models.PersistentVolumeClaim({}) is not changed".format(obj))
 
+    return obj
+
 def delete_volume_claim(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     obj = models.PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=namespace,name=name).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete models.PersistentVolumeClaim({}.{})".format(namespace,name))
+
+    return obj
 
 env_var_re = re.compile("^[a-zA-Z0-9_\-\.]+$")
 def update_workload_envs(workload,config,env_configs,envfrom_configs=None):
@@ -701,7 +734,14 @@ def update_workload_envs(workload,config,env_configs,envfrom_configs=None):
             #env from secret
             prefix = envfrom_config.get("prefix") or None
             secret_name = envfrom_config["secretRef"]["name"]
-            secret = models.Secret.objects.get(cluster=workload.cluster,name=secret_name)
+            try:
+                secret = models.Secret.objects.get(cluster=workload.cluster,project=workload.namespace.project,name=secret_name)
+            except ObjectDoesNotExist as ex:
+                if workload.namespace.project:
+                    logger.error("Secret({}.{}>) doesnot exist".format(workload.namespace.project,secret_name))
+                else:
+                    logger.error("Secret({}.{}>) doesnot exist".format(workload.namespace.cluster,secret_name))
+                raise
             secretitem_qs = models.SecretItem.objects.filter(secret=secret)
             if prefix:
                 secretitem_qs = secretitem_qs.filter(name__startswith=prefix)
@@ -1009,17 +1049,24 @@ def update_deployment(cluster,status,metadata,config):
     else:
         logger.debug("The deployment workload({}) is not changed".format(obj))
 
+    return obj
+
 def delete_deployment(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = config["kind"]
     obj = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the deployment workload({2}:{0}.{1})".format(namespace,name,kind))
+
+    return obj
 
 def update_cronjob(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -1081,17 +1128,24 @@ def update_cronjob(cluster,status,metadata,config):
     else:
         logger.debug("The cronjob workload({}) is not changed".format(obj))
 
+    return obj
+
 def delete_cronjob(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = config["kind"]
     obj = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the cronjob workload({2}:{0}.{1})".format(namespace,name,kind))
+
+    return obj
 
 def update_daemonset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -1155,17 +1209,24 @@ def update_daemonset(cluster,status,metadata,config):
     else:
         logger.debug("The daemon workload({}) is not changed".format(obj))
 
+    return obj
+
 def delete_daemonset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = config["kind"]
     obj = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the daemonset workload({2}:{0}.{1})".format(namespace,name,kind))
+
+    return obj
 
 def update_statefulset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
@@ -1231,39 +1292,46 @@ def update_statefulset(cluster,status,metadata,config):
     else:
         logger.debug("The statefulset workload({}) is not changed".format(obj))
 
+    return obj
+
 def delete_statefulset(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
-    namespace = models.Namespace.objects.filter(cluster=cluster,name=namespace).first()
-    if not namespace:
-        return
+    try:
+        namespace = models.Namespace.objects.get(cluster=cluster,name=namespace)
+    except:
+        logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
+        raise
+
     name = config["metadata"]["name"]
     kind = config["kind"]
     obj = models.Workload.objects.filter(cluster=cluster,namespace=namespace,name=name,kind=kind).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the statefulset workload({2}:{0}.{1})".format(namespace,name,kind))
+    
+    return obj
 
 process_func_map = {
-    10:update_namespace,
-    13:update_secret,
-    15:update_configmap,
-    20:update_volume,
-    30:update_volume_claim,
-    40:update_ingress,
-    50:update_deployment,
-    60:update_statefulset,
-    70:update_cronjob,
-    75:update_daemonset,
-    80:delete_cronjob,
-    85:delete_daemonset,
-    90:delete_statefulset,
-    100:delete_deployment,
-    110:delete_ingress,
-    120:delete_volume_claim,
-    130:delete_volume,
-    135:delete_configmap,
-    137:delete_secret,
-    140:delete_namespace
+    10:(models.Namespace,update_namespace,0),
+    13:(models.Secret,update_secret,3),
+    15:(models.ConfigMap,update_configmap,4),
+    20:(models.PersistentVolume,update_volume,1),
+    30:(models.PersistentVolumeClaim,update_volume_claim,2),
+    40:(models.Ingress,update_ingress,5),
+    50:(models.Workload,update_deployment,6),
+    60:(models.Workload,update_statefulset,6),
+    70:(models.Workload,update_cronjob,6),
+    75:(models.Workload,update_daemonset,6),
+    80:(models.Workload,delete_cronjob,6),
+    85:(models.Workload,delete_daemonset,6),
+    90:(models.Workload,delete_statefulset,6),
+    100:(models.Workload,delete_deployment,6),
+    110:(models.Ingress,delete_ingress,5),
+    120:(models.PersistentVolumeClaim,delete_volume_claim,2),
+    130:(models.PersistentVolume,delete_volume,1),
+    135:(models.ConfigMap,delete_configmap,4),
+    137:(models.Secret,delete_secret,3),
+    140:(models.Namespace,delete_namespace,0)
 }
 
 def resource_type(status,resource_id):
@@ -1314,32 +1382,65 @@ def sort_key(val):
     return resource_type(val[0],val[1][0])
 
 
-def process_rancher(cluster,lock_session):
+def process_rancher(cluster,f_renew_lock,process_status):
     def _func(status,metadata,config_file):
-        process_func = process_func_map[resource_type(status,metadata["resource_id"])]
-        if config_file:
-            with open(config_file) as f:
-                config = yaml.load(f.read())
-            with transaction.atomic():
-                process_func(cluster,status,metadata,config)
-        lock_session.renew_if_needed()
+        model_class,process_func,model_priority = process_func_map[resource_type(status,metadata["resource_id"])]
+        if process_status is not None and process_status[model_priority] is None:
+            process_status[model_priority] = [model_class,[],set()]
+        try:
+            if config_file:
+                with open(config_file) as f:
+                    config = yaml.load(f.read())
+                with transaction.atomic():
+                    obj = process_func(cluster,status,metadata,config)
+                    if obj and process_status is not None:
+                        process_status[model_priority][2].add(obj.id)
+            f_renew_lock()
+        except Exception as ex:
+            if process_status is not None:
+                process_status[model_priority][1].append(str(ex))
+            raise
+        except :
+            if process_status is not None:
+                process_status[model_priority][1].append(traceback.format_exc())
+            raise
 
     return _func
 
 def resource_filter(resource_id):
     return True if RANCHER_FILE_RE.search(resource_id) else False
 
-def _harvest(cluster,lock_session,reconsume=False,lock_exception=None):
+def _harvest(cluster,f_renew_lock,reconsume=False,lock_exception=None):
     harvest_result = [None,False]
+
+    client = get_client(cluster.name)
+    if not reconsume:
+        client_consume_status = client.consume_status
+        if "next_reconsume_time" in client_consume_status:
+            reconsume_time = timezone.localtime(client_consume_status["next_reconsume_time"])
+            if reconsume_time and now.weekday() == 6  and now.hours <=6 and now >= reconsume_time:
+                #now is eraly morning  in Sunday, and also sync is requested but not executed.
+                reconsume = True
+
+    process_status = [None for i in range(7)] if reconsume else None
+
     def _post_consume(client_consume_status,consume_result):
         now = timezone.localtime()
         if "next_clean_time" not in client_consume_status:
             client_consume_status["next_clean_time"] = timezone.make_aware(datetime(now.year,now.month,now.day)) + timedelta(days=1)
         elif now.hour > 6:
-            return
+            pass
         elif now >= client_consume_status["next_clean_time"]:
             harvest_result[1] = True
             client_consume_status["next_clean_time"] = timezone.make_aware(datetime(now.year,now.month,now.day)) + timedelta(days=1)
+
+
+        if  "next_reconsume_time" not in client_consume_status or now > client_consume_status["next_reconsume_time"]:
+            if now.weekday() == 6:
+                next_reconsume_time = timezone.make_aware(datetime(now.year,now.month,now.day)) + timedelta(days=7)
+            else:
+                next_reconsume_time = timezone.make_aware(datetime(now.year,now.month,now.day)) + timedelta(days=6 - now.weekday())
+            client_consume_status["next_reconsume_time"] = next_reconsume_time
 
     now = timezone.now()
     harvester = models.Harvester(name=harvestername.format(cluster.name),starttime=now,last_heartbeat=now,status=models.Harvester.RUNNING)
@@ -1363,9 +1464,18 @@ def _harvest(cluster,lock_session,reconsume=False,lock_exception=None):
             if lock_exception:
                 raise lock_exception
             now = timezone.now()
-            result = get_client(cluster.name).consume(process_rancher(cluster,lock_session),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False,f_post_consume=_post_consume)
-            #analysis the workload env.
-            logger.debug("Begin to analysis workload env")
+            result = client.consume(process_rancher(cluster,f_renew_lock,process_status),reconsume=reconsume,resources=resource_filter,sortkey_func=sort_key,stop_if_failed=False,f_post_consume=_post_consume)
+            if reconsume:
+                process_status.reverse()
+                for model_class,process_msgs,objids in process_status:
+                    if process_msgs:
+                        logger.error("Ignore the process to clean the objects which don't exist in rancher anymore because some exceptions occur during havesting the configuration of {}.\n\t{}".format(model_class,"\n\t".join(process_msgs)))
+                        break
+                    for obj in model_class.objects.filter(cluster=cluster,deleted__isnull=True).exclude(id__in=objids).only("name"):
+                        logger.debug("Logically delete the {0}({1}<{2}>)".format(model_class.__name__,obj.name,obj.id))
+                        obj.logically_delete()
+                    f_renew_lock()
+
             cluster.updated = timezone.now()
             if result[1]:
                 if result[0]:
@@ -1427,10 +1537,18 @@ def _harvest(cluster,lock_session,reconsume=False,lock_exception=None):
         harvester.last_heartbeat = harvester.endtime
         harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
 
-def harvest(cluster,lock_session,reconsume=False,lock_exception=None):
-    harvest_result = _harvest(cluster,lock_session,reconsume=reconsume,lock_exception=lock_exception)
+def harvest(cluster,reconsume=False):
+    lock_session = LockSession(get_client(cluster.name),3000,1500)
+    def _renew_locks():
+        lock_session.renew_if_needed()
 
-    return harvest_result[0]
+    try:
+        harvest_result = _harvest(cluster,_renew_locks,reconsume=reconsume)
+
+        return harvest_result[0]
+    finally:
+        lock_session.release()
+
 
 def harvest_all(reconsume=False):
     consume_results = []
@@ -1439,7 +1557,7 @@ def harvest_all(reconsume=False):
     lock_sessions = {}
 
     def _renew_locks():
-        for cluster,lock_session in lock_sessions:
+        for cluster,lock_session in lock_sessions.items():
             lock_session.renew_if_needed()
     try:
         lock_exception = None
@@ -1456,7 +1574,7 @@ def harvest_all(reconsume=False):
 
         #harvest the changed configurations
         for cluster in models.Cluster.objects.filter(added_by_log=False):
-            harvest_result = _harvest(cluster,lock_sessions.get(cluster),reconsume=reconsume,lock_exception=lock_exception)
+            harvest_result = _harvest(cluster,_renew_locks,reconsume=reconsume,lock_exception=lock_exception)
             if harvest_result[1]:
                 need_clean = True
             consume_results.append((cluster,harvest_result[0]))
@@ -1485,7 +1603,7 @@ def harvest_all(reconsume=False):
         #sync dependent tree
         scan_module = models.EnvScanModule.objects.filter(active=True).order_by("-modified").defer("sourcecode").first()
         wl = models.Workload.objects.all().order_by("-resource_scaned").first()
-        if scan_module and wl and wl.resource_scaned < scan_module.modified:
+        if scan_module and wl and (not wl.resource_scaned or not scan_module.modified or (wl.resource_scaned < scan_module.modified)):
             modeldata.sync_dependent_tree(rescan=False,cluster_lock_sessions=lock_sessions.items())
         else:
             modeldata.sync_dependent_tree(workload_changetime=now,rescan=False,cluster_lock_sessions=lock_sessions.items())

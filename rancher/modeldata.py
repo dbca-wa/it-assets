@@ -77,6 +77,11 @@ def reset_workload_latestcontainers(sync=True,workloads=None):
     else:
         _reset_workload_latestcontainers(workloads)
 
+def reset_containerimage_workloads():
+    for img in models.ContainerImage.objects.select_related("imagefamily").only("imagefamily","tag","workloads").all():
+        logger.debug("Processing container image({1}<{0}>)".format(img.id,img))
+        img.workloads = models.Workload.objects.filter(containerimage=img).only("name").count()
+        img.save(update_fields=["workloads"])
 
 def reset_project_property():
     """
@@ -774,8 +779,7 @@ def sync_dependent_tree(workload_changetime=None,cluster_lock_sessions = None,re
         #rescan dependency if required
         for wl in wls:
             logger.debug("Scan dependency for workload({}<{}>)".format(wl,wl.id))
-            wl.scan_dependency(rescan=rescan_dependency)
-            _renew_locks()
+            wl.scan_dependency(rescan=rescan_dependency,f_renew_lock=_renew_locks)
 
 
         # repopulate the dependent tree 

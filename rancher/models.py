@@ -161,6 +161,10 @@ class DeletedMixin(models.Model):
         return True if self.deleted else False
 
     def logically_delete(self):
+        if self.deleted:
+            #already deleted
+            return
+
         self.deleted = timezone.now()
         if self.__class__.has_updated_field is None:
             try:
@@ -579,6 +583,12 @@ class EnvScanModule(DbObjectMixin,models.Model):
     ORACLE = 22
     MYSQL = 23
 
+    CREDENTIAL = 30
+    DB_CREDENTIAL = 31
+    APP_CREDENTIAL = 32
+    AZURE_CREDENTIAL = 33
+    BLOB_CREDENTIAL =34
+
     SERVICES = 999
     
     RESOURCE_TYPES = (
@@ -591,6 +601,12 @@ class EnvScanModule(DbObjectMixin,models.Model):
         (EMAILSERVER,"Email Server"),
         (MEMCACHED,"Memcached"),
         (REDIS,"Redis"),
+
+        (CREDENTIAL,"Credential",),
+        (DB_CREDENTIAL,"Database Credential"),
+        (APP_CREDENTIAL,"App Credential"),
+        (AZURE_CREDENTIAL,"Azure Credential"),
+        (BLOB_CREDENTIAL,"Blob Credential")
     )
 
     MODULE_RESOURCE_TYPES = (
@@ -604,7 +620,14 @@ class EnvScanModule(DbObjectMixin,models.Model):
         (EMAILSERVER,"Email Server"),
         (MEMCACHED,"Memcached"),
         (REDIS,"Redis"),
-        (SERVICES,"Services"),
+
+        (CREDENTIAL,"Credential",),
+        (DB_CREDENTIAL,"Database Credential"),
+        (APP_CREDENTIAL,"App Credential"),
+        (AZURE_CREDENTIAL,"Azure Credential"),
+        (BLOB_CREDENTIAL,"Blob Credential"),
+
+        (SERVICES,"Services")
     )
 
     _pattern_re = None
@@ -1081,13 +1104,14 @@ class Workload(DeletedMixin,models.Model):
             self.save(update_fields=["resource_scaned"])
             return False
 
-    def scan_dependency(self,rescan=False,scan_time=timezone.now()):
+    def scan_dependency(self,rescan=False,scan_time=timezone.now(),f_renew_lock=None):
         """
         Scan workload's dependency, and also scan the related workload's dependency
         Return True if scaned otherwise return False
         """
         tasks=set()
         tasks.add(self)
+        processed_ids = set()
         def _update_or_create(workload,dependency_type,dependency_pk,dependency_id,dependency_display,dependent_workloads,del_dependent_workloads,update_by_request):
             with transaction.atomic():
                 if dependent_workloads:
@@ -1126,7 +1150,8 @@ class Workload(DeletedMixin,models.Model):
                         for obj in Workload.objects.filter(id__in=affected_workloads,dependency_scaned__lt=workload.resource_changed):
                             obj.dependency_scan_requested = workload.resource_changed
                             obj.save(update_fields=["dependency_scan_requested"])
-                            tasks.add(obj)
+                            if obj.id not in processed_ids:
+                                tasks.add(obj)
                     return (dependency,True)
     
                 update_fields = []
@@ -1154,7 +1179,8 @@ class Workload(DeletedMixin,models.Model):
                         for obj in Workload.objects.filter(id__in=affected_workloads,dependency_scaned__lt=workload.resource_changed):
                             obj.dependency_scan_requested = workload.resource_changed
                             obj.save(update_fields=["dependency_scan_requested"])
-                            tasks.add(obj)
+                            if obj.id not in processed_ids:
+                                tasks.add(obj)
                     return (dependency,True)
                 else:
                     return (dependency,False)
@@ -1164,7 +1190,7 @@ class Workload(DeletedMixin,models.Model):
             if not workload.resource_changed:
                 return False
     
-            if not rescan and workload.dependency_scaned and workload.dependency_scaned >= workload.resource_changed and (not workload.dependency_scan_requested or workload.dependency_scan_requested < workload.dependency_scaned):
+            if workload.dependency_scaned and (workload.dependency_scaned >= scan_time or (not rescan and workload.dependency_scaned >= workload.resource_changed and (not workload.dependency_scan_requested or workload.dependency_scan_requested < workload.dependency_scaned))):
                 #already scaned, no need to scan again
                 update_fields = []
                 if workload.dependency_scan_requested :
@@ -1335,7 +1361,8 @@ class Workload(DeletedMixin,models.Model):
                     for obj in Workload.objects.filter(id__in=affected_workloads,dependency_scaned__lt=workload.resource_changed):
                         obj.dependency_scan_requested = workload.resource_changed
                         obj.save(update_fields=["dependency_scan_requested"])
-                        tasks.add(obj)
+                        if obj.id not in processed_ids:
+                            tasks.add(obj)
                 dependency_changed = True
     
             workload.dependency_scaned = scan_time
@@ -1351,10 +1378,14 @@ class Workload(DeletedMixin,models.Model):
         changed = False
         while tasks:
             workload = tasks.pop()
+            processed_ids.add(workload.id)
             if workload == self:
                 changed = _scan(workload) or changed
             else:
                 _scan(workload)
+
+            if f_renew_lock:
+                f_renew_lock()
 
         return changed
 
