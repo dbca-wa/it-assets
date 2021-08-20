@@ -55,22 +55,37 @@ class DepartmentUserAdmin(ModelAdmin):
     raw_id_fields = ('manager',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
-        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled',
+        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'cost_centre',
+        'employment_status',
     )
     fieldsets = (
-        ('Active Directory account fields', {
-            # 'description': '<span class="errornote">These fields can be changed using commands in the department user list view.</span>',
+        ('Microsoft 365, Azure AD and on-prem AD account information', {
+            'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
             'fields': (
                 'active',
                 'email',
                 'name',
                 'given_name',
                 'surname',
+                'azure_guid',
+                'ad_guid',
+                'assigned_licences',
+                'proxy_addresses',
+                 'dir_sync_enabled',
+            ),
+        }),
+        ('Ascender account information', {
+            'description': '''<span class="errornote">These data are specific to the Ascender HR database.
+            The employee ID must be set in order to enable synchronisation from Ascender.</span>''',
+            'fields': (
+                'employee_id',
+                'cost_centre',
+                'employment_status',
             ),
         }),
         ('User information fields', {
-            'description': '''<span class="errornote">Data in these fields is synchronised from Active Directory,
-                but can be edited here.<br>
+            'description': '''<span class="errornote">Data in these fields should match information from Ascender,
+                but can be edited here for display in the Address Book.<br>
                 Do not edit information in this section without written permission from People Services
                 or the cost centre manager (forms are required).</span>''',
             'fields': (
@@ -78,16 +93,8 @@ class DepartmentUserAdmin(ModelAdmin):
                 'telephone',
                 'mobile_phone',
                 'manager',
-                'cost_centre',
                 'location',
-                'position_type',
-                'employee_id',
                 'name_update_reference',
-            ),
-        }),
-        ('Other user metadata fields', {
-            'description': 'Data in these fields are not synchronised with Active Directory, but may be listed in the Address Book.',
-            'fields': (
                 'org_unit',
                 'preferred_name',
                 'extension',
@@ -99,20 +106,12 @@ class DepartmentUserAdmin(ModelAdmin):
                 'security_clearance',
                 'account_type',
                 'notes',
-                'working_hours',
-            ),
-        }),
-        ('Office 365 and Active Directory information', {
-            'description': 'These data are specific to Office 365 and Active Directory.',
-            'fields': (
-                'azure_guid',
-                'ad_guid',
-                'assigned_licences',
-                'proxy_addresses',
-                # 'dir_sync_enabled',
             ),
         }),
     )
+
+    def employment_status(self, instance):
+        return instance.get_employment_status()
 
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()

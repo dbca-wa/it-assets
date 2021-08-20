@@ -151,7 +151,7 @@ class DepartmentUser(models.Model):
 
     # Fields directly related to the employee, which map to a field in Active Directory.
     active = models.BooleanField(
-        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')
+        default=True, editable=False, help_text='Account is enabled within Active Directory.')
     email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')
@@ -183,7 +183,7 @@ class DepartmentUser(models.Model):
     proxy_addresses = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
     assigned_licences = ArrayField(base_field=models.CharField(
-        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')
+        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Microsoft 365 licences')
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
@@ -247,7 +247,7 @@ class DepartmentUser(models.Model):
         editable=False, help_text="Azure AD ObjectId")
     azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
-    dir_sync_enabled = models.NullBooleanField(default=None)  # True means this account is synced from on-prem to Azure AD.
+    dir_sync_enabled = models.NullBooleanField(default=None, help_text="Azure AD account is synced to on-prem AD")
 
     def __str__(self):
         return self.email
