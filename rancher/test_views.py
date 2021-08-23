@@ -4,7 +4,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from mixer.backend.django import mixer
 
-from rancher.models import Cluster, Workload
+from rancher.models import Cluster, Workload, ContainerImageFamily, ContainerImage
 
 User = get_user_model()
 
@@ -24,8 +24,13 @@ class RancherViewsTestCase(TestCase):
         self.cluster = Cluster.objects.create(
             name='test-cluster',
         )
+        self.cif = mixer.blend(ContainerImageFamily)
+        self.ci = ContainerImage.objects.create(
+            imagefamily=self.cif,
+        )
         self.workload = Workload.objects.create(
             cluster=self.cluster,
+            containerimage=self.ci,
             name='test-workload',
             kind='test',
             image='test-image',
