@@ -1415,6 +1415,7 @@ def _harvest(cluster,f_renew_lock,reconsume=False,lock_exception=None):
 
     client = get_client(cluster.name)
     if not reconsume:
+        now = timezone.localtime()
         client_consume_status = client.consume_status
         if "next_reconsume_time" in client_consume_status:
             reconsume_time = timezone.localtime(client_consume_status["next_reconsume_time"])
