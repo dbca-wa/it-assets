@@ -56,7 +56,7 @@ class DepartmentUserAdmin(ModelAdmin):
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'cost_centre',
-        'employment_status',
+        'employment_status', 'ascender_data_updated',
     )
     fieldsets = (
         ('Microsoft 365, Azure AD and on-prem AD account information', {
@@ -71,7 +71,7 @@ class DepartmentUserAdmin(ModelAdmin):
                 'ad_guid',
                 'assigned_licences',
                 'proxy_addresses',
-                 'dir_sync_enabled',
+                'dir_sync_enabled',
             ),
         }),
         ('Ascender account information', {
@@ -81,6 +81,7 @@ class DepartmentUserAdmin(ModelAdmin):
                 'employee_id',
                 'cost_centre',
                 'employment_status',
+                'ascender_data_updated',
             ),
         }),
         ('User information fields', {

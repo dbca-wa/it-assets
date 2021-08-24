@@ -13,6 +13,4 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(ex))
             raise CommandError('Syncronisation from Ascender database failed')
 
-        # TODO: update department user data from Ascender database.
-
         self.stdout.write(self.style.SUCCESS('Completed'))
