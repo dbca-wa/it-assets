@@ -177,15 +177,22 @@ resolved_reference = "6c987b75d0903fcc89aefff5f5956f3be3c2b238"
 
 [[package]]
 name = "dbca-utils"
-version = "1.1.4"
-description = "Utilities for Django/Python apps"
+version = "1.1.5"
+description = ""
 category = "main"
 optional = false
 python-versions = "*"
+develop = false
 
 [package.dependencies]
 Django = ">=2.1"
 requests = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/dbca-wa/dbca-utils.git"
+reference = "1.1.5"
+resolved_reference = "2a3e5ec46cdcee2e6e2bcd80f80a4a3ef4913759"
 
 [[package]]
 name = "decorator"
@@ -1069,7 +1076,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "aa7ef7da444b4867de1b62deb0dcbc6c2ef6b88f6452683c2f0fd46ae79ce532"
+content-hash = "f6827dc70e970ba20019a5184d33092dbd2219dd3fca7a0e960dacb8e856d7ec"
 
 [metadata.files]
 ansicon = [
@@ -1181,9 +1188,7 @@ cryptography = [
     {file = "cryptography-3.4.7.tar.gz", hash = "sha256:3d10de8116d25649631977cb37da6cbdd2d6fa0e0281d014a5b7d337255ca713"},
 ]
 data-storage = []
-dbca-utils = [
-    {file = "dbca-utils-1.1.4.tar.gz", hash = "sha256:b843029d70e200d6f993befc4342e0b28ade0e61acce8a2844a92b19c3b9bda1"},
-]
+dbca-utils = []
 decorator = [
     {file = "decorator-5.0.9-py3-none-any.whl", hash = "sha256:6e5c199c16f7a9f0e3a61a4a54b3d27e7dad0dbdde92b944426cb20914376323"},
     {file = "decorator-5.0.9.tar.gz", hash = "sha256:72ecfba4320a893c53f9706bebb2d55c270c1e51a28789361aa93e4a21319ed5"},
