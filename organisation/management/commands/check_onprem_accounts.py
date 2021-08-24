@@ -31,7 +31,7 @@ class Command(BaseCommand):
         ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['path'])
 
         if not ad_users:
-            self.stdout.write(self.style.ERROR('No on-prem AD user account data could be downloaded'))
+            LOGGER.error('No on-prem AD user account data could be downloaded')
             return
 
         self.stdout.write('Comparing Department Users to on-prem AD user accounts')

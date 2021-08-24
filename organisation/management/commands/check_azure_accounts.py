@@ -15,7 +15,7 @@ class Command(BaseCommand):
         azure_users = ms_graph_users(licensed=True)
 
         if not azure_users:
-            self.stdout.write(self.style.ERROR('Microsoft Graph API returned no data'))
+            LOGGER.error('Microsoft Graph API returned no data')
             return
 
         self.stdout.write('Comparing Department Users to Azure AD user accounts')
