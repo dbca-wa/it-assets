@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from organisation.ascender import ascender_db_import
 
 
@@ -7,10 +7,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write('Querying Ascender database for employee information')
-        try:
-            ascender_db_import(verbose=options['verbosity'] > 0)
-        except Exception as ex:
-            self.stdout.write(self.style.ERROR(ex))
-            raise CommandError('Syncronisation from Ascender database failed')
-
+        ascender_db_import(verbose=options['verbosity'] > 0)
         self.stdout.write(self.style.SUCCESS('Completed'))
