@@ -1,10 +1,12 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
 from fuzzywuzzy import fuzz
+import logging
 import psycopg2
 import pytz
 from organisation.models import DepartmentUser, DepartmentUserLog
 
+LOGGER = logging.getLogger('itassets.organisation')
 TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
 # The list below defines which columns to SELECT from the Ascender view, what to name the object
@@ -186,14 +188,14 @@ def ascender_db_import(verbose=False):
                             },
                         )
                         if verbose:
-                            print("Generated log for {} (changed position_no)".format(user))
+                            LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
 
                     user.ascender_data = job
                     user.ascender_data_updated = TZ.localize(datetime.now())
-                    user.save()
+                    user.update_from_ascender_data()
                 else:
                     if verbose:
-                        print("Could not match Ascender employee ID {} to a department user".format(eid))
+                        LOGGER.warning(f"Could not match Ascender employee ID {eid} to any department user")
 
 
 def get_ascender_matches():

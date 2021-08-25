@@ -46,6 +46,8 @@ class DepartmentUserAPIResource(View):
                 {
                     'id': user.pk,
                     'name': user.name,
+                    'given_name': user.given_name,
+                    'surname': user.surname,
                     'preferred_name': user.preferred_name if user.preferred_name else None,
                     'email': user.email,
                     'title': user.title if user.title else None,
@@ -57,6 +59,7 @@ class DepartmentUserAPIResource(View):
                     'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
                     'cost_centre': user.cost_centre.code if user.cost_centre else None,
                     'employee_id': user.employee_id if user.employee_id else None,  # NOTE: employee ID is used in the Moodle employee sync process.
+                    'manager': {'name': user.manager.name, 'email': user.manager.email} if user.manager else {},
                 } for user in queryset
             ]
 

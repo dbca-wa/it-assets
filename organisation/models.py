@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
+import logging
 
 from .utils import compare_values
+LOGGER = logging.getLogger('itassets.organisation')
 
 
 class DepartmentUser(models.Model):
@@ -51,7 +53,7 @@ class DepartmentUser(models.Model):
         '87bbbc60-4754-4998-8c88-227dca264858': 'POWERAPPS AND LOGIC FLOWS',
         '6470687e-a428-4b7a-bef2-8a291ad947c9': 'WINDOWS STORE FOR BUSINESS',
         '6fd2c87f-b296-42f0-b197-1e91e994b900': 'OFFICE 365 E3',
-        'f30db892-07e9-47e9-837c-80727f46fd3d': 'MICROSOFT FLOW FREE',
+        'f30db892-07e9-47e9-837c-80727f46fd3d': 'MICROSOFT POWER AUTOMATE FREE',
         '440eaaa8-b3e0-484b-a8be-62870b9ba70a': 'MICROSOFT 365 PHONE SYSTEM - VIRTUAL USER',
         'bc946dac-7877-4271-b2f7-99d2db13cd2c': 'FORMS_PRO',
         'dcb1a3ae-b33f-4487-846a-a640262fadf4': 'MICROSOFT POWER APPS PLAN 2 TRIAL',
@@ -76,6 +78,7 @@ class DepartmentUser(models.Model):
         '4828c8ec-dc2e-4779-b502-87ac9ce28ab7': 'SKYPE FOR BUSINESS CLOUD PBX',
         '19ec0d23-8335-4cbd-94ac-6050e30712fa': 'EXCHANGE ONLINE (PLAN 2)',
         '2347355b-4e81-41a4-9c22-55057a399791': 'MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW',
+        'de376a03-6e5b-42ec-855f-093fb50b8ca5': 'POWER BI PREMIUM PER USER ADD-ON',
     }
     # A map of codes in the EMP_STATUS field to descriptive text.
     EMP_STATUS_MAP = {
@@ -151,8 +154,8 @@ class DepartmentUser(models.Model):
 
     # Fields directly related to the employee, which map to a field in Active Directory.
     active = models.BooleanField(
-        default=True, editable=False, help_text='Account is enabled/disabled within Active Directory.')
-    email = CIEmailField(unique=True, editable=False, help_text='Account primary email address')
+        default=True, editable=False, help_text='Account is enabled within Active Directory.')
+    email = CIEmailField(unique=True, editable=False, help_text='Account email address')
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')
     given_name = models.CharField(
@@ -183,7 +186,7 @@ class DepartmentUser(models.Model):
     proxy_addresses = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
     assigned_licences = ArrayField(base_field=models.CharField(
-        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Office 365 licences')
+        max_length=254, blank=True), blank=True, null=True, help_text='Assigned Microsoft 365 licences')
     username = models.CharField(
         max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
@@ -234,20 +237,21 @@ class DepartmentUser(models.Model):
 
     # Cache of Ascender data
     ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
-    ascender_data_updated = models.DateTimeField(null=True, editable=False)
+    ascender_data_updated = models.DateTimeField(
+        null=True, editable=False, help_text="Timestamp of when Ascender data was last updated for this user")
     # Cache of on-premise AD data
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
-        help_text="On-premise AD ObjectGUID")
+        help_text="On-premise Active Directory unique object ID")
     ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
     ad_data_updated = models.DateTimeField(null=True, editable=False)
     # Cache of Azure AD data
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
-        editable=False, help_text="Azure AD ObjectId")
+        editable=False, help_text="Azure Active Directory unique object ID")
     azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
-    dir_sync_enabled = models.NullBooleanField(default=None)  # True means this account is synced from on-prem to Azure AD.
+    dir_sync_enabled = models.NullBooleanField(default=None, help_text="Azure AD account is synced to on-prem AD")
 
     def __str__(self):
         return self.email
@@ -636,7 +640,13 @@ class DepartmentUser(models.Model):
             return
 
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
-            self.cost_centre = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+            cc = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+            if self.cost_centre != cc:
+                self.cost_centre = cc
+                LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
+
+        if 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
+            LOGGER.warning('Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
 
         self.save()
 
@@ -649,8 +659,10 @@ class DepartmentUser(models.Model):
 
         if 'accountEnabled' in self.azure_ad_data and self.azure_ad_data['accountEnabled'] != self.active:
             self.active = self.azure_ad_data['accountEnabled']
+            LOGGER.info(f'AZURE AD SYNC: {self} active changed to {self.active}')
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
             self.email = self.azure_ad_data['mail']
+            LOGGER.info(f'AZURE AD SYNC: {self} email changed to {self.email}')
         if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
             self.dir_sync_enabled = self.azure_ad_data['onPremisesSyncEnabled']
         if 'proxyAddresses' in self.azure_ad_data and self.azure_ad_data['proxyAddresses'] != self.proxy_addresses:
@@ -677,6 +689,7 @@ class DepartmentUser(models.Model):
 
         if 'SamAccountName' in self.ad_data and self.ad_data['SamAccountName'] != self.username:
             self.username = self.ad_data['SamAccountName']
+            LOGGER.info(f'ONPREM AD SYNC: {self} username changed to {self.username}')
 
         self.save()
 

@@ -1,6 +1,5 @@
 import yaml
 import base64
-import itertools
 import re
 import logging
 import traceback
@@ -126,7 +125,7 @@ def update_namespace(cluster,status,metadata,config):
         obj.save(update_fields=update_fields)
         logger.debug("Update namespace({}),update_fields={}".format(obj,update_fields))
         if "project" in update_fields :
-            #namespace's project is changed, 
+            #namespace's project is changed,
             #update models.PersistentVolumeClaim
             models.PersistentVolumeClaim.objects.filter(cluster=cluster,namespace=obj).update(project=obj.project)
             #update models.Ingress
@@ -150,7 +149,7 @@ def update_namespace(cluster,status,metadata,config):
 
 def delete_namespace(cluster,status,metadata,config):
     name = config["metadata"]["name"]
-    
+
     obj = models.Namespace.objects.filter(cluster=cluster,name=name).first()
     if obj:
         obj.logically_delete()
@@ -208,7 +207,7 @@ def update_secret(cluster,status,metadata,config):
         obj.save()
         created = True
         logger.debug("Create secret({})".format(obj))
-   
+
     items_changed = False
     #save secret items
     config_ids = []
@@ -254,7 +253,7 @@ def update_secret(cluster,status,metadata,config):
 
     return obj
 
-        
+
 def delete_secret(cluster,status,metadata,config):
     project_id = get_property(config,("metadata","annotations","field.cattle.io/projectId"))
     namespace = get_property(config,("metadata","namespace"))
@@ -318,7 +317,7 @@ def update_configmap(cluster,status,metadata,config):
         obj.save()
         created = True
         logger.debug("Create configmap({})".format(obj))
-   
+
     items_changed = False
     #save configmap items
     config_ids = []
@@ -360,7 +359,7 @@ def update_configmap(cluster,status,metadata,config):
 
     return obj
 
-        
+
 def delete_configmap(cluster,status,metadata,config):
     namespace = config["metadata"]["namespace"]
     try:
@@ -368,7 +367,7 @@ def delete_configmap(cluster,status,metadata,config):
     except:
         logger.error("Namespace({}.{}) does not exist".format(cluster,namespace))
         raise
-    
+
     name = config["metadata"]["name"]
     obj = models.ConfigMap.objects.filter(cluster=cluster,namespace=namespace,name=name).first()
     if obj:
@@ -487,7 +486,7 @@ def delete_ingress(cluster,status,metadata,config):
         raise
 
     name = config["metadata"]["name"]
-    obj = models.Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).first() 
+    obj = models.Ingress.objects.filter(cluster=cluster,namespace=namespace,name=name).first()
     if obj:
         obj.logically_delete()
         logger.info("Logically delete models.Ingress({}.{})".format(namespace,name))
@@ -516,7 +515,7 @@ def _get_volume_storage_class_name(val):
     if not storage_class:
         if get_property(val,("spec","nfs")):
             storage_class = "nfs-client"
-    
+
         if get_property(val,("spec","volumeMode")) == "Filesystem":
             storage_class = "local-path"
 
@@ -1111,7 +1110,7 @@ def update_cronjob(cluster,status,metadata,config):
         logger.debug("Create cronjob workload({})".format(obj))
 
     #delete all listening objects
-    updated = update_workload_listenings(obj,config) 
+    updated = update_workload_listenings(obj,config)
 
     #update volumes
     updated = update_workload_volumes(obj,config,get_property(config,("spec","jobTemplate","spec","template","spec"))) or updated
@@ -1308,7 +1307,7 @@ def delete_statefulset(cluster,status,metadata,config):
     if obj:
         obj.logically_delete()
         logger.info("Logically delete the statefulset workload({2}:{0}.{1})".format(namespace,name,kind))
-    
+
     return obj
 
 process_func_map = {
@@ -1455,11 +1454,11 @@ def _harvest(cluster,f_renew_lock,reconsume=False,lock_exception=None):
         else:
             cluster = models.Cluster.objects.get(name=cluster)
         if cluster.added_by_log:
-            message = "The cluster({}) was created by log. no configuration to harvest".format(cluster.name) 
+            message = "The cluster({}) was created by log. no configuration to harvest".format(cluster.name)
             harvester.status = models.Harvester.SKIPPED
             harvest_result[0] = ([],[])
             return harvest_result
-        
+
         try:
             #try to get the lock here and relase the lock at the end
             if lock_exception:
@@ -1510,7 +1509,7 @@ def _harvest(cluster,f_renew_lock,reconsume=False,lock_exception=None):
                 )
             else:
                 message = "Succeed to refresh cluster({}), no configuration files was changed since last consuming".format(cluster.name)
-    
+
             harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
 
             if len(result[0]) or len(result[1]):
@@ -1518,19 +1517,19 @@ def _harvest(cluster,f_renew_lock,reconsume=False,lock_exception=None):
                 cluster.save(update_fields=["added_by_log"])
             harvest_result[0] = result
             return harvest_result
-        except exceptions.AlreadyLocked as ex: 
+        except exceptions.AlreadyLocked as ex:
             harvester.status = models.Harvester.SKIPPED
             message = "The previous harvest process is still running.{}".format(str(ex))
             logger.warning(message)
             harvest_result[0] = ([],[(None,None,None,message)])
             return harvest_result
-    except : 
+    except :
         harvester.status = models.Harvester.FAILED
         message = "Failed to harvest rancher configuration.{}".format(traceback.format_exc())
         logger.info(message)
         harvest_result[0] = ([],[(None,None,None,message)])
         return harvest_result
-        
+
     finally:
         #logger.debug("Begin to refresh rancher workload in web app locaion")
         harvester.message = message
@@ -1562,13 +1561,13 @@ def harvest_all(reconsume=False):
             lock_session.renew_if_needed()
     try:
         lock_exception = None
-        
+
         #try to acquire the lock for all clusters before processing
         for cluster in models.Cluster.objects.filter(added_by_log=False):
             try:
                 lock_session = LockSession(get_client(cluster.name),3000,1500)
                 lock_sessions[cluster] = lock_session
-            except exceptions.AlreadyLocked as ex: 
+            except exceptions.AlreadyLocked as ex:
                 #can't acquire one cluster's lock. and quit the process
                 lock_exception = ex
                 break
@@ -1579,7 +1578,7 @@ def harvest_all(reconsume=False):
             if harvest_result[1]:
                 need_clean = True
             consume_results.append((cluster,harvest_result[0]))
-    
+
         if lock_exception:
             #found lock exception, quit the process
             return consume_results
