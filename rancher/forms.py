@@ -17,6 +17,8 @@ class ContainerImageFamilyForm(forms.ModelForm):
         model = models.ContainerImageFamily
         fields = "__all__"
         widgets = {
-            'config': JSONEditorWidget
+            'config': JSONEditorWidget,
+            'contacts':forms.TextInput(attrs={"style":"width:80%"}),
+            'filtercode': forms.Textarea(attrs={"style":"width:80%;height:200px"})
         }
         

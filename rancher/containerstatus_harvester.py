@@ -546,7 +546,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
     except exceptions.AlreadyLocked as ex:
         harvester.status = models.Harvester.SKIPPED
         message = "The previous harvest process is still running.{}".format(str(ex))
-        logger.info(message)
+        logger.warning(message)
         return ([],[(None,None,None,message)])
     finally:
         if need_clean[0]:

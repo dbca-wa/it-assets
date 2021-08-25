@@ -535,11 +535,99 @@ class Vulnerability(models.Model):
         verbose_name_plural = "{}{}".format(" " * 5,"Vulnerabilities")
 
 class ContainerImageFamily(DeletedMixin,models.Model):
+    _family_module = None
+    _module_id = 0
+    _filter_func = False
+    _loglevel_func = False
+
     account = models.CharField(max_length=64,null=True,db_index=True,editable=False)
     name = models.CharField(max_length=128, editable=False)
-    config = JSONField(null=False,default=dict)
+    contacts = ArrayField(models.EmailField(editable=True),editable=True,null=True)
+    enable_notify = models.BooleanField(default=True)
+    enable_warning_msg = models.BooleanField(default=True)
+    config = JSONField(null=False,blank=True,default=dict)
+    sourcecode = models.TextField(null=True,blank=True,help_text="""The source code of a python module.
+    This module can declare two methods:
+    1. Method 'filter' 
+        Parameters:
+            containerlog
+        Return:
+            True if this message need to be send to the developers; otherwise return False
+    2. Method 'loglevel' 
+        Parameters:
+            message
+        Return:
+            (Loglevel,True if new message else False) if can determine the message's  loglevel; otherwise return None
+""")
     added = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        if self.config is None:
+            self.config = {}
+
+    @property
+    def family_module(self):
+        if not self.sourcecode:
+            return None
+        if not self._family_module:
+            try:
+                if self.pk:
+                    module_name = "imagefamily_{}".format(self.pk)
+                else:
+                    self.__class__._module_id += 1
+                    module_name = "imagefamily__{}".format(self.__class__._module_id)
+                filter_module = imp.new_module(module_name)
+                exec(self.sourcecode,filter_module.__dict__)
+                self._family_module = filter_module
+            except Exception as ex:
+                raise ValidationError("Filter module is invalid.{}".format(str(ex)))
+
+    @property
+    def filter_function(self):
+        if self._filter_func == False:
+            if self.family_module and hasattr(self.family_module,"filter"):
+                self._filter_func = self.family_module.filter
+            else:
+                self._filter_func = None
+
+        return self._filter_func
+
+    @property
+    def loglevel_function(self):
+        if self._loglevel_func == False:
+            if self.family_module and hasattr(self.family_module,"loglevel"):
+                self._loglevel_func = self.family_module.loglevel
+            else:
+                self._loglevel_func = None
+
+        return self._loglevel_func
+
+
+    def filter_log(self,containerlog):
+
+        try:
+            func = self.filter_function
+            if func:
+                return func(containerlog)
+            else:
+                return True
+        except :
+            logger.error("Failed to execute the filter function declared in the image family({}<{}>)".format(self,self.id))
+            raise
+
+    def get_loglevel(self,message):
+        try:
+            func  = self.loglevel_function
+            if func:
+                return func(message)
+            else:
+                return None
+        except :
+            logger.error("Failed to execute the loglevel function declared in the image family({}<{}>)".format(self,self.id))
+            raise
+
+
 
     def scan_resource(self,rescan=True,scan_modules=None):
         """
@@ -752,7 +840,7 @@ class ContainerImage(DeletedMixin,models.Model):
             image_name = image_without_tag
 
 
-        imagefamily,created = ContainerImageFamily.objects.get_or_create(account=account,name=image_name)
+        imagefamily,created = ContainerImageFamily.objects.get_or_create(account=account,name=image_name,defaults={"enable_notify":True,"enable_warning_msg":True})
 
         image,created = ContainerImage.objects.update_or_create(imagefamily=imagefamily,tag=image_tag)
         if image.scan_status == cls.NOT_SCANED  and scan:
@@ -1873,6 +1961,12 @@ class Container(models.Model):
     @property
     def started(self):
         return self.container_started or self.container_created or self.pod_started or self.pod_created
+
+    def __str__(self):
+        if self.started:
+            return "{}.{}".format(self.workload,self.started.strftime("%Y-%m-%d %H:%M:%S.%f"))
+        else:
+            return "{}.{}".format(self.workload,self.id)
 
     class Meta:
         unique_together = [["cluster","namespace","workload","containerid"],["cluster","workload","containerid"],["cluster","containerid"],["workload","containerid"]]

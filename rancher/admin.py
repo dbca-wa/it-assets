@@ -1715,18 +1715,36 @@ class EnvScanModuleAdmin(DatetimeMixin,admin.ModelAdmin):
 
     form = forms.EnvScanModuleForm
 
+    list_url_name = '{}_{}_changelist'.format(models.EnvScanModule._meta.app_label,models.EnvScanModule._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer('sourcecode')
+            pass
+
+        return qs
+
 @admin.register(models.ContainerImageFamily)
 class ContainerImageFamilyAdmin(DatetimeMixin,admin.ModelAdmin):
-    list_display = ("account","name","_modified","_added")
+    list_display = ("account","name","contacts","enable_notify","enable_warning_msg","_modified","_added")
 
     readonly_fields = ("account","name","_modified","_added")
 
-    fields = ("account","name","config","_modified","_added")
+    fields = ("account","name","contacts","enable_notify","enable_warning_msg","config","filtercode","_modified","_added")
 
     list_filter = ("account",)
     search_fields = ['name']
 
     form = forms.ContainerImageFamilyForm
+
+    list_url_name = '{}_{}_changelist'.format(models.ContainerImageFamily._meta.app_label,models.ContainerImageFamily._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer('filtercode','config')
+            pass
+
+        return qs
 
     def has_add_permission(self, request, obj=None):
         return False
