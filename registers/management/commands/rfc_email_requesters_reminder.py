@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand
+import logging
 from pytz import timezone
 from registers.models import ChangeRequest, ChangeLog
 
@@ -11,6 +12,7 @@ class Command(BaseCommand):
     help = 'Emails requesters a reminder to record completion of any outstanding change requests.'
 
     def handle(self, *args, **options):
+        logger = logging.getLogger('registers')
         # All changes of status "Ready", where the planned_end datetime has passed and completed datetime is null:
         rfcs = ChangeRequest.objects.filter(
             status=3, planned_end__lte=datetime.now().astimezone(timezone(settings.TIME_ZONE)), completed__isnull=True)
@@ -47,4 +49,4 @@ class Command(BaseCommand):
                         '''.format(rfc, rfc.requester.get_full_name(), datetime.now().astimezone().strftime('%d/%b/%Y at %H:%M'))
                     log = ChangeLog(change_request=rfc, log=msg)
                     log.save()
-                    self.stdout.write(self.style.SUCCESS(msg))
+                    logger.info(msg)
