@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+import logging
 from organisation.ascender import ascender_db_import
 
 
@@ -6,6 +7,7 @@ class Command(BaseCommand):
     help = 'Caches data from Ascender on matching DepartmentUser objects'
 
     def handle(self, *args, **options):
-        self.stdout.write('Querying Ascender database for employee information')
+        logger = logging.getLogger('organisation')
+        logger.info('Querying Ascender database for employee information')
         ascender_db_import(verbose=options['verbosity'] > 0)
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')

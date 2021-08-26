@@ -6,7 +6,7 @@ import psycopg2
 import pytz
 from organisation.models import DepartmentUser, DepartmentUserLog
 
-LOGGER = logging.getLogger('itassets.organisation')
+LOGGER = logging.getLogger('organisation')
 TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
 # The list below defines which columns to SELECT from the Ascender view, what to name the object

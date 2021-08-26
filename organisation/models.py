@@ -4,7 +4,7 @@ from django.contrib.gis.db import models
 import logging
 
 from .utils import compare_values
-LOGGER = logging.getLogger('itassets.organisation')
+LOGGER = logging.getLogger('organisation')
 
 
 class DepartmentUser(models.Model):
