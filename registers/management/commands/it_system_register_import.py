@@ -43,7 +43,10 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS('Changing {} name to {}'.format(it_system, name)))
 
             # Status
-            status = system['Status']
+            if 'Status' in system and system['Status']:
+                status = system['Status']
+            else:
+                status = None
             if status == 'Production' and status != it_system.get_status_display():
                 it_system.status = 0
                 update = True
@@ -58,7 +61,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS('Changing {} status to Decommissioned'.format(it_system)))
 
             # System owner
-            if system['SystemOwnerLookupId']:
+            if 'SystemOwnerLookupId' in system and system['SystemOwnerLookupId']:
                 owner_email = users_dict[system['SystemOwnerLookupId']]
             else:
                 owner_email = None
@@ -85,7 +88,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING('No owner recorded for {}, clearing'.format(it_system)))
 
             # Technology custodian
-            if system['TechnicalCustodianLookupId']:
+            if 'TechnicalCustodianLookupId' in system and system['TechnicalCustodianLookupId']:
                 custodian_email = users_dict[system['TechnicalCustodianLookupId']]
             else:
                 custodian_email = None
@@ -110,7 +113,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING('No tech custodian recorded for {}, clearing'.format(it_system)))
 
             # Information custodian
-            if system['InformationCustodianLookupId']:
+            if 'InformationCustodianLookupId' in system and system['InformationCustodianLookupId']:
                 info_email = users_dict[system['InformationCustodianLookupId']]
             else:
                 info_email = None
@@ -135,7 +138,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING('No info custodian recorded for {}, clearing'.format(it_system)))
 
             # Seasonality
-            if 'Seasonality' in system:
+            if 'Seasonality' in system and system['Seasonality']:
                 season = system['Seasonality']
             else:
                 season = None
@@ -147,7 +150,7 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS('Changing {} seasonality to {}'.format(it_system, season)))
 
             # Availability
-            if 'Availability' in system:
+            if 'Availability' in system and system['Availability']:
                 avail = system['Availability']
             else:
                 avail = None
@@ -159,7 +162,7 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.SUCCESS('Changing {} availability to {}'.format(it_system, avail)))
 
             # Link
-            if 'Link0' in system and system['Link0'] and system['Link0']['Url']:
+            if 'Link0' in system and system['Link0'] and 'Url' in system['Link0'] and system['Link0']['Url']:
                 link = system['Link0']['Url'].strip()
             else:
                 link = None
@@ -169,7 +172,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS('Changing {} link to {}'.format(it_system, link)))
 
             # Description
-            if 'Description' in system:
+            if 'Description' in system and system['Description']:
                 desc = system['Description']
             else:
                 desc = ''
