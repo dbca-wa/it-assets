@@ -134,10 +134,12 @@ RANCHER_MAX_CONSUME_TIME = env("RANCHER_MAX_CONSUME_TIME", default=3000)
 
 CLUSTERS_MANAGEMENT_URL = {}
 
+
 def GET_CLUSTER_MANAGEMENT_URL(clustername):
     if clustername not in CLUSTERS_MANAGEMENT_URL:
         CLUSTERS_MANAGEMENT_URL[clustername] = env(clustername.upper(),default=RANCHER_MANAGEMENT_URL.format(clustername))
     return CLUSTERS_MANAGEMENT_URL[clustername]
+
 
 NGINXLOG_REPOSITORY_DIR = env("NGINXLOG_REPOSITORY_DIR",None)
 NGINXLOG_RESOURCE_NAME = env("NGINXLOG_RESOURCE_NAME",None)
@@ -228,25 +230,20 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'console': {'format': '%(asctime)s %(levelname)-8s %(name)-12s %(message)s'},
-        'verbose': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)-12s %(name)-12s %(message)s'},
     },
     'handlers': {
         'console': {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'console'
+            'stream': sys.stdout,
+            'formatter': 'console',
         },
     },
     'loggers': {
-        'django': {
+        '': {
             'handlers': ['console'],
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'ERROR',
-            'propagate': False,
+            'level': 'DEBUG' if DEBUG else 'INFO',
         },
         'itassets': {
             'handlers': ['console'],
