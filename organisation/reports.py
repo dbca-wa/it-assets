@@ -219,7 +219,8 @@ def department_user_ascender_discrepancies(fileobj, users):
                 row += 1
 
             # First name.
-            if 'first_name' in user.ascender_data and user.ascender_data['first_name'].upper() != user.given_name.upper():
+            first_name = user.given_name.upper() if user.given_name else ''
+            if 'first_name' in user.ascender_data and user.ascender_data['first_name'].upper() != first_name:
                 users_sheet.write_row(row, 0, [
                     user.get_full_name(),
                     user.get_account_type_display(),
@@ -230,7 +231,8 @@ def department_user_ascender_discrepancies(fileobj, users):
                 row += 1
 
             # Surname.
-            if 'surname' in user.ascender_data and user.ascender_data['surname'].upper() != user.surname.upper():
+            surname = user.surname.upper() if user.surname else ''
+            if 'surname' in user.ascender_data and user.ascender_data['surname'].upper() != surname:
                 users_sheet.write_row(row, 0, [
                     user.get_full_name(),
                     user.get_account_type_display(),
