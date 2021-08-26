@@ -1,6 +1,7 @@
 from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
 import json
+import logging
 import os
 from tempfile import NamedTemporaryFile
 
@@ -27,14 +28,15 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        self.stdout.write('Generating diff between Ascender and on-premise AD data')
+        logger = logging.getLogger('organisation')
+        logger.info('Generating diff between Ascender and on-premise AD data')
         discrepancies = ascender_onprem_ad_data_diff()
         f = NamedTemporaryFile()
         f.write(json.dumps(discrepancies, indent=4).encode('utf-8'))
 
-        self.stdout.write('Uploading diff JSON to Azure blob storage')
+        logger.info('Uploading diff JSON to Azure blob storage')
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
         store = AzureBlobStorage(connect_string, options['container'])
         store.upload_file(options['path'], f.name)
 
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')
