@@ -1,5 +1,8 @@
+import threading
+
 from django.db.models import Q
 from django.http import HttpResponse
+from django.contrib.auth.models import User
 from djqscsv import render_to_csv_response
 from msal import ConfidentialClientApplication
 import os
@@ -312,3 +315,64 @@ class LogRecordIterator(object):
 
     def __next__(self):
         return self._next_record()
+
+
+class RequestMixin(object):
+    """
+    Set property 'request' to model admin instance
+    """
+    request = None
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        self.request = request
+        return qs
+
+userdata = threading.local()
+class GetRequestUserMixin(object):
+    """
+    Get the request user from request property or threading local storage
+    """
+    request = None
+    @property
+    def user(self):
+        if self.request:
+            return self.request.user
+        else:
+            try:
+                return userdata.user
+            except:
+                return None
+        
+class RequestUserMixin(GetRequestUserMixin,RequestMixin):
+    """
+    Set property 'request' to model admin instance and request's user to threading localstorage
+    """
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        userdata.user = self.request.user
+        return qs
+
+setattr(User,"_security_team",None)
+setattr(User,"_secretpermission_granted",None)
+class SecretPermissionMixin(object):
+    is_developer = None
+    request = None
+
+    def secretpermission_granted(self,obj=None,user=None):
+        if not user:
+            if not self.request:
+                return False
+            else:
+                user = self.request.user
+
+        if user._security_team is None:
+            user._security_team = user.groups.filter(name="SECURITY").exists()
+
+        if user._security_team or not obj:
+            return user._security_team
+
+        if user._secretpermission_granted is None:
+            user._secretpermission_granted = self.is_developer(user,obj) if self.is_developer else False
+
+        return user._secretpermission_granted
+

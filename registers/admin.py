@@ -10,16 +10,9 @@ from django_json_widget.widgets import JSONEditorWidget
 
 from pytz import timezone
 
-from itassets.utils import ModelDescMixin
+from itassets.utils import ModelDescMixin,SecretPermissionMixin,RequestMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
 from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
-
-class RequestMixin(object):
-    request = None
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        self.request = request
-        return qs
 
 class ITSystemForm(forms.ModelForm):
     class Meta:
@@ -38,7 +31,7 @@ class ITSystemForm(forms.ModelForm):
 
 
 @register(ITSystem)
-class ITSystemAdmin(RequestMixin,ModelDescMixin, ModelAdmin):
+class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmin):
 
     class PlatformFilter(SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for platform.
@@ -145,7 +138,7 @@ class ITSystemAdmin(RequestMixin,ModelDescMixin, ModelAdmin):
 
     @property
     def fieldsets(self):
-        if self.request and self.request.user.groups.filter(name="SECURITY").exists():
+        if self.secretpermission_granted():
             return self._fieldsets_security
         else:
             return self._fieldsets
