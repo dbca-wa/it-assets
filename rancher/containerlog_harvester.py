@@ -87,6 +87,9 @@ def update_workload_latest_containers(context,containerlog):
                     workload_update_fields.append("latest_containers")
 
 def _add_notify_log(context,containerlog):
+    if settings.DISABLE_LOG_NOTIFICATION_EMAIL:
+        return
+
     if containerlog.level not in (models.ContainerLog.WARNING,models.ContainerLog.ERROR):
         return
 

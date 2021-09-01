@@ -176,6 +176,8 @@ RANCHER_CONTAINER_ABORTED = timedelta(days=env("RANCHER_CONTAINER_ABORTED",2)) #
 HARVESTER_ABORTED = timedelta(seconds=env("HARVESTER_ABORTED",3600 * 24)) #seconds
 HARVESTER_EXPIRED = timedelta(days=env("HARVESTER_EXPIRED",90)) #days
 
+DISABLE_LOG_NOTIFICATION_EMAIL = env("DISABLE_LOG_NOTIFICATION_EMAIL",default=False)
+
 # Database configuration
 DATABASES = {
     # Defined in DATABASE_URL env variable.
