@@ -39,6 +39,12 @@
         <th>Implementer</th>
         <td>{{ object.implementer.get_full_name }}</td>
     </tr>
+    {% if object.sme %}
+    <tr>
+        <th>Subject matter expert</th>
+        <td>{{ object.sme.get_full_name }}</td>
+    </tr>
+    {% endif %}
     {% if object.description %}
     <tr>
         <th>Description</th>
