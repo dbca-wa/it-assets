@@ -355,7 +355,8 @@ class ChangeRequest(models.Model):
     STATUS_CHOICES = (
         (0, "Draft"),  # Not yet approved or submitted to CAB.
         (1, "Submitted for endorsement"),  # Submitted for endorsement, not yet ready for CAB assessment.
-        (2, "Scheduled for CAB"),  # Approved and ready to be assessed at CAB.
+        (7, "Ready for SME review"),  # Endorsed, ready for Change Manager to review.
+        (2, "Scheduled for CAB"),  # Reviewed and ready to be assessed at CAB.
         (3, "Ready for implementation"),  # Approved at CAB, ready to be undertaken.
         (4, "Complete"),  # Undertaken and completed.
         (5, "Rolled back"),  # Undertaken and rolled back.
@@ -379,6 +380,10 @@ class ChangeRequest(models.Model):
     implementer = models.ForeignKey(
         DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
         help_text='The person who will implement this change')
+    sme = models.ForeignKey(
+        DepartmentUser, on_delete=models.PROTECT, related_name='sme', blank=True, null=True,
+        verbose_name='subject matter expert',
+        help_text='Optional subject matter expert for this change')
     description = models.TextField(
         null=True, blank=True, help_text='A brief description of what the change is for and why it is being undertaken')
     incident_url = models.URLField(
@@ -438,6 +443,10 @@ class ChangeRequest(models.Model):
     @property
     def is_submitted(self):
         return self.status == 1
+
+    @property
+    def is_sme_review(self):
+        return self.status == 7
 
     @property
     def is_scheduled(self):

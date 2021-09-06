@@ -28,9 +28,9 @@ class ChangeRequestCreateForm(forms.ModelForm):
     save_button = Submit('save', 'Save draft', css_class='btn-lg')
     cancel_button = Submit('cancel', 'Cancel', css_class='btn-info')
     endorser_choice = UserChoiceField(
-        required=False, label='Endorser', help_text='The person who will endorse this change prior to CAB')
+        required=False, label='Endorser email', help_text='The person who will endorse this change prior to CAB')
     implementer_choice = UserChoiceField(
-        required=False, label='Implementer', help_text='The person who will implement this change')
+        required=False, label='Implementer email', help_text='The person who will implement this change')
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
@@ -38,9 +38,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
         self.fields['description'].help_text = 'A brief description of what the change is for and why it is being undertaken (Markdown syntax supported)'
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
-        self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
-        self.fields['implementer_choice'].label = 'Implementer email'
         self.fields['test_result_docs'].help_text += ' - OPTIONAL'
         self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure (Markdown syntax supported)'
         self.fields['implementation'].widget = MarkdownxWidget()
@@ -65,9 +63,9 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'initiative_name', 'initiative_no', 'project_no',
             ),
             Fieldset(
-                'Endorsement and Implementer',
+                'Endorsement, Implementer and Subject matter expert',
                 HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.</p>'),
-                'endorser_choice', 'implementer_choice',
+                'endorser_choice', 'implementer_choice', 'sme_choice',
             ),
             Fieldset(
                 'Testing and Implementation',
@@ -250,16 +248,14 @@ class EmergencyChangeRequestForm(forms.ModelForm):
     """
     save_button = Submit('save', 'Save', css_class='btn-lg')
     endorser_choice = UserChoiceField(
-        required=False, label='Endorser', help_text='The person who endorses this change')
+        required=False, label='Endorser email', help_text='The person who endorses this change')
     implementer_choice = UserChoiceField(
-        required=False, label='Implementer', help_text='The person who will implement this change')
+        required=False, label='Implementer email', help_text='The person who will implement this change')
 
     def __init__(self, *args, **kwargs):
         super(EmergencyChangeRequestForm, self).__init__(*args, **kwargs)
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
-        self.fields['endorser_choice'].label = 'Endorser email'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
-        self.fields['implementer_choice'].label = 'Implementer email'
         self.helper = BaseFormHelper()
         self.helper.layout = Layout(
             Fieldset(
@@ -281,6 +277,23 @@ class EmergencyChangeRequestForm(forms.ModelForm):
         model = ChangeRequest
         fields = [
             'title', 'description', 'implementation', 'planned_start', 'planned_end', 'outage', 'completed', 'it_systems']
+
+
+class ChangeRequestSMEReviewForm(forms.Form):
+    sme_choice = UserChoiceField(
+        required=False, label='Subject matter expert', help_text='The subject matter expert who will review this change')
+    save_button = Submit('save', 'Save', css_class='btn-lg')
+    cancel_button = Submit('cancel', 'Cancel', css_class='btn-info')
+
+    def __init__(self, instance, *args, **kwargs):
+        # NOTE: we've added instance to the args above to pretend that this is a ModelForm.
+        super(ChangeRequestSMEReviewForm, self).__init__(*args, **kwargs)
+        self.fields['sme_choice'].widget.attrs['class'] = 'select-user-choice'
+        self.helper = BaseFormHelper()
+        self.helper.layout = Layout(
+            'sme_choice',
+            FormActions(self.save_button, self.cancel_button),
+        )
 
 
 class ChangeRequestApprovalForm(forms.Form):

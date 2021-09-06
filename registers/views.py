@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.urls import reverse
@@ -21,7 +22,7 @@ from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
 from .forms import (
     ChangeRequestCreateForm, StandardChangeRequestCreateForm, ChangeRequestChangeForm,
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
-    EmergencyChangeRequestForm, ChangeRequestApprovalForm,
+    EmergencyChangeRequestForm, ChangeRequestApprovalForm, ChangeRequestSMEReviewForm,
 )
 from .reports import (
     it_system_export, itsr_staff_discrepancies, change_request_export,
@@ -200,10 +201,16 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
         # Context variables that determines if determine is certain template elements are displayed.
         if rfc.requester:
             context['is_requester'] = self.request.user.email.lower() == rfc.requester.email.lower()
+        else:
+            context['is_requester'] = False
         if rfc.endorser:
             context['is_endorser'] = self.request.user.email.lower() == rfc.endorser.email.lower()
         else:
             context['is_endorser'] = False
+        if rfc.sme:
+            context['is_sme'] = self.request.user.email.lower() == rfc.sme.email.lower()
+        else:
+            context['is_sme'] = False
         emails = []
         if rfc.requester:
             emails.append(rfc.requester.email.lower())
@@ -212,8 +219,9 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
         if rfc.implementer:
             emails.append(rfc.implementer.email.lower())
         context['user_authorised'] = self.request.user.email.lower() in [emails] or self.request.user.is_staff is True
-        # Displays the 'Approve This Change' button:
-        context['user_is_cab'] = self.request.user.groups.filter(name='CAB members').exists()
+
+        # Certain functions should only be available to Change Managers (or superusers):
+        context['user_is_change_manager'] = self.request.user.groups.filter(name='Change Managers').exists()
         return context
 
 
@@ -404,7 +412,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                     log = ChangeLog(change_request=rfc, log=msg)
                     log.save()
                     log = ChangeLog(
-                        change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.get_full_name()))
+                        change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.email))
                     log.save()
 
         # Emergency RFC changes.
@@ -419,6 +427,8 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
 
 
 class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
+    """A dual-purpose view, used by the endorser and the SME to endorse/reject an RFC.
+    """
     model = ChangeRequest
     form_class = ChangeRequestEndorseForm
     template_name = 'registers/changerequest_endorse.html'
@@ -428,65 +438,124 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
         context['site_title'] = 'DBCA Office of Information Management'
         context['site_acronym'] = 'OIM'
         rfc = self.get_object()
-        context['page_title'] = 'Endorse change request {}'.format(rfc.pk)
+        if rfc.is_submitted:
+            context['page_title'] = 'Endorse change request {}'.format(rfc.pk)
+            b = 'Endorse'
+        elif rfc.is_sme_review:
+            context['page_title'] = 'Subject matter expert - endorse change request {}'.format(rfc.pk)
+            b = 'SME endorse'
         # Breadcrumb links:
         links = [
             (reverse("change_request_list"), "Change request register"),
             (reverse("change_request_detail", args=(rfc.pk,)), rfc.pk),
-            (None, "Endorse")
+            (None, b),
         ]
         context['breadcrumb_trail'] = breadcrumbs_list(links)
         return context
 
     def get(self, request, *args, **kwargs):
-        # Validate that the RFC may be endorsed.
+        # Validate that the RFC may be endorsed by the endorser or the SME.
         rfc = self.get_object()
-        if not rfc.is_submitted:
+        if not rfc.is_submitted and not rfc.is_sme_review:
             # Redirect to the object detail view.
             messages.warning(self.request, 'Change request {} is not ready for endorsement.'.format(rfc.pk))
             return HttpResponseRedirect(rfc.get_absolute_url())
-        if not rfc.endorser:
-            messages.warning(self.request, 'Change request {} has no endorser recorded.'.format(rfc.pk))
-            return HttpResponseRedirect(rfc.get_absolute_url())
-        if self.request.user.email.lower() != rfc.endorser.email.lower():
-            messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
-            return HttpResponseRedirect(rfc.get_absolute_url())
+        if rfc.is_submitted:
+            if not rfc.endorser:
+                messages.warning(self.request, 'Change request {} has no endorser recorded.'.format(rfc.pk))
+                return HttpResponseRedirect(rfc.get_absolute_url())
+            if self.request.user.email.lower() != rfc.endorser.email.lower():
+                messages.warning(self.request, 'You are not the endorser for change request {}.'.format(rfc.pk))
+                return HttpResponseRedirect(rfc.get_absolute_url())
+        if rfc.is_sme_review:
+            if not rfc.sme:
+                messages.warning(self.request, 'Change request {} has no subject matter expert recorded.'.format(rfc.pk))
+                return HttpResponseRedirect(rfc.get_absolute_url())
+            if self.request.user.email.lower() != rfc.sme.email.lower():
+                messages.warning(self.request, 'You are not the subject matter expert for change request {}.'.format(rfc.pk))
+                return HttpResponseRedirect(rfc.get_absolute_url())
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
         rfc = form.save()
 
-        if self.request.POST.get('endorse'):
-            # If the user clicked "Endorse", log this and change status to Scheduled.
-            rfc.status = 2
-            rfc.save()
-            msg = 'Change request {} has been endorsed by {}; it is now scheduled to be assessed at CAB.'.format(rfc.pk, self.request.user.get_full_name())
-            messages.success(self.request, msg)
-            log = ChangeLog(change_request=rfc, log=msg)
-            log.save()
-            # Send an email to the requester.
-            subject = 'Change request {} has been endorsed'.format(rfc.pk)
-            detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
-            text_content = """This is an automated message to let you know that change request
-                {} ("{}") has been endorsed by {}, and it is now scheduled to be assessed by
-                the OIM Change Advisory Board.\n
-                {}\n
-                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
-            html_content = """<p>This is an automated message to let you know that change request
-                {0} ("{1}") has been endorsed by {2}, and it is now scheduled to be assessed by
-                the OIM Change Advisory Board.</p>
-                <ul><li><a href="{3}">{3}</a></li></ul>
-                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
-            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
-            msg.attach_alternative(html_content, 'text/html')
-            msg.send()
+        if Site.objects.filter(name='Change Requests').exists():
+            domain = Site.objects.get(name='Change Requests').domain
+        else:
+            domain = Site.objects.get_current().domain
+        if domain.startswith('http://'):
+            domain = domain.replace('http', 'https')
+        if not domain.startswith('https://'):
+            domain = 'https://' + domain
+        detail_url = '{}{}'.format(domain, rfc.get_absolute_url())
 
-            # Email Change Manager(s), if they are specified.
-            if User.objects.filter(groups__name='Change Managers').exists():
-                changeManagers = User.objects.filter(groups__name='Change Managers')
-                msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [i.email for i in changeManagers])
+        if self.request.POST.get('endorse'):
+            subject = 'Change request {} has been endorsed'.format(rfc.pk)
+            # Case 1 - endorser
+            if rfc.is_submitted:
+                # If the user clicked "Endorse", log this and change status to "Ready for SME review".
+                # The Change Manager will process it further.
+                rfc.status = 7
+                rfc.save()
+                msg = 'Change request {} has been endorsed by {}; it is now with the Change Manager to be reviewed.'.format(rfc.pk, self.request.user.get_full_name())
+                messages.success(self.request, msg)
+                log = ChangeLog(change_request=rfc, log=msg)
+                log.save()
+                # Send an email to the requester.
+                text_content = """This is an automated message to let you know that change request
+                    {} ("{}") has been endorsed by {}, and it is now in review by the OIM Change
+                    Manager.\n
+                    {}\n
+                    """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                html_content = """<p>This is an automated message to let you know that change request
+                    {0} ("{1}") has been endorsed by {2}, and it is now in review by the OIM Change
+                    Manager.</p>
+                    <ul><li><a href="{3}">{3}</a></li></ul>
+                    """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
                 msg.attach_alternative(html_content, 'text/html')
                 msg.send()
+
+                # Email the Change Manager(s), if they are specified.
+                if User.objects.filter(groups__name='Change Managers').exists():
+                    text_content = """This is an automated message to let you know that change request
+                        {} ("{}") has been endorsed by {}, and you should now review it to determine if
+                        subject matter expert review is necessary.\n
+                        {}\n
+                        """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                    html_content = """<p>This is an automated message to let you know that change request
+                        {0} ("{1}") has been endorsed by {2}, and you should now review it to determine if
+                        subject matter expert review is necessary.</p>
+                        <ul><li><a href="{3}">{3}</a></li></ul>
+                        """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                    subject = subject + " - Ready for SME review"
+                    changeManagers = User.objects.filter(groups__name='Change Managers')
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [i.email for i in changeManagers])
+                    msg.attach_alternative(html_content, 'text/html')
+                    msg.send()
+            # Case 2 - SME
+            elif rfc.is_sme_review:
+                # If the user clicked "Endorse", log this and change status to "Scheduled for CAB".
+                rfc.status = 2
+                rfc.save()
+                msg = 'Change request {} has been endorsed by {} as SME; it is now scheduled for CAB.'.format(rfc.pk, self.request.user.get_full_name())
+                messages.success(self.request, msg)
+                log = ChangeLog(change_request=rfc, log=msg)
+                log.save()
+                # Email the Change Manager.
+                if User.objects.filter(groups__name='Change Managers').exists():
+                    text_content = """This is an automated message to let you know that change request
+                        {} ("{}") has been endorsed by {} as SME. It is now schedule for CAB.\n
+                        {}\n
+                        """.format(rfc.pk, rfc.title, self.request.user.get_full_name(), detail_url)
+                    html_content = """<p>This is an automated message to let you know that change request
+                        {0} ("{1}") has been endorsed by {2} as SME. It is now scheduled for CAB.</p>
+                        <ul><li><a href="{3}">{3}</a></li></ul>
+                        """.format(rfc.pk, rfc.title, self.request.user.get_full_name(), detail_url)
+                    changeManagers = User.objects.filter(groups__name='Change Managers')
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [i.email for i in changeManagers])
+                    msg.attach_alternative(html_content, 'text/html')
+                    msg.send()
 
         elif self.request.POST.get('reject'):
             # If the user clicked "Reject", log this and change status back to Draft.
@@ -498,7 +567,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             log.save()
             # Send an email to the requester.
             subject = 'Change request {} has been rejected'.format(rfc.pk)
-            detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
+            #detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
             text_content = """This is an automated message to let you know that change request
                 {} ("{}") has been rejected by {}. Its status has been reset to "Draft" for updates
                 and re-submission.\n
@@ -513,6 +582,95 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             msg.attach_alternative(html_content, 'text/html')
             msg.send()
         return super().form_valid(form)
+
+
+class ChangeRequestSMEReview(LoginRequiredMixin, UpdateView):
+    model = ChangeRequest
+    form_class = ChangeRequestSMEReviewForm
+    template_name = 'registers/changerequest_sme_review.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        rfc = self.get_object()
+        context['page_title'] = 'Change request {} - SME review'.format(rfc.pk)
+        # Breadcrumb links:
+        links = [
+            (reverse("change_request_list"), "Change request register"),
+            (reverse("change_request_detail", args=(rfc.pk,)), rfc.pk),
+            (None, "SME review")
+        ]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
+        return context
+
+    def get(self, request, *args, **kwargs):
+        # Validate that the RFC may be reviewed.
+        rfc = self.get_object()
+        if not rfc.is_sme_review:
+            # Redirect to the object detail view.
+            messages.warning(self.request, 'Change request {} is not ready for SME review.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        # Check that user is a Change Manager, or a superuser.
+        if not (self.request.user.is_superuser or self.request.user.groups.filter(name='Change Managers').exists()):
+            messages.warning(self.request, 'You are not authorised to set SME review for change request {}.'.format(rfc.pk))
+            return HttpResponseRedirect(rfc.get_absolute_url())
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        # If the user clicked Cancel, redirect back to the RFC detail view.
+        if request.POST.get("cancel"):
+            return HttpResponseRedirect(self.get_object().get_absolute_url())
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        rfc = self.get_object()
+        # Set the SME (if required).
+        if self.request.POST.get('sme_choice'):
+            rfc.sme = DepartmentUser.objects.get(pk=int(self.request.POST.get('sme_choice')))
+        rfc.save()
+
+        # If a SME was set, send an email to that user for review & endorsement.
+        if rfc.sme:
+            if Site.objects.filter(name='Change Requests').exists():
+                domain = Site.objects.get(name='Change Requests').domain
+            else:
+                domain = Site.objects.get_current().domain
+            if domain.startswith('http://'):
+                domain = domain.replace('http', 'https')
+            if not domain.startswith('https://'):
+                domain = 'https://' + domain
+            detail_url = '{}{}'.format(domain, rfc.get_absolute_url())
+
+            # Send an email to the SME.
+            subject = 'Change request {} - Subject matter expert review request'.format(rfc.pk)
+            text_content = """This is an automated message to let you know that you have been
+                nominated as the subject matter expert for change request {} ("{}").\n
+                Please review the change here to either endorse or reject it:\n
+                {}\n
+                """.format(rfc.pk, rfc.title, detail_url)
+            html_content = """<p>This is an automated message to let you know that you have been
+                nominated as the subject matter expert for change request {0} ("{1}").</p>
+                <p>Please review the change here to either endorse or reject it:</p>
+                <ul><li><a href="{2}">{2}</a></li></ul>
+                """.format(rfc.pk, rfc.title, detail_url)
+            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.sme.email])
+            msg.attach_alternative(html_content, 'text/html')
+            msg.send()
+            msg = 'Notification sent to {} to undertake SME review of change request {}.'.format(rfc.sme.email, rfc.pk)
+            messages.success(self.request, msg)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+
+        else:  # SME was not set, therefore set the status to "Schedule for CAB".
+            rfc.status = 2
+            rfc.save()
+            msg = 'Change request {} has undergone SME review; no SME is required and it is scheduled for CAB.'.format(rfc.pk)
+            messages.success(self.request, msg)
+            log = ChangeLog(change_request=rfc, log=msg)
+            log.save()
+
+        return HttpResponseRedirect(rfc.get_absolute_url())
 
 
 class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
@@ -558,15 +716,15 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
         return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
-        obj = self.get_object()
-        obj.status = 3
-        obj.save()
+        rfc = self.get_object()
+        rfc.status = 3
+        rfc.save()
         logText = 'CAB member approval: change request has been approved by {}.'.format(self.request.user.get_full_name())
-        changelog = ChangeLog(change_request=obj, log=logText)
+        changelog = ChangeLog(change_request=rfc, log=logText)
         changelog.save()
         msg = 'You have approved this change on behalf of CAB'
         messages.success(self.request, msg)
-        return HttpResponseRedirect(obj.get_absolute_url())
+        return HttpResponseRedirect(rfc.get_absolute_url())
 
 
 class ChangeRequestExport(LoginRequiredMixin, View):
