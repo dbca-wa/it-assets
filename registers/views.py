@@ -412,7 +412,7 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                     log = ChangeLog(change_request=rfc, log=msg)
                     log.save()
                     log = ChangeLog(
-                        change_request=rfc, log='Request for endorsement emailed to {}.'.format(rfc.endorser.email))
+                        change_request=rfc, log='Request for endorsement of change request {} emailed to {}.'.format(rfc.pk, rfc.endorser.email))
                     log.save()
 
         # Emergency RFC changes.
@@ -545,13 +545,14 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
                 # Email the Change Manager.
                 if User.objects.filter(groups__name='Change Managers').exists():
                     text_content = """This is an automated message to let you know that change request
-                        {} ("{}") has been endorsed by {} as SME. It is now schedule for CAB.\n
+                        {} ("{}") has been endorsed by {} as subject matter expert. It is now schedule for CAB.\n
                         {}\n
                         """.format(rfc.pk, rfc.title, self.request.user.get_full_name(), detail_url)
                     html_content = """<p>This is an automated message to let you know that change request
-                        {0} ("{1}") has been endorsed by {2} as SME. It is now scheduled for CAB.</p>
+                        {0} ("{1}") has been endorsed by {2} as subject matter expert. It is now scheduled for CAB.</p>
                         <ul><li><a href="{3}">{3}</a></li></ul>
                         """.format(rfc.pk, rfc.title, self.request.user.get_full_name(), detail_url)
+                    subject = subject + " by SME"
                     changeManagers = User.objects.filter(groups__name='Change Managers')
                     msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [i.email for i in changeManagers])
                     msg.attach_alternative(html_content, 'text/html')
@@ -567,7 +568,6 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
             log.save()
             # Send an email to the requester.
             subject = 'Change request {} has been rejected'.format(rfc.pk)
-            #detail_url = self.request.build_absolute_uri(rfc.get_absolute_url())
             text_content = """This is an automated message to let you know that change request
                 {} ("{}") has been rejected by {}. Its status has been reset to "Draft" for updates
                 and re-submission.\n
@@ -724,6 +724,31 @@ class ChangeRequestApproval(LoginRequiredMixin, UpdateView):
         changelog.save()
         msg = 'You have approved this change on behalf of CAB'
         messages.success(self.request, msg)
+
+        if Site.objects.filter(name='Change Requests').exists():
+            domain = Site.objects.get(name='Change Requests').domain
+        else:
+            domain = Site.objects.get_current().domain
+        if domain.startswith('http://'):
+            domain = domain.replace('http', 'https')
+        if not domain.startswith('https://'):
+            domain = 'https://' + domain
+        detail_url = '{}{}'.format(domain, rfc.get_absolute_url())
+
+        # Send an email to the requester.
+        subject = 'Change request {} has been approved at CAB'.format(rfc.pk)
+        text_content = """This is an automated message to let you know that change request
+            {} ("{}") has been approved at CAB, and it may now be undertaken as planned.\n
+            {}\n
+            """.format(rfc.pk, rfc.title, detail_url)
+        html_content = """<p>This is an automated message to let you know that change request
+            {0} ("{1}") has been approved at CAB, and it may now be undertaken as planned.</p>
+            <ul><li><a href="{2}">{2}</a></li></ul>
+            """.format(rfc.pk, rfc.title, detail_url)
+        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send()
+
         return HttpResponseRedirect(rfc.get_absolute_url())
 
 
