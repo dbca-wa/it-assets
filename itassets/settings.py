@@ -41,8 +41,6 @@ INSTALLED_APPS = (
     'crispy_forms',
     'leaflet',
     'django_q',
-    'rest_framework',
-    'rest_framework_gis',
     'webtemplate_dbca',
     'bootstrap_pagination',
     'markdownx',
@@ -277,7 +275,6 @@ CORS_ORIGIN_WHITELIST = (
 )
 CORS_ALLOW_CREDENTIALS = True
 
-
 # django-q configuration
 Q_CLUSTER = {
     'name': 'DjangoORM',
@@ -287,14 +284,6 @@ Q_CLUSTER = {
     'queue_limit': 50,
     'bulk': 10,
     'orm': 'default',
-}
-
-
-# default REST API permissions
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    )
 }
 
 # crispy_forms settings

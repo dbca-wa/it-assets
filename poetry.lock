@@ -377,50 +377,6 @@ python-versions = ">=3.6"
 django = ">=1.11"
 
 [[package]]
-name = "djangorestframework"
-version = "3.9.1"
-description = "Web APIs for Django, made easy."
-category = "main"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-
-[[package]]
-name = "djangorestframework-csv"
-version = "2.1.0"
-description = "CSV Tools for Django REST Framework"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-djangorestframework = "*"
-six = "*"
-unicodecsv = "*"
-
-[[package]]
-name = "djangorestframework-gis"
-version = "0.14"
-description = "Geographic add-ons for Django Rest Framework"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-djangorestframework = "*"
-
-[[package]]
-name = "djangorestframework-recursive"
-version = "0.1.2"
-description = "Recursive Serialization for Django REST framework"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-Django = "*"
-djangorestframework = ">=3.0"
-
-[[package]]
 name = "docutils"
 version = "0.15.2"
 description = "Docutils -- Python Documentation Utilities"
@@ -1076,7 +1032,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "f6827dc70e970ba20019a5184d33092dbd2219dd3fca7a0e960dacb8e856d7ec"
+content-hash = "4e1ba2925a0d0d4402d10329066d3fb34f7ae06aa6f7f9bea6b12a3985c2563f"
 
 [metadata.files]
 ansicon = [
@@ -1250,21 +1206,6 @@ django-queryset-csv = [
 django-reversion = [
     {file = "django-reversion-3.0.8.tar.gz", hash = "sha256:49e9930f90322dc6a2754dd26144285cfcc1c5bd0c1c39ca95d5602c5054ae32"},
     {file = "django_reversion-3.0.8-py3-none-any.whl", hash = "sha256:9cfadeec2df37cb53d795ab79f6792f9eed8e70363dcf3a275dc19a58b971a8f"},
-]
-djangorestframework = [
-    {file = "djangorestframework-3.9.1-py2.py3-none-any.whl", hash = "sha256:a4138613b67e3a223be6c97f53b13d759c5b90d2b433bad670b8ebf95402075f"},
-    {file = "djangorestframework-3.9.1.tar.gz", hash = "sha256:79c6efbb2514bc50cf25906d7c0a5cfead714c7af667ff4bd110312cd380ae66"},
-]
-djangorestframework-csv = [
-    {file = "djangorestframework-csv-2.1.0.tar.gz", hash = "sha256:2f008b20a44f2d3c37835ea5b5ddfe19f54394f07b9cb267c616a917a7f7e27c"},
-]
-djangorestframework-gis = [
-    {file = "djangorestframework-gis-0.14.tar.gz", hash = "sha256:e645c6c8aedee53ac0a4851abcdf8121fff66813eebae1b040b1ccb941cb248b"},
-    {file = "djangorestframework_gis-0.14-py2.py3-none-any.whl", hash = "sha256:35527c51e083ccc93f6e6d90a6515c132bbeb2c5648b166ac5b1a48c4ea8e2a4"},
-]
-djangorestframework-recursive = [
-    {file = "djangorestframework-recursive-0.1.2.tar.gz", hash = "sha256:f8fc2d677ccb32fe53ec4153a45f66c822d0ce444824cba56edc76ca89b704ae"},
-    {file = "djangorestframework_recursive-0.1.2-py2.py3-none-any.whl", hash = "sha256:e4e51b26b7ee3c9f9b838885d638b91293e7c66e85b5955f278a6e10eb34ce7c"},
 ]
 docutils = [
     {file = "docutils-0.15.2-py2-none-any.whl", hash = "sha256:9e4d7ecfc600058e07ba661411a2b7de2fd0fafa17d1a7f7361cd47b1175c827"},
