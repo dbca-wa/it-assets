@@ -65,7 +65,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
             Fieldset(
                 'Endorsement, Implementer and Subject matter expert',
                 HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.</p>'),
-                'endorser_choice', 'implementer_choice', 'sme_choice',
+                'endorser_choice', 'implementer_choice',
             ),
             Fieldset(
                 'Testing and Implementation',
