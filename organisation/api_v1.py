@@ -1,19 +1,11 @@
-from dateutil.parser import parse
 from django.conf import settings
 from django.db.models import Q
 from django.urls import path, re_path
 from django.core.cache import cache
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseBadRequest
-from django.utils.text import slugify
-from django.views.decorators.csrf import csrf_exempt
-import json
 import pytz
 from restless.constants import OK
 from restless.dj import DjangoResource
-from restless.exceptions import BadRequest
-from restless.preparers import FieldsPreparer
 from restless.resources import skip_prepare
-from restless.utils import MoreTypesJSONEncoder
 
 from itassets.utils import FieldsFormatter, CSVDjangoResource
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
@@ -275,44 +267,3 @@ class LocationResource(CSVDjangoResource):
             if row['point']:
                 row['point'] = row['point'].wkt
         return data
-
-
-class UserSelectResource(DjangoResource):
-    """A small API resource to provide DepartmentUsers for select lists.
-    """
-    preparer = FieldsPreparer(fields={
-        'id': 'id',
-        'text': 'email',
-    })
-
-    def list(self):
-        FILTERS = DepartmentUser.ACTIVE_FILTER.copy()
-        users = DepartmentUser.objects.filter(**FILTERS)
-        if 'q' in self.request.GET:
-            users = DepartmentUser.objects.filter(email__icontains=self.request.GET['q'])
-        return users
-
-
-@csrf_exempt
-def profile(request):
-    """An API view that returns the profile for the request user.
-    """
-    if not request.user.is_authenticated:
-        return HttpResponseForbidden()
-
-    # Profile API view should return one object only.
-    self = DepartmentUserResource()
-    if not hasattr(request, 'user') or not request.user.email:
-        return HttpResponseBadRequest('No user email in request')
-    qs = DepartmentUser.objects.filter(email__iexact=request.user.email)
-    if qs.count() > 1 or qs.count() < 1:
-        return HttpResponseBadRequest('API request for {} should return one profile; it returned {}!'.format(
-            request.user.email, qs.count()))
-    user = qs.get(email__iexact=request.user.email)
-
-    if request.method == 'GET':
-        data = qs.values(*self.VALUES_ARGS)[0]
-
-    return HttpResponse(json.dumps(
-        {'objects': [self.formatters.format(request, data)]}, cls=MoreTypesJSONEncoder),
-        content_type='application/json')

@@ -1,0 +1,51 @@
+{% extends "base_b4.html" %}
+{% load crispy_forms_tags %}
+
+{% block extra_style %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" />
+{% endblock %}
+
+{% block page_content_inner %}
+<div class="row">
+    <div class="col">
+        <h1>{{ page_title }}</h1>
+        <p>Please review the details of the change request below and determine if subject matter expert (SME) review
+            and endorsement is required or not.</p>
+        <p>If so, select the required SME, click <strong>Save</strong> and a notification will be sent for them to review
+            the change.</p>
+        <p>If no SME review is required, please leave that field blank, click <strong>Save</strong> and the change will instead be scheduled for CAB review.</p>
+        {% include 'registers/changerequest_table.html' %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col">
+        {% crispy form %}
+    </div>
+</div>
+{% endblock %}
+
+{% block jquery_version %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js" integrity="sha512-2ImtlRlf2VVmiGZsjm9bEyhjGW4dU7B6TNwh/hx/iSByxNENtj3WVE6o/9Lj4TJeVXPi4bnOIMXFIJJAeufa0A==" crossorigin="anonymous"></script>
+<script type="text/javascript">
+    $(function () {
+        $('.select-user-choice').select2({
+          minimumInputLength: 3,
+          ajax: {
+            url: '/api/v3/departmentuser/?selectlist=',
+            delay: 250,
+            processResults: function (data) {
+              return {
+                results: data
+              };
+            }
+          }
+        });
+    });
+</script>
+{% endblock %}

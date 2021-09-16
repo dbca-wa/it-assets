@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from itassets.utils_freshservice import get_freshservice_objects, create_freshservice_object, update_freshservice_object
+import logging
 from organisation.utils import ms_graph_users
 
 
@@ -7,25 +8,26 @@ class Command(BaseCommand):
     help = 'Syncs department user information to Freshservice'
 
     def handle(self, *args, **options):
-        self.stdout.write('Querying Freshservice for requesters')
+        logger = logging.getLogger('organisation')
+        logger.info('Querying Freshservice for requesters')
         requesters_fs = get_freshservice_objects(obj_type='requesters')
         requesters_fs = {r['primary_email']: r for r in requesters_fs}
-        self.stdout.write('Querying Freshservice for agents')
+        logger.info('Querying Freshservice for agents')
         agents_fs = get_freshservice_objects(obj_type='agents')
         agents_fs = {r['email']: r for r in agents_fs}
-        self.stdout.write('Querying Freshservice for departments')
+        logger.info('Querying Freshservice for departments')
         departments_fs = get_freshservice_objects(obj_type='departments')
         departments_fs = {d['name']: d for d in departments_fs}
 
         if not requesters_fs:
-            self.stdout.write(self.style.ERROR('Freshservice API returned no requesters'))
+            logger.error('Freshservice API returned no requesters')
             return
 
-        self.stdout.write('Querying Microsoft Graph API for Azure AD users.')
+        logger.info('Querying Microsoft Graph API for Azure AD users.')
         azure_users = ms_graph_users(licensed=True)
 
         if not azure_users:
-            self.stdout.write(self.style.ERROR('Microsoft Graph API returned no users'))
+            logger.error('Microsoft Graph API returned no users')
             return
 
         # Iterate through the list of Azure AD users.
@@ -57,16 +59,16 @@ class Command(BaseCommand):
                 data = {}
                 if requester['first_name'] and requester['first_name'] != user['givenName']:
                     data['first_name'] = user['givenName']
-                    self.stdout.write('Updating requester {} first_name to {}'.format(requester['primary_email'], user['givenName']))
+                    logger.info('Updating requester {} first_name to {}'.format(requester['primary_email'], user['givenName']))
                 if requester['last_name'] and requester['last_name'] != user['surname']:
                     data['last_name'] = user['surname']
-                    self.stdout.write('Updating requester {} last_name to {}'.format(requester['primary_email'], user['surname']))
+                    logger.info('Updating requester {} last_name to {}'.format(requester['primary_email'], user['surname']))
                 if user['jobTitle'] and requester['job_title'] != user['jobTitle']:
                     data['job_title'] = user['jobTitle']
-                    self.stdout.write('Updating requester {} job_title to {}'.format(requester['primary_email'], user['jobTitle']))
+                    logger.info('Updating requester {} job_title to {}'.format(requester['primary_email'], user['jobTitle']))
                 if user['telephoneNumber'] and requester['work_phone_number'] != user['telephoneNumber']:
                     data['work_phone_number'] = user['telephoneNumber']
-                    self.stdout.write('Updating requester {} work_phone_number to {}'.format(requester['primary_email'], user['telephoneNumber']))
+                    logger.info('Updating requester {} work_phone_number to {}'.format(requester['primary_email'], user['telephoneNumber']))
                 # Freshservice requester department - this is a bit different to the fields above.
                 # We use this to record the requester cost centre.
                 if user['companyName'] and user['companyName'] in departments_fs:
@@ -82,16 +84,16 @@ class Command(BaseCommand):
                 data = {}
                 if user['givenName'] and agent['first_name'] != user['givenName']:
                     data['first_name'] = user['givenName']
-                    self.stdout.write('Updating agent {} first_name to {}'.format(agent['email'], user['givenName']))
+                    logger.info('Updating agent {} first_name to {}'.format(agent['email'], user['givenName']))
                 if user['surname'] and agent['last_name'] != user['surname']:
                     data['last_name'] = user['surname']
-                    self.stdout.write('Updating agent {} last_name to {}'.format(agent['email'], user['surname']))
+                    logger.info('Updating agent {} last_name to {}'.format(agent['email'], user['surname']))
                 if user['jobTitle'] and agent['job_title'] != user['jobTitle']:
                     data['job_title'] = user['jobTitle']
-                    self.stdout.write('Updating agent {} job_title to {}'.format(agent['email'], user['jobTitle']))
+                    logger.info('Updating agent {} job_title to {}'.format(agent['email'], user['jobTitle']))
                 if user['telephoneNumber'] and agent['work_phone_number'] != user['telephoneNumber']:
                     data['work_phone_number'] = user['telephoneNumber']
-                    self.stdout.write('Updating agent {} work_phone_number to {}'.format(agent['email'], user['telephoneNumber']))
+                    logger.info('Updating agent {} work_phone_number to {}'.format(agent['email'], user['telephoneNumber']))
                 # Freshservice agent department - this is a bit different to the fields above.
                 # We use this to record the agent cost centre.
                 if user['companyName'] and user['companyName'] in departments_fs:
@@ -115,11 +117,11 @@ class Command(BaseCommand):
                     dept = departments_fs[user['companyName']]
                     data['department_ids'] = [dept['id']]
 
-                self.stdout.write('Unable to find {} in Freshservice, creating a new requester'.format(user['mail']))
+                logger.info('Unable to find {} in Freshservice, creating a new requester'.format(user['mail']))
                 resp = create_freshservice_object('requesters', data)
                 if resp.status_code == 409:
-                    self.stdout.write(self.style.WARNING('Skipping {} (probably an agent)'.format(user['mail'])))
+                    logger.info('Skipping {} (probably an agent)'.format(user['mail']))
                 elif resp.status_code == 201:
                     resp.raise_for_status()
 
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')

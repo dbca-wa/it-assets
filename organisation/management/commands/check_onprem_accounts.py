@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from django.core.management.base import BaseCommand
+import logging
 from organisation.models import DepartmentUser
 from organisation.utils import get_ad_users_json
 
@@ -24,11 +25,12 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        logger = logging.getLogger('organisation')
         self.stdout.write('Downloading on-prem AD user account data')
         ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['path'])
 
         if not ad_users:
-            self.stdout.write(self.style.ERROR('No on-prem AD user account data could be downloaded'))
+            logger.error('No on-prem AD user account data could be downloaded')
             return
 
         self.stdout.write('Comparing Department Users to on-prem AD user accounts')
@@ -44,17 +46,13 @@ class Command(BaseCommand):
                         du.ad_guid = ad['ObjectGUID']
                         du.ad_data = ad
                         du.ad_data_updated = datetime.now(timezone.utc)
-                        du.save()
                         du.update_deptuser_from_onprem_ad()
-                        self.stdout.write(
-                            self.style.SUCCESS('Linked existing department user {} with onprem AD object {}'.format(du, ad['ObjectGUID']))
-                        )
+                        logger.info('ONPREM AD SYNC: linked existing department user {} with onprem AD object {}'.format(du, ad['ObjectGUID']))
                 else:
                     # An existing department user is linked to this onprem AD user.
                     du = DepartmentUser.objects.get(ad_guid=ad['ObjectGUID'])
                     du.ad_data = ad
                     du.ad_data_updated = datetime.now(timezone.utc)
-                    du.save()
                     du.update_deptuser_from_onprem_ad()
 
         self.stdout.write(self.style.SUCCESS('Completed'))

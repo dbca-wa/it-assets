@@ -9,6 +9,7 @@ urlpatterns = [
     path('changerequest/<int:pk>/', views.ChangeRequestDetail.as_view(), name='change_request_detail'),
     path('changerequest/<int:pk>/change/', views.ChangeRequestChange.as_view(), name='change_request_change'),
     path('changerequest/<int:pk>/endorse/', views.ChangeRequestEndorse.as_view(), name='change_request_endorse'),
+    path('changerequest/<int:pk>/sme-review/', views.ChangeRequestSMEReview.as_view(), name='change_request_sme_review'),
     path('changerequest/<int:pk>/approval/', views.ChangeRequestApproval.as_view(), name='change_request_approval'),
     path('changerequest/<int:pk>/complete/', views.ChangeRequestComplete.as_view(), name='change_request_complete'),
     path('changerequest/add/', views.ChangeRequestCreate.as_view(), name='change_request_create'),

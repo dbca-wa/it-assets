@@ -39,6 +39,12 @@
         <th>Implementer</th>
         <td>{{ object.implementer.get_full_name }}</td>
     </tr>
+    {% if object.sme %}
+    <tr>
+        <th>Subject matter expert</th>
+        <td>{{ object.sme.get_full_name }}</td>
+    </tr>
+    {% endif %}
     {% if object.description %}
     <tr>
         <th>Description</th>
@@ -79,10 +85,12 @@
         <th>Outage duration (hh:mm:ss)</th>
         <td>{% if object.outage is not None %}{{ object.outage }}{% else %}Not applicable{% endif %}</td>
     </tr>
+    {% if object.completed %}
     <tr>
         <th>Completed date & time</th>
-        <td>{% if object.completed %}{{ object.completed|date:"D, j M Y H:i" }}{% endif %}</td>
+        <td>{{ object.completed|date:"D, j M Y H:i" }}</td>
     </tr>
+    {% endif %}
 {% if user_authorised %}
     <tr>
         <th>Implementation instructions</th>

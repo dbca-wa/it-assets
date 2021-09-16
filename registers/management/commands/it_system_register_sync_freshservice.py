@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand
+import logging
 import requests
 from urllib.parse import urlparse
 from itassets.utils_freshservice import get_freshservice_objects_curl, create_freshservice_object, update_freshservice_object, FRESHSERVICE_AUTH
@@ -10,17 +11,18 @@ class Command(BaseCommand):
     help = 'Syncs the IT System Register information to Freshservice'
 
     def handle(self, *args, **options):
-        self.stdout.write('Querying Freshservice for IT Systems')
+        logger = logging.getLogger('registers')
+        logger.info('Querying Freshservice for IT Systems')
         it_systems_fs = get_freshservice_objects_curl(
             obj_type='assets',
             query='asset_type_id:{}'.format(settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID),
             verbose=True
         )
         if not it_systems_fs:
-            self.stdout.write(self.style.ERROR('Freshservice API returned no IT System assets'))
+            logger.error('Freshservice API returned no IT System assets')
             return
 
-        self.stdout.write('Comparing Freshservice IT Systems to IT System Register')
+        logger.info('Comparing Freshservice IT Systems to IT System Register')
         it_systems = ITSystem.objects.filter(status__in=[0, 2]).order_by('system_id')
 
         # Iterate through the list of IT Systems from the register.
@@ -36,7 +38,7 @@ class Command(BaseCommand):
                 link = system.link
             else:
                 link = None
-            self.stdout.write('Checking {}'.format(name))
+            logger.info('Checking {}'.format(name))
 
             if not system.extra_data:
                 system.extra_data = {}
@@ -49,13 +51,13 @@ class Command(BaseCommand):
                         # Link the IT System to this Freshservice asset.
                         existing = True
                         url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
-                        self.stdout.write('Linking {} to {}'.format(name, url))
+                        logger.info('Linking {} to {}'.format(name, url))
                         system.extra_data['freshservice_api_url'] = url
                         system.save()
                         break  # Break out of the for loop.
 
                 if not existing:
-                    self.stdout.write(self.style.SUCCESS('Unable to find {} in Freshservice, creating a new asset'.format(name)))
+                    logger.info('Unable to find {} in Freshservice, creating a new asset'.format(name))
                     data = {
                         'asset_type_id': settings.FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID,
                         'name': name,
@@ -76,7 +78,7 @@ class Command(BaseCommand):
                     resp = create_freshservice_object('assets', data)
                     asset = resp.json()['asset']
                     url = '{}/assets/{}'.format(settings.FRESHSERVICE_ENDPOINT, asset['display_id'])
-                    self.stdout.write('Linking {} to {}'.format(name, url))
+                    logger.info('Linking {} to {}'.format(name, url))
                     system.extra_data['freshservice_api_url'] = url
                     system.save()
             else:  # IT System is linked to an existing Freshservice asset.
@@ -107,7 +109,7 @@ class Command(BaseCommand):
                         if data:
                             # Update the Freshservice asset.
                             resp = update_freshservice_object('assets', asset['display_id'], data)
-                            self.stdout.write('Updated details for {} ({})'.format(system.extra_data['freshservice_api_url'], data))
+                            logger.info('Updated details for {} ({})'.format(system.extra_data['freshservice_api_url'], data))
 
                         break  # Break out of the for loop.
 
@@ -115,7 +117,7 @@ class Command(BaseCommand):
                     # We may be in the situation where the IT System is "linked" to a non-existent Freshservice asset.
                     # Alternatively, the Freshservice API sometimes seems to not return all of the systems :|
                     # Try manually downloading the linked asset first.
-                    self.stdout.write(self.style.WARNING('Asset not matched in list, trying to download manually at {}'.format(system.extra_data['freshservice_api_url'])))
+                    logger.info(self.style.WARNING('Asset not matched in list, trying to download manually at {}'.format(system.extra_data['freshservice_api_url'])))
                     params = {'include': 'type_fields'}
                     resp = requests.get(system.extra_data['freshservice_api_url'], auth=FRESHSERVICE_AUTH, params=params)
                     resp.raise_for_status()
@@ -142,10 +144,10 @@ class Command(BaseCommand):
                         if data:
                             # Update the Freshservice asset.
                             resp = update_freshservice_object('assets', asset['display_id'], data)
-                            self.stdout.write('Updated details for {} ({})'.format(system.extra_data['freshservice_api_url'], data))
+                            logger.info('Updated details for {} ({})'.format(system.extra_data['freshservice_api_url'], data))
                     else:
-                        self.stdout.write(self.style.ERROR('{} is linked to the wrong Freshservice asset {}'.format(name, system.extra_data['freshservice_api_url'])))
+                        logger.error('{} is linked to the wrong Freshservice asset {}'.format(name, system.extra_data['freshservice_api_url']))
                         system.extra_data.pop('freshservice_api_url')
                         system.save()
 
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')

@@ -3,7 +3,6 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.contrib import admin
 from itassets.api_v1 import urlpatterns as api_v1_urlpatterns
-from itassets.api_v2 import api_v2_router
 from itassets.api_v3 import urlpatterns as api_v3_urlpatterns
 from itassets.api import urlpatterns as api_urlpatterns
 from itassets.views import HealthCheckView
@@ -21,7 +20,6 @@ admin.site.site_title = 'IT Assets'
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v3/', include(api_v3_urlpatterns)),
-    path('api/v2/', include(api_v2_router.urls)),
     path('api/v1/', include(api_v1_urlpatterns)),
     path('api/', include(api_urlpatterns)),
     path('assets/', include(assets_urls)),
@@ -32,8 +30,4 @@ urlpatterns = [
     path('markdownx/', include('markdownx.urls')),
     path('favicon.ico', RedirectView.as_view(url='{}favicon.ico'.format(settings.STATIC_URL)), name='favicon'),
     path('', RedirectView.as_view(url='/admin')),
-]
-
-urlpatterns += [
-    path('api-auth/', include('rest_framework.urls')),
 ]
