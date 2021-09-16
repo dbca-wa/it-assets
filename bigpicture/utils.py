@@ -9,7 +9,7 @@ import json
 import requests
 from urllib.parse import urlparse
 
-from rancher.models import Workload
+from rancher.models import Workload, ContainerImage
 from registers.models import ITSystem
 from status.models import Host
 from .models import Dependency, RiskAssessment
@@ -41,6 +41,11 @@ def host_dependencies():
         # Remove any existing IT System Host dependencies.
         for dep in it.dependencies.filter(content_type=host_ct):
             it.dependencies.remove(dep)
+
+        if it.extra_data is None:
+            it.extra_data = {}
+            it.save()
+            continue
 
         if 'url_synonyms' not in it.extra_data or not it.extra_data['url_synonyms']:
             # Skip this IT System (no known URL or synonyms).
@@ -79,15 +84,14 @@ def workload_dependencies():
             it.dependencies.remove(dep)
 
     # Link current workload dependencies.
-    for workload in Workload.objects.all().exclude(project__name='System'):
-        for webapp in workload.webapps:
-            if webapp.system_alias.system:
-                dep, created = Dependency.objects.get_or_create(
-                    content_type=workload_ct,
-                    object_id=workload.pk,
-                    category='Service',
-                )
-                webapp.system_alias.system.dependencies.add(dep)
+    for workload in Workload.objects.filter(deleted__isnull=True, kind__in=['Deployment', 'StatefulSet']).exclude(namespace__name__startswith='kube').exclude(namespace__name__startswith='cattle'):
+        if workload.itsystem:
+            dep, created = Dependency.objects.get_or_create(
+                content_type=workload_ct,
+                object_id=workload.pk,
+                category='Workload',
+            )
+            workload.itsystem.dependencies.add(dep)
 
 
 def host_risks_vulns():
@@ -185,32 +189,32 @@ def workload_risks_vulns():
     workload_ct = ContentType.objects.get(app_label='rancher', model='workload')
     dep_ct = ContentType.objects.get(app_label='bigpicture', model='dependency')
 
-    for workload in Workload.objects.filter(image_scan_timestamp__isnull=False):
+    for workload in Workload.objects.filter(deleted__isnull=True, kind__in=['Deployment', 'StatefulSet']).exclude(namespace__name__startswith='kube').exclude(namespace__name__startswith='cattle'):
         if Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk).exists():
             for dep in Dependency.objects.filter(content_type=workload_ct, object_id=workload.pk):
-                # Vulnerabilities
-                vulns = workload.get_image_scan_vulns()
 
                 if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Vulnerability').exists():
                     ra = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
                 else:
                     ra = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Vulnerability')
 
-                if 'CRITICAL' in vulns:
+                if workload.containerimage.scan_status == ContainerImage.CRITICAL_RISK:
                     ra.rating = 3
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulnerabilities (trivy)'.format(workload.image, vulns['CRITICAL'])
-                elif 'HIGH' in vulns:
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} critical vulnerabilities (trivy)'.format(workload.containerimage, workload.containerimage.criticals)
+                elif workload.containerimage.scan_status == ContainerImage.HIGH_RISK:
                     ra.rating = 2
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulnerabilities (trivy)'.format(workload.image, vulns['HIGH'])
-                elif 'MEDIUM' in vulns:
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} high vulnerabilities (trivy)'.format(workload.containerimage, workload.containerimage.highs)
+                elif workload.containerimage.scan_status == ContainerImage.MEDIUM_RISK:
                     ra.rating = 1
-                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulnerabilities (trivy)'.format(workload.image, vulns['MEDIUM'])
+                    ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has {} medium vulnerabilities (trivy)'.format(workload.containerimage, workload.containerimage.mediums)
                 else:
                     ra.rating = 0
                     ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
                 ra.save()
 
+                '''
                 # Operating System
+                # FIXME: skip container image OS vulns for now.
                 os = workload.get_image_scan_os()
                 if os:
                     if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Operating System').exists():
@@ -224,6 +228,7 @@ def workload_risks_vulns():
                         risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) supported'.format(os)
                         risk.rating = 0
                     risk.save()
+                '''
 
 
 def itsystem_risks_infra_location(it_systems=None):
