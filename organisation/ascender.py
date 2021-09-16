@@ -33,6 +33,7 @@ FOREIGN_TABLE_FIELDS = (
     ("loc_desc", "location_desc"),
     "paypoint",
     "paypoint_desc",
+    "geo_location",
     "geo_location_desc",
     "occup_type",
     ("job_start_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
@@ -40,6 +41,7 @@ FOREIGN_TABLE_FIELDS = (
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
+    "email",
     "extended_lv",
     ("ext_lv_end_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
 )
