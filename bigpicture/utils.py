@@ -74,7 +74,7 @@ def host_dependencies():
 
 
 def workload_dependencies():
-    # Create/update k3s Workload dependencies for IT systems as 'services'.
+    # Create/update k3s Workload dependencies for IT systems as 'Workloads'.
     # These are derived from scans of Kubernetes clusters.
     workload_ct = ContentType.objects.get(app_label='rancher', model='workload')
 
