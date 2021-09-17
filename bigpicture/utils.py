@@ -141,7 +141,19 @@ OS_EOL = [
     'Microsoft Windows Server 2012',
     'Ubuntu 14.04',
 ]
-
+# List of Docker container name:tag pairs indicating a base image OS that is out of support.
+OS_EOL_PAIRS = [
+    ('alpine', '3.7.0'),
+    ('alpine', '3.7.1'),
+    ('alpine', '3.8.5'),
+    ('alpine', '3.9.2'),
+    ('alpine', '3.9.4'),
+    ('alpine', '3.10.1'),
+    ('alpine', '3.10.2'),
+    ('alpine', '3.10.3'),
+    ('alpine', '3.10.4'),
+    ('alpine', '3.10.9'),
+]
 
 def host_os_risks():
     # Set auto risk assessment for Host risk based on the host OS.
@@ -212,23 +224,20 @@ def workload_risks_vulns():
                     ra.notes = '[AUTOMATED ASSESSMENT] Workload image {} has been scanned (trivy)'.format(workload.image)
                 ra.save()
 
-                '''
                 # Operating System
-                # FIXME: skip container image OS vulns for now.
-                os = workload.get_image_scan_os()
-                if os:
+                if workload.containerimage.os:
+                    os = (workload.containerimage.os.name, workload.containerimage.os.version)
                     if RiskAssessment.objects.filter(content_type=dep_ct, object_id=dep.pk, category='Operating System').exists():
                         risk = RiskAssessment.objects.get(content_type=dep_ct, object_id=dep.pk, category='Operating System')
                     else:
                         risk = RiskAssessment(content_type=dep_ct, object_id=dep.pk, category='Operating System')
-                    if os in OS_EOL:
-                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) is past end-of-life'.format(os)
+                    if os in OS_EOL_PAIRS:
+                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) is past end-of-life'.format(workload.containerimage.os)
                         risk.rating = 3
                     else:
-                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) supported'.format(os)
+                        risk.notes = '[AUTOMATED ASSESSMENT] Workload image operating system ({}) supported'.format(workload.containerimage.os)
                         risk.rating = 0
                     risk.save()
-                '''
 
 
 def itsystem_risks_infra_location(it_systems=None):

@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+import logging
 from bigpicture import utils
 from registers.models import ITSystem
 
@@ -23,21 +24,22 @@ class Command(BaseCommand):
         parser.add_argument('--active', action='store_false', help='Only audit active/prod services')
 
     def handle(self, *args, **options):
-        self.stdout.write('Creating & updating system dependencies and risk assessments')
-        self.stdout.write('Auditing existing risk and dependency objects')
+        logger = logging.getLogger('bigpicture')
+        logger.info('Creating & updating system dependencies and risk assessments')
+        logger.info('Auditing existing risk and dependency objects')
         utils.audit_risks()
         utils.audit_dependencies()
-        self.stdout.write('Creating/updating Kubernetes workload dependencies')
+        logger.info('Creating/updating Kubernetes workload dependencies')
         utils.workload_dependencies()
-        self.stdout.write('Creating/updating host dependencies')
+        logger.info('Creating/updating host dependencies')
         utils.host_dependencies()
-        self.stdout.write('Creating/updating risk assessments for host operating systems')
+        logger.info('Creating/updating risk assessments for host operating systems')
         utils.host_os_risks()
-        self.stdout.write('Creating/updating risk assessments for hosts')
+        logger.info('Creating/updating risk assessments for hosts')
         utils.host_risks_vulns()
-        self.stdout.write('Creating/updating risk assessments for k3s workloads')
+        logger.info('Creating/updating risk assessments for k3s workloads')
         utils.workload_risks_vulns()
-        self.stdout.write('Creating/updating risk assessments for IT systems')
+        logger.info('Creating/updating risk assessments for IT systems')
         if options['active']:
             it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
         else:
@@ -48,4 +50,4 @@ class Command(BaseCommand):
         utils.itsystem_risks_support(it_systems)
         utils.itsystem_risks_access(it_systems)
         utils.itsystem_risks_traffic(it_systems)
-        self.stdout.write('Complete')
+        logger.info('Complete')
