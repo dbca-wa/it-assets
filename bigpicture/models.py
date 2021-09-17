@@ -104,6 +104,7 @@ class RiskAssessment(models.Model):
 
 
 DEPENDENCY_CATEGORY_CHOICES = (
+    ("Workload", "Workload"),
     ("Service", "Service"),
     ("Compute", "Compute"),
     ("Storage", "Storage"),

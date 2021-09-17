@@ -41,8 +41,6 @@ INSTALLED_APPS = (
     'crispy_forms',
     'leaflet',
     'django_q',
-    'rest_framework',
-    'rest_framework_gis',
     'webtemplate_dbca',
     'bootstrap_pagination',
     'markdownx',
@@ -134,10 +132,12 @@ RANCHER_MAX_CONSUME_TIME = env("RANCHER_MAX_CONSUME_TIME", default=3000)
 
 CLUSTERS_MANAGEMENT_URL = {}
 
+
 def GET_CLUSTER_MANAGEMENT_URL(clustername):
     if clustername not in CLUSTERS_MANAGEMENT_URL:
         CLUSTERS_MANAGEMENT_URL[clustername] = env(clustername.upper(),default=RANCHER_MANAGEMENT_URL.format(clustername))
     return CLUSTERS_MANAGEMENT_URL[clustername]
+
 
 NGINXLOG_REPOSITORY_DIR = env("NGINXLOG_REPOSITORY_DIR",None)
 NGINXLOG_RESOURCE_NAME = env("NGINXLOG_RESOURCE_NAME",None)
@@ -230,25 +230,20 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'console': {'format': '%(asctime)s %(levelname)-8s %(name)-12s %(message)s'},
-        'verbose': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)-12s %(name)-12s %(message)s'},
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'console'
+            'stream': sys.stdout,
+            'formatter': 'console',
         },
     },
     'loggers': {
-        'django': {
+        '': {
             'handlers': ['console'],
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'ERROR',
-            'propagate': False,
+            'level': 'DEBUG' if DEBUG else 'INFO',
         },
         'itassets': {
             'handlers': ['console'],
@@ -270,6 +265,11 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'DEBUG' if DEBUG else 'INFO'
         },
+        'azure.core.pipeline.policies.http_logging_policy': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        }
     }
 }
 
@@ -282,7 +282,6 @@ CORS_ORIGIN_WHITELIST = (
 )
 CORS_ALLOW_CREDENTIALS = True
 
-
 # django-q configuration
 Q_CLUSTER = {
     'name': 'DjangoORM',
@@ -292,14 +291,6 @@ Q_CLUSTER = {
     'queue_limit': 50,
     'bulk': 10,
     'orm': 'default',
-}
-
-
-# default REST API permissions
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    )
 }
 
 # crispy_forms settings

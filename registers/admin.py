@@ -308,12 +308,12 @@ class ChangeRequestAdmin(ModelAdmin):
     filter_horizontal = ('it_systems',)
     inlines = [ChangeLogInline]
     list_display = (
-        'id', 'title', 'change_type', 'requester_name', 'endorser_name', 'implementer_name', 'status',
+        'id', 'title', 'change_type', 'requester_name', 'endorser_name', 'implementer_name', 'sme_name', 'status',
         'created', 'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
     raw_id_fields = ('requester', 'endorser', 'implementer')
     search_fields = (
-        'id', 'title', 'requester__email', 'endorser__email', 'implementer__email', 'implementation',
+        'id', 'title', 'requester__email', 'endorser__email', 'implementer__email', 'sme__email', 'implementation',
         'communication', 'reference_url', 'initiative_name', 'initiative_no', 'project_no',
     )
 
@@ -334,6 +334,12 @@ class ChangeRequestAdmin(ModelAdmin):
             return obj.implementer.get_full_name()
         return ''
     implementer_name.short_description = 'implementer'
+
+    def sme_name(self, obj):
+        if obj.sme:
+            return obj.sme.get_full_name()
+        return ''
+    sme_name.short_description = 'sme'
 
     def get_urls(self):
         urls = super(ChangeRequestAdmin, self).get_urls()

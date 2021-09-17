@@ -1,6 +1,7 @@
 from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
 from io import BytesIO
+import logging
 import os
 from tempfile import NamedTemporaryFile
 
@@ -28,15 +29,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        self.stdout.write('Generating discrepancies between department user and Ascender data')
+        logger = logging.getLogger('organisation')
+        logger.info('Generating discrepancies between department user and Ascender data')
         users = DepartmentUser.objects.all()
         spreadsheet = department_user_ascender_discrepancies(BytesIO(), users)
         f = NamedTemporaryFile()
         f.write(spreadsheet.getbuffer())
 
-        self.stdout.write('Uploading discrepancies to Azure blob storage')
+        logger.info('Uploading discrepancies to Azure blob storage')
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
         store = AzureBlobStorage(connect_string, options['container'])
         store.upload_file(options['path'], f.name)
 
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')
