@@ -123,7 +123,11 @@ def process_status_file(context,metadata,status_file):
             podip = record.get("podip")
             max_timegenerated = to_datetime(record["max_timegenerated"])
 
-            workload_kind = to_workload_kind(record["controllerkind"])
+            try:
+                workload_kind = to_workload_kind(record["controllerkind"])
+            except Exception as ex:
+                logger.error("Failed to parse pod status record({}).{}".format(record,str(ex)))
+                continue
 
             key = (cluster.id,namespace.name,workload_name,workload_kind)
             if key in context["workloads"]:

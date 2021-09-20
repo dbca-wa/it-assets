@@ -881,7 +881,7 @@ def update_workload_listenings(workload,config):
                         break
 
             if not container_port:
-                raise Exception("Failed to find the container port for the public port({})".format(obj.listen_port))
+                raise Exception("Failed to find the container port of the public port({}.{})".format(workload,obj.listen_port))
             set_field(obj,"container_port", container_port,update_fields)
 
         if obj.pk is None:
