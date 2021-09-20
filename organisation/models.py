@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
@@ -298,6 +299,16 @@ class DepartmentUser(models.Model):
         if self.ascender_data and 'emp_status' in self.ascender_data and self.ascender_data['emp_status']:
             if self.ascender_data['emp_status'] in self.EMP_STATUS_MAP:
                 return self.EMP_STATUS_MAP[self.ascender_data['emp_status']]
+        return ''
+
+    def get_job_start_date(self):
+        if self.ascender_data and 'job_start_date' in self.ascender_data and self.ascender_data['job_start_date']:
+            return datetime.strptime(self.ascender_data['job_start_date'], '%Y-%m-%d').date()
+        return ''
+
+    def get_job_term_date(self):
+        if self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date']:
+            return datetime.strptime(self.ascender_data['job_term_date'], '%Y-%m-%d').date()
         return ''
 
     def generate_ad_actions(self):
