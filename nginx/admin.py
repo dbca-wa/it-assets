@@ -2,7 +2,6 @@ import os
 import urllib
 from datetime import datetime, timedelta
 
-
 from django.contrib import admin
 from django.urls import path, reverse
 from django.utils.html import format_html, mark_safe
@@ -10,8 +9,6 @@ from django.utils import timezone
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.db.models import Q
-
-from django_q.tasks import async_task
 
 from . import models
 from rancher.models import Workload
@@ -591,7 +588,8 @@ class WebAppAccessLogAdmin(HttpStatusMixin,ResponseTimeMixin,WebServerMixin,Requ
 
     def run_log_harvesting(self,request):
         try:
-            async_task("nginx.log_harvester.harvest")
+            from nginx.log_harvester import harvest
+            harvest()
             self.message_user(request, "A log havesting process has been scheduled.")
         except Exception as ex:
             self.message_user(request, "Failed to schedule the log harvesting process.{}".format(str(ex)),level=messages.ERROR)
