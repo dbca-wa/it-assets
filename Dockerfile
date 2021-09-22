@@ -17,7 +17,7 @@ RUN apt-get update -y \
   && apt-get install -y trivy \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Python libs from requirements.txt.
+# Install Python libs using Poetry.
 FROM builder_trivy_itassets as python_libs_itassets
 WORKDIR /app
 ENV POETRY_VERSION=1.1.6

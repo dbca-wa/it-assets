@@ -19,7 +19,7 @@ class Command(BaseCommand):
 
         self.stdout.write('Comparing Department Users to Azure AD user accounts')
         for az in azure_users:
-            if az['mail']:  # Azure object has an email address; proceed.
+            if az['mail'] and az['displayName']:  # Azure object has an email address and a display name; proceed.
                 if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
                     # No existing DepartmentUser is linked to this Azure AD user.
 
@@ -40,7 +40,7 @@ class Command(BaseCommand):
                         existing_user.azure_guid = az['objectId']
                         existing_user.azure_ad_data = az
                         existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                        existing_user.update_deptuser_from_azure()
+                        existing_user.update_from_azure_ad_data()
                         logger.info('AZURE AD SYNC: linked existing user {} with Azure objectId {}'.format(az['mail'], az['objectId']))
                         continue  # Skip to the next Azure user.
 
@@ -77,6 +77,6 @@ class Command(BaseCommand):
                     existing_user = DepartmentUser.objects.get(azure_guid=az['objectId'])
                     existing_user.azure_ad_data = az
                     existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                    existing_user.update_deptuser_from_azure()
+                    existing_user.update_from_azure_ad_data()
 
         self.stdout.write(self.style.SUCCESS('Completed'))
