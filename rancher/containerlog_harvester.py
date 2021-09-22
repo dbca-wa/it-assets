@@ -317,8 +317,8 @@ def process_status_file(context,metadata,status_file):
                     containerlog.latest_logtime = logtime
         except Exception as ex:
             #delete already added records from this log file
-            logger.error("Failed to parse container log record({}).{}".format(record,traceback.format_exc()))
-            raise Exception("Failed to parse container log record({}).{}".format(record,str(ex)))
+            logger.error("Failed to parse container log record({}).{}".format(record,str(ex)))
+            continue
 
     #save the last message
     containerlogs = [o for o in context["logstatus"]["containerlogs"].values() if o.logtime and o.container]

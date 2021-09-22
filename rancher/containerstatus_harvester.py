@@ -339,8 +339,8 @@ def process_status_file(context,metadata,status_file):
 
         except Exception as ex:
             #delete already added records from this log file
-            logger.error("Failed to parse container status record({}).{}".format(record,traceback.format_exc()))
-            raise Exception("Failed to parse container status record({}).{}".format(record,str(ex)))
+            logger.error("Failed to parse container status record({}).{}".format(record,str(ex)))
+            continue
 
     context["last_archive_time"] = metadata["archive_endtime"]
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
