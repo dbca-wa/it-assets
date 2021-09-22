@@ -46,13 +46,13 @@ class Command(BaseCommand):
                         du.ad_guid = ad['ObjectGUID']
                         du.ad_data = ad
                         du.ad_data_updated = datetime.now(timezone.utc)
-                        du.update_deptuser_from_onprem_ad()
+                        du.update_from_onprem_ad_data()
                         logger.info('ONPREM AD SYNC: linked existing department user {} with onprem AD object {}'.format(du, ad['ObjectGUID']))
                 else:
                     # An existing department user is linked to this onprem AD user.
                     du = DepartmentUser.objects.get(ad_guid=ad['ObjectGUID'])
                     du.ad_data = ad
                     du.ad_data_updated = datetime.now(timezone.utc)
-                    du.update_deptuser_from_onprem_ad()
+                    du.update_from_onprem_ad_data()
 
         self.stdout.write(self.style.SUCCESS('Completed'))
