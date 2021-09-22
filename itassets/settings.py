@@ -40,7 +40,6 @@ INSTALLED_APPS = (
     'reversion',
     'crispy_forms',
     'leaflet',
-    'django_q',
     'webtemplate_dbca',
     'bootstrap_pagination',
     'markdownx',
@@ -281,17 +280,6 @@ CORS_ORIGIN_WHITELIST = (
     'http://127.0.0.1:8080',
 )
 CORS_ALLOW_CREDENTIALS = True
-
-# django-q configuration
-Q_CLUSTER = {
-    'name': 'DjangoORM',
-    'workers': 4,
-    'timeout': 120,
-    'retry': 180,
-    'queue_limit': 50,
-    'bulk': 10,
-    'orm': 'default',
-}
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap4'

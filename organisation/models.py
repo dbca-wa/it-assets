@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
@@ -156,14 +157,9 @@ class DepartmentUser(models.Model):
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled within Active Directory.')
     email = CIEmailField(unique=True, editable=False, help_text='Account email address')
-    name = models.CharField(
-        max_length=128, verbose_name='display name', help_text='Format: [Given name] [Surname]')
-    given_name = models.CharField(
-        max_length=128, null=True, blank=True,
-        help_text='Legal first name (matches birth certificate/passport/etc.)')
-    surname = models.CharField(
-        max_length=128, null=True, blank=True,
-        help_text='Legal surname (matches birth certificate/passport/etc.)')
+    name = models.CharField(max_length=128, verbose_name='display name')
+    given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
+    surname = models.CharField(max_length=128, null=True, blank=True, help_text='Last name')
     title = models.CharField(
         max_length=128, null=True, blank=True,
         help_text='Occupation position title (should match Ascender position title)')
@@ -298,6 +294,16 @@ class DepartmentUser(models.Model):
         if self.ascender_data and 'emp_status' in self.ascender_data and self.ascender_data['emp_status']:
             if self.ascender_data['emp_status'] in self.EMP_STATUS_MAP:
                 return self.EMP_STATUS_MAP[self.ascender_data['emp_status']]
+        return ''
+
+    def get_job_start_date(self):
+        if self.ascender_data and 'job_start_date' in self.ascender_data and self.ascender_data['job_start_date']:
+            return datetime.strptime(self.ascender_data['job_start_date'], '%Y-%m-%d').date()
+        return ''
+
+    def get_job_term_date(self):
+        if self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date']:
+            return datetime.strptime(self.ascender_data['job_term_date'], '%Y-%m-%d').date()
         return ''
 
     def generate_ad_actions(self):
@@ -650,7 +656,7 @@ class DepartmentUser(models.Model):
 
         self.save()
 
-    def update_deptuser_from_azure(self):
+    def update_from_azure_ad_data(self):
         """For this DepartmentUser object, update the field values from cached Azure AD data
         (the source of truth for these values).
         """
@@ -663,6 +669,15 @@ class DepartmentUser(models.Model):
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
             self.email = self.azure_ad_data['mail']
             LOGGER.info(f'AZURE AD SYNC: {self} email changed to {self.email}')
+        if 'displayName'in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
+            self.name = self.azure_ad_data['displayName']
+            LOGGER.info(f'AZURE AD SYNC: {self} name changed to {self.name}')
+        if 'givenName'in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
+            self.given_name = self.azure_ad_data['givenName']
+            LOGGER.info(f'AZURE AD SYNC: {self} given_name changed to {self.given_name}')
+        if 'surname'in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
+            self.surname = self.azure_ad_data['surname']
+            LOGGER.info(f'AZURE AD SYNC: {self} surname changed to {self.surname}')
         if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
             self.dir_sync_enabled = self.azure_ad_data['onPremisesSyncEnabled']
         if 'proxyAddresses' in self.azure_ad_data and self.azure_ad_data['proxyAddresses'] != self.proxy_addresses:
@@ -680,7 +695,7 @@ class DepartmentUser(models.Model):
 
         self.save()
 
-    def update_deptuser_from_onprem_ad(self):
+    def update_from_onprem_ad_data(self):
         """For this DepartmentUser object, update the field values from cached on-premise AD data
         (the source of truth for these values).
         """

@@ -10,8 +10,6 @@ from django.urls import reverse,resolve
 from django.utils import timezone
 from django.contrib.admin.views.main import ChangeList
 
-from django_q.tasks import async_task
-
 from . import models
 from . import rancher_harvester
 from . import forms
@@ -485,7 +483,7 @@ class ClusterAdmin(WorkloadsLinkMixin,DatetimeMixin,admin.ModelAdmin):
     def enforce_refresh(self, request, queryset):
         for cluster in queryset:
             try:
-                async_task("rancher.rancher_harvester.harvest",cluster,reconsume=True)
+                rancher_harvester.harvest(cluster, reconsume=True)
                 self.message_user(request, "The process to harvest all configuration files of the cluster({}) has been scheduled.".format(cluster))
             except Exception as ex:
                 self.message_user(request, "Failed to schedule the process to harvest all configuration files of the cluster({}).{}".format(cluster,str(ex)),level=messages.ERROR)
@@ -495,7 +493,7 @@ class ClusterAdmin(WorkloadsLinkMixin,DatetimeMixin,admin.ModelAdmin):
     def refresh(self, request, queryset):
         for cluster in queryset:
             try:
-                async_task("rancher.rancher_harvester.harvest",cluster)
+                rancher_harvester.harvest(cluster)
                 self.message_user(request, "The process to harvest the changed configuration files of the cluster({}) has been scheduled.".format(cluster))
             except Exception as ex:
                 self.message_user(request, "Failed to schedule the process to harvest the changed configuration files of the cluster({}).{}".format(cluster,str(ex)),level=messages.ERROR)
@@ -971,7 +969,7 @@ class ScanSummaryMixin(object):
                         result = "{}<span style='margin-left:5px'>Unknown:{}</span>".format(result,obj.unknowns)
                     else:
                         result = "<span>Low:{}</span>".format(obj.unknowns)
-    
+
             return mark_safe(result)
 
     _scan_summary.short_description = "Scan Report"
@@ -1356,9 +1354,7 @@ class WorkloadAdmin(RequestMixin,SecretPermissionMixin,LookupAllowedMixin,Delete
     def _format_workload_tree(self,root_workload,tree,dependents=None,indent=0):
         dep_html = ""
         for dep_dependents,dep_workload_tree in tree[3]:
-            
             dep_html = "{0}{1}".format(dep_html,self._format_workload_tree(root_workload,dep_workload_tree,dependents=dep_dependents,indent=indent + 16))
-
 
         dependents_html = ""
         if dependents:
@@ -1367,7 +1363,7 @@ class WorkloadAdmin(RequestMixin,SecretPermissionMixin,LookupAllowedMixin,Delete
                 "".join("<div style='margin-left:32px;color:blue'>- {} : {}</div>".format(dep[1],dep[3] if self.secretpermission_granted(root_workload) else "******") for dep in dependents),
                 dep_id
             )
-                
+
         output_html = ""
         if indent == 0:
             workload_name = tree[1]
@@ -1399,7 +1395,7 @@ class WorkloadAdmin(RequestMixin,SecretPermissionMixin,LookupAllowedMixin,Delete
             return ""
         else:
             try:
-                try: 
+                try:
                     tree = obj.dependenttree.wltree
                 except:
                     tree = None

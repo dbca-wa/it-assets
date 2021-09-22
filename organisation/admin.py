@@ -56,7 +56,7 @@ class DepartmentUserAdmin(ModelAdmin):
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'cost_centre',
-        'employment_status', 'ascender_data_updated',
+        'employment_status', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
     )
     fieldsets = (
         ('Microsoft 365, Azure AD and on-prem AD account information', {
@@ -81,6 +81,8 @@ class DepartmentUserAdmin(ModelAdmin):
                 'employee_id',
                 'cost_centre',
                 'employment_status',
+                'job_start_date',
+                'job_termination_date',
                 'ascender_data_updated',
             ),
         }),
@@ -114,6 +116,16 @@ class DepartmentUserAdmin(ModelAdmin):
     def employment_status(self, instance):
         return instance.get_employment_status()
 
+    def job_start_date(self, instance):
+        if instance.get_job_start_date():
+            return instance.get_job_start_date().strftime('%d-%B-%Y')
+        return ''
+
+    def job_termination_date(self, instance):
+        if instance.get_job_term_date():
+            return instance.get_job_term_date().strftime('%d-%B-%Y')
+        return ''
+
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
@@ -126,8 +138,8 @@ class DepartmentUserAdmin(ModelAdmin):
         super().save_model(request, obj, form, change)
         # Run the Ascender/Azure AD/on-prem AD update actions.
         obj.update_from_ascender_data()
-        obj.update_deptuser_from_azure()
-        obj.update_deptuser_from_onprem_ad()
+        obj.update_from_azure_ad_data()
+        obj.update_from_onprem_ad_data()
         actions = obj.generate_ad_actions()
         if actions:
             self.message_user(request, "AD action(s) have been generated for {}".format(obj))
