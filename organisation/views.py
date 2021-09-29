@@ -27,6 +27,8 @@ class DepartmentUserAPIResource(View):
             **DepartmentUser.ACTIVE_FILTER
         ).exclude(
             account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+        ).exclude(
+            account_type__isnull=True
         ).prefetch_related(
             'location',
             'org_unit',
