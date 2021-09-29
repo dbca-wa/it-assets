@@ -1,6 +1,8 @@
 # Prepare the base environment.
 FROM python:3.7.9-slim-buster as builder_base_itassets
 MAINTAINER asi@dbca.wa.gov.au
+LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
+
 RUN apt-get update -y \
   && apt-get upgrade -y \
   && apt-get install --no-install-recommends -y wget git libmagic-dev gcc binutils gdal-bin proj-bin python3-dev nmap gzip curl \
