@@ -11,7 +11,7 @@ LOGGER = logging.getLogger('organisation')
 class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
     """
-    ACTIVE_FILTER = {'active': True, 'cost_centre__isnull': False, 'contractor': False}
+    ACTIVE_FILTER = {'active': True, 'contractor': False}
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, 'L1 User Account - Permanent'),
@@ -33,7 +33,7 @@ class DepartmentUser(models.Model):
     )
     # The following is a list of account type of normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
-    ACCOUNT_TYPE_EXCLUDE = [4, 5, 9, 10, 11, 12, 14, 16]
+    ACCOUNT_TYPE_EXCLUDE = [1, 4, 5, 7, 9, 10, 11, 12, 14, 16]
     # The following is a list of account types set for individual staff/vendors,
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
