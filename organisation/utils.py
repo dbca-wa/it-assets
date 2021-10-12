@@ -200,7 +200,7 @@ def ms_graph_users(licensed=False):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
@@ -232,6 +232,8 @@ def ms_graph_users(licensed=False):
             'proxyAddresses': [i.lower().replace('smtp:', '') for i in user['proxyAddresses'] if i.lower().startswith('smtp')],
             'accountEnabled': user['accountEnabled'],
             'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
+            'onPremisesSamAccountName': user['onPremisesSamAccountName'],
+            'lastPasswordChangeDateTime': user['lastPasswordChangeDateTime'],
             'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
             'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
         })
