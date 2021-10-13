@@ -6,8 +6,6 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
@@ -25,10 +23,8 @@ jobs:
         ports:
           - 5432:5432
         options: --mount type=tmpfs,destination=/var/lib/postgresql/data --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -36,10 +32,10 @@ jobs:
           python-version: 3.9.6
       - name: Install GDAL
         run: |
-          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
+          sudo apt-add-repository --yes ppa:ubuntugis/ubuntugis-unstable
           sudo apt-get update
-          sudo apt-get install gdal-bin libgdal-dev
-      - name: Install poetry
+          sudo apt-get install --no-install-recommends --yes gdal-bin libgdal-dev
+      - name: Install Poetry
         uses: snok/install-poetry@v1.2.0
         with:
           version: 1.1.8
