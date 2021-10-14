@@ -4,7 +4,7 @@ from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 import logging
 
-from .utils import compare_values
+from .utils import compare_values, title_except
 LOGGER = logging.getLogger('organisation')
 
 
@@ -154,6 +154,7 @@ class DepartmentUser(models.Model):
     name = models.CharField(max_length=128, verbose_name='display name')
     given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
     surname = models.CharField(max_length=128, null=True, blank=True, help_text='Last name')
+    preferred_name = models.CharField(max_length=256, null=True, blank=True)
     title = models.CharField(
         max_length=128, null=True, blank=True,
         help_text='Occupation position title (should match Ascender position title)')
@@ -187,7 +188,6 @@ class DepartmentUser(models.Model):
         limit_choices_to={'active': True},
         verbose_name='organisational unit',
         help_text="The organisational unit to which the employee belongs.")
-    preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
@@ -705,6 +705,53 @@ class DepartmentUser(models.Model):
             return '.'.join([i.replace('DC=', '') for i in self.ad_data['DistinguishedName'].split(',') if i.startswith('DC=')])
 
         return None
+
+    def get_ascender_discrepancies(self):
+        """Returns a list of discrepancies between object field values and their associated Ascender data.
+        """
+        if not self.employee_id or not self.ascender_data:
+            return
+
+        discrepancies = []
+
+        # As field values might be None, we have to go through some rigamole to compare them.
+        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+            given_name = self.given_name.upper() if self.given_name else ''
+            if given_name != self.ascender_data['first_name'].upper():
+                discrepancies.append({
+                    'field': 'given_name',
+                    'old_value': self.given_name,
+                    'new_value': self.ascender_data['first_name'].title(),
+                })
+        if 'surname' in self.ascender_data and self.ascender_data['surname']:
+            surname = self.surname.upper() if self.surname else ''
+            if surname != self.ascender_data['surname'].upper():
+                discrepancies.append({
+                    'field': 'surname',
+                    'old_value': self.surname,
+                    'new_value': self.ascender_data['surname'].title(),
+                })
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
+            preferred_name = self.preferred_name.upper() if self.preferred_name else ''
+            if preferred_name != self.ascender_data['preferred_name'].upper():
+                discrepancies.append({
+                    'field': 'preferred_name',
+                    'old_value': self.preferred_name,
+                    'new_value': self.ascender_data['preferred_name'].title(),
+                })
+        if 'occup_pos_title' in self.ascender_data and self.ascender_data['occup_pos_title']:
+            # Handle title with a bit more nuance.
+            title = self.title.upper().replace('&', 'AND').replace(',', '') if self.title else ''
+            ascender_title = self.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
+            if title != ascender_title:
+                discrepancies.append({
+                    'field': 'title',
+                    'old_value': self.title,
+                    'new_value': title_except(self.ascender_data['occup_pos_title']),
+                })
+        # FIXME: for now, don't check phone number or mobile phone number.
+
+        return discrepancies or None
 
 
 class DepartmentUserLog(models.Model):

@@ -144,10 +144,10 @@ def ascender_onprem_ad_data_diff():
         else:
             ad_title = ''
         if user.ascender_data['occup_pos_title'] and user.ascender_data['occup_pos_title']:
-            asc_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
+            ascender_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
         else:
-            asc_title = ''
-        if ad_title != asc_title:
+            ascender_title = ''
+        if ad_title != ascender_title:
             new_val = title_except(user.ascender_data['occup_pos_title'])
             discrepancies.append({
                 'ascender_id': user.employee_id,
