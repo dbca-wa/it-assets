@@ -38,12 +38,6 @@ class DepartmentUser(models.Model):
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
     ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
-    POSITION_TYPE_CHOICES = (
-        (0, 'Full time'),
-        (1, 'Part time'),
-        (2, 'Casual'),
-        (3, 'Other'),
-    )
     # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     MS_LICENCE_SKUS = {
@@ -198,10 +192,6 @@ class DepartmentUser(models.Model):
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
-    # TODO: deprecated position_type in favour of Ascender data cache.
-    position_type = models.PositiveSmallIntegerField(
-        choices=POSITION_TYPE_CHOICES, null=True, blank=True,
-        help_text='Employee position working arrangement (Ascender employment status)')
     employee_id = models.CharField(
         max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
         help_text='Ascender employee number')
@@ -232,20 +222,20 @@ class DepartmentUser(models.Model):
         default=False, editable=False, help_text='Automatically set from account type.')
 
     # Cache of Ascender data
-    ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
+    ascender_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(
         null=True, editable=False, help_text="Timestamp of when Ascender data was last updated for this user")
     # Cache of on-premise AD data
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
         help_text="On-premise Active Directory unique object ID")
-    ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
+    ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
     ad_data_updated = models.DateTimeField(null=True, editable=False)
     # Cache of Azure AD data
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
         editable=False, help_text="Azure Active Directory unique object ID")
-    azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
+    azure_ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
     dir_sync_enabled = models.NullBooleanField(default=None, help_text="Azure AD account is synced to on-prem AD")
 
