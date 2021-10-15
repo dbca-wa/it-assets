@@ -1,0 +1,41 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} change-form{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">Home</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; Update users from Ascender data
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Update department users</h1>
+<p>Are you sure that you want to update the following users from cached Ascender data?</p>
+{% for user in department_users %}
+<div>
+{% if user.get_ascender_discrepancies %}
+  <p>{{ user.get_full_name }}:</p>
+  <ul>
+      {% for discrepancy in user.get_ascender_discrepancies %}
+      <li>
+          {{ discrepancy.field_desc|capfirst }}: {{ discrepancy.old_value|default_if_none:"nothing" }} to {{ discrepancy.new_value|default_if_none:"nothing" }}
+      </li>
+      {% endfor %}
+  </ul>
+{% else %}
+  <p>{{ user.get_full_name }}: no changes</p>
+{% endif %}
+</div>
+{% endfor %}
+  <hr>
+  <br>
+  <form action="" method="post">{% csrf_token %}
+    <input type="hidden" name="user_pks" value="{{ user_pks }}" />
+    <a href="#" onclick="window.history.back(); return false;" class="button closelink">Cancel</a>
+    <input type="submit" value="Save" class="default" name="save">
+  </form>
+{% endblock %}
