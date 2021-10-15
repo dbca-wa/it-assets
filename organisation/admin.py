@@ -43,6 +43,8 @@ class DepartmentUserAdmin(ModelAdmin):
                 context['department_users'] = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
             # Get the admin site context (we passed in the ModelAdmin class as a kwarg via the URL pattern).
             context['opts'] = DepartmentUser._meta
+            context['title'] = 'Update user data from Ascender'
+            context['site_title'] = kwargs['model_admin'].admin_site.site_title
             app_list = kwargs['model_admin'].admin_site.get_app_list(self.request)
             organisation_app = next(app for app in app_list if app['app_label'] == 'organisation')
             # Return the organisation app dict, merged with the context dict.
