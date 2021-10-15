@@ -1,5 +1,6 @@
 from django import forms
-from django.contrib.admin import register, ModelAdmin, SimpleListFilter
+from django.contrib import admin
+from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -26,8 +27,8 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
-@register(DepartmentUser)
-class DepartmentUserAdmin(ModelAdmin):
+@admin.register(DepartmentUser)
+class DepartmentUserAdmin(admin.ModelAdmin):
 
     class UpdateUserDataFromAscender(TemplateView):
         """A small custom view to allow confirmation of updating department users from cached
@@ -44,11 +45,9 @@ class DepartmentUserAdmin(ModelAdmin):
             # Get the admin site context (we passed in the ModelAdmin class as a kwarg via the URL pattern).
             context['opts'] = DepartmentUser._meta
             context['title'] = 'Update user data from Ascender'
-            context['site_title'] = kwargs['model_admin'].admin_site.site_title
-            app_list = kwargs['model_admin'].admin_site.get_app_list(self.request)
-            organisation_app = next(app for app in app_list if app['app_label'] == 'organisation')
-            # Return the organisation app dict, merged with the context dict.
-            return {**context, **organisation_app}
+            # Include the admin site context.
+            context.update(admin.site.each_context(self.request))
+            return context
 
         def post(self, request, *args, **kwargs):
             pks = self.request.POST['user_pks'].split(',')
@@ -61,11 +60,10 @@ class DepartmentUserAdmin(ModelAdmin):
                         setattr(user, d['field'], d['new_value'])
                     user.save()
                     updates += 1
-            model_admin = kwargs['model_admin']
-            model_admin.message_user(request, f'{updates} user(s) have been updated')
+            messages.success(request, f'{updates} user(s) have been updated')
             return HttpResponseRedirect(reverse('admin:organisation_departmentuser_changelist'))
 
-    class AssignedLicenceFilter(SimpleListFilter):
+    class AssignedLicenceFilter(admin.SimpleListFilter):
         title = 'assigned licences'
         parameter_name = 'assigned_licences'
 
@@ -169,7 +167,7 @@ class DepartmentUserAdmin(ModelAdmin):
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
             path('ascender-discrepancies/', DepartmentUserAscenderDiscrepancyExport.as_view(), name='ascender_discrepancies'),
-            path('ascender-update/', self.UpdateUserDataFromAscender.as_view(), kwargs={'model_admin': self}, name='ascender_update'),
+            path('ascender-update/', self.UpdateUserDataFromAscender.as_view(), name='ascender_update'),
         ] + urls
         return urls
 
@@ -208,10 +206,10 @@ class DepartmentUserAdmin(ModelAdmin):
     update_data_from_ascender.short_description = "Update a user's information from cached Ascender data"
 
 
-@register(ADAction)
-class ADActionAdmin(ModelAdmin):
+@admin.register(ADAction)
+class ADActionAdmin(admin.ModelAdmin):
 
-    class CompletedFilter(SimpleListFilter):
+    class CompletedFilter(admin.SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for completed.
         """
         title = 'completed'
@@ -246,7 +244,7 @@ class ADActionAdmin(ModelAdmin):
         return False
 
 
-@register(Location)
+@admin.register(Location)
 class LocationAdmin(LeafletGeoAdmin):
     list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager', 'active')
     list_filter = ('active',)
@@ -258,8 +256,8 @@ class LocationAdmin(LeafletGeoAdmin):
     }
 
 
-@register(OrgUnit)
-class OrgUnitAdmin(ModelAdmin):
+@admin.register(OrgUnit)
+class OrgUnitAdmin(admin.ModelAdmin):
     list_display = ('name', 'unit_type', 'division_unit', 'users', 'cc', 'manager', 'active')
     search_fields = ('name', 'acronym', 'manager__name', 'location__name')
     raw_id_fields = ('manager',)
@@ -274,8 +272,8 @@ class OrgUnitAdmin(ModelAdmin):
             obj.pk, dusers.count())
 
 
-@register(CostCentre)
-class CostCentreAdmin(ModelAdmin):
+@admin.register(CostCentre)
+class CostCentreAdmin(admin.ModelAdmin):
     list_display = (
         'code', 'chart_acct_name', 'division_name', 'users', 'manager', 'business_manager', 'active'
     )
