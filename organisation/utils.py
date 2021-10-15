@@ -56,6 +56,8 @@ def title_except(
 
 def ascender_onprem_ad_data_diff():
     """A utility function to compare on-premise AD user account data with Ascender HR data.
+    TODO: replace this with a method on DepartmentUser - we have get_ascender_discrepancies(),
+    but that method doesn't quite serve the same purpose yet.
     """
     from .models import DepartmentUser
     discrepancies = []

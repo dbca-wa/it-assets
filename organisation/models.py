@@ -720,6 +720,7 @@ class DepartmentUser(models.Model):
             if given_name != self.ascender_data['first_name'].upper():
                 discrepancies.append({
                     'field': 'given_name',
+                    'field_desc': 'given name',
                     'old_value': self.given_name,
                     'new_value': self.ascender_data['first_name'].title(),
                 })
@@ -728,6 +729,7 @@ class DepartmentUser(models.Model):
             if surname != self.ascender_data['surname'].upper():
                 discrepancies.append({
                     'field': 'surname',
+                    'field_desc': 'surname',
                     'old_value': self.surname,
                     'new_value': self.ascender_data['surname'].title(),
                 })
@@ -736,6 +738,7 @@ class DepartmentUser(models.Model):
             if preferred_name != self.ascender_data['preferred_name'].upper():
                 discrepancies.append({
                     'field': 'preferred_name',
+                    'field_desc': 'preferred name',
                     'old_value': self.preferred_name,
                     'new_value': self.ascender_data['preferred_name'].title(),
                 })
@@ -746,6 +749,7 @@ class DepartmentUser(models.Model):
             if title != ascender_title:
                 discrepancies.append({
                     'field': 'title',
+                    'field_desc': 'title',
                     'old_value': self.title,
                     'new_value': title_except(self.ascender_data['occup_pos_title']),
                 })
