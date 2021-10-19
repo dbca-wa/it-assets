@@ -11,7 +11,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         self.stdout.write('Querying Microsoft Graph API for licensed Azure AD user accounts')
-        azure_users = ms_graph_users(licensed=True)
+        azure_users = ms_graph_users()
 
         if not azure_users:
             logger.error('Microsoft Graph API returned no data')
@@ -44,33 +44,35 @@ class Command(BaseCommand):
                         logger.info('AZURE AD SYNC: linked existing user {} with Azure objectId {}'.format(az['mail'], az['objectId']))
                         continue  # Skip to the next Azure user.
 
-                    if az['companyName'] and CostCentre.objects.filter(code=az['companyName']).exists():
-                        cost_centre = CostCentre.objects.get(code=az['companyName'])
-                    else:
-                        cost_centre = None
+                    # Only create a new DepartmentUser instance if the Azure AD account has >0 licences assigned to it.
+                    if az['assignedLicenses']:
+                        if az['companyName'] and CostCentre.objects.filter(code=az['companyName']).exists():
+                            cost_centre = CostCentre.objects.get(code=az['companyName'])
+                        else:
+                            cost_centre = None
 
-                    if az['officeLocation'] and Location.objects.filter(name=az['officeLocation']).exists():
-                        location = Location.objects.get(name=az['officeLocation'])
-                    else:
-                        location = None
+                        if az['officeLocation'] and Location.objects.filter(name=az['officeLocation']).exists():
+                            location = Location.objects.get(name=az['officeLocation'])
+                        else:
+                            location = None
 
-                    new_user = DepartmentUser.objects.create(
-                        azure_guid=az['objectId'],
-                        azure_ad_data=az,
-                        azure_ad_data_updated=datetime.now(timezone.utc),
-                        active=az['accountEnabled'],
-                        email=az['mail'],
-                        name=az['displayName'],
-                        given_name=az['givenName'],
-                        surname=az['surname'],
-                        title=az['jobTitle'],
-                        telephone=az['telephoneNumber'],
-                        mobile_phone=az['mobilePhone'],
-                        cost_centre=cost_centre,
-                        location=location,
-                        dir_sync_enabled=az['onPremisesSyncEnabled'],
-                    )
-                    logger.info(f'AZURE AD SYNC: created new department user {new_user}')
+                        new_user = DepartmentUser.objects.create(
+                            azure_guid=az['objectId'],
+                            azure_ad_data=az,
+                            azure_ad_data_updated=datetime.now(timezone.utc),
+                            active=az['accountEnabled'],
+                            email=az['mail'],
+                            name=az['displayName'],
+                            given_name=az['givenName'],
+                            surname=az['surname'],
+                            title=az['jobTitle'],
+                            telephone=az['telephoneNumber'],
+                            mobile_phone=az['mobilePhone'],
+                            cost_centre=cost_centre,
+                            location=location,
+                            dir_sync_enabled=az['onPremisesSyncEnabled'],
+                        )
+                        logger.info(f'AZURE AD SYNC: created new department user {new_user}')
                 else:
                     # An existing DepartmentUser is linked to this Azure AD user.
                     # Update the existing DepartmentUser object fields with values from Azure.
