@@ -311,7 +311,7 @@ class ChangeRequestAdmin(ModelAdmin):
         'id', 'title', 'change_type', 'requester_name', 'endorser_name', 'implementer_name', 'sme_name', 'status',
         'created', 'planned_start', 'planned_end', 'completed')
     list_filter = ('change_type', 'status', CompletionListFilter)
-    raw_id_fields = ('requester', 'endorser', 'implementer')
+    raw_id_fields = ('requester', 'endorser', 'implementer', 'sme')
     search_fields = (
         'id', 'title', 'requester__email', 'endorser__email', 'implementer__email', 'sme__email', 'implementation',
         'communication', 'reference_url', 'initiative_name', 'initiative_no', 'project_no',

@@ -27,6 +27,8 @@ class DepartmentUserAPIResource(View):
             **DepartmentUser.ACTIVE_FILTER
         ).exclude(
             account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+        ).exclude(
+            account_type__isnull=True
         ).prefetch_related(
             'location',
             'org_unit',
@@ -354,25 +356,6 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
                     delta = ascender_date - onprem_date
                     if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
                         context['deptuser_expdate_diff'].append([du, ascender_date, onprem_date])
-
-        # Department user CC differs from Ascender paypoint.
-        context['deptuser_cc_diff'] = []
-        for du in du_users:
-            if du.ascender_data and 'paypoint' in du.ascender_data and du.ascender_data['paypoint']:
-                if du.cost_centre:  # Case: user has CC set.
-                    if du.ascender_data['paypoint'].startswith('R') and du.ascender_data['paypoint'].replace('R', '') != du.cost_centre.code.replace('RIA-', ''):
-                        context['deptuser_cc_diff'].append([du, du.cost_centre.code, du.ascender_data['paypoint'].replace('R', 'RIA-')])
-                    elif du.ascender_data['paypoint'].startswith('Z') and du.ascender_data['paypoint'].replace('Z', '') != du.cost_centre.code.replace('ZPA-', ''):
-                        context['deptuser_cc_diff'].append([du, du.cost_centre.code, du.ascender_data['paypoint'].replace('Z', 'ZPA-')])
-                    elif du.ascender_data['paypoint'][0] in '1234567890' and du.ascender_data['paypoint'] != du.cost_centre.code.replace('DBCA-', ''):
-                        context['deptuser_cc_diff'].append([du, du.cost_centre.code, 'DBCA-{}'.format(du.ascender_data['paypoint'])])
-                else:  # Case: user has no CC set, but they should.
-                    if du.ascender_data['paypoint'].startswith('R'):
-                        context['deptuser_cc_diff'].append([du, du.cost_centre, du.ascender_data['paypoint'].replace('R', 'RIA-')])
-                    elif du.ascender_data['paypoint'].startswith('Z'):
-                        context['deptuser_cc_diff'].append([du, du.cost_centre, du.ascender_data['paypoint'].replace('Z', 'ZPA-')])
-                    elif du.ascender_data['paypoint'][0] in '1234567890':
-                        context['deptuser_cc_diff'].append([du, du.cost_centre, 'DBCA-{}'.format(du.ascender_data['paypoint'])])
 
         # Department user title differs from Ascender
         context['deptuser_title_diff'] = []

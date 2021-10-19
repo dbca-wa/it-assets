@@ -1,7 +1,10 @@
 from django import forms
-from django.contrib.admin import register, ModelAdmin, SimpleListFilter
+from django.contrib import admin
+from django.contrib import messages
+from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.views.generic import TemplateView
 from leaflet.admin import LeafletGeoAdmin
 
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
@@ -24,10 +27,43 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
-@register(DepartmentUser)
-class DepartmentUserAdmin(ModelAdmin):
+@admin.register(DepartmentUser)
+class DepartmentUserAdmin(admin.ModelAdmin):
 
-    class AssignedLicenceFilter(SimpleListFilter):
+    class UpdateUserDataFromAscender(TemplateView):
+        """A small custom view to allow confirmation of updating department users from cached
+        Ascender data.
+        """
+        template_name = 'admin/ascender_update_confirm.html'
+
+        def get_context_data(self, **kwargs):
+            context = super().get_context_data(**kwargs)
+            if 'pks' in self.request.GET and self.request.GET['pks']:
+                context['user_pks'] = self.request.GET['pks']
+                pks = self.request.GET['pks'].split(',')
+                context['department_users'] = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
+            # Get the admin site context (we passed in the ModelAdmin class as a kwarg via the URL pattern).
+            context['opts'] = DepartmentUser._meta
+            context['title'] = 'Update user data from Ascender'
+            # Include the admin site context.
+            context.update(admin.site.each_context(self.request))
+            return context
+
+        def post(self, request, *args, **kwargs):
+            pks = self.request.POST['user_pks'].split(',')
+            users = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
+            updates = 0
+            for user in users:
+                discrepancies = user.get_ascender_discrepancies()
+                if discrepancies:
+                    for d in discrepancies:
+                        setattr(user, d['field'], d['new_value'])
+                    user.save()
+                    updates += 1
+            messages.success(request, f'{updates} user(s) have been updated')
+            return HttpResponseRedirect(reverse('admin:organisation_departmentuser_changelist'))
+
+    class AssignedLicenceFilter(admin.SimpleListFilter):
         title = 'assigned licences'
         parameter_name = 'assigned_licences'
 
@@ -44,6 +80,7 @@ class DepartmentUserAdmin(ModelAdmin):
                 return queryset.filter(assigned_licences__contains=[self.value()])
 
     actions = ('clear_ad_guid', 'clear_azure_guid')
+    # actions = ('clear_ad_guid', 'clear_azure_guid', 'update_data_from_ascender')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
@@ -131,10 +168,13 @@ class DepartmentUserAdmin(ModelAdmin):
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
             path('ascender-discrepancies/', DepartmentUserAscenderDiscrepancyExport.as_view(), name='ascender_discrepancies'),
+            path('ascender-update/', self.UpdateUserDataFromAscender.as_view(), name='ascender_update'),
         ] + urls
         return urls
 
     def save_model(self, request, obj, form, change):
+        """Following save, carry out any required sync actions.
+        """
         super().save_model(request, obj, form, change)
         # Run the Ascender/Azure AD/on-prem AD update actions.
         obj.update_from_ascender_data()
@@ -146,20 +186,31 @@ class DepartmentUserAdmin(ModelAdmin):
         obj.audit_ad_actions()
 
     def clear_ad_guid(self, request, queryset):
+        # Action: allow a user's onprem AD GUID value to be cleared.
         queryset.update(ad_guid=None)
         self.message_user(request, "On-prem AD GUID has been cleared for the selected user(s)")
     clear_ad_guid.short_description = "Clear a user's on-prem AD GUID following migration between AD instances"
 
     def clear_azure_guid(self, request, queryset):
+        # Action: allow a user's Azure GUID value to be cleared.
         queryset.update(azure_guid=None)
         self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
     clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
 
+    def update_data_from_ascender(self, request, queryset):
+        # Action: allow a user to have data updated from cached Ascender data.
+        selected = queryset.values_list('pk', flat=True)
+        # Redirect to the URL for the view to confirm this action.
+        return HttpResponseRedirect('{}?pks={}'.format(
+            reverse('admin:ascender_update'), ','.join(str(pk) for pk in selected),
+        ))
+    update_data_from_ascender.short_description = "Update a user's information from cached Ascender data"
 
-@register(ADAction)
-class ADActionAdmin(ModelAdmin):
 
-    class CompletedFilter(SimpleListFilter):
+@admin.register(ADAction)
+class ADActionAdmin(admin.ModelAdmin):
+
+    class CompletedFilter(admin.SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for completed.
         """
         title = 'completed'
@@ -194,7 +245,7 @@ class ADActionAdmin(ModelAdmin):
         return False
 
 
-@register(Location)
+@admin.register(Location)
 class LocationAdmin(LeafletGeoAdmin):
     list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager', 'active')
     list_filter = ('active',)
@@ -206,8 +257,8 @@ class LocationAdmin(LeafletGeoAdmin):
     }
 
 
-@register(OrgUnit)
-class OrgUnitAdmin(ModelAdmin):
+@admin.register(OrgUnit)
+class OrgUnitAdmin(admin.ModelAdmin):
     list_display = ('name', 'unit_type', 'division_unit', 'users', 'cc', 'manager', 'active')
     search_fields = ('name', 'acronym', 'manager__name', 'location__name')
     raw_id_fields = ('manager',)
@@ -222,8 +273,8 @@ class OrgUnitAdmin(ModelAdmin):
             obj.pk, dusers.count())
 
 
-@register(CostCentre)
-class CostCentreAdmin(ModelAdmin):
+@admin.register(CostCentre)
+class CostCentreAdmin(admin.ModelAdmin):
     list_display = (
         'code', 'chart_acct_name', 'division_name', 'users', 'manager', 'business_manager', 'active'
     )

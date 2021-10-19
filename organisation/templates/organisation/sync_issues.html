@@ -101,29 +101,6 @@
 </table>
 {% endif %}
 
-{% if deptuser_cc_diff %}
-<h2>Department user cost centre differs from Ascender paypoint / cost centre</h2>
-<p>SOLUTION: update the IT Assets department user CC to the Ascender CC value.</p>
-<table class="table table-bordered table-striped table-condensed">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>IT Assets CC</th>
-            <th>Ascender CC</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for diff in deptuser_cc_diff %}
-        <tr>
-            <td>{{ diff.0.get_full_name }}</td>
-            <td>{{ diff.1 }}</td>
-            <td>{{ diff.2 }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% endif %}
-
 {% if deptuser_title_diff %}
 <h2>Department user title differs from Ascender title</h2>
 <p>SOLUTION: update the IT Assets department user title to the Ascender title.</p>

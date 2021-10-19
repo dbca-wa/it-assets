@@ -23,11 +23,7 @@ def format_fileField(request, value):
 
 
 def format_position_type(request, value):
-    if value is not None:
-        position_type = dict(DepartmentUser.POSITION_TYPE_CHOICES)
-        return position_type[value]
-    else:
-        return value
+    return ''
 
 
 def format_account_type(request, value):

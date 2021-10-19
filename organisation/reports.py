@@ -18,7 +18,7 @@ def department_user_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'POSITION TYPE', 'EXPIRY DATE', 'COST CENTRE', 'CC MANAGER', 'CC MANAGER EMAIL', 'CC BMANAGER', 'CC BMANAGER EMAIL',
+            'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'EMPLOYMENT STATUS', 'COST CENTRE', 'CC MANAGER', 'CC MANAGER EMAIL', 'CC BMANAGER', 'CC BMANAGER EMAIL',
             'ACTIVE', 'O365 LICENCE', 'TELEPHONE', 'MOBILE PHONE',
         ))
         row = 1
@@ -28,8 +28,7 @@ def department_user_export(fileobj, users):
                 i.email,
                 i.title,
                 i.get_account_type_display(),
-                i.get_position_type_display(),
-                '',
+                i.get_employment_status(),
                 i.cost_centre.code if i.cost_centre else '',
                 i.cost_centre.manager.get_full_name() if i.cost_centre and i.cost_centre.manager else '',
                 i.cost_centre.manager.email if i.cost_centre and i.cost_centre.manager else '',
@@ -42,16 +41,14 @@ def department_user_export(fileobj, users):
             ])
             row += 1
         users_sheet.set_column('A:A', 35)
-        users_sheet.set_column('B:D', 45)
-        users_sheet.set_column('E:E', 15)
-        users_sheet.set_column('F:F', 18)
-        users_sheet.set_column('G:G', 13)
-        users_sheet.set_column('H:H', 35)
-        users_sheet.set_column('I:I', 45)
-        users_sheet.set_column('J:J', 35)
-        users_sheet.set_column('K:K', 45)
-        users_sheet.set_column('L:M', 13)
-        users_sheet.set_column('N:O', 20)
+        users_sheet.set_column('B:E', 45)
+        users_sheet.set_column('F:F', 13)
+        users_sheet.set_column('G:G', 35)
+        users_sheet.set_column('H:H', 45)
+        users_sheet.set_column('I:I', 35)
+        users_sheet.set_column('J:J', 45)
+        users_sheet.set_column('K:L', 13)
+        users_sheet.set_column('M:N', 20)
 
     return fileobj
 

@@ -56,6 +56,8 @@ def title_except(
 
 def ascender_onprem_ad_data_diff():
     """A utility function to compare on-premise AD user account data with Ascender HR data.
+    TODO: replace this with a method on DepartmentUser - we have get_ascender_discrepancies(),
+    but that method doesn't quite serve the same purpose yet.
     """
     from .models import DepartmentUser
     discrepancies = []
@@ -144,10 +146,10 @@ def ascender_onprem_ad_data_diff():
         else:
             ad_title = ''
         if user.ascender_data['occup_pos_title'] and user.ascender_data['occup_pos_title']:
-            asc_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
+            ascender_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
         else:
-            asc_title = ''
-        if ad_title != asc_title:
+            ascender_title = ''
+        if ad_title != ascender_title:
             new_val = title_except(user.ascender_data['occup_pos_title'])
             discrepancies.append({
                 'ascender_id': user.employee_id,
@@ -200,7 +202,7 @@ def ms_graph_users(licensed=False):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
@@ -232,6 +234,8 @@ def ms_graph_users(licensed=False):
             'proxyAddresses': [i.lower().replace('smtp:', '') for i in user['proxyAddresses'] if i.lower().startswith('smtp')],
             'accountEnabled': user['accountEnabled'],
             'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
+            'onPremisesSamAccountName': user['onPremisesSamAccountName'],
+            'lastPasswordChangeDateTime': user['lastPasswordChangeDateTime'],
             'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
             'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
         })

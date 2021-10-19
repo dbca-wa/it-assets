@@ -33,7 +33,6 @@ FOREIGN_TABLE_FIELDS = (
     ("loc_desc", "location_desc"),
     "paypoint",
     "paypoint_desc",
-    "geo_location",
     "geo_location_desc",
     "occup_type",
     ("job_start_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
@@ -41,7 +40,7 @@ FOREIGN_TABLE_FIELDS = (
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
-    "email",
+    "email_address",
     "extended_lv",
     ("ext_lv_end_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
 )
@@ -204,7 +203,7 @@ def get_ascender_matches():
     """For users with no employee ID, return a list of lists of possible Ascender matches in the format:
     [IT ASSETS PK, IT ASSETS NAME, ASCENDER NAME, EMPLOYEE ID]
     """
-    dept_users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER, employee_id__isnull=True)
+    dept_users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER, employee_id__isnull=True, given_name__isnull=False, surname__isnull=False)
     ascender_data = ascender_employee_fetch()
     possible_matches = []
     ascender_jobs = []
@@ -224,5 +223,6 @@ def get_ascender_matches():
                         '{} {}'.format(data['first_name'], data['surname']),
                         data['employee_id'],
                     ])
+                    continue
 
     return possible_matches

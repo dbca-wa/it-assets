@@ -4,14 +4,14 @@ from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 import logging
 
-from .utils import compare_values
+from .utils import compare_values, title_except
 LOGGER = logging.getLogger('organisation')
 
 
 class DepartmentUser(models.Model):
     """Represents a Department user. Maps to an object managed by Active Directory.
     """
-    ACTIVE_FILTER = {'active': True, 'cost_centre__isnull': False, 'contractor': False}
+    ACTIVE_FILTER = {'active': True, 'contractor': False}
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, 'L1 User Account - Permanent'),
@@ -33,17 +33,11 @@ class DepartmentUser(models.Model):
     )
     # The following is a list of account type of normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
-    ACCOUNT_TYPE_EXCLUDE = [4, 5, 9, 10, 11, 12, 14, 16]
+    ACCOUNT_TYPE_EXCLUDE = [1, 4, 5, 7, 9, 10, 11, 12, 14, 16]
     # The following is a list of account types set for individual staff/vendors,
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
     ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
-    POSITION_TYPE_CHOICES = (
-        (0, 'Full time'),
-        (1, 'Part time'),
-        (2, 'Casual'),
-        (3, 'Other'),
-    )
     # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     MS_LICENCE_SKUS = {
@@ -160,6 +154,7 @@ class DepartmentUser(models.Model):
     name = models.CharField(max_length=128, verbose_name='display name')
     given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
     surname = models.CharField(max_length=128, null=True, blank=True, help_text='Last name')
+    preferred_name = models.CharField(max_length=256, null=True, blank=True)
     title = models.CharField(
         max_length=128, null=True, blank=True,
         help_text='Occupation position title (should match Ascender position title)')
@@ -193,15 +188,10 @@ class DepartmentUser(models.Model):
         limit_choices_to={'active': True},
         verbose_name='organisational unit',
         help_text="The organisational unit to which the employee belongs.")
-    preferred_name = models.CharField(max_length=256, null=True, blank=True)
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
-    # TODO: deprecated position_type in favour of Ascender data cache.
-    position_type = models.PositiveSmallIntegerField(
-        choices=POSITION_TYPE_CHOICES, null=True, blank=True,
-        help_text='Employee position working arrangement (Ascender employment status)')
     employee_id = models.CharField(
         max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
         help_text='Ascender employee number')
@@ -232,20 +222,20 @@ class DepartmentUser(models.Model):
         default=False, editable=False, help_text='Automatically set from account type.')
 
     # Cache of Ascender data
-    ascender_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
+    ascender_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(
         null=True, editable=False, help_text="Timestamp of when Ascender data was last updated for this user")
     # Cache of on-premise AD data
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
         help_text="On-premise Active Directory unique object ID")
-    ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
+    ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
     ad_data_updated = models.DateTimeField(null=True, editable=False)
     # Cache of Azure AD data
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
         editable=False, help_text="Azure Active Directory unique object ID")
-    azure_ad_data = JSONField(null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
+    azure_ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
     dir_sync_enabled = models.NullBooleanField(default=None, help_text="Azure AD account is synced to on-prem AD")
 
@@ -667,8 +657,8 @@ class DepartmentUser(models.Model):
             self.active = self.azure_ad_data['accountEnabled']
             LOGGER.info(f'AZURE AD SYNC: {self} active changed to {self.active}')
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
+            LOGGER.info('AZURE AD SYNC: {} email changed to {}'.format(self, self.azure_ad_data['mail']))
             self.email = self.azure_ad_data['mail']
-            LOGGER.info(f'AZURE AD SYNC: {self} email changed to {self.email}')
         if 'displayName'in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
             self.name = self.azure_ad_data['displayName']
             LOGGER.info(f'AZURE AD SYNC: {self} name changed to {self.name}')
@@ -715,6 +705,57 @@ class DepartmentUser(models.Model):
             return '.'.join([i.replace('DC=', '') for i in self.ad_data['DistinguishedName'].split(',') if i.startswith('DC=')])
 
         return None
+
+    def get_ascender_discrepancies(self):
+        """Returns a list of discrepancies between object field values and their associated Ascender data.
+        """
+        if not self.employee_id or not self.ascender_data:
+            return
+
+        discrepancies = []
+
+        # As field values might be None, we have to go through some rigamole to compare them.
+        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+            given_name = self.given_name.upper() if self.given_name else ''
+            if given_name != self.ascender_data['first_name'].upper():
+                discrepancies.append({
+                    'field': 'given_name',
+                    'field_desc': 'given name',
+                    'old_value': self.given_name,
+                    'new_value': self.ascender_data['first_name'].title(),
+                })
+        if 'surname' in self.ascender_data and self.ascender_data['surname']:
+            surname = self.surname.upper() if self.surname else ''
+            if surname != self.ascender_data['surname'].upper():
+                discrepancies.append({
+                    'field': 'surname',
+                    'field_desc': 'surname',
+                    'old_value': self.surname,
+                    'new_value': self.ascender_data['surname'].title(),
+                })
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
+            preferred_name = self.preferred_name.upper() if self.preferred_name else ''
+            if preferred_name != self.ascender_data['preferred_name'].upper():
+                discrepancies.append({
+                    'field': 'preferred_name',
+                    'field_desc': 'preferred name',
+                    'old_value': self.preferred_name,
+                    'new_value': self.ascender_data['preferred_name'].title(),
+                })
+        if 'occup_pos_title' in self.ascender_data and self.ascender_data['occup_pos_title']:
+            # Handle title with a bit more nuance.
+            title = self.title.upper().replace('&', 'AND').replace(',', '') if self.title else ''
+            ascender_title = self.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
+            if title != ascender_title:
+                discrepancies.append({
+                    'field': 'title',
+                    'field_desc': 'title',
+                    'old_value': self.title,
+                    'new_value': title_except(self.ascender_data['occup_pos_title']),
+                })
+        # FIXME: for now, don't check phone number or mobile phone number.
+
+        return discrepancies or None
 
 
 class DepartmentUserLog(models.Model):
