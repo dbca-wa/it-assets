@@ -11,6 +11,7 @@ from rancher import models,modeldata
 logger = logging.getLogger(__name__)
 
 check_column_sql = "select count(*) from pg_attribute a join pg_class b on a.attrelid=b.oid where b.relname='{0}' and b.relkind='r' and a.atttypid > 0 and a.attname='{1}'"
+check_count_sql = "select count(*) from {0}"
 
 def create_imagefamily_from_image(apps,schema_editor):
     logger.debug("Create imagefamily from images")
@@ -40,7 +41,11 @@ def create_image_from_workload(apps,schema_editor):
             containerimage= models.ContainerImage.parse_imageid(row[1],scan=False)
             cursor.execute("update {0} set containerimage_id={2} where id={1}".format(models.Workload._meta.db_table,row[0],containerimage.id))
             
-    modeldata.reset_containerimage_workloads()
+        cursor.execute(check_count_sql.format(models.ContainerImage._meta.db_table))
+        reset_image_workloads = (cursor.fetchone()[0] > 0)
+
+    if reset_image_workloads:
+        modeldata.reset_containerimage_workloads()
 
 def tansform_other_config_to_json(apps,schema_editor):
     logger.debug("Transform other_config to json")
