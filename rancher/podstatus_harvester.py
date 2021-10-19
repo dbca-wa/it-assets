@@ -180,8 +180,8 @@ def process_status_file(context,metadata,status_file):
 
         except Exception as ex:
             #delete already added records from this log file
-            logger.error("Failed to parse pod status record({}).{}".format(record,traceback.format_exc()))
-            raise Exception("Failed to parse pod status record({}).{}".format(record,str(ex)))
+            logger.error("Failed to parse pod status record({}).{}".format(record,str(ex)))
+            continue
 
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
 
@@ -285,7 +285,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
     except exceptions.AlreadyLocked as ex:
         harvester.status = models.Harvester.SKIPPED
         message = "The previous harvest process is still running.{}".format(str(ex))
-        logger.info(message)
+        logger.warning(message)
         return ([],[(None,None,None,message)])
     except:
         harvester.status = models.Harvester.FAILED

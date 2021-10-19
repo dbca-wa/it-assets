@@ -2,11 +2,13 @@ import simdjson
 import traceback
 import logging
 import datetime
+import collections
 import re
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
+from django.core.mail import EmailMessage
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions,LockSession
 from . import models
@@ -32,7 +34,8 @@ log_levels = [
     (re.compile("(^|\s+)(level|lvl)\s*=\s*info\s+",re.IGNORECASE),(models.ContainerLog.INFO,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*warn(ing)?\s+",re.IGNORECASE),(models.ContainerLog.WARNING,True)),
     (re.compile("(^|\s+)(level|lvl)\s*=\s*error\s+",re.IGNORECASE),(models.ContainerLog.ERROR,True)),
-    (re.compile("(exception|error|failed|wrong|err|traceback)[~a-zA-Z0-9]+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
+    (re.compile("(warning)[^a-zA-Z0-9]+",re.IGNORECASE),(models.ContainerLog.WARNING,False)),
+    (re.compile("(exception|error|failed|wrong|err|traceback)[^a-zA-Z0-9]+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
 def get_client(cache=True):
@@ -83,6 +86,81 @@ def update_workload_latest_containers(context,containerlog):
                 if "latest_containers" not in workload_update_fields:
                     workload_update_fields.append("latest_containers")
 
+def _add_notify_log(context,containerlog):
+    if settings.DISABLE_LOG_NOTIFICATION_EMAIL:
+        return
+
+    if containerlog.level not in (models.ContainerLog.WARNING,models.ContainerLog.ERROR):
+        return
+
+    container = containerlog.container
+    workload = container.workload
+    imagefamily = workload.containerimage.imagefamily
+    if not imagefamily.enable_notify:
+        return
+    elif not imagefamily.enable_warning_msg and containerlog.level == models.ContainerLog.WARNING:
+        return
+
+    if not imagefamily.filter_log(containerlog):
+        return
+
+    if workload not in context["notify_contacts"]:
+        if imagefamily.contacts:
+            notify_contacts = imagefamily.contacts
+            context["notify_contacts"][workload] = notify_contacts
+        else:
+            notify_contacts = None
+            del_notify_contacts = None
+            for res in models.WorkloadResource.objects.filter(
+                workload=workload,
+                resource_type__in=[models.EnvScanModule.MEMCACHED,models.EnvScanModule.REDIS,models.EnvScanModule.POSTGRES,models.EnvScanModule.ORACLE,models.EnvScanModule.MYSQL],
+                config_source=models.WorkloadResource.SERVICE
+            ).only("resource_id"):
+                for dep in models.WorkloadDependency.objects.filter(workload=workload,dependency_type=res.resource_type,dependency_id=res.resource_id).only("dependent_workloads","del_dependent_workloads"):
+                    for wlid in dep.dependent_workloads:
+                        wl = models.Workload.objects.filter(id=wlid).only("containerimage").first()
+                        if not wl:
+                            continue
+                        if wl.containerimage.imagefamily.contacts:
+                            notify_contacts = wl.containerimage.imagefamily.contacts
+                            break
+
+                    if notify_contacts:
+                        break
+                    elif del_notify_contacts:
+                        continue
+                
+                    for wlid in dep.del_dependent_workloads:
+                        wl = models.Workload.objects.filter(id=wlid).only("containerimage").first()
+                        if not wl:
+                            continue
+                        if wl.containerimage.imagefamily.contacts:
+                            del_notify_contacts = wl.containerimage.imagefamily.contacts
+                            break
+
+                if notify_contacts:
+                    break
+                
+            notify_contacts = notify_contacts or del_notify_contacts
+            context["notify_contacts"][workload] = notify_contacts
+    else:
+        notify_contacts = context["notify_contacts"][workload]
+
+    if not notify_contacts:
+        return
+
+    workload_logs = context["notify_logs"].get(workload)
+    if not workload_logs:
+        workload_logs = collections.OrderedDict()
+        context["notify_logs"][workload] = workload_logs
+
+    container_logs = workload_logs.get(container)
+    if not container_logs:
+        container_logs = []
+        workload_logs[container] = container_logs
+
+    container_logs.append("{} {}:{}".format(containerlog.logtime.strftime("%Y-%m-%d %H:%M:%S.%f"),containerlog.get_level_display(),containerlog.message))
+
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
     context["logstatus"]["harvester"].message="{}:Begin to process container log file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
@@ -121,18 +199,6 @@ def process_status_file(context,metadata,status_file):
             """
 
             source = (record["logentrysource"] or "").strip() or None
-            level = None
-            newmessage = False
-            for log_level_re,value in log_levels:
-                if log_level_re.search(message):
-                    level,newmessage = value
-                    break
-
-            if level is None:
-                if source.lower() in ('stderr',):
-                    level = models.ContainerLog.ERROR
-                else:
-                    level = models.ContainerLog.INFO
 
             computer = record["computer"].strip()
             cluster = None
@@ -187,6 +253,23 @@ def process_status_file(context,metadata,status_file):
                 containerlog = models.ContainerLog(archiveid=metadata["resource_id"])
                 context["logstatus"]["containerlogs"][key] = containerlog
 
+            result = container.workload.containerimage.imagefamily.get_loglevel(message)
+            if result:
+                level,newmessage = result
+            else:
+                level = None
+                newmessage = False
+                for log_level_re,value in log_levels:
+                    if log_level_re.search(message):
+                        level,newmessage = value
+                        break
+
+                if level is None:
+                    if source.lower() in ('stderr',):
+                        level = models.ContainerLog.ERROR
+                    else:
+                        level = models.ContainerLog.INFO
+
             if not containerlog.logtime:
                 containerlog.id = None
                 containerlog.container = container
@@ -196,10 +279,11 @@ def process_status_file(context,metadata,status_file):
                 #containerlog.message = "{}:{}".format(logtime.strftime("%Y-%m-%d %H:%M:%S.%f"),message)
                 containerlog.message = message
                 containerlog.level = level
-            elif newmessage or logtime >= (containerlog.latest_logtime + datetime.timedelta(seconds=3)) or containerlog.source != source :
+            elif newmessage or logtime >= (containerlog.latest_logtime + datetime.timedelta(seconds=1)) or containerlog.source != source :
                 records += 1
 
                 containerlog.save()
+                _add_notify_log(context,containerlog)
                 container = containerlog.container
                 update_workload_latest_containers(context,containerlog)
                 key = (container.cluster.id,container.containerid)
@@ -233,8 +317,8 @@ def process_status_file(context,metadata,status_file):
                     containerlog.latest_logtime = logtime
         except Exception as ex:
             #delete already added records from this log file
-            logger.error("Failed to parse container log record({}).{}".format(record,traceback.format_exc()))
-            raise Exception("Failed to parse container log record({}).{}".format(record,str(ex)))
+            logger.error("Failed to parse container log record({}).{}".format(record,str(ex)))
+            continue
 
     #save the last message
     containerlogs = [o for o in context["logstatus"]["containerlogs"].values() if o.logtime and o.container]
@@ -242,6 +326,7 @@ def process_status_file(context,metadata,status_file):
     for containerlog in containerlogs:
         records += 1
         containerlog.save()
+        _add_notify_log(context,containerlog)
         container = containerlog.container
         update_workload_latest_containers(context,containerlog)
         key = (container.cluster.id,container.containerid)
@@ -369,7 +454,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 if reconsume:
                     if get_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
                         get_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-                    clean_containerlogs()
+                    modeldata.clean_containerlogs()
         
         
                 context["logstatus"] = context.get("logstatus",{})
@@ -428,7 +513,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
     except exceptions.AlreadyLocked as ex: 
         harvester.status = models.Harvester.SKIPPED
         message = "The previous harvest process is still running.{}".format(str(ex))
-        logger.info(message)
+        logger.warning(message)
         return ([],[(None,None,None,message)])
     finally:
         if need_clean[0]:
@@ -453,5 +538,49 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
 def harvest_all(context={}):
     podstatus_harvester.harvest(context)
     containerstatus_harvester.harvest(context)
-    harvest(context)
+    context["notify_logs"] = {}
+    context["notify_contacts"] = {}
+    harvest(context = context)
+    if context["notify_logs"]:
+        #send notify email to developersA
+        #populate the map between contact and workloads
+        contacts = {}
+        for wl,wl_contacts in context["notify_contacts"].items():
+            if not wl_contacts:
+                continue
+            for wl_contact in wl_contacts:
+                if wl_contact in contacts:
+                    contacts[wl_contact].append(wl)
+                else:
+                    contacts[wl_contact] = [wl]
+
+        #group contacts by workloads
+        contact_groups = {}
+        for contact,wls in contacts.items():
+            wls = tuple(wls)
+            if wls in contact_groups:
+                contact_groups[wls].append(contact)
+            else:
+                contact_groups[wls] = [contact]
+
+        contacts.clear()
+        contacts = None
+        content = None
+        #send notify emails
+        for wls,contacts in contact_groups.items():
+            html_content = "<br><br>-------------------------------------------------------------------<br><br>".join(
+                "<div css='font-weight:bold;font-size:25px'>{0}</div>{1}".format(
+                    wl,
+                    "<br><br>".join(
+                        "<div css='font-weight:bold;font-size:20px'>{0}</div>{1}".format(
+                            container,
+                            "<br>".join("<pre>{}</pre>".format(msg) for msg in messages)
+                        ) for container,messages in context["notify_logs"][wl].items()
+                    )
+                ) for wl in wls
+            )
+            mail = EmailMessage("Some errors/warnings occured in your workloads.",html_content,settings.NOREPLY_EMAIL,contacts)
+            mail.content_subtype = "html"
+            mail.send()
+
 

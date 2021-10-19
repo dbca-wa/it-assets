@@ -13,6 +13,7 @@ from django.contrib.admin.views.main import ChangeList
 from . import models
 from . import rancher_harvester
 from . import forms
+from itassets.utils import SecretPermissionMixin,RequestMixin,RequestUserMixin
 from .decorators import  add_changelink,many2manyinline
 
 logger = logging.getLogger(__name__)
@@ -29,13 +30,6 @@ class ReverseChangeList(ChangeList):
 class LookupAllowedMixin(object):
     def lookup_allowed(self, lookup, value):
         return True
-
-class RequestMixin(object):
-    request = None
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        self.request = request
-        return qs
 
 class DatetimeMixin(object):
     def _modified(self,obj):
@@ -105,8 +99,10 @@ class EnvValueMixin(object):
     def _value(self,obj):
         if not obj or not obj.value :
             return ""
-        else:
+        elif self.secretpermission_granted(obj):
             return mark_safe("<pre style='white-space:pre-wrap'>{}</pre>".format(obj.value))
+        else:
+            return "******"
     _value.short_description = "Value"
 
 class ContainerImageLinkMixin(object):
@@ -609,11 +605,13 @@ class NamespaceAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMix
     def has_change_permission(self, request, obj=None):
         return False
 
-class SecretItemInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
+class SecretItemInline(RequestMixin,SecretPermissionMixin,DatetimeMixin,EnvValueMixin,admin.TabularInline):
     model = models.SecretItem
     readonly_fields = ('name','_value','_modified','_created','_updated')
     fields = readonly_fields
     ordering = ('name',)
+
+    is_developer = staticmethod(lambda user,obj:models.WorkloadEnv.objects.filter(secret=obj.secret,workload__containerimage__imagefamily__contacts__contains=[user.email]).only("id").exists() if obj else False)
 
 @admin.register(models.Secret)
 class SecretAdmin(RequestMixin,DeletedMixin,LookupAllowedMixin,ClusterLinkMixin,ProjectLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
@@ -651,11 +649,14 @@ class SecretAdmin(RequestMixin,DeletedMixin,LookupAllowedMixin,ClusterLinkMixin,
     def has_change_permission(self, request, obj=None):
         return False
 
-class ConfigMapItemInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
+class ConfigMapItemInline(RequestMixin,SecretPermissionMixin,DatetimeMixin,EnvValueMixin,admin.TabularInline):
     model = models.ConfigMapItem
     readonly_fields = ('name','_value','_modified','_created','_updated')
     fields = readonly_fields
     ordering = ('name',)
+
+    is_developer = staticmethod(lambda user,obj:models.WorkloadEnv.objects.filter(configmap=obj.configmap,workload__containerimage__imagefamily__contacts__contains=[user.email]).only("id").exists() if obj else False)
+
 
 @admin.register(models.ConfigMap)
 class ConfigMapAdmin(DeletedMixin,LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,DatetimeMixin,admin.ModelAdmin):
@@ -724,11 +725,13 @@ class PersistentVolumeAdmin(LookupAllowedMixin,DeletedMixin,ClusterLinkMixin,Dat
         return False
 
 
-class WorkloadEnvInline(DatetimeMixin,EnvValueMixin,admin.TabularInline):
+class WorkloadEnvInline(RequestMixin,SecretPermissionMixin,DatetimeMixin,EnvValueMixin,admin.TabularInline):
     readonly_fields = ('name','_value','_configmap','_secret','_modified','_created')
     fields = ('name','_value',"_configmap","_secret",'_modified')
     model = models.WorkloadEnv
     classes = ["collapse"]
+
+    is_developer = staticmethod(lambda user,obj: user.email in (obj.workload.containerimage.imagefamily.contacts or []) if obj else False)
 
     configmap_change_url_name = 'admin:{}_{}_change'.format(models.ConfigMap._meta.app_label,models.ConfigMap._meta.model_name)
     def _configmap(self,obj):
@@ -1183,15 +1186,36 @@ class ContainerImageAdmin(RequestMixin,DatetimeMixin,ScanSummaryMixin,WorkloadsL
     def has_delete_permission(self, request, obj=None):
         return False
 
-class WorkloadResourceInline(DatetimeMixin,admin.TabularInline):
+class ResourceIdMixin(object):
+    def _resource_id(self,obj):
+        if not obj or not obj.resource_id:
+            return ""
+        elif self.secretpermission_granted(obj):
+            return obj.resource_id
+        elif obj.resource_type >= models.EnvScanModule.CREDENTIAL and obj.resource_type < models.EnvScanModule.CREDENTIAL + 10:
+            return "******"
+        else:
+            return obj.resource_id
+    _resource_id.short_description = "Resource ID"
+
+
+class WorkloadResourceInline(RequestMixin,SecretPermissionMixin,ResourceIdMixin,DatetimeMixin,admin.TabularInline):
     model = models.WorkloadResource
-    readonly_fields = ('resource_type','resource_id','config_items','config_source','properties','_updated',"_created")
-    fields = readonly_fields
+    readonly_fields = ('resource_type','_resource_id','config_items','config_source','properties','_updated',"_created")
+    _fields = ('resource_type','_resource_id','config_items','config_source','_updated',"_created")
+    _fields_security = readonly_fields
     ordering = ('resource_type','resource_id',)
     classes = ["collapse"]
 
+    @property
+    def fields(self):
+        if self.secretpermission_granted():
+            return self._fields_security
+        else:
+            return self._fields
+
 @admin.register(models.Workload)
-class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,ContainerImageLinkMixin,DatetimeMixin, admin.ModelAdmin):
+class WorkloadAdmin(RequestMixin,SecretPermissionMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixin, ProjectLinkMixin, NamespaceLinkMixin, WorkloadLinkMixin,ContainersLinkMixin,ContainerImageLinkMixin,DatetimeMixin, admin.ModelAdmin):
     list_display = ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage','itsystem', '_containers','_running_status', '_modified','_deleted',"added_by_log") if settings.ENABLE_ADDED_BY_CONTAINERLOG else ('_name_with_link', '_cluster', '_project', '_namespace', 'kind', '_containerimage','itsystem', '_containers','_running_status', '_modified','_deleted')
 
     list_display_links = None
@@ -1212,6 +1236,9 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
 
     change_url_name = 'admin:{}_{}_change'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
     list_url_name = '{}_{}_changelist'.format(models.Workload._meta.app_label,models.Workload._meta.model_name)
+
+
+    is_developer = staticmethod(lambda user,obj: user.email in (obj.containerimage.imagefamily.contacts or []) if obj else False)
     def get_queryset(self, request):
         qs =  super().get_queryset(request)
         qs = qs.select_related("itsystem","cluster","project","namespace")
@@ -1235,14 +1262,17 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
         self._htmlid += 1
         return "{}_{}".format(nodetype,self._htmlid)
 
-    def _format_resource_tree(self,tree,indent=0):
+    def _format_resource_tree(self,root_workload,tree,indent=0):
         dep_html = ""
         for dependent_type,dependent_type_name,type_dependents in tree[3]:
             type_tree_html = ""
             for dependent_pk,dependent_display,sub_dep_trees  in type_dependents:
+                if dependent_type >= models.EnvScanModule.CREDENTIAL and dependent_type < models.EnvScanModule.CREDENTIAL + 10 and not self.secretpermission_granted(root_workload):
+                    dependent_display = "******" 
+
                 if sub_dep_trees:
                     resource_tree_id = self.get_tree_nodeid("res")
-                    sub_tree_html = "".join(self._format_resource_tree(sub_tree,indent + 48) for sub_tree in sub_dep_trees)
+                    sub_tree_html = "".join(self._format_resource_tree(root_workload,sub_tree,indent + 48) for sub_tree in sub_dep_trees)
                     type_tree_html = "{0}<div style='margin-left:{3}px'><img src='/static/img/plus.svg' onclick=\"toggle_tree(this,$('#{4}'))\" style='margin-right:5px'>{1}</div><div id='{4}' style='display:none'>{2}</div>".format(
                         type_tree_html,dependent_display,sub_tree_html,indent+32,resource_tree_id
                     )
@@ -1296,7 +1326,7 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
                     tree = None
                 if tree:
                     if obj.toggle_tree_js:
-                        return mark_safe(self._format_resource_tree(tree))
+                        return mark_safe(self._format_resource_tree(obj,tree))
                     else:
                         obj.toggle_tree_js = True
                         return mark_safe("""
@@ -1313,7 +1343,7 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
 </script>
 {}
 
-""".format(self._format_resource_tree(tree)))
+""".format(self._format_resource_tree(obj,tree)))
                 else:
                     return ""
             except:
@@ -1321,18 +1351,16 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
                 raise
     _resource_dependent_tree.short_description = "Resource Dependent Tree"
 
-    def _format_workload_tree(self,tree,dependents=None,indent=0):
+    def _format_workload_tree(self,root_workload,tree,dependents=None,indent=0):
         dep_html = ""
         for dep_dependents,dep_workload_tree in tree[3]:
-
-            dep_html = "{0}{1}".format(dep_html,self._format_workload_tree(dep_workload_tree,dependents=dep_dependents,indent=indent + 16))
-
+            dep_html = "{0}{1}".format(dep_html,self._format_workload_tree(root_workload,dep_workload_tree,dependents=dep_dependents,indent=indent + 16))
 
         dependents_html = ""
         if dependents:
             dep_id = self.get_tree_nodeid("wl_dep")
             dependents_html = "<img src='/static/img/link.svg' onclick=\"$('#{1}').toggle()\" style='margin-left:5px'><div id='{1}' style='display:none'>{0}</div>".format(
-                "".join("<div style='margin-left:32px;color:blue'>- {} : {}</div>".format(dep[1],dep[3]) for dep in dependents),
+                "".join("<div style='margin-left:32px;color:blue'>- {} : {}</div>".format(dep[1],dep[3] if self.secretpermission_granted(root_workload) else "******") for dep in dependents),
                 dep_id
             )
 
@@ -1373,7 +1401,7 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
                     tree = None
                 if tree:
                     if obj.toggle_tree_js:
-                        return mark_safe(self._format_workload_tree(tree))
+                        return mark_safe(self._format_workload_tree(obj,tree))
                     else:
                         obj.toggle_tree_js = True
                         return mark_safe("""
@@ -1390,7 +1418,7 @@ class WorkloadAdmin(RequestMixin,LookupAllowedMixin,DeletedMixin,ClusterLinkMixi
 </script>
 {}
 
-""".format(self._format_workload_tree(tree)))
+""".format(self._format_workload_tree(obj,tree)))
                 else:
                     return ""
             except:
@@ -1474,16 +1502,20 @@ class RunningStatusFilter(admin.SimpleListFilter):
             return queryset.filter(container_terminated__isnull=False)
 
 @admin.register(models.Container)
-class ContainerAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsLinkMixin,admin.ModelAdmin):
+class ContainerAdmin(RequestMixin,SecretPermissionMixin,LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,WorkloadLinkMixin,LogsLinkMixin,admin.ModelAdmin):
     list_display = ('_containerid','_cluster', '_namespace', '_workload','status','poduid','_started', '_terminated','_last_checked',"_logs")
-    readonly_fields = ('containerid','_cluster', '_namespace', '_workload','image','poduid','podip','status','_pod_created','_pod_started','_container_created', '_container_started', '_container_terminated','exitcode','_last_checked',"_logs",'ports','envs')
+    readonly_fields = ('containerid','_cluster', '_namespace', '_workload','image','poduid','podip','status','_pod_created','_pod_started','_container_created', '_container_started', '_container_terminated','exitcode','_last_checked',"_logs",'ports','_envs')
     ordering = ('cluster__name', 'namespace__name', 'workload__name','workload__kind','-container_started')
     list_filter = ('cluster',"workload__kind","status")
     search_fields = ['workload__name','workload__namespace__name','containerid']
 
+    fields = readonly_fields
+
     containers_url_name = '{}_{}_changelist'.format(models.Container._meta.app_label,models.Container._meta.model_name)
     show_full_result_count = False
     show_all = False
+
+    is_developer = staticmethod(lambda user,obj: user.email in obj.workload.containerimage.imagefamily.contacts if (obj and obj.workload.containerimage.imagefamily.contacts) else False)
 
     def get_model_perms(self, request):
         """
@@ -1509,6 +1541,15 @@ class ContainerAdmin(LookupAllowedMixin,ClusterLinkMixin,NamespaceLinkMixin,Work
             return super().get_queryset(request)
         else:
             return models.ContainerLog.objects.none()
+
+    def _envs(self,obj):
+        if not obj or not obj.envs :
+            return ""
+        elif self.secretpermission_granted(obj):
+            return obj.envs
+        else:
+            return "******"
+    _envs.short_description = "Envs"
 
     def _container_terminated(self,obj):
         if not obj or not obj.container_terminated:
@@ -1713,18 +1754,41 @@ class EnvScanModuleAdmin(DatetimeMixin,admin.ModelAdmin):
 
     form = forms.EnvScanModuleForm
 
+    list_url_name = '{}_{}_changelist'.format(models.EnvScanModule._meta.app_label,models.EnvScanModule._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer('sourcecode')
+            pass
+
+        return qs
+
 @admin.register(models.ContainerImageFamily)
-class ContainerImageFamilyAdmin(DatetimeMixin,admin.ModelAdmin):
-    list_display = ("account","name","_modified","_added")
+class ContainerImageFamilyAdmin(RequestUserMixin,SecretPermissionMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ("account","name","contacts","enable_notify","enable_warning_msg","_modified","_added")
 
-    readonly_fields = ("account","name","_modified","_added")
-
-    fields = ("account","name","config","_modified","_added")
+    fields = ("account","name","contacts","enable_notify","enable_warning_msg","config","sourcecode","_modified","_added")
 
     list_filter = ("account",)
     search_fields = ['name']
 
     form = forms.ContainerImageFamilyForm
+
+    list_url_name = '{}_{}_changelist'.format(models.ContainerImageFamily._meta.app_label,models.ContainerImageFamily._meta.model_name)
+    def get_queryset(self, request):
+        qs =  super().get_queryset(request)
+        if resolve(request.path_info).url_name == self.list_url_name:
+            qs = qs.defer('sourcecode','config')
+            pass
+
+        return qs
+
+    @property
+    def readonly_fields(self):
+        if self.secretpermission_granted():
+            return ("account","name","_modified","_added")
+        else:
+            return ("account","contacts","name","_modified","_added")
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -1733,18 +1797,32 @@ class ContainerImageFamilyAdmin(DatetimeMixin,admin.ModelAdmin):
         return False
 
 @admin.register(models.WorkloadResource)
-class WorkloadResourceAdmin(DatetimeMixin,admin.ModelAdmin):
-    list_display = ("workload","imagefamily","resource_type","config_items","resource_id","config_source","_updated","_created")
+class WorkloadResourceAdmin(RequestMixin,SecretPermissionMixin,ResourceIdMixin,DatetimeMixin,admin.ModelAdmin):
+    list_display = ("workload","imagefamily","resource_type","config_items","_resource_id","config_source","_updated","_created")
 
-    readonly_fields = ("workload","imagefamily","resource_type","config_items","resource_id","config_source","properties","scan_module","_updated","_created")
+    readonly_fields = ("workload","imagefamily","resource_type","config_items","_resource_id","config_source","_properties","scan_module","_updated","_created")
+
+    fields = readonly_fields
 
     list_filter = ("imagefamily","resource_type")
     search_fields = ['workload__name','resource_id']
+
+    is_developer = staticmethod(lambda user,obj:user.email in obj.workload.containerimage.imagefamily.contacts if (obj and obj.workload.containerimage.imagefamily.contacts) else False)
 
     def get_queryset(self, request):
         qs =  super().get_queryset(request)
         qs = qs.select_related('workload',"imagefamily").only("resource_type","config_items","resource_id","config_source","properties","scan_module","updated","created","workload__cluster__name","workload__namespace__name","workload__name","imagefamily__account","imagefamily__name")
         return qs
+
+    def _properties(self,obj):
+        print("{} in {}   {}".format(self.request.user.email,obj.workload.containerimage.imagefamily.contacts,self.secretpermission_granted(obj)))
+        if not obj or not obj.properties:
+            return ""
+        elif self.secretpermission_granted(obj):
+            return obj.properties
+        else:
+            return "******"
+    _properties.short_description = "Properties"
 
     def has_change_permission(self, request, obj=None):
         return False
