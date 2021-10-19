@@ -657,8 +657,8 @@ class DepartmentUser(models.Model):
             self.active = self.azure_ad_data['accountEnabled']
             LOGGER.info(f'AZURE AD SYNC: {self} active changed to {self.active}')
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
+            LOGGER.info('AZURE AD SYNC: {} email changed to {}'.format(self, self.azure_ad_data['mail']))
             self.email = self.azure_ad_data['mail']
-            LOGGER.info(f'AZURE AD SYNC: {self} email changed to {self.email}')
         if 'displayName'in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
             self.name = self.azure_ad_data['displayName']
             LOGGER.info(f'AZURE AD SYNC: {self} name changed to {self.name}')
