@@ -235,7 +235,18 @@ def reset_workloads_property():
             obj.deleted_workloads = deleted_workloads
             obj.save(update_fields=["active_workloads","deleted_workloads"])
 
-
+    for obj in models.ContainerImage.objects.all():
+        workloads = models.Workload.objects.filter(containerimage=obj).count()
+        if workloads != obj.workloads:
+            logger.info("models.ContainerImage({}<{}>): workloads={}, expected workloads={}".format(
+                obj,
+                obj.id,
+                obj.workloads,
+                workloads
+            ))
+            obj.workloads = workloads
+            obj.save(update_fields=["workloads"])
+        
 def _clean_containers():
     """
     clean all containers and container logs,
