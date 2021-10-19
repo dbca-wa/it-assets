@@ -1531,7 +1531,9 @@ class Workload(DeletedMixin,models.Model):
 
                     dep_workload = workload_cache.get(dep_workload_id)
                     if not dep_workload:
-                        dep_workload = Workload.objects.get(id=dep_workload_id)
+                        dep_workload = Workload.objects.filter(id=dep_workload_id).first()
+                        if not dep_workload:
+                            continue
                         workload_cache[dep_workload_id] = dep_workload
 
                     if dep_workload_id not in workload_dep_trees:
@@ -1637,7 +1639,9 @@ class Workload(DeletedMixin,models.Model):
                     for dep_workload_id in itertools.chain(dep.dependent_workloads,dep.del_dependent_workloads):
                         dep_workload = workload_cache.get(dep_workload_id)
                         if not dep_workload:
-                            dep_workload = Workload.objects.get(id=dep_workload_id)
+                            dep_workload = Workload.objects.filter(id=dep_workload_id).first()
+                            if not dep_workload:
+                                continue
                             workload_cache[dep_workload_id] = dep_workload
 
                         if dep.dependency_type == WorkloadDependency.IMAGEFAMILY:
