@@ -24,7 +24,7 @@ class RancherViewsTestCase(TestCase):
         self.cluster = Cluster.objects.create(
             name='test-cluster',
         )
-        self.cif = mixer.blend(ContainerImageFamily)
+        self.cif = ContainerImageFamily.objects.create(name='test_containerimagefamily')
         self.ci = ContainerImage.objects.create(
             imagefamily=self.cif,
         )
