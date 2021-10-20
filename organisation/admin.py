@@ -79,8 +79,7 @@ class DepartmentUserAdmin(admin.ModelAdmin):
             if self.value():
                 return queryset.filter(assigned_licences__contains=[self.value()])
 
-    actions = ('clear_ad_guid', 'clear_azure_guid')
-    # actions = ('clear_ad_guid', 'clear_azure_guid', 'update_data_from_ascender')
+    actions = ('clear_ad_guid', 'clear_azure_guid', 'update_data_from_ascender')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
