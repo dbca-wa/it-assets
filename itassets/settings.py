@@ -54,6 +54,7 @@ INSTALLED_APPS = (
 )
 
 MIDDLEWARE = [
+    'itassets.middleware.HealthCheckMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
