@@ -31,13 +31,16 @@ class DepartmentUser(models.Model):
         (15, 'Cleanup - Permanent'),
         (16, 'Unknown - AD active'),
     )
-    # The following is a list of account type of normally exclude from user queries.
+    # The following is a list of account types to normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
     ACCOUNT_TYPE_EXCLUDE = [1, 4, 5, 7, 9, 10, 11, 12, 14, 16]
-    # The following is a list of account types set for individual staff/vendors,
+    # The following is a list of user account types for individual staff/vendors,
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
     ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
+    # The following is a list of user account types where it may be reasonable for there to be
+    # an active Azure AD account without the user also having a current Ascender job.
+    ACCOUNT_TYPE_NONSTAFF = [8, 6, 7, 1]
     # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
     # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
     MS_LICENCE_SKUS = {
