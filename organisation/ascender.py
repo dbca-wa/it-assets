@@ -172,31 +172,29 @@ def ascender_db_import(verbose=False):
         job = jobs[0]
         # Only look at non-FPC users.
         if job['clevel1_id'] != 'FPC':
-            # Only data cache for users having a non-terminated job.
-            if not job['job_term_date'] or datetime.strptime(job['job_term_date'], '%Y-%m-%d').date() >= date.today():
-                if DepartmentUser.objects.filter(employee_id=eid).exists():
-                    user = DepartmentUser.objects.get(employee_id=eid)
+            if DepartmentUser.objects.filter(employee_id=eid).exists():
+                user = DepartmentUser.objects.get(employee_id=eid)
 
-                    # Check if the user already has Ascender data cached. If so, check if the position_no
-                    # value has changed. In that instance, create a DepartmentUserLog object.
-                    if user.ascender_data and 'position_no' in user.ascender_data and user.ascender_data['position_no'] != job['position_no']:
-                        DepartmentUserLog.objects.create(
-                            department_user=user,
-                            log={
-                                'ascender_field': 'position_no',
-                                'old_value': user.ascender_data['position_no'],
-                                'new_value': job['position_no'],
-                            },
-                        )
-                        if verbose:
-                            LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
-
-                    user.ascender_data = job
-                    user.ascender_data_updated = TZ.localize(datetime.now())
-                    user.update_from_ascender_data()
-                else:
+                # Check if the user already has Ascender data cached. If so, check if the position_no
+                # value has changed. In that instance, create a DepartmentUserLog object.
+                if user.ascender_data and 'position_no' in user.ascender_data and user.ascender_data['position_no'] != job['position_no']:
+                    DepartmentUserLog.objects.create(
+                        department_user=user,
+                        log={
+                            'ascender_field': 'position_no',
+                            'old_value': user.ascender_data['position_no'],
+                            'new_value': job['position_no'],
+                        },
+                    )
                     if verbose:
-                        LOGGER.warning(f"Could not match Ascender employee ID {eid} to any department user")
+                        LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
+
+                user.ascender_data = job
+                user.ascender_data_updated = TZ.localize(datetime.now())
+                user.update_from_ascender_data()
+            else:
+                if verbose:
+                    LOGGER.warning(f"Could not match Ascender employee ID {eid} to any department user")
 
 
 def get_ascender_matches():
