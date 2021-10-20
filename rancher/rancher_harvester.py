@@ -881,7 +881,7 @@ def update_workload_listenings(workload,config):
                         break
 
             if not container_port:
-                raise Exception("Failed to find the container port for the public port({})".format(obj.listen_port))
+                raise Exception("Failed to find the container port of the public port({}.{})".format(workload,obj.listen_port))
             set_field(obj,"container_port", container_port,update_fields)
 
         if obj.pk is None:
@@ -1389,7 +1389,7 @@ def process_rancher(cluster,f_renew_lock,process_status):
         try:
             if config_file:
                 with open(config_file) as f:
-                    config = yaml.load(f.read(), Loader=yaml.FullLoader)
+                    config = yaml.load(f.read(),Loader=yaml.FullLoader)
                 with transaction.atomic():
                     obj = process_func(cluster,status,metadata,config)
                     if obj and process_status is not None:
@@ -1520,7 +1520,7 @@ def _harvest(cluster,f_renew_lock,reconsume=False,lock_exception=None):
         except exceptions.AlreadyLocked as ex:
             harvester.status = models.Harvester.SKIPPED
             message = "The previous harvest process is still running.{}".format(str(ex))
-            logger.info(message)
+            logger.warning(message)
             harvest_result[0] = ([],[(None,None,None,message)])
             return harvest_result
     except :
