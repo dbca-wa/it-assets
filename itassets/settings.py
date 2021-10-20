@@ -54,6 +54,7 @@ INSTALLED_APPS = (
 )
 
 MIDDLEWARE = [
+    'itassets.middleware.HealthCheckMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -99,7 +100,7 @@ FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env('FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.3.1'
+VERSION_NO = '2.3.12'
 
 # Alesco binding information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
