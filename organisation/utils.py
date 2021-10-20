@@ -54,141 +54,137 @@ def title_except(
     return ' '.join(words_title)
 
 
-def ascender_onprem_ad_data_diff():
+def ascender_onprem_ad_data_diff(queryset):
     """A utility function to compare on-premise AD user account data with Ascender HR data.
     TODO: replace this with a method on DepartmentUser - we have get_ascender_discrepancies(),
     but that method doesn't quite serve the same purpose yet.
     """
-    from .models import DepartmentUser
     discrepancies = []
 
     # Iterate through DepartmentUsers and check for mismatches between Ascender and onprem AD data.
-    for user in DepartmentUser.objects.filter(employee_id__isnull=False, ascender_data__isnull=False, ad_guid__isnull=False, ad_data__isnull=False):
+    for user in queryset:
+        if user.ad_data and user.ascender_data:
+            # First name - check against preferred name, then first name (case insensitive).
+            name_mismatch = False
+            if 'preferred_name' in user.ascender_data and user.ascender_data['preferred_name']:
+                if 'preferred_name' in user.ascender_data and 'GivenName' in user.ad_data and user.ad_data['GivenName'].upper() != user.ascender_data['preferred_name'].upper() and user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
+                    name_mismatch = True
+            else:
+                if 'first_name' in user.ascender_data and 'GivenName' in user.ad_data and user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
+                    name_mismatch = True
+            if name_mismatch:
+                new_val = user.ascender_data['preferred_name'].title() if user.ascender_data['preferred_name'] else user.ascender_data['first_name'].title()
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'GivenName',
+                    'old_value': user.ad_data['GivenName'],
+                    'new_value': new_val,
+                    'action': 'Update onprem AD user {} GivenName to {}'.format(user.ad_data['DistinguishedName'], new_val),
+                })
 
-        # First name - check against preferred name, then first name (case insensitive).
-        name_mismatch = False
-        if user.ascender_data['preferred_name']:
-            if user.ad_data['GivenName'].upper() != user.ascender_data['preferred_name'].upper() and user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
-                name_mismatch = True
-        else:
-            if user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
-                name_mismatch = True
-        if name_mismatch:
-            new_val = user.ascender_data['preferred_name'].title() if user.ascender_data['preferred_name'] else user.ascender_data['first_name'].title()
-            discrepancies.append({
-                'ascender_id': user.employee_id,
-                'target': 'On-premise AD',
-                'target_pk': user.ad_guid,
-                'field': 'GivenName',
-                'old_value': user.ad_data['GivenName'],
-                'new_value': new_val,
-                'action': 'Update onprem AD user {} GivenName to {}'.format(user.ad_data['DistinguishedName'], new_val),
-            })
+            # Surname (case insensitive).
+            if 'surname' in user.ascender_data and 'Surname' in user.ad_data and user.ad_data['Surname'].upper() != user.ascender_data['surname'].upper():
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'Surname',
+                    'old_value': user.ad_data['Surname'],
+                    'new_value': user.ascender_data['surname'].title(),
+                    'action': 'Update onprem AD user {} Surname to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['surname'].title()),
+                })
 
-        # Surname (case insensitive).
-        if user.ad_data['Surname'].upper() != user.ascender_data['surname'].upper():
-            discrepancies.append({
-                'ascender_id': user.employee_id,
-                'target': 'On-premise AD',
-                'target_pk': user.ad_guid,
-                'field': 'Surname',
-                'old_value': user.ad_data['Surname'],
-                'new_value': user.ascender_data['surname'].title(),
-                'action': 'Update onprem AD user {} Surname to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['surname'].title()),
-            })
+            # Phone number (disregard differences in spaces and brackets).
+            if 'telephoneNumber' in user.ad_data and user.ad_data['telephoneNumber']:
+                ad_tel = user.ad_data['telephoneNumber'].replace('(', '').replace(')', '').replace(' ', '')
+            else:
+                ad_tel = ''
+            if user.ascender_data['work_phone_no']:
+                asc_tel = user.ascender_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
+            else:
+                asc_tel = ''
+            if ad_tel != asc_tel:
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'OfficePhone',
+                    'old_value': user.ad_data['telephoneNumber'],
+                    'new_value': user.ascender_data['work_phone_no'],
+                    'action': 'Update onprem AD user {} OfficePhone to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['work_phone_no']),
+                })
 
-        # Phone number (disregard differences in spaces and brackets).
-        """
-        NOTE: temporarily disregard differences in phone numbers (Ascender has too many null values for these).
-        if 'telephoneNumber' in user.ad_data and user.ad_data['telephoneNumber']:
-            ad_tel = user.ad_data['telephoneNumber'].replace('(', '').replace(')', '').replace(' ', '')
-        else:
-            ad_tel = ''
-        if user.ascender_data['work_phone_no']:
-            asc_tel = user.ascender_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
-        else:
-            asc_tel = ''
-        if ad_tel != asc_tel:
-            discrepancies.append({
-                'ascender_id': user.employee_id,
-                'target': 'On-premise AD',
-                'target_pk': user.ad_guid,
-                'field': 'OfficePhone',
-                'old_value': user.ad_data['telephoneNumber'],
-                'new_value': user.ascender_data['work_phone_no'],
-                'action': 'Update onprem AD user {} OfficePhone to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['work_phone_no']),
-            })
+            # Mobile number (disregard differences in spaces).
+            if 'Mobile' in user.ad_data and user.ad_data['Mobile']:
+                ad_mob = user.ad_data['Mobile'].replace(' ', '')
+            else:
+                ad_mob = ''
+            if user.ascender_data['work_mobile_phone_no']:
+                asc_mob = user.ascender_data['work_mobile_phone_no'].replace(' ', '')
+            else:
+                asc_mob = ''
+            if ad_mob != asc_mob:
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'MobilePhone',
+                    'old_value': user.ad_data['Mobile'],
+                    'new_value': user.ascender_data['work_mobile_phone_no'],
+                    'action': 'Update onprem AD user {} MobilePhone to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['work_mobile_phone_no']),
+                })
 
-        # Mobile number (disregard differences in spaces).
-        if 'Mobile' in user.ad_data and user.ad_data['Mobile']:
-            ad_mob = user.ad_data['Mobile'].replace(' ', '')
-        else:
-            ad_mob = ''
-        if user.ascender_data['work_mobile_phone_no']:
-            asc_mob = user.ascender_data['work_mobile_phone_no'].replace(' ', '')
-        else:
-            asc_mob = ''
-        if ad_mob != asc_mob:
-            discrepancies.append({
-                'ascender_id': user.employee_id,
-                'target': 'On-premise AD',
-                'target_pk': user.ad_guid,
-                'field': 'MobilePhone',
-                'old_value': user.ad_data['Mobile'],
-                'new_value': user.ascender_data['work_mobile_phone_no'],
-                'action': 'Update onprem AD user {} MobilePhone to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['work_mobile_phone_no']),
-            })
-        """
+            # Title
+            if 'Title' in user.ad_data and user.ad_data['Title']:
+                ad_title = user.ad_data['Title'].upper().replace('&', 'AND').replace(',', '')
+            else:
+                ad_title = ''
+            if 'occup_pos_title' in user.ascender_data and user.ascender_data['occup_pos_title']:
+                ascender_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
+            else:
+                ascender_title = ''
+            if ad_title != ascender_title:
+                new_val = title_except(user.ascender_data['occup_pos_title'])
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'Title',
+                    'old_value': user.ad_data['Title'] if 'Title' in user.ad_data else '',
+                    'new_value': new_val,
+                    'action': 'Update onprem AD user {} Title to {}'.format(user.ad_data['DistinguishedName'], new_val),
+                })
 
-        # Title
-        if 'Title' in user.ad_data and user.ad_data['Title']:
-            ad_title = user.ad_data['Title'].upper().replace('&', 'AND').replace(',', '')
-        else:
-            ad_title = ''
-        if user.ascender_data['occup_pos_title'] and user.ascender_data['occup_pos_title']:
-            ascender_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
-        else:
-            ascender_title = ''
-        if ad_title != ascender_title:
-            new_val = title_except(user.ascender_data['occup_pos_title'])
-            discrepancies.append({
-                'ascender_id': user.employee_id,
-                'target': 'On-premise AD',
-                'target_pk': user.ad_guid,
-                'field': 'Title',
-                'old_value': user.ad_data['Title'],
-                'new_value': new_val,
-                'action': 'Update onprem AD user {} Title to {}'.format(user.ad_data['DistinguishedName'], new_val),
-            })
+            # Cost centre
+            # We have to handle these a bit differently to the above.
+            if 'Company' in user.ad_data and user.ad_data['Company']:
+                ad_cc = user.ad_data['Company']
+            else:
+                ad_cc = ''
 
-        # Cost centre
-        # We have to handle these a bit differently to the above.
-        if 'Company' in user.ad_data and user.ad_data['Company']:
-            ad_cc = user.ad_data['Company']
-        else:
-            ad_cc = ''
+            if user.ascender_data['paypoint'].startswith('R'):
+                asc_cc = user.ascender_data['paypoint'].replace('R', 'RIA-')
+            elif user.ascender_data['paypoint'].startswith('Z'):
+                asc_cc = user.ascender_data['paypoint'].replace('Z', 'ZPA-')
+            elif user.ascender_data['paypoint'].startswith('K'):
+                asc_cc = user.ascender_data['paypoint']
+            elif user.ascender_data['paypoint'][0] in '1234567890':
+                asc_cc = 'DBCA-{}'.format(user.ascender_data['paypoint'])
+            else:
+                asc_cc = ''
 
-        if user.ascender_data['paypoint'].startswith('R'):
-            asc_cc = user.ascender_data['paypoint'].replace('R', 'RIA-')
-        elif user.ascender_data['paypoint'].startswith('Z'):
-            asc_cc = user.ascender_data['paypoint'].replace('Z', 'ZPA-')
-        elif user.ascender_data['paypoint'].startswith('K'):
-            asc_cc = user.ascender_data['paypoint']
-        elif user.ascender_data['paypoint'][0] in '1234567890':
-            asc_cc = 'DBCA-{}'.format(user.ascender_data['paypoint'])
-        else:
-            asc_cc = ''
-
-        if asc_cc != ad_cc:
-            discrepancies.append({
-                'ascender_id': user.employee_id,
-                'target': 'On-premise AD',
-                'target_pk': user.ad_guid,
-                'field': 'Company',
-                'old_value': user.ad_data['Company'],
-                'new_value': asc_cc,
-                'action': 'Update onprem AD user {} Company to {}'.format(user.ad_data['DistinguishedName'], asc_cc),
-            })
+            if asc_cc != ad_cc:
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'Company',
+                    'old_value': user.ad_data['Company'],
+                    'new_value': asc_cc,
+                    'action': 'Update onprem AD user {} Company to {}'.format(user.ad_data['DistinguishedName'], asc_cc),
+                })
 
     return discrepancies
 

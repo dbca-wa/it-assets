@@ -1,10 +1,12 @@
 from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 import json
 import logging
 import os
 from tempfile import NamedTemporaryFile
 
+from organisation.models import DepartmentUser
 from organisation.utils import ascender_onprem_ad_data_diff
 
 
@@ -30,7 +32,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Generating diff between Ascender and on-premise AD data')
-        discrepancies = ascender_onprem_ad_data_diff()
+        queryset = DepartmentUser.objects.filter(employee_id__isnull=False, ascender_data__isnull=False, ad_guid__isnull=False, ad_data__isnull=False)
+        queryset = queryset.exclude(Q(ad_data={}) | Q(ascender_data={}))  # Exclude users with no AD data or no Ascender data.
+        discrepancies = ascender_onprem_ad_data_diff(queryset)
         f = NamedTemporaryFile()
         f.write(json.dumps(discrepancies, indent=2).encode('utf-8'))
 
