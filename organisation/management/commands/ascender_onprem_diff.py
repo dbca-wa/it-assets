@@ -32,7 +32,7 @@ class Command(BaseCommand):
         logger.info('Generating diff between Ascender and on-premise AD data')
         discrepancies = ascender_onprem_ad_data_diff()
         f = NamedTemporaryFile()
-        f.write(json.dumps(discrepancies, indent=4).encode('utf-8'))
+        f.write(json.dumps(discrepancies, indent=2).encode('utf-8'))
 
         logger.info('Uploading diff JSON to Azure blob storage')
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
