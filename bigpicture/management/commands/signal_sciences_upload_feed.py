@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
+import logging
+
 from bigpicture import utils
 
 
@@ -25,7 +27,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from_datetime = datetime.utcnow().replace(second=0, microsecond=0) - timedelta(minutes=options['min_ago'])
-        self.stdout.write('Extracting Signal Sciences feed starting from {}, duration {} minutes'.format(from_datetime.isoformat(), options['duration']))
+        logger = logging.getLogger('bigpicture')
+        logger.info('Extracting Signal Sciences feed starting from {}, duration {} minutes'.format(from_datetime.isoformat(), options['duration']))
         filename = utils.signal_sciences_upload_feed(
             from_datetime=from_datetime,
             minutes=options['duration'],
@@ -33,6 +36,6 @@ class Command(BaseCommand):
             csv=options['csv']
         )
         if filename:
-            self.stdout.write(self.style.SUCCESS('{} uploaded to Azure container'.format(filename)))
+            logger.info('{} uploaded to Azure container'.format(filename))
         else:
-            self.stdout.write(self.style.ERROR('Feed querying and upload failed'))
+            logger.error('Feed querying and upload failed')

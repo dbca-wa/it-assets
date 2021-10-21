@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
 import json
+import logging
 
 from bigpicture.utils import signal_sciences_extract_feed
 from nginx.models import WebApp
@@ -21,13 +22,14 @@ class Command(BaseCommand):
             help='Extract feed for this many minutes duration (integer, optional)')
 
     def handle(self, *args, **options):
+        logger = logging.getLogger('bigpicture')
         from_datetime = datetime.utcnow().replace(second=0, microsecond=0) - timedelta(minutes=options['min_ago'])
-        self.stdout.write('Querying Signal Sciences feed starting from {}'.format(from_datetime.isoformat()))
+        logger.info('Querying Signal Sciences feed starting from {}'.format(from_datetime.isoformat()))
         feed_str = signal_sciences_extract_feed(from_datetime=from_datetime, minutes=options['duration'])
         if feed_str:
-            self.stdout.write(self.style.SUCCESS('Feed queried successfully'))
+            logger.info('Feed queried successfully')
         else:
-            self.stdout.write(self.style.ERROR('Feed query failed'))
+            logger.error('Feed query failed')
 
         # Iterate through the feed.
         feed_json = json.loads(feed_str)
@@ -46,4 +48,4 @@ class Command(BaseCommand):
                         else:
                             itsystem.extra_data['signal_science_tags'][tag['type']] += 1
                     itsystem.save()
-                    self.stdout.write(self.style.SUCCESS('Updated Signal Sciences tags for {}'.format(itsystem)))
+                    logger.info('Updated Signal Sciences tags for {}'.format(itsystem))
