@@ -5,7 +5,7 @@ on:
     # Publish `master` as `latest` image.
     branches: [ master ]
     # Publish `2.*` tags as releases.
-    tags: [ '2.*' ]
+    tags: [ '2.*', 'rc' ]
   pull_request:
     branches: [ master ]
 
