@@ -1,8 +1,12 @@
+from data_storage import AzureBlobStorage
 from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
+import json
 import logging
+import os
+from tempfile import NamedTemporaryFile
 
 from .utils import compare_values, title_except
 LOGGER = logging.getLogger('organisation')
@@ -648,6 +652,23 @@ class DepartmentUser(models.Model):
             if self.cost_centre != cc:
                 self.cost_centre = cc
                 LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
+
+                # Check CC against any onprem AD account information for this user.
+                if self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                    # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
+                    change = {
+                        'ad_org': self.cost_centre.chart_acct_name,
+                        'identity': self.ad_guid,
+                        'property': 'Company',
+                        'value': self.cost_centre.code,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                    store = AzureBlobStorage(connect_string, 'azuread')
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, 'Company'), f.name)
+                    LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
 
         if 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
