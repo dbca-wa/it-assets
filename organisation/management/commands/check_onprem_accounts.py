@@ -26,14 +26,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
-        self.stdout.write('Downloading on-prem AD user account data')
+        logger.info('Downloading on-prem AD user account data')
         ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['path'])
 
         if not ad_users:
             logger.error('No on-prem AD user account data could be downloaded')
             return
 
-        self.stdout.write('Comparing Department Users to on-prem AD user accounts')
+        logger.info('Comparing Department Users to on-prem AD user accounts')
         for ad in ad_users:
             # Only check enabled (active) AD accounts which have an email address.
             if 'Enabled' in ad and ad['Enabled'] and 'EmailAddress' in ad and ad['EmailAddress']:
@@ -55,4 +55,4 @@ class Command(BaseCommand):
                     du.ad_data_updated = datetime.now(timezone.utc)
                     du.update_from_onprem_ad_data()
 
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')

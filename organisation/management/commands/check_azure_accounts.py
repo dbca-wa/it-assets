@@ -10,14 +10,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
-        self.stdout.write('Querying Microsoft Graph API for licensed Azure AD user accounts')
+        logger.info('Querying Microsoft Graph API for licensed Azure AD user accounts')
         azure_users = ms_graph_users()
 
         if not azure_users:
             logger.error('Microsoft Graph API returned no data')
             return
 
-        self.stdout.write('Comparing Department Users to Azure AD user accounts')
+        logger.info('Comparing Department Users to Azure AD user accounts')
         for az in azure_users:
             if az['mail'] and az['displayName']:  # Azure object has an email address and a display name; proceed.
                 if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
@@ -81,4 +81,4 @@ class Command(BaseCommand):
                     existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                     existing_user.update_from_azure_ad_data()
 
-        self.stdout.write(self.style.SUCCESS('Completed'))
+        logger.info('Completed')

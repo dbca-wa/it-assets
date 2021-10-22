@@ -191,7 +191,7 @@ def ascender_db_import(verbose=False):
 
                 user.ascender_data = job
                 user.ascender_data_updated = TZ.localize(datetime.now())
-                user.update_from_ascender_data()
+                user.update_from_ascender_data()  # This method calls save()
             else:
                 if verbose:
                     LOGGER.warning(f"Could not match Ascender employee ID {eid} to any department user")

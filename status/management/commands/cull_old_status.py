@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from datetime import date, timedelta
+import logging
 from status.models import HostStatus
 
 
@@ -18,5 +19,6 @@ class Command(BaseCommand):
             d = date.today() - timedelta(days=90)
 
         old_statuses = HostStatus.objects.filter(date__lt=d)
-        self.stdout.write(self.style.SUCCESS('Deleting {} old HostStatus objects'.format(old_statuses.count())))
+        logger = logging.getLogger('status')
+        logger.info('Deleting {} old HostStatus objects'.format(old_statuses.count()))
         old_statuses.delete()

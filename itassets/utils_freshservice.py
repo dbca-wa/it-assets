@@ -93,13 +93,13 @@ def get_freshservice_objects(obj_type):
     return objects
 
 
-def get_freshservice_object(obj_type, id):
-    """Use the Freshservice v2 API to update an object.
-    Accepts an object name (string) and a dict of key values.
+def get_freshservice_object(obj_type, key, value):
+    """Use the Freshservice v2 API to retrieve a single object.
+    Accepts an object type, object attribute to use, and a value to filter on.
+    Returns the first object found, or None.
     """
-    url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
-    resp = requests.get(url, auth=FRESHSERVICE_AUTH)
-    return resp  # Return the response, so we can handle unsuccessful responses.
+    objects = get_freshservice_objects(obj_type)
+    return next((obj for obj in objects if obj[key] == value), None)
 
 
 def create_freshservice_object(obj_type, data):
@@ -113,7 +113,7 @@ def create_freshservice_object(obj_type, data):
 
 def update_freshservice_object(obj_type, id, data):
     """Use the Freshservice v2 API to update an object.
-    Accepts an object name (string) and a dict of key values.
+    Accepts an object type name (string), object ID and a dict of key values.
     """
     url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
     resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)

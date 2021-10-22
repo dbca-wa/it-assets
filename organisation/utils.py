@@ -186,6 +186,18 @@ def ascender_onprem_ad_data_diff(queryset):
                     'action': 'Update onprem AD user {} Company to {}'.format(user.ad_data['DistinguishedName'], asc_cc),
                 })
 
+            # Employee ID
+            if 'employee_id' in user.ascender_data and 'EmployeeID' in user.ad_data and user.ad_data['EmployeeID'] != user.ascender_data['employee_id']:
+                discrepancies.append({
+                    'ascender_id': user.employee_id,
+                    'target': 'On-premise AD',
+                    'target_pk': user.ad_guid,
+                    'field': 'EmployeeID',
+                    'old_value': user.ad_data['EmployeeID'],
+                    'new_value': user.ascender_data['employee_id'],
+                    'action': 'Update onprem AD user {} EmployeeID to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['employee_id']),
+                })
+
     return discrepancies
 
 
