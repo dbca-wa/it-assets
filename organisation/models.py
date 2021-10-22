@@ -577,6 +577,11 @@ class DepartmentUser(models.Model):
         """
         actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
 
+        # Short-circuit: if the DepartmentUser is non-active, delete all outstanding ADActions.
+        if not self.active:
+            for action in actions:
+                action.delete()
+
         if self.dir_sync_enabled:
             # Onprem AD
             if not self.ad_guid or not self.ad_data:
