@@ -898,8 +898,6 @@ class Location(models.Model):
         blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
     active = models.BooleanField(default=True)
-    #voip_platform = models.CharField(
-    #    max_length=128, null=True, blank=True, choices=VOIP_PLATFORM_CHOICES)
 
     class Meta:
         ordering = ('name',)
