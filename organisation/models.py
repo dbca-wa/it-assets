@@ -388,18 +388,6 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'Company' in self.ad_data and ((self.cost_centre and self.cost_centre.code != self.ad_data['Company']) or (not self.cost_centre and self.ad_data['Company'])):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='Company',
-                    ad_field_value=self.ad_data['Company'],
-                    field='cost_centre',
-                    field_value=self.cost_centre.code if self.cost_centre else None,
-                    completed=None,
-                )
-                actions.append(action)
-
             if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location and self.location.name != self.ad_data['physicalDeliveryOfficeName']) or (not self.location and self.ad_data['physicalDeliveryOfficeName'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
