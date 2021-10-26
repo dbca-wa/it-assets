@@ -642,7 +642,7 @@ class DepartmentUser(models.Model):
                 LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
 
                 # Check CC against any onprem AD account information for this user.
-                if self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                if self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
                     # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
                     change = {
                         'ad_org': self.cost_centre.chart_acct_name,
