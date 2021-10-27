@@ -170,7 +170,7 @@ class DepartmentUser(models.Model):
     mobile_phone = models.CharField(
         max_length=128, null=True, blank=True, help_text='Work mobile number')
     manager = models.ForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
         limit_choices_to={'active': True},
         related_name='manages', help_text='Staff member who manages this employee')
     cost_centre = models.ForeignKey(
@@ -866,7 +866,7 @@ class Location(models.Model):
     """
     name = models.CharField(max_length=256, unique=True)
     manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='location_manager')
     address = models.TextField(unique=True, blank=True)
     pobox = models.TextField(blank=True, verbose_name='PO Box')
@@ -919,7 +919,7 @@ class OrgUnit(models.Model):
     name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
     manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True)
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True)
     location = models.ForeignKey(
         Location, on_delete=models.PROTECT, null=True, blank=True)
     division_unit = models.ForeignKey(
@@ -961,16 +961,16 @@ class CostCentre(models.Model):
     org_position = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, blank=True, null=True)
     manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='manage_ccs',
+        DepartmentUser, on_delete=models.SET_NULL, related_name='manage_ccs',
         null=True, blank=True)
     business_manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='bmanage_ccs',
+        DepartmentUser, on_delete=models.SET_NULL, related_name='bmanage_ccs',
         help_text='Business Manager', null=True, blank=True)
     admin = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='admin_ccs',
+        DepartmentUser, on_delete=models.SET_NULL, related_name='admin_ccs',
         help_text='Adminstration Officer', null=True, blank=True)
     tech_contact = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='tech_ccs',
+        DepartmentUser, on_delete=models.SET_NULL, related_name='tech_ccs',
         help_text='Technical Contact', null=True, blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
     active = models.BooleanField(default=True)
