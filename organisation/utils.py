@@ -202,8 +202,9 @@ def ascender_onprem_ad_data_diff(queryset):
 
 
 def ms_graph_users(licensed=False):
-    """Query the Microsoft Graph REST API for on-premise user accounts in our tenancy.
+    """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
+    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
     """
     token = ms_graph_client_token()
     headers = {
@@ -262,42 +263,6 @@ def get_ad_users_json(container, azure_json_path):
         return None
     store = AzureBlobStorage(connect_string, container)
     return json.loads(store.get_content(azure_json_path))
-
-
-def onprem_ad_data_import(container='azuread', json_path='adusers.json', verbose=False):
-    """Utility function to download onprem AD data from blob storage, then copy it to matching DepartmentUser objects.
-    """
-    from organisation.models import DepartmentUser
-    ad_users = get_ad_users_json(container=container, azure_json_path=json_path)
-    ad_users = {i['ObjectGUID']: i for i in ad_users}
-
-    for k, v in ad_users.items():
-        if DepartmentUser.objects.filter(ad_guid=k).exists():
-            du = DepartmentUser.objects.get(ad_guid=k)
-            du.ad_data = v
-            du.ad_data_updated = TZ.localize(datetime.now())
-            du.save()
-        else:
-            if verbose:
-                print("Could not match onprem AD GUID {} to a department user".format(k))
-
-
-def azure_ad_data_import(verbose=False):
-    """Utility function to download Azure AD data from MS Graph API, then copy it to matching DepartmentUser objects.
-    """
-    from organisation.models import DepartmentUser
-    azure_ad_users = ms_graph_users(licensed=True)
-    azure_ad_users = {u['objectId']: u for u in azure_ad_users}
-
-    for k, v in azure_ad_users.items():
-        if DepartmentUser.objects.filter(azure_guid=k).exists():
-            du = DepartmentUser.objects.get(azure_guid=k)
-            du.azure_ad_data = v
-            du.azure_ad_data_updated = TZ.localize(datetime.now())
-            du.save()
-        else:
-            if verbose:
-                print("Could not match Azure GUID {} to a department user".format(k))
 
 
 def compare_values(a, b):
