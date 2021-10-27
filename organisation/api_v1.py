@@ -22,10 +22,6 @@ def format_fileField(request, value):
         return value
 
 
-def format_position_type(request, value):
-    return ''
-
-
 def format_account_type(request, value):
     if value is not None:
         return ACCOUNT_TYPE_DICT[value]
@@ -77,14 +73,13 @@ class DepartmentUserResource(DjangoResource):
     )
     VALUES_ARGS = COMPACT_ARGS + (
         'active', 'given_name', 'surname', 'home_phone', 'other_phone',
-        'position_type', 'account_type', 'shared_account', 'org_unit',
+        'account_type', 'shared_account', 'org_unit',
     )
     MINIMAL_ARGS = (
         'pk', 'name', 'preferred_name', 'title', 'email', 'telephone', 'mobile_phone',
     )
 
     formatters = FieldsFormatter(formatters={
-        'position_type': format_position_type,
         'account_type': format_account_type,
         'location': format_location,
         'cost_centre': format_cost_centre,
