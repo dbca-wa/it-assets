@@ -44,31 +44,31 @@ class ApiTestCase(TestCase):
 
         # Generate some other DepartmentUser objects.
         self.user1 = mixer.blend(
-            DepartmentUser, username=mixer.RANDOM, photo=None, active=True,
+            DepartmentUser, username=mixer.RANDOM, active=True,
             email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
             account_type=2,  # Permanent
             cost_centre=self.cc1,
         )
         self.user2 = mixer.blend(
-            DepartmentUser, username=mixer.RANDOM, photo=None, active=True,
+            DepartmentUser, username=mixer.RANDOM, active=True,
             email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
             account_type=0,  # Fixed term contract
             cost_centre=self.cc1,
         )
         self.inactive_user = mixer.blend(
-            DepartmentUser, username=mixer.RANDOM, photo=None, active=False,
+            DepartmentUser, username=mixer.RANDOM, active=False,
             email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
             account_type=2,
             cost_centre=self.cc1,
         )
         self.shared_acct = mixer.blend(
-            DepartmentUser, username=mixer.RANDOM, photo=None, active=True,
+            DepartmentUser, username=mixer.RANDOM, active=True,
             email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
             account_type=5,  # Shared account
             cost_centre=self.cc1,
         )
         self.contractor = mixer.blend(
-            DepartmentUser, username=mixer.RANDOM, photo=None, active=True,
+            DepartmentUser, username=mixer.RANDOM, active=True,
             email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
             contractor=True,
             account_type=0,  # Fixed term contract
@@ -80,7 +80,7 @@ class ApiTestCase(TestCase):
             username='testuser', email='user@dbca.wa.gov.au.com', password='pass')
         # Create a DepartmentUser object for testuser.
         mixer.blend(
-            DepartmentUser, username=mixer.RANDOM, photo=None, active=True, email=self.testuser.email,
+            DepartmentUser, username=mixer.RANDOM, active=True, email=self.testuser.email,
             org_unit=None, cost_centre=None, ad_guid=uuid1)
         # Log in testuser by default.
         self.client.login(username='testuser', password='pass')
