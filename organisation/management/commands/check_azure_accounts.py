@@ -10,7 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
-        logger.info('Querying Microsoft Graph API for licensed Azure AD user accounts')
+        logger.info('Querying Microsoft Graph API for Azure AD user accounts')
         azure_users = ms_graph_users()
 
         if not azure_users:
@@ -80,5 +80,17 @@ class Command(BaseCommand):
                     existing_user.azure_ad_data = az
                     existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                     existing_user.update_from_azure_ad_data()
+
+        # Iterate through department users and clear any nonexistent Azure AD GUID values.
+        azure_users = {i['objectId']: i for i in azure_users}
+        for du in DepartmentUser.objects.filter(azure_guid__isnull=False, email__iendswith='@dbca.wa.gov.au'):
+            if du.azure_guid not in azure_users:
+                logger.info("ONPREM AD SYNC: Azure AD GUID {} not found in MS Graph output; clearing it from {}".format(du.azure_guid, du))
+                du.azure_guid = None
+                du.azure_ad_data = {}
+                du.azure_ad_data_updated = datetime.now(timezone.utc)
+                du.assigned_licences = []
+                du.dir_sync_enabled = None
+                du.save()
 
         logger.info('Completed')
