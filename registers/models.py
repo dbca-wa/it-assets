@@ -134,20 +134,20 @@ class ITSystem(models.Model):
     org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
     cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
     owner = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
         verbose_name='system owner',
         related_name='systems_owned', help_text='IT system owner')
     technology_custodian = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='systems_tech_custodianed', help_text='Technology custodian')
     information_custodian = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True,
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='systems_info_custodianed', help_text='Information custodian')
     bh_support = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True, related_name='bh_support',
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='bh_support',
         verbose_name='business hours support', help_text='Business hours support contact')
     ah_support = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, null=True, blank=True, related_name='ah_support',
+        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='ah_support',
         verbose_name='after hours support', help_text='After-hours support contact')
     documentation = models.CharField(
         max_length=2048, null=True, blank=True, help_text='A link/URL to end-user documentation')
