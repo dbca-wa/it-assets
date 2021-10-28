@@ -635,17 +635,18 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
+        # Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             cc = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+            # The user's current CC differs from that in Ascender.
             if self.cost_centre != cc:
                 self.cost_centre = cc
                 LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
 
-                # Check CC against any onprem AD account information for this user.
-                if self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                # Onprem AD users.
+                if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
                     # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
                     change = {
-                        'ad_org': self.cost_centre.chart_acct_name,
                         'identity': self.ad_guid,
                         'property': 'Company',
                         'value': self.cost_centre.code,
@@ -657,8 +658,22 @@ class DepartmentUser(models.Model):
                     store = AzureBlobStorage(connect_string, 'azuread')
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, 'Company'), f.name)
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+                # Azure (cloud only) AD users.
+                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+                    change = {
+                        'identity': self.azure_guid,
+                        'property': 'companyName',
+                        'value': self.cost_centre.code,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                    store = AzureBlobStorage(connect_string, 'azuread')
+                    store.upload_file('azure_changes/{}_{}.json'.format(self.azure_guid, 'companyName'), f.name)
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD change diff uploaded to blob storage')
 
-        if 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
+        elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
 
         self.save()
