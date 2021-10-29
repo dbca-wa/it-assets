@@ -1,16 +1,18 @@
 import datetime
 from django.conf import settings
+import logging
 import multiprocessing
 import nmap
 import socket
 
 from .models import Host, HostStatus, ScanRange, ScanPlugin, HostIP
+LOGGER = logging.getLogger('status')
 
 
 def lookup_host(address):
     try:
         ip = socket.gethostbyname(address)
-    except Exception:
+    except:
         return None
     host_qs = Host.objects.filter(host_ips__ip=ip)
     if not host_qs.exists():
@@ -34,7 +36,7 @@ def scan_single(range_id, date=None):
     if date is None:
         date = datetime.date.today()
     scan_range = ScanRange.objects.get(id=range_id)
-    print("Scanning {}...".format(scan_range))
+    LOGGER.info("Scanning {}...".format(scan_range))
 
     sweep = nmap.PortScanner()
     for hosts in scan_range.range.split(","):
@@ -79,7 +81,7 @@ def scan_single(range_id, date=None):
         finally:
             scan_write_lock.release()
 
-    print("Scan of {} complete.".format(scan_range))
+    LOGGER.info("Scan of {} complete.".format(scan_range))
 
 
 def scan(range_qs=None, date=None):
@@ -148,9 +150,8 @@ def run_all():
     # Ping scan all the enabled ranges
     try:
         scan(ScanRange.objects.filter(enabled=True), today)
-    except Exception as e:
-        print("Failed to complete scan")
-        print(e)
+    except:
+        LOGGER.exception("Failed to complete scan")
 
     # Flag any remaining hosts as missing ping
     HostStatus.objects.filter(date=today, ping_status=0).update(ping_status=1)
@@ -158,11 +159,10 @@ def run_all():
     # Run all the enabled plugins
     for plugin in ScanPlugin.objects.filter(enabled=True):
         try:
-            print("Running plugin {}".format(plugin.name))
+            LOGGER.info("Running plugin {}".format(plugin.name))
             plugin.run(today)
-        except Exception as e:
-            print("Failed to run plugin {}".format(plugin.name))
-            print(e)
+        except:
+            LOGGER.exception("Failed to run plugin {}".format(plugin.name))
 
     # For everything, flag missing monitoring and vulnerability
     HostStatus.objects.filter(date=today, monitor_status=0).update(monitor_status=1)
