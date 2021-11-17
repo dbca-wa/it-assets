@@ -19,7 +19,7 @@ def department_user_export(fileobj, users):
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
             'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'EMPLOYMENT STATUS', 'COST CENTRE', 'CC MANAGER', 'CC MANAGER EMAIL', 'CC BMANAGER', 'CC BMANAGER EMAIL',
-            'ACTIVE', 'O365 LICENCE', 'TELEPHONE', 'MOBILE PHONE',
+            'ACTIVE', 'O365 LICENCE', 'TELEPHONE', 'MOBILE PHONE', 'LOCATION', 'ORGANISATION UNIT', 'GROUP UNIT',
         ))
         row = 1
         for i in users:
@@ -38,6 +38,9 @@ def department_user_export(fileobj, users):
                 i.get_licence(),
                 i.telephone,
                 i.mobile_phone,
+                i.location.name if i.location else '',
+                i.org_unit.name if i.org_unit else '',
+                i.group_unit.name if i.group_unit else '',
             ])
             row += 1
         users_sheet.set_column('A:A', 35)
@@ -49,6 +52,7 @@ def department_user_export(fileobj, users):
         users_sheet.set_column('J:J', 45)
         users_sheet.set_column('K:L', 13)
         users_sheet.set_column('M:N', 20)
+        users_sheet.set_column('O:Q', 60)
 
     return fileobj
 
@@ -162,7 +166,7 @@ def department_user_ascender_discrepancies(fileobj, users):
         )
         for user in qs:
             # Expiry date
-            if user.ascender_data['job_term_date'] and user.ad_data['AccountExpirationDate']:
+            if 'job_term_date' in user.ascender_data and user.ascender_data['job_term_date'] and 'AccountExpirationDate' in user.ad_data and user.ad_data['AccountExpirationDate']:
                 ascender_date = datetime.strptime(user.ascender_data['job_term_date'], '%Y-%m-%d').date()
                 onprem_date = parse_windows_ts(user.ad_data['AccountExpirationDate']).date()
                 delta = ascender_date - onprem_date

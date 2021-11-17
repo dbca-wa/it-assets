@@ -1,5 +1,4 @@
 import datetime
-import re
 import urllib3
 
 from msal import ConfidentialClientApplication
@@ -233,106 +232,6 @@ def vulnerability_nessus(plugin, date):
             )
             host_status.save()
             print("Updated Nessus status for {}".format(host_status))
-
-
-def backup_acronis(plugin, date):
-    ACRONIS_BASE = plugin.params.get(name="ACRONIS_BASE").value
-    ACRONIS_USERNAME = plugin.params.get(name="ACRONIS_USERNAME").value
-    ACRONIS_PASSWORD = plugin.params.get(name="ACRONIS_PASSWORD").value
-    ACRONIS_URL = plugin.params.get(name="ACRONIS_URL").value
-
-    ACRONIS_AUTH = "{}/idp/authorize/local".format(ACRONIS_BASE)
-    ACRONIS_RESOURCES = "{}/api/resource_manager/v1/resources?filter=all&limit=2000&embed=details&embed=agent".format(
-        ACRONIS_BASE
-    )
-
-    backup_limit = (
-        datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1)
-    ).isoformat()
-
-    sess = requests.session()
-    base = sess.get(ACRONIS_BASE)
-    req_id = re.search(
-        "/idp/authorize/sspi\?req=([a-z0-9]+)", base.content.decode("utf8")
-    ).group(1)
-
-    sess.post(
-        ACRONIS_AUTH + "?req_id={}".format(req_id),
-        {"req": req_id, "login": ACRONIS_USERNAME, "password": ACRONIS_PASSWORD},
-    )
-    resources = sess.get(ACRONIS_RESOURCES).json()
-
-    for agent in resources["items"]:
-        host_status = None
-        if "details" not in agent or "parameters" not in agent["details"]:
-            continue
-        if "IP" not in agent["details"]["parameters"]:
-            continue
-        for ip in agent["details"]["parameters"]["IP"]:
-            host_status = lookup(ip, date)
-            if host_status:
-                break
-        if "status" not in agent:
-            continue
-        if not host_status or agent["status"].get("lastBackup") is None:
-            continue
-
-        os_name = None
-        if "OperatingSystem" in agent["details"]["parameters"]:
-            os_name = agent["details"]["parameters"]["OperatingSystem"][0]
-        next_backup = None
-        if (
-            "nextBackup" in agent["status"]
-            and agent["status"]["nextBackup"] is not None
-        ):
-            next_backup = datetime.datetime.fromisoformat(
-                agent["status"]["nextBackup"].split("Z", 1)[0]
-            )
-        last_backup = None
-        if (
-            "lastBackup" in agent["status"]
-            and agent["status"]["lastBackup"] is not None
-        ):
-            last_backup = datetime.datetime.fromisoformat(
-                agent["status"]["lastBackup"].split("Z", 1)[0]
-            )
-
-        state = agent["status"].get("state")
-
-        if (
-            "last_backup" in host_status.backup_info
-            and last_backup
-            < datetime.datetime.fromisoformat(host_status.backup_info["last_backup"])
-        ):
-            continue
-        host_status.backup_info = {
-            "id": agent.get("id"),
-            "next_backup": next_backup.isoformat() if next_backup else None,
-            "last_backup": last_backup.isoformat() if last_backup else None,
-            "os": os_name,
-            "status": state,
-        }
-        host_status.backup_url = "{}/#m=Resources&key=All devices".format(ACRONIS_URL,)
-        host_status.backup_plugin = plugin
-        if state == "notProtected" and last_backup is not None:
-            host_status.backup_output = (
-                "Device is present, automatic backups are disabled"
-            )
-            host_status.backup_status = 2
-        elif not (
-            host_status.backup_info["last_backup"] is not None
-            and host_status.backup_info["last_backup"] > backup_limit
-        ):
-            host_status.backup_output = (
-                "Device is present, last backup older than 24 hours."
-            )
-            host_status.backup_status = 2
-        else:
-            host_status.backup_output = "Device is present, last backup was successful."
-            host_status.backup_status = 3
-
-        host_status.save()
-        print("Updated Acronis backup status for {}".format(host_status))
 
 
 def _ms_api(verb, url, previous=None, **kwargs):

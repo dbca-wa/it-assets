@@ -71,10 +71,10 @@ class ChangeRequestCreateForm(forms.ModelForm):
                 'Testing and Implementation',
                 HTML('<p>Test and implementation dates & times must be supplied prior to submission for endorsement.'),
                 # We need to add some data attributes to the date[time] fields for the tempusdominus JS lib.
-                Field('test_date', data_toggle='datetimepicker', data_target='#id_test_date'),
+                Field('test_date', data_toggle='datetimepicker', data_target='#id_test_date', css_class="datetimepicker-input"),
                 'test_result_docs',
-                Field('planned_start', data_toggle='datetimepicker', data_target='#id_planned_start'),
-                Field('planned_end', data_toggle='datetimepicker', data_target='#id_planned_end'),
+                Field('planned_start', data_toggle='datetimepicker', data_target='#id_planned_start', css_class="datetimepicker-input"),
+                Field('planned_end', data_toggle='datetimepicker', data_target='#id_planned_end', css_class="datetimepicker-input"),
                 'outage',
                 Div(
                     HTML('''<p>Please note that implementation instructions must be supplied prior to submission for endorsement.
@@ -230,7 +230,7 @@ class ChangeRequestCompleteForm(forms.ModelForm):
                 'Change request outcome',
                 'outcome',
                 # We need to add some data attributes to the date[time] fields for the tempusdominus JS lib.
-                Field('completed', data_toggle='datetimepicker', data_target='#id_completed'),
+                Field('completed', data_toggle='datetimepicker', data_target='#id_completed', css_class="datetimepicker-input"),
                 'unexpected_issues',
                 'notes',
             ),
@@ -268,7 +268,12 @@ class EmergencyChangeRequestForm(forms.ModelForm):
             Fieldset(
                 'Details',
                 'title', 'description', 'endorser_choice', 'implementer_choice', 'implementation',
-                'planned_start', 'planned_end', 'outage', 'completed', 'it_systems',
+                # We need to add some data attributes to the date[time] fields for the tempusdominus JS lib.
+                Field('planned_start', data_toggle='datetimepicker', data_target='#id_planned_start', css_class="datetimepicker-input"),
+                Field('planned_end', data_toggle='datetimepicker', data_target='#id_planned_end', css_class="datetimepicker-input"),
+                'outage',
+                Field('completed', data_toggle='datetimepicker', data_target='#id_completed', css_class="datetimepicker-input"),
+                'it_systems',
             ),
             FormActions(self.save_button),
         )

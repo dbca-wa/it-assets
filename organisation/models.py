@@ -286,19 +286,61 @@ class DepartmentUser(models.Model):
         return full_name.strip()
 
     def get_employment_status(self):
-        """Given cached Ascender data, return a description of a user's employment status.
+        """From Ascender data, return a description of a user's employment status.
         """
         if self.ascender_data and 'emp_status' in self.ascender_data and self.ascender_data['emp_status']:
             if self.ascender_data['emp_status'] in self.EMP_STATUS_MAP:
                 return self.EMP_STATUS_MAP[self.ascender_data['emp_status']]
         return ''
 
+    def get_ascender_full_name(self):
+        """From Ascender data, return the users's full name.
+        """
+        if self.ascender_data:
+            _ = []
+            if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+                _.append(self.ascender_data['first_name'])
+            if 'second_name' in self.ascender_data and self.ascender_data['second_name']:
+                _.append(self.ascender_data['second_name'])
+            if 'surname' in self.ascender_data and self.ascender_data['surname']:
+                _.append(self.ascender_data['surname'])
+            return ' '.join(_)
+        return ''
+
+    def get_position_title(self):
+        """From Ascender data, return the user's position title.
+        """
+        if self.ascender_data and 'occup_pos_title' in self.ascender_data and self.ascender_data['occup_pos_title']:
+            return self.ascender_data['occup_pos_title']
+        return ''
+
+    def get_ascender_org_path(self):
+        """From Ascender data, return the users's organisation tree path as a list of section names.
+        """
+        if self.ascender_data and 'clevel1_desc' in self.ascender_data and 'clevel2_desc' in self.ascender_data and 'clevel3_desc' in self.ascender_data and 'clevel4_desc' in self.ascender_data and 'clevel5_desc' in self.ascender_data:
+            data = [self.ascender_data['clevel1_desc'], self.ascender_data['clevel2_desc'], self.ascender_data['clevel3_desc'], self.ascender_data['clevel4_desc'], self.ascender_data['clevel5_desc']]
+            path = []
+            [path.append(i) for i in data if i not in path]
+            return path
+        return []
+
+    def get_geo_location_desc(self):
+        """From Ascender data, return the user's geographical location description.
+        """
+        if self.ascender_data and 'geo_location_desc' in self.ascender_data:
+            return self.ascender_data['geo_location_desc']
+        return ''
+
     def get_job_start_date(self):
+        """From Ascender data, return the user's job start date.
+        """
         if self.ascender_data and 'job_start_date' in self.ascender_data and self.ascender_data['job_start_date']:
             return datetime.strptime(self.ascender_data['job_start_date'], '%Y-%m-%d').date()
         return ''
 
     def get_job_term_date(self):
+        """From Ascender data, return the user's job termination date.
+        """
         if self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date']:
             return datetime.strptime(self.ascender_data['job_term_date'], '%Y-%m-%d').date()
         return ''
@@ -635,17 +677,18 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
+        # Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             cc = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+            # The user's current CC differs from that in Ascender.
             if self.cost_centre != cc:
                 self.cost_centre = cc
                 LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
 
-                # Check CC against any onprem AD account information for this user.
-                if self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                # Onprem AD users.
+                if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
                     # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
                     change = {
-                        'ad_org': self.cost_centre.chart_acct_name,
                         'identity': self.ad_guid,
                         'property': 'Company',
                         'value': self.cost_centre.code,
@@ -657,8 +700,22 @@ class DepartmentUser(models.Model):
                     store = AzureBlobStorage(connect_string, 'azuread')
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, 'Company'), f.name)
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+                # Azure (cloud only) AD users.
+                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+                    change = {
+                        'identity': self.azure_guid,
+                        'property': 'companyName',
+                        'value': self.cost_centre.code,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                    store = AzureBlobStorage(connect_string, 'azuread')
+                    store.upload_file('azure_changes/{}_{}.json'.format(self.azure_guid, 'companyName'), f.name)
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD change diff uploaded to blob storage')
 
-        if 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
+        elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
 
         self.save()

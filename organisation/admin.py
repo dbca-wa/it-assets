@@ -90,9 +90,9 @@ class DepartmentUserAdmin(admin.ModelAdmin):
     search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
     raw_id_fields = ('manager',)
     readonly_fields = (
-        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid',
-        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'cost_centre',
-        'employment_status', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
+        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
+        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'cost_centre', 'ascender_org_path', 'geo_location_desc',
+        'employment_status', 'position_title', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
     )
     fieldsets = (
         ('Microsoft 365, Azure AD and on-prem AD account information', {
@@ -112,10 +112,15 @@ class DepartmentUserAdmin(admin.ModelAdmin):
         }),
         ('Ascender account information', {
             'description': '''<span class="errornote">These data are specific to the Ascender HR database.
-            The employee ID must be set in order to enable synchronisation from Ascender.</span>''',
+            The employee ID must be set here in order to enable synchronisation from Ascender.<br>
+            Data is these fields is maintained in Ascender by PSB and/or the employee.</span>''',
             'fields': (
                 'employee_id',
                 'cost_centre',
+                'ascender_full_name',
+                'ascender_org_path',
+                'position_title',
+                'geo_location_desc',
                 'employment_status',
                 'job_start_date',
                 'job_termination_date',
@@ -149,8 +154,26 @@ class DepartmentUserAdmin(admin.ModelAdmin):
         }),
     )
 
+    def ascender_full_name(self, instance):
+        return instance.get_ascender_full_name()
+    ascender_full_name.short_description = 'full name'
+
+    def ascender_org_path(self, instance):
+        path = instance.get_ascender_org_path()
+        if path:
+            return ' -> '.join(path)
+        return ''
+    ascender_org_path.short_description = 'organisation path'
+
     def employment_status(self, instance):
         return instance.get_employment_status()
+
+    def geo_location_desc(self, instance):
+        return instance.get_geo_location_desc()
+    geo_location_desc.short_description = 'Geographic location'
+
+    def position_title(self, instance):
+        return instance.get_position_title()
 
     def job_start_date(self, instance):
         if instance.get_job_start_date():
