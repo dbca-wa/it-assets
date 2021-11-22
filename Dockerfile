@@ -47,5 +47,4 @@ RUN python manage.py collectstatic --noinput
 # Run the application as the www-data user.
 USER www-data
 EXPOSE 8080
-HEALTHCHECK --interval=1m --timeout=5s --start-period=10s --retries=3 CMD ["wget", "-q", "-O", "-", "http://localhost:8080/healthcheck/"]
 CMD ["gunicorn", "itassets.wsgi", "--config", "gunicorn.py"]
