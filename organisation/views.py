@@ -30,6 +30,8 @@ class DepartmentUserAPIResource(View):
         ).exclude(
             account_type__isnull=True
         ).prefetch_related(
+            'manager',
+            'cost_centre',
             'location',
             'org_unit',
         ).order_by('name')
