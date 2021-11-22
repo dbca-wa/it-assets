@@ -37,7 +37,6 @@ INSTALLED_APPS = (
     'django_json_widget',
     # Third-party applications:
     'django_extensions',
-    'corsheaders',
     'reversion',
     'crispy_forms',
     'leaflet',
@@ -56,7 +55,6 @@ INSTALLED_APPS = (
 
 MIDDLEWARE = [
     'itassets.middleware.HealthCheckMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -103,7 +101,7 @@ FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env('FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.3.15'
+VERSION_NO = '2.3.19'
 
 # Alesco binding information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
@@ -277,15 +275,6 @@ LOGGING = {
         }
     }
 }
-
-# cors whitelist for local development
-CORS_ORIGIN_WHITELIST = (
-    'http://localhost:8000',
-    'http://localhost:8080',
-    'http://127.0.0.1:8000',
-    'http://127.0.0.1:8080',
-)
-CORS_ALLOW_CREDENTIALS = True
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap4'

@@ -90,11 +90,3 @@ class ApiTestCase(TestCase):
         self.it_dev = mixer.blend(ITSystem, status=1, owner=self.user2)  # Development
         self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user2)  # Production legacy
         self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user2)  # Decommissioned
-
-
-class HealthCheckViewTestCase(TestCase):
-
-    def test_get_context(self):
-        url = reverse('health_check')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
