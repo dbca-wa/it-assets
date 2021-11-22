@@ -950,10 +950,6 @@ class Location(models.Model):
     def __str__(self):
         return self.name
 
-    def as_dict(self):
-        return {k: getattr(self, k) for k in (
-            'id', 'name', 'address', 'pobox', 'phone', 'fax', 'email') if getattr(self, k)}
-
 
 class OrgUnit(models.Model):
     """Represents an element within the Department organisational hierarchy.

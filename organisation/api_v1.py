@@ -32,7 +32,9 @@ def format_account_type(request, value):
 def format_location(request, value):
     if value is not None:
         location = Location.objects.get(pk=value)
-        return location.as_dict()
+        d = location.__dict__
+        d.pop('_state')
+        return d
     else:
         return None
 

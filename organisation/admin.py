@@ -269,10 +269,10 @@ class ADActionAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(LeafletGeoAdmin):
-    list_display = ('name', 'address', 'phone', 'fax', 'email', 'manager', 'active')
+    fields = ('name', 'address', 'pobox', 'phone', 'fax', 'point', 'active')
+    list_display = ('name', 'address', 'phone', 'fax', 'active')
     list_filter = ('active',)
-    raw_id_fields = ('manager',)
-    search_fields = ('name', 'address', 'phone', 'fax', 'email', 'manager__email')
+    search_fields = ('name', 'address', 'phone', 'fax')
     settings_overrides = {
         'DEFAULT_CENTER': (-31.0, 115.0),
         'DEFAULT_ZOOM': 5
