@@ -142,6 +142,7 @@ class LicenseAPIResource(View):
             active=True,
         ).filter(
             Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
             Q(assigned_licences__contains=['OFFICE 365 E5']) |
             Q(assigned_licences__contains=['OFFICE 365 E1'])
         ).prefetch_related(
@@ -156,6 +157,7 @@ class LicenseAPIResource(View):
 
         licenses = [
             {
+                'id': user.pk,
                 'name': user.name,
                 'email': user.email,
                 'cost_centre': user.cost_centre.code if user.cost_centre else None,
