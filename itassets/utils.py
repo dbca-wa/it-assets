@@ -7,6 +7,7 @@ from djqscsv import render_to_csv_response
 from msal import ConfidentialClientApplication
 import os
 import re
+import requests
 from restless.dj import DjangoResource
 import simdjson
 
@@ -22,6 +23,21 @@ def ms_graph_client_token():
     )
     scope = "https://graph.microsoft.com/.default"
     return context.acquire_token_for_client(scope)
+
+
+def ms_security_api_client_token():
+    azure_tenant_id = os.environ["AZURE_TENANT_ID"]
+    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
+    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
+    data = {
+        'resource': 'https://api.security.microsoft.com',
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'grant_type': 'client_credentials',
+    }
+    url = "https://login.windows.net/{}/oauth2/token".format(azure_tenant_id)
+    resp = requests.post(url, data=data)
+    return resp.json()['access_token']
 
 
 class ModelDescMixin(object):
@@ -322,17 +338,22 @@ class RequestMixin(object):
     Set property 'request' to model admin instance
     """
     request = None
+
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         self.request = request
         return qs
 
+
 userdata = threading.local()
+
+
 class GetRequestUserMixin(object):
     """
     Get the request user from request property or threading local storage
     """
     request = None
+
     @property
     def user(self):
         if self.request:
@@ -342,8 +363,9 @@ class GetRequestUserMixin(object):
                 return userdata.user
             except:
                 return None
-        
-class RequestUserMixin(GetRequestUserMixin,RequestMixin):
+
+
+class RequestUserMixin(GetRequestUserMixin, RequestMixin):
     """
     Set property 'request' to model admin instance and request's user to threading localstorage
     """
@@ -352,13 +374,16 @@ class RequestUserMixin(GetRequestUserMixin,RequestMixin):
         userdata.user = self.request.user
         return qs
 
-setattr(User,"_security_team",None)
-setattr(User,"_secretpermission_granted",None)
+
+setattr(User, "_security_team", None)
+setattr(User, "_secretpermission_granted", None)
+
+
 class SecretPermissionMixin(object):
     is_developer = None
     request = None
 
-    def secretpermission_granted(self,obj=None,user=None):
+    def secretpermission_granted(self, obj=None, user=None):
         if not user:
             if not self.request:
                 return False
@@ -372,7 +397,6 @@ class SecretPermissionMixin(object):
             return user._security_team
 
         if user._secretpermission_granted is None:
-            user._secretpermission_granted = self.is_developer(user,obj) if self.is_developer else False
+            user._secretpermission_granted = self.is_developer(user, obj) if self.is_developer else False
 
         return user._secretpermission_granted
-
