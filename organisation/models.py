@@ -8,6 +8,7 @@ import logging
 import os
 from tempfile import NamedTemporaryFile
 
+from itassets.utils import ms_graph_client_token
 from .utils import compare_values, title_except
 LOGGER = logging.getLogger('organisation')
 
@@ -679,6 +680,24 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
+        # Active / expired accounts - where a user has a job which in which the termination date is
+        # in the past, deacivate the user's Azure AD account.
+        if self.employee_id and self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date'] and self.azure_guid:
+            job_term_date = datetime.strptime(self.ascender_data['job_term_date'], '%Y-%m-%d')
+            today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+            if settings.ASCENDER_DEACTIVATE_EXPIRED and job_term_date < today:
+                LOGGER.info(f"ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their Azure AD account")
+                # This update process occurs in Azure AD - update the user account directly using the MS Graph API.
+                token = ms_graph_client_token()
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                data = {"accountEnabled": False}
+                resp = requests.patch(url, headers=headers, json=data)
+                resp.raise_for_status()
+
         # Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             cc = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
@@ -702,20 +721,18 @@ class DepartmentUser(models.Model):
                     store = AzureBlobStorage(connect_string, 'azuread')
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, 'Company'), f.name)
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
-                # Azure (cloud only) AD users.
+                # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
-                    change = {
-                        'identity': self.azure_guid,
-                        'property': 'companyName',
-                        'value': self.cost_centre.code,
+                    token = ms_graph_client_token()
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
                     }
-                    f = NamedTemporaryFile()
-                    f.write(json.dumps(change, indent=2).encode('utf-8'))
-                    f.flush()
-                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
-                    store = AzureBlobStorage(connect_string, 'azuread')
-                    store.upload_file('azure_changes/{}_{}.json'.format(self.azure_guid, 'companyName'), f.name)
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD change diff uploaded to blob storage')
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"companyName": self.cost_centre.code}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))

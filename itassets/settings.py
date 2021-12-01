@@ -101,9 +101,13 @@ FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env('FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.3.20'
+VERSION_NO = '2.3.21'
 
-# Alesco binding information
+# Flag to control whether Azure AD accounts should be deactivated during sync
+# processes if their associated job in Ascender has a termination date in the past.
+ASCENDER_DEACTIVATE_EXPIRED = env('ASCENDER_DEACTIVATE_EXPIRED', False)
+
+# Ascender database view information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)
 FOREIGN_DB_PORT = env('FOREIGN_DB_PORT', default=5432)
 FOREIGN_DB_NAME = env('FOREIGN_DB_NAME', None)
