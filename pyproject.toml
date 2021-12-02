@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "it-assets"
-version = "2.3.20"
+version = "2.3.21"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -47,5 +47,5 @@ ipython = "^7.23.0"
 ipdb = "^0.13.3"
 
 [build-system]
-requires = ["poetry>=1.1.11"]
+requires = ["poetry>=1.1.12"]
 build-backend = "poetry.masonry.api"
