@@ -1,11 +1,13 @@
 from data_storage import AzureBlobStorage
 from datetime import datetime
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
 from django.contrib.gis.db import models
 import json
 import logging
 import os
+import requests
 from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
