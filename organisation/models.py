@@ -963,25 +963,11 @@ class Location(models.Model):
     """A model to represent a physical location.
     """
     name = models.CharField(max_length=256, unique=True)
-    manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='location_manager')
     address = models.TextField(unique=True, blank=True)
     pobox = models.TextField(blank=True, verbose_name='PO Box')
     phone = models.CharField(max_length=128, null=True, blank=True)
     fax = models.CharField(max_length=128, null=True, blank=True)
-    email = models.CharField(max_length=128, null=True, blank=True)
     point = models.PointField(null=True, blank=True)
-    url = models.CharField(
-        max_length=2000,
-        help_text='URL to webpage with more information',
-        null=True,
-        blank=True)
-    bandwidth_url = models.CharField(
-        max_length=2000,
-        help_text='URL to prtg graph of bw utilisation',
-        null=True,
-        blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
     active = models.BooleanField(default=True)
 

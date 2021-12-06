@@ -243,7 +243,7 @@ class DepartmentUserResource(DjangoResource):
 
 class LocationResource(CSVDjangoResource):
     VALUES_ARGS = (
-        'pk', 'name', 'address', 'phone', 'fax', 'email', 'point', 'url', 'bandwidth_url', 'active')
+        'pk', 'name', 'address', 'phone', 'fax', 'point', 'url', 'active')
 
     def list_qs(self):
         FILTERS = {}
