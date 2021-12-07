@@ -685,9 +685,20 @@ class DepartmentUser(models.Model):
         if self.employee_id and self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date']:
             job_term_date = datetime.strptime(self.ascender_data['job_term_date'], '%Y-%m-%d')
             today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+
             # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
             if job_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
                 LOGGER.info(f"ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their AD account")
+
+                # Create a DepartmentUserLog object to record this update.
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'paypoint',
+                        'old_value': self.cost_centre.ascender_code,
+                        'new_value': self.ascender_data['paypoint'],
+                    },
+                )
 
                 # Onprem AD users.
                 if self.dir_sync_enabled and self.ad_guid and self.ad_data:
@@ -721,11 +732,23 @@ class DepartmentUser(models.Model):
 
         # Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
-            cc = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+            p = self.ascender_data['paypoint']
+            cc = CostCentre.objects.get(ascender_code=p)
+
             # The user's current CC differs from that in Ascender.
             if self.cost_centre != cc:
-                self.cost_centre = cc
-                LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
+                LOGGER.info(f"ASCENDER SYNC: {self} cost centre {self.cost_centre.ascender_code} differs from Ascender paypoint {p}, updating it")
+
+                # Create a DepartmentUserLog object to record this update.
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'paypoint',
+                        'old_value': self.cost_centre.ascender_code,
+                        'new_value': p,
+                    },
+                )
+                self.cost_centre = cc  # Change the department user's cost centre.
 
                 # Onprem AD users.
                 if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:

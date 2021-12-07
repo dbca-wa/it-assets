@@ -13,6 +13,9 @@ import simdjson
 
 
 def ms_graph_client_token():
+    """Uses the Microsoft msal library to obtain an access token for the Graph API.
+    Ref: https://docs.microsoft.com/en-us/python/api/msal/msal.application.confidentialclientapplication
+    """
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
     client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
     client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
@@ -26,6 +29,9 @@ def ms_graph_client_token():
 
 
 def ms_security_api_client_token():
+    """Calls the Microsoft 365 Defender API endpoint to obtain an access token.
+    Ref: https://docs.microsoft.com/en-us/microsoft-365/security/defender/api-hello-world
+    """
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
     client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
     client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
