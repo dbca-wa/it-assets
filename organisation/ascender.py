@@ -52,23 +52,23 @@ FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     settings.FOREIGN_TABLE,
 )
 STATUS_RANKING = [
+    "NOPAY",
+    "NON",
+    "NPAYF",
+    "NPAYP",
     "PFAS",
     "PFA",
     "PFT",
     "CFA",
     "CFT",
-    "NPAYF",
     "PPA",
     "PPT",
     "CPA",
     "CPT",
-    "NPAYP",
     "CCFA",
     "CAS",
     "SEAS",
     "TRAIN",
-    "NOPAY",
-    "NON",
 ]
 
 
