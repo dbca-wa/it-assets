@@ -682,38 +682,81 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # Active / expired accounts - where a user has a job which in which the termination date is
-        # in the past, deacivate the user's Azure AD account.
-        if self.employee_id and self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date'] and self.azure_guid:
+        if self.employee_id and self.ascender_data and 'job_term_date' in self.ascender_data and self.ascender_data['job_term_date']:
             job_term_date = datetime.strptime(self.ascender_data['job_term_date'], '%Y-%m-%d')
             today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
-            if settings.ASCENDER_DEACTIVATE_EXPIRED and job_term_date < today:
-                LOGGER.info(f"ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their Azure AD account")
-                # This update process occurs in Azure AD - update the user account directly using the MS Graph API.
-                token = ms_graph_client_token()
-                headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
-                    "Content-Type": "application/json",
-                }
-                url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
-                data = {"accountEnabled": False}
-                resp = requests.patch(url, headers=headers, json=data)
-                resp.raise_for_status()
+
+            # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
+            if job_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
+                LOGGER.info(f"ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their AD account")
+
+                # Create a DepartmentUserLog object to record this update.
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'paypoint',
+                        'old_value': self.cost_centre.ascender_code,
+                        'new_value': self.ascender_data['paypoint'],
+                    },
+                )
+
+                # Onprem AD users.
+                if self.dir_sync_enabled and self.ad_guid and self.ad_data:
+                    # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
+                    property = 'Enabled'
+                    change = {
+                        'identity': self.ad_guid,
+                        'property': property,
+                        'value': False,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                    store = AzureBlobStorage(connect_string, 'azuread')
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, property), f.name)
+                    LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+
+                # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
+                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
+                    token = ms_graph_client_token()
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"accountEnabled": False}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account accountEnabled set to False')
 
         # Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
-            cc = CostCentre.objects.get(ascender_code=self.ascender_data['paypoint'])
+            p = self.ascender_data['paypoint']
+            cc = CostCentre.objects.get(ascender_code=p)
+
             # The user's current CC differs from that in Ascender.
             if self.cost_centre != cc:
-                self.cost_centre = cc
-                LOGGER.info(f'ASCENDER SYNC: {self} cost centre changed to {cc}')
+                LOGGER.info(f"ASCENDER SYNC: {self} cost centre {self.cost_centre.ascender_code} differs from Ascender paypoint {p}, updating it")
+
+                # Create a DepartmentUserLog object to record this update.
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'paypoint',
+                        'old_value': self.cost_centre.ascender_code,
+                        'new_value': p,
+                    },
+                )
+                self.cost_centre = cc  # Change the department user's cost centre.
 
                 # Onprem AD users.
                 if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
                     # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
+                    property = 'Company'
                     change = {
                         'identity': self.ad_guid,
-                        'property': 'Company',
+                        'property': property,
                         'value': self.cost_centre.code,
                     }
                     f = NamedTemporaryFile()
@@ -721,7 +764,7 @@ class DepartmentUser(models.Model):
                     f.flush()
                     connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                     store = AzureBlobStorage(connect_string, 'azuread')
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, 'Company'), f.name)
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, property), f.name)
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
                 # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
@@ -943,25 +986,11 @@ class Location(models.Model):
     """A model to represent a physical location.
     """
     name = models.CharField(max_length=256, unique=True)
-    manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='location_manager')
     address = models.TextField(unique=True, blank=True)
     pobox = models.TextField(blank=True, verbose_name='PO Box')
     phone = models.CharField(max_length=128, null=True, blank=True)
     fax = models.CharField(max_length=128, null=True, blank=True)
-    email = models.CharField(max_length=128, null=True, blank=True)
     point = models.PointField(null=True, blank=True)
-    url = models.CharField(
-        max_length=2000,
-        help_text='URL to webpage with more information',
-        null=True,
-        blank=True)
-    bandwidth_url = models.CharField(
-        max_length=2000,
-        help_text='URL to prtg graph of bw utilisation',
-        null=True,
-        blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
     active = models.BooleanField(default=True)
 

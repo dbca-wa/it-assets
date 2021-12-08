@@ -91,7 +91,7 @@ class DepartmentUserAdmin(admin.ModelAdmin):
     raw_id_fields = ('manager',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
-        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'cost_centre', 'ascender_org_path', 'geo_location_desc',
+        'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
         'employment_status', 'position_title', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
     )
     fieldsets = (
@@ -116,7 +116,6 @@ class DepartmentUserAdmin(admin.ModelAdmin):
             Data is these fields is maintained in Ascender by PSB and/or the employee.</span>''',
             'fields': (
                 'employee_id',
-                'cost_centre',
                 'ascender_full_name',
                 'ascender_org_path',
                 'position_title',
@@ -140,6 +139,7 @@ class DepartmentUserAdmin(admin.ModelAdmin):
                 'location',
                 'name_update_reference',
                 'org_unit',
+                'cost_centre',
                 'preferred_name',
                 'extension',
                 'home_phone',
