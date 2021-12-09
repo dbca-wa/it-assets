@@ -319,6 +319,13 @@ class DepartmentUser(models.Model):
             return self.ascender_data['occup_pos_title']
         return ''
 
+    def get_paypoint(self):
+        """From Ascender data, return the user's paypoint value.
+        """
+        if self.ascender_data and 'paypoint' in self.ascender_data and self.ascender_data['paypoint']:
+            return self.ascender_data['paypoint']
+        return ''
+
     def get_ascender_org_path(self):
         """From Ascender data, return the users's organisation tree path as a list of section names.
         """
