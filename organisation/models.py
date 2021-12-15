@@ -743,19 +743,29 @@ class DepartmentUser(models.Model):
             paypoint = self.ascender_data['paypoint']
             cc = CostCentre.objects.get(ascender_code=paypoint)
 
-            # The user's current CC differs from that in Ascender.
+            # The user's current CC differs from that in Ascender (it might be None).
             if self.cost_centre != cc:
-                LOGGER.info(f"ASCENDER SYNC: {self} cost centre {self.cost_centre.ascender_code} differs from Ascender paypoint {paypoint}, updating it")
+                if self.cost_centre:
+                    LOGGER.info(f"ASCENDER SYNC: {self} cost centre {self.cost_centre.ascender_code} differs from Ascender paypoint {paypoint}, updating it")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'paypoint',
+                            'old_value': self.cost_centre.ascender_code,
+                            'new_value': paypoint,
+                        },
+                    )
+                else:
+                    LOGGER.info(f"ASCENDER SYNC: {self} cost centre set from Ascender paypoint {paypoint}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'paypoint',
+                            'old_value': None,
+                            'new_value': paypoint,
+                        },
+                    )
 
-                # Create a DepartmentUserLog object to record this update.
-                DepartmentUserLog.objects.create(
-                    department_user=self,
-                    log={
-                        'ascender_field': 'paypoint',
-                        'old_value': self.cost_centre.ascender_code,
-                        'new_value': paypoint,
-                    },
-                )
                 self.cost_centre = cc  # Change the department user's cost centre.
 
                 # Onprem AD users.
