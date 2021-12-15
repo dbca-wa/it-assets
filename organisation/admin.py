@@ -92,7 +92,7 @@ class DepartmentUserAdmin(admin.ModelAdmin):
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
-        'employment_status', 'position_title', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
+        'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
     )
     fieldsets = (
         ('Microsoft 365, Azure AD and on-prem AD account information', {
@@ -120,6 +120,7 @@ class DepartmentUserAdmin(admin.ModelAdmin):
                 'ascender_org_path',
                 'position_title',
                 'geo_location_desc',
+                'paypoint',
                 'employment_status',
                 'job_start_date',
                 'job_termination_date',
@@ -164,6 +165,9 @@ class DepartmentUserAdmin(admin.ModelAdmin):
             return ' -> '.join(path)
         return ''
     ascender_org_path.short_description = 'organisation path'
+
+    def paypoint(self, instance):
+        return instance.get_paypoint()
 
     def employment_status(self, instance):
         return instance.get_employment_status()

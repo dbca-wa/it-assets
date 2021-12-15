@@ -1,5 +1,5 @@
 from data_storage import AzureBlobStorage
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.conf import settings
 import json
 import os
@@ -253,6 +253,61 @@ def ms_graph_users(licensed=False):
         return [u for u in aad_users if u['assignedLicenses']]
     else:
         return aad_users
+
+
+def ms_graph_users_signinactivity(licensed=False):
+    """Query the MS Graph (Beta) API for a list of Azure AD account with sign-in activity.
+    """
+    token = ms_graph_client_token()
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        'Content-Type': 'application/json',
+        "ConsistencyLevel": "eventual",
+    }
+    url = "https://graph.microsoft.com/beta/users?$select=id,mail,userPrincipalName,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true"
+    users = []
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
+
+    while '@odata.nextLink' in j:
+        users = users + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    users = users + j['value']  # Final page
+    user_signins = {}
+
+    for user in users:
+        if 'signInActivity' in user and user['signInActivity']:
+            user_signins[user['mail']] = user
+
+    return user_signins
+
+
+def ms_graph_inactive_users(days=45):
+    """Query the MS Graph (Beta) API for a list of Azure AD accounts which haven't had a login event within a defined number of days.
+    Returns a list of DepartmentUser objects.
+    """
+    from organisation.models import DepartmentUser  # Prevent circular imports.
+    now = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    then = now - timedelta(days=days)
+    token = ms_graph_client_token()
+    headers = {"Authorization": "Bearer {}".format(token["access_token"]), "Content-Type": "application/json"}
+    url = "https://graph.microsoft.com/beta/users?filter=signInActivity/lastSignInDateTime le {}".format(then.strftime('%Y-%m-%dT%H:%M:%SZ'))
+    resp = requests.get(url, headers=headers)
+    j = resp.json()
+    accounts = j['value']  # At present the API doesn't return a paginated response.
+    users = []
+
+    for i in accounts:
+        if i['accountEnabled'] and "#EXT#" not in i['userPrincipalName'] and i['userPrincipalName'].lower().endswith('dbca.wa.gov.au'):
+            if DepartmentUser.objects.filter(active=True, email=i['userPrincipalName']).exists():
+                user = DepartmentUser.objects.get(active=True, email=i['userPrincipalName'])
+                if user.get_licence():
+                    users.append(user)
+
+    return users
 
 
 def get_ad_users_json(container, azure_json_path):

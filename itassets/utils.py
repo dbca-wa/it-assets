@@ -406,3 +406,25 @@ class SecretPermissionMixin(object):
             user._secretpermission_granted = self.is_developer(user, obj) if self.is_developer else False
 
         return user._secretpermission_granted
+
+
+TIME_DURATION_UNITS = (
+    ('week', 60 * 60 * 24 * 7),
+    ('day', 60 * 60 * 24),
+    ('hour', 60 * 60),
+    ('minute', 60),
+    ('second', 1)
+)
+
+
+def human_time_duration(seconds: int) -> str:
+    """For a passed-in integer (seconds), return a human-readable duration string.
+    """
+    if seconds <= 1:
+        return '<1 second'
+    parts = []
+    for unit, div in TIME_DURATION_UNITS:
+        amount, seconds = divmod(int(seconds), div)
+        if amount > 0:
+            parts.append('{} {}{}'.format(amount, unit, "" if amount == 1 else "s"))
+    return ', '.join(parts)
