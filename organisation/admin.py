@@ -69,10 +69,8 @@ class DepartmentUserAdmin(admin.ModelAdmin):
 
         def lookups(self, request, model_admin):
             return (
-                ('MICROSOFT 365 E5', 'MICROSOFT 365 E5'),
-                ('OFFICE 365 E5', 'OFFICE 365 E5'),
-                ('OFFICE 365 E3', 'OFFICE 365 E3'),
-                ('OFFICE 365 E1', 'OFFICE 365 E1'),
+                ('MICROSOFT 365 E5', 'MICROSOFT 365 E5 (On-premise)'),
+                ('MICROSOFT 365 F3', 'MICROSOFT 365 F3 (Cloud)'),
             )
 
         def queryset(self, request, queryset):

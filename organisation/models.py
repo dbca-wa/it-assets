@@ -276,10 +276,6 @@ class DepartmentUser(models.Model):
         if self.assigned_licences:
             if 'MICROSOFT 365 E5' in self.assigned_licences:
                 return 'On-premise'
-            elif 'OFFICE 365 E5' in self.assigned_licences:
-                return 'On-premise'
-            elif 'OFFICE 365 E1' in self.assigned_licences:
-                return 'Cloud'
             elif 'MICROSOFT 365 F3' in self.assigned_licences:
                 return 'Cloud'
         return None
