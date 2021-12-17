@@ -207,6 +207,9 @@ def ms_graph_users(licensed=False):
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
     """
     token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
@@ -259,6 +262,9 @@ def ms_graph_users_signinactivity(licensed=False):
     """Query the MS Graph (Beta) API for a list of Azure AD account with sign-in activity.
     """
     token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         'Content-Type': 'application/json',
@@ -293,6 +299,9 @@ def ms_graph_inactive_users(days=45):
     now = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     then = now - timedelta(days=days)
     token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
     headers = {"Authorization": "Bearer {}".format(token["access_token"]), "Content-Type": "application/json"}
     url = "https://graph.microsoft.com/beta/users?filter=signInActivity/lastSignInDateTime le {}".format(then.strftime('%Y-%m-%dT%H:%M:%SZ'))
     resp = requests.get(url, headers=headers)

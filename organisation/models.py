@@ -724,15 +724,16 @@ class DepartmentUser(models.Model):
                 # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and settings.ASCENDER_DEACTIVATE_EXPIRED:
                     token = ms_graph_client_token()
-                    headers = {
-                        "Authorization": "Bearer {}".format(token["access_token"]),
-                        "Content-Type": "application/json",
-                    }
-                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
-                    data = {"accountEnabled": False}
-                    resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account accountEnabled set to False')
+                    if token:
+                        headers = {
+                            "Authorization": "Bearer {}".format(token["access_token"]),
+                            "Content-Type": "application/json",
+                        }
+                        url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                        data = {"accountEnabled": False}
+                        resp = requests.patch(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account accountEnabled set to False')
 
         # Cost centre - Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
@@ -784,15 +785,16 @@ class DepartmentUser(models.Model):
                 # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
                     token = ms_graph_client_token()
-                    headers = {
-                        "Authorization": "Bearer {}".format(token["access_token"]),
-                        "Content-Type": "application/json",
-                    }
-                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
-                    data = {"companyName": self.cost_centre.code}
-                    resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
+                    if token:
+                        headers = {
+                            "Authorization": "Bearer {}".format(token["access_token"]),
+                            "Content-Type": "application/json",
+                        }
+                        url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                        data = {"companyName": self.cost_centre.code}
+                        resp = requests.patch(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
