@@ -42,7 +42,7 @@ def title_except(
         else:
             post = ''
 
-        if word.upper() in acronyms:
+        if word.replace(',', '').upper() in acronyms:
             word = word.upper()
         elif word in exceptions:
             pass
