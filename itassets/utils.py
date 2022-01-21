@@ -432,3 +432,12 @@ def human_time_duration(seconds: int) -> str:
         if amount > 0:
             parts.append('{} {}{}'.format(amount, unit, "" if amount == 1 else "s"))
     return ', '.join(parts)
+
+
+def humanise_bytes(bytes: int) -> str:
+    """For a passed-in integer (bytes), return a human-readable string.
+    """
+    for x in ["B", "KB", "MB", "GB", "TB", "PB"]:
+        if bytes < 1024.0:
+            return "{:3.1f} {}".format(bytes, x)
+        bytes /= 1024.0
