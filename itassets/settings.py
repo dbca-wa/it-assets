@@ -286,6 +286,3 @@ LOGGING = {
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
-# status scanning settings
-STATUS_NMAP_TIMEOUT = env('STATUS_NMAP_TIMEOUT', 600)
