@@ -50,4 +50,4 @@ def get_meraki_clients(network_id, timespan=1209600):
 
 def get_client_desc_html(client, network, timespan):
     duration = human_time_duration(timespan)
-    return f"Asset <a href='{network['url']}/overview#c={client['id']}'> {client['description']} ({client['ip']})</a> was last seen on VLAN {client['vlan']} in the network <a href='{network['url']}'> {network['name']}</a> and has used {client['usage']['total']} KB data in past {duration}."
+    return f"Asset <a href='{network['url']}/overview#c={client['id']}'>{client['description']} ({client['ip']})</a> was last seen on VLAN {client['vlan']} in the network <a href='{network['url']}'>{network['name']}</a> and has used {client['usage']['total']} KB data in the past {duration}."
