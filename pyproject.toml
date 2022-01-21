@@ -43,7 +43,7 @@ PyYAML = "5.4.1"
 whitenoise = {version = "5.3.0", extras = ["brotli"]}
 
 [tool.poetry.dev-dependencies]
-ipython = "^7.23.0"
+ipython = "^7.31.1"
 ipdb = "^0.13.3"
 
 [build-system]
