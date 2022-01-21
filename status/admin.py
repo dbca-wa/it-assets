@@ -1,13 +1,8 @@
-from django.contrib.admin import (
-    register,
-    ModelAdmin,
-    SimpleListFilter,
-    TabularInline,
-)
+from django.contrib.admin import ModelAdmin, SimpleListFilter, TabularInline
 from django.urls import path
 from django.db.models import Q
 
-from .models import Host, HostStatus, HostIP, ScanRange, ScanPlugin, ScanPluginParameter
+from .models import HostIP, ScanPlugin, ScanPluginParameter
 from .views import HostStatusReport
 
 
@@ -16,7 +11,6 @@ class HostIPInline(TabularInline):
     extra = 1
 
 
-@register(Host)
 class HostAdmin(ModelAdmin):
     list_display = ("name", "description", "active", "ip_list")
     ordering = ("name",)
@@ -55,7 +49,6 @@ class ScanPluginFilter(SimpleListFilter):
             )
 
 
-@register(HostStatus)
 class HostStatusAdmin(ModelAdmin):
     list_display = (
         "host",
@@ -171,7 +164,6 @@ class HostStatusAdmin(ModelAdmin):
         return urls
 
 
-@register(ScanRange)
 class ScanRangeAdmin(ModelAdmin):
     list_display = ("name", "enabled", "range")
     list_filter = ("enabled",)
@@ -196,7 +188,6 @@ class ScanPluginParameterInline(TabularInline):
     extra = 1
 
 
-@register(ScanPlugin)
 class ScanPluginAdmin(ModelAdmin):
     list_display = ("name", "enabled", "plugin")
     ordering = ("name",)
