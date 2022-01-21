@@ -1,11 +1,13 @@
 from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from django.conf import settings
+from io import BytesIO
 import json
 import os
 import pytz
 import re
 import requests
+import unicodecsv as csv
 from itassets.utils import ms_graph_client_token
 
 TZ = pytz.timezone(settings.TIME_ZONE)
@@ -202,3 +204,21 @@ def parse_windows_ts(s):
         return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
     except:
         return None
+
+
+def department_user_ascender_sync(users):
+    """For a passed-in queryset of Department Users and a file-like object, return a CSV containing
+    data that should be synced to Ascender.
+    """
+    """Using a passed-in queryset of HardwareAsset objects, return a CSV.
+    """
+    f = BytesIO()
+    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding='utf-8')
+    writer.writerow(['EMPLOYEE_ID', 'EMAIL', 'WORK_TELEPHONE'])
+    for user in users:
+        writer.writerow([
+            user.employee_id,
+            user.email.lower(),
+            user.telephone,
+        ])
+    return f
