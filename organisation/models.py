@@ -265,6 +265,7 @@ class DepartmentUser(models.Model):
     @property
     def group_unit(self):
         """Return the group-level org unit, as seen in the primary address book view.
+        In most cases, this should return the user's division.
         """
         if self.org_unit and self.org_unit.division_unit:
             return self.org_unit.division_unit
