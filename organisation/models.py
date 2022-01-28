@@ -708,10 +708,10 @@ class DepartmentUser(models.Model):
                 # Onprem AD users.
                 if self.dir_sync_enabled and self.ad_guid and self.ad_data and settings.ASCENDER_DEACTIVATE_EXPIRED:
                     # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
-                    property = 'Enabled'
+                    prop = 'Enabled'
                     change = {
                         'identity': self.ad_guid,
-                        'property': property,
+                        'property': prop,
                         'value': False,
                     }
                     f = NamedTemporaryFile()
@@ -719,7 +719,7 @@ class DepartmentUser(models.Model):
                     f.flush()
                     connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                     store = AzureBlobStorage(connect_string, 'azuread')
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, property), f.name)
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
 
                 # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
@@ -736,7 +736,11 @@ class DepartmentUser(models.Model):
                         resp.raise_for_status()
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account accountEnabled set to False')
 
-        # Cost centre - Ascender records cost centre as 'paypoint'.
+        # Cost centre & Division - Ascender records cost centre as 'paypoint'.
+        # We want to record the user's division in the `Department` AD field.
+        # Strictly speaking, the source of truth for division is the users's CC and therefore Ascender.
+        # However, there isn't (currently) a clean/consistent method of resolving a user's division from Ascender
+        # data. Therefore, at present we use the OIM-defined OrgUnit model.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             paypoint = self.ascender_data['paypoint']
             cc = CostCentre.objects.get(ascender_code=paypoint)
@@ -766,13 +770,13 @@ class DepartmentUser(models.Model):
 
                 self.cost_centre = cc  # Change the department user's cost centre.
 
-                # Onprem AD users.
+                # Onprem AD users - Company
                 if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
                     # Generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
-                    property = 'Company'
+                    prop = 'Company'
                     change = {
                         'identity': self.ad_guid,
-                        'property': property,
+                        'property': prop,
                         'value': self.cost_centre.code,
                     }
                     f = NamedTemporaryFile()
@@ -780,11 +784,11 @@ class DepartmentUser(models.Model):
                     f.flush()
                     connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                     store = AzureBlobStorage(connect_string, 'azuread')
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, property), f.name)
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
 
                 # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
-                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+                elif not self.dir_sync_enabled and self.cost_centre and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
                     token = ms_graph_client_token()
                     if token:
                         headers = {
@@ -796,6 +800,37 @@ class DepartmentUser(models.Model):
                         resp = requests.patch(url, headers=headers, json=data)
                         resp.raise_for_status()
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
+
+                # Onprem AD users - Division
+                if self.dir_sync_enabled and self.group_unit and self.ad_guid and self.ad_data and self.org_unit and 'Department' in self.ad_data and self.ad_data['Department'] != self.group_unit.name:
+                    # Generate and upload a "change" object to blob storage.
+                    prop = 'Department'
+                    change = {
+                        'identity': self.ad_guid,
+                        'property': prop,
+                        'value': self.group_unit.name,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                    store = AzureBlobStorage(connect_string, 'azuread')
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+
+                # Azure (cloud only) AD users - Division.
+                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and self.org_unit and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.group_unit.name:
+                    token = ms_graph_client_token()
+                    if token:
+                        headers = {
+                            "Authorization": "Bearer {}".format(token["access_token"]),
+                            "Content-Type": "application/json",
+                        }
+                        url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                        data = {"department": self.group_unit.name}
+                        resp = requests.patch(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account department set to {self.group_unit.name}')
 
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
