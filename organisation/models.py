@@ -802,7 +802,7 @@ class DepartmentUser(models.Model):
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
                 # Onprem AD users - Division
-                if self.dir_sync_enabled and self.group_unit and self.ad_guid and self.ad_data and self.org_unit and 'Department' in self.ad_data and self.ad_data['Department'] != self.group_unit.name:
+                if self.dir_sync_enabled and self.group_unit and self.ad_guid and self.ad_data and 'Department' in self.ad_data and self.ad_data['Department'] != self.group_unit.name:
                     # Generate and upload a "change" object to blob storage.
                     prop = 'Department'
                     change = {
@@ -819,7 +819,7 @@ class DepartmentUser(models.Model):
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
 
                 # Azure (cloud only) AD users - Division.
-                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and self.org_unit and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.group_unit.name:
+                elif not self.dir_sync_enabled and self.group_unit and self.azure_guid and self.azure_ad_data and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.group_unit.name:
                     token = ms_graph_client_token()
                     if token:
                         headers = {
