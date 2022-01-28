@@ -29,6 +29,7 @@ class Command(BaseCommand):
         process = Process(target=get_users, args=(queue,))
         process.start()
         process.join(timeout=80)  # Give this function a maximum time to finish (process will block for this duration, regardless).
+        logger.info('Completed')
         azure_users = queue.get()
 
         if not process.exitcode == 0:

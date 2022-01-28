@@ -59,10 +59,7 @@ class DepartmentUserTestCase(TestCase):
         self.user.assigned_licences = ['MICROSOFT 365 E5', 'foo']
         self.user.save()
         self.assertEqual(self.user.get_licence(), 'On-premise')
-        self.user.assigned_licences = ['OFFICE 365 E5']
-        self.user.save()
-        self.assertEqual(self.user.get_licence(), 'On-premise')
-        self.user.assigned_licences = ['OFFICE 365 E1', 'bar']
+        self.user.assigned_licences = ['MICROSOFT 365 F3', 'bar']
         self.user.save()
         self.assertEqual(self.user.get_licence(), 'Cloud')
         self.user.assigned_licences = ['foo', 'bar']

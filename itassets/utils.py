@@ -25,7 +25,11 @@ def ms_graph_client_token():
         authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
     )
     scope = "https://graph.microsoft.com/.default"
-    return context.acquire_token_for_client(scope)
+    try:
+        token = context.acquire_token_for_client(scope)
+        return token
+    except:
+        return None
 
 
 def ms_security_api_client_token():
@@ -428,3 +432,12 @@ def human_time_duration(seconds: int) -> str:
         if amount > 0:
             parts.append('{} {}{}'.format(amount, unit, "" if amount == 1 else "s"))
     return ', '.join(parts)
+
+
+def humanise_bytes(bytes: int) -> str:
+    """For a passed-in integer (bytes), return a human-readable string.
+    """
+    for x in ["B", "KB", "MB", "GB", "TB", "PB"]:
+        if bytes < 1024.0:
+            return "{:3.1f} {}".format(bytes, x)
+        bytes /= 1024.0

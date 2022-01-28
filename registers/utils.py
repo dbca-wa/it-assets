@@ -48,6 +48,9 @@ def search_filter(search_fields, query_string):
 
 def ms_graph_sharepoint_users():
     token = ms_graph_client_token()
+    if not token:
+        return None
+
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
@@ -69,6 +72,9 @@ def ms_graph_sharepoint_users():
 
 def ms_graph_sharepoint_it_systems():
     token = ms_graph_client_token()
+    if not token:
+        return None
+
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",

@@ -1,17 +1,15 @@
 from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
-from django.db.models import Q
-import json
 import logging
 import os
 from tempfile import NamedTemporaryFile
 
 from organisation.models import DepartmentUser
-from organisation.utils import ascender_onprem_ad_data_diff
+from organisation.utils import department_user_ascender_sync
 
 
 class Command(BaseCommand):
-    help = 'Generates a diff file between Ascender and on-premise AD data and uploads to Azure blob storage'
+    help = 'Generates a CSV containing user data that should be updated in Ascender'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -26,19 +24,21 @@ class Command(BaseCommand):
             action='store',
             dest='path',
             required=True,
-            help='JSON upload path'
+            help='Upload file path'
         )
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
-        logger.info('Generating diff between Ascender and on-premise AD data')
-        queryset = DepartmentUser.objects.filter(employee_id__isnull=False, ascender_data__isnull=False, ad_guid__isnull=False, ad_data__isnull=False)
-        queryset = queryset.exclude(Q(ad_data={}) | Q(ascender_data={}))  # Exclude users with no AD data or no Ascender data.
-        discrepancies = ascender_onprem_ad_data_diff(queryset)
+        logger.info('Generating CSV of department user data')
+        users = DepartmentUser.objects.filter(
+            employee_id__isnull=False,
+            telephone__isnull=False,
+        ).exclude(telephone='').order_by('employee_id')
+        data = department_user_ascender_sync(users)
         f = NamedTemporaryFile()
-        f.write(json.dumps(discrepancies, indent=2).encode('utf-8'))
+        f.write(data.getbuffer())
 
-        logger.info('Uploading diff JSON to Azure blob storage')
+        logger.info('Uploading CSV to Azure blob storage')
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
         store = AzureBlobStorage(connect_string, options['container'])
         store.upload_file(options['path'], f.name)

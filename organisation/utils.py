@@ -1,11 +1,13 @@
 from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from django.conf import settings
+from io import BytesIO
 import json
 import os
 import pytz
 import re
 import requests
+import unicodecsv as csv
 from itassets.utils import ms_graph_client_token
 
 TZ = pytz.timezone(settings.TIME_ZONE)
@@ -42,7 +44,7 @@ def title_except(
         else:
             post = ''
 
-        if word.upper() in acronyms:
+        if word.replace(',', '').upper() in acronyms:
             word = word.upper()
         elif word in exceptions:
             pass
@@ -54,164 +56,20 @@ def title_except(
     return ' '.join(words_title)
 
 
-def ascender_onprem_ad_data_diff(queryset):
-    """A utility function to compare on-premise AD user account data with Ascender HR data.
-    TODO: replace this with a method on DepartmentUser - we have get_ascender_discrepancies(),
-    but that method doesn't quite serve the same purpose yet.
-    """
-    discrepancies = []
-
-    # Iterate through DepartmentUsers and check for mismatches between Ascender and onprem AD data.
-    for user in queryset:
-        if user.ad_data and user.ascender_data:
-            # First name - check against preferred name, then first name (case insensitive).
-            name_mismatch = False
-            if 'preferred_name' in user.ascender_data and user.ascender_data['preferred_name']:
-                if 'preferred_name' in user.ascender_data and 'GivenName' in user.ad_data and user.ad_data['GivenName'].upper() != user.ascender_data['preferred_name'].upper() and user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
-                    name_mismatch = True
-            else:
-                if 'first_name' in user.ascender_data and 'GivenName' in user.ad_data and user.ad_data['GivenName'].upper() != user.ascender_data['first_name'].upper():
-                    name_mismatch = True
-            if name_mismatch:
-                new_val = user.ascender_data['preferred_name'].title() if user.ascender_data['preferred_name'] else user.ascender_data['first_name'].title()
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'GivenName',
-                    'old_value': user.ad_data['GivenName'],
-                    'new_value': new_val,
-                    'action': 'Update onprem AD user {} GivenName to {}'.format(user.ad_data['DistinguishedName'], new_val),
-                })
-
-            # Surname (case insensitive).
-            if 'surname' in user.ascender_data and 'Surname' in user.ad_data and user.ad_data['Surname'].upper() != user.ascender_data['surname'].upper():
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'Surname',
-                    'old_value': user.ad_data['Surname'],
-                    'new_value': user.ascender_data['surname'].title(),
-                    'action': 'Update onprem AD user {} Surname to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['surname'].title()),
-                })
-
-            # Phone number (disregard differences in spaces and brackets).
-            if 'telephoneNumber' in user.ad_data and user.ad_data['telephoneNumber']:
-                ad_tel = user.ad_data['telephoneNumber'].replace('(', '').replace(')', '').replace(' ', '')
-            else:
-                ad_tel = ''
-            if user.ascender_data['work_phone_no']:
-                asc_tel = user.ascender_data['work_phone_no'].replace('(', '').replace(')', '').replace(' ', '')
-            else:
-                asc_tel = ''
-            if ad_tel != asc_tel:
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'OfficePhone',
-                    'old_value': user.ad_data['telephoneNumber'],
-                    'new_value': user.ascender_data['work_phone_no'],
-                    'action': 'Update onprem AD user {} OfficePhone to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['work_phone_no']),
-                })
-
-            # Mobile number (disregard differences in spaces).
-            if 'Mobile' in user.ad_data and user.ad_data['Mobile']:
-                ad_mob = user.ad_data['Mobile'].replace(' ', '')
-            else:
-                ad_mob = ''
-            if user.ascender_data['work_mobile_phone_no']:
-                asc_mob = user.ascender_data['work_mobile_phone_no'].replace(' ', '')
-            else:
-                asc_mob = ''
-            if ad_mob != asc_mob:
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'MobilePhone',
-                    'old_value': user.ad_data['Mobile'],
-                    'new_value': user.ascender_data['work_mobile_phone_no'],
-                    'action': 'Update onprem AD user {} MobilePhone to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['work_mobile_phone_no']),
-                })
-
-            # Title
-            if 'Title' in user.ad_data and user.ad_data['Title']:
-                ad_title = user.ad_data['Title'].upper().replace('&', 'AND').replace(',', '')
-            else:
-                ad_title = ''
-            if 'occup_pos_title' in user.ascender_data and user.ascender_data['occup_pos_title']:
-                ascender_title = user.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
-            else:
-                ascender_title = ''
-            if ad_title != ascender_title:
-                new_val = title_except(user.ascender_data['occup_pos_title'])
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'Title',
-                    'old_value': user.ad_data['Title'] if 'Title' in user.ad_data else '',
-                    'new_value': new_val,
-                    'action': 'Update onprem AD user {} Title to {}'.format(user.ad_data['DistinguishedName'], new_val),
-                })
-
-            # Cost centre
-            # We have to handle these a bit differently to the above.
-            if 'Company' in user.ad_data and user.ad_data['Company']:
-                ad_cc = user.ad_data['Company']
-            else:
-                ad_cc = ''
-
-            if user.ascender_data['paypoint'].startswith('R'):
-                asc_cc = user.ascender_data['paypoint'].replace('R', 'RIA-')
-            elif user.ascender_data['paypoint'].startswith('Z'):
-                asc_cc = user.ascender_data['paypoint'].replace('Z', 'ZPA-')
-            elif user.ascender_data['paypoint'].startswith('K'):
-                asc_cc = user.ascender_data['paypoint']
-            elif user.ascender_data['paypoint'][0] in '1234567890':
-                asc_cc = 'DBCA-{}'.format(user.ascender_data['paypoint'])
-            else:
-                asc_cc = ''
-
-            if asc_cc != ad_cc:
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'Company',
-                    'old_value': user.ad_data['Company'],
-                    'new_value': asc_cc,
-                    'action': 'Update onprem AD user {} Company to {}'.format(user.ad_data['DistinguishedName'], asc_cc),
-                })
-
-            # Employee ID
-            if 'employee_id' in user.ascender_data and 'EmployeeID' in user.ad_data and user.ad_data['EmployeeID'] != user.ascender_data['employee_id']:
-                discrepancies.append({
-                    'ascender_id': user.employee_id,
-                    'target': 'On-premise AD',
-                    'target_pk': user.ad_guid,
-                    'field': 'EmployeeID',
-                    'old_value': user.ad_data['EmployeeID'],
-                    'new_value': user.ascender_data['employee_id'],
-                    'action': 'Update onprem AD user {} EmployeeID to {}'.format(user.ad_data['DistinguishedName'], user.ascender_data['employee_id']),
-                })
-
-    return discrepancies
-
-
 def ms_graph_users(licensed=False):
     """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
     """
     token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$orderby=userPrincipalName&$count=true&$expand=manager($levels=1;$select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
@@ -238,6 +96,7 @@ def ms_graph_users(licensed=False):
             'jobTitle': user['jobTitle'] if user['jobTitle'] else None,
             'telephoneNumber': user['businessPhones'][0] if user['businessPhones'] else None,
             'mobilePhone': user['mobilePhone'] if user['mobilePhone'] else None,
+            'department': user['department'] if user['department'] else None,
             'companyName': user['companyName'] if user['companyName'] else None,
             'officeLocation': user['officeLocation'] if user['officeLocation'] else None,
             'proxyAddresses': [i.lower().replace('smtp:', '') for i in user['proxyAddresses'] if i.lower().startswith('smtp')],
@@ -259,6 +118,9 @@ def ms_graph_users_signinactivity(licensed=False):
     """Query the MS Graph (Beta) API for a list of Azure AD account with sign-in activity.
     """
     token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         'Content-Type': 'application/json',
@@ -293,6 +155,9 @@ def ms_graph_inactive_users(days=45):
     now = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     then = now - timedelta(days=days)
     token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
     headers = {"Authorization": "Bearer {}".format(token["access_token"]), "Content-Type": "application/json"}
     url = "https://graph.microsoft.com/beta/users?filter=signInActivity/lastSignInDateTime le {}".format(then.strftime('%Y-%m-%dT%H:%M:%SZ'))
     resp = requests.get(url, headers=headers)
@@ -340,3 +205,21 @@ def parse_windows_ts(s):
         return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
     except:
         return None
+
+
+def department_user_ascender_sync(users):
+    """For a passed-in queryset of Department Users and a file-like object, return a CSV containing
+    data that should be synced to Ascender.
+    """
+    """Using a passed-in queryset of HardwareAsset objects, return a CSV.
+    """
+    f = BytesIO()
+    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding='utf-8')
+    writer.writerow(['EMPLOYEE_ID', 'EMAIL', 'WORK_TELEPHONE'])
+    for user in users:
+        writer.writerow([
+            user.employee_id,
+            user.email.lower(),
+            user.telephone,
+        ])
+    return f
