@@ -557,18 +557,6 @@ class DepartmentUser(models.Model):
                 )
                 actions.append(action)
 
-            if 'companyName' in self.azure_ad_data and ((self.cost_centre and self.cost_centre.code != self.azure_ad_data['companyName']) or (not self.cost_centre and self.azure_ad_data['companyName'])):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='CompanyName',
-                    ad_field_value=self.azure_ad_data['companyName'],
-                    field='cost_centre',
-                    field_value=self.cost_centre.code if self.cost_centre else None,
-                    completed=None,
-                )
-                actions.append(action)
-
             if 'officeLocation' in self.azure_ad_data and ((self.location and self.location.name != self.azure_ad_data['officeLocation']) or (not self.location and self.azure_ad_data['officeLocation'])):
                 action, created = ADAction.objects.get_or_create(
                     department_user=self,
