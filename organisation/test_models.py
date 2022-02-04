@@ -129,30 +129,6 @@ class DepartmentUserTestCase(TestCase):
 
     # Mobile is basically the same as telephoneNumber, and Azure AD is the same as onprem.
 
-    def test_generate_azure_ad_actions_cost_centre(self):
-        self.user.dir_sync_enabled = False
-        self.user.azure_guid = uuid1
-        # Case 1: CC is set locally, no CC is set in Azure AD.
-        self.user.cost_centre = self.cc
-        self.user.azure_ad_data = {
-            'companyName': None,
-        }
-        self.user.save()
-        actions = self.user.generate_ad_actions()
-        self.assertTrue(actions)
-        # Case 2: different CC is set in each.
-        self.user.azure_ad_data = {
-            'companyName': random_string(),
-        }
-        self.user.save()
-        actions = self.user.generate_ad_actions()
-        self.assertTrue(actions)
-        # Case 3: no CC is set locally, Azure AD has CC set.
-        self.user.cost_centre = None
-        self.user.save()
-        actions = self.user.generate_ad_actions()
-        self.assertTrue(actions)
-
     def test_generate_ad_actions_manager(self):
         self.user.ad_guid = uuid1
         # Case 1: manager is set locally, no manager is set in AD.
