@@ -109,6 +109,7 @@ class Command(BaseCommand):
         for du in DepartmentUser.objects.filter(azure_guid__isnull=False, email__iendswith='@dbca.wa.gov.au'):
             if du.azure_guid not in azure_users:
                 logger.info("ONPREM AD SYNC: Azure AD GUID {} not found in MS Graph output; clearing it from {}".format(du.azure_guid, du))
+                du.active = False
                 du.azure_guid = None
                 du.azure_ad_data = {}
                 du.azure_ad_data_updated = datetime.now(timezone.utc)

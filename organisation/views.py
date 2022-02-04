@@ -133,7 +133,7 @@ class OrgUnitAPIResource(View):
 
 
 class LicenseAPIResource(View):
-    """An API view that returns a list of Microsoft-licensed accounts.
+    """An API view that returns a list of active Microsoft-licensed accounts.
     """
 
     def get(self, request, *args, **kwargs):
