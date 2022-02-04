@@ -106,9 +106,10 @@ class Command(BaseCommand):
 
         # Iterate through department users and clear any nonexistent Azure AD GUID values.
         azure_users = {i['objectId']: i for i in azure_users}
-        for du in DepartmentUser.objects.filter(azure_guid__isnull=False, email__iendswith='@dbca.wa.gov.au'):
+        for du in DepartmentUser.objects.filter(azure_guid__isnull=False):
             if du.azure_guid not in azure_users:
                 logger.info("ONPREM AD SYNC: Azure AD GUID {} not found in MS Graph output; clearing it from {}".format(du.azure_guid, du))
+                du.active = False
                 du.azure_guid = None
                 du.azure_ad_data = {}
                 du.azure_ad_data_updated = datetime.now(timezone.utc)
