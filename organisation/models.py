@@ -680,7 +680,7 @@ class DepartmentUser(models.Model):
             today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
 
             # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
-            if job_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
+            if self.active and job_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
                 LOGGER.info(f"ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their AD account")
 
                 # Create a DepartmentUserLog object to record this update.
