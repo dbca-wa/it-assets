@@ -681,7 +681,8 @@ class DepartmentUser(models.Model):
 
             # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
             if self.active and job_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
-                LOGGER.info(f"ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their AD account")
+                t = 'onprem' if self.dir_sync_enabled else 'cloud'
+                LOGGER.info(f'ASCENDER SYNC: {self} job is past termination date of {job_term_date.date()}; deactivating their {t} AD account')
 
                 # Create a DepartmentUserLog object to record this update.
                 DepartmentUserLog.objects.create(
@@ -690,6 +691,7 @@ class DepartmentUser(models.Model):
                         'ascender_field': 'job_term_date',
                         'old_value': self.ascender_data['job_term_date'],
                         'new_value': None,
+                        'description': f'Deactivate {t} AD account',
                     },
                 )
 
@@ -743,6 +745,7 @@ class DepartmentUser(models.Model):
                             'ascender_field': 'paypoint',
                             'old_value': self.cost_centre.ascender_code,
                             'new_value': paypoint,
+                            'description': 'Update CC value from Ascender',
                         },
                     )
                 else:
@@ -753,6 +756,7 @@ class DepartmentUser(models.Model):
                             'ascender_field': 'paypoint',
                             'old_value': None,
                             'new_value': paypoint,
+                            'description': 'Set CC value from Ascender',
                         },
                     )
 

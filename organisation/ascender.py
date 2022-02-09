@@ -184,6 +184,7 @@ def ascender_db_import(verbose=False):
                             'ascender_field': 'position_no',
                             'old_value': user.ascender_data['position_no'],
                             'new_value': job['position_no'],
+                            'description': 'Update position_no value from Ascender',
                         },
                     )
                     if verbose:
