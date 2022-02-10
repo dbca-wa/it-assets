@@ -354,8 +354,8 @@ class SyncIssues(LoginRequiredMixin, TemplateView):
         context['deptuser_expdate_diff'] = []
         for du in du_users:
             if du.ascender_data and du.ad_data:
-                if du.ascender_data['job_term_date'] and du.ad_data['AccountExpirationDate']:
-                    ascender_date = datetime.strptime(du.ascender_data['job_term_date'], '%Y-%m-%d').date()
+                if du.ascender_data['occup_term_date'] and du.ad_data['AccountExpirationDate']:
+                    ascender_date = datetime.strptime(du.ascender_data['occup_term_date'], '%Y-%m-%d').date()
                     onprem_date = parse_windows_ts(du.ad_data['AccountExpirationDate']).date()
                     delta = ascender_date - onprem_date
                     if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.

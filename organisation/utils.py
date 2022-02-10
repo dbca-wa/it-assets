@@ -211,15 +211,15 @@ def department_user_ascender_sync(users):
     """For a passed-in queryset of Department Users and a file-like object, return a CSV containing
     data that should be synced to Ascender.
     """
-    """Using a passed-in queryset of HardwareAsset objects, return a CSV.
-    """
     f = BytesIO()
     writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding='utf-8')
-    writer.writerow(['EMPLOYEE_ID', 'EMAIL', 'WORK_TELEPHONE'])
+    writer.writerow(['EMPLOYEE_ID', 'EMAIL', 'ACTIVE', 'WORK_TELEPHONE', 'LICENCE_TYPE'])
     for user in users:
         writer.writerow([
             user.employee_id,
             user.email.lower(),
+            user.active,
             user.telephone,
+            user.get_licence(),
         ])
     return f

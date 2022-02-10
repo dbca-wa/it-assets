@@ -183,8 +183,8 @@ class DepartmentUserAdmin(admin.ModelAdmin):
         return ''
 
     def job_termination_date(self, instance):
-        if instance.get_job_term_date():
-            return instance.get_job_term_date().strftime('%d-%B-%Y')
+        if instance.get_occup_term_date():
+            return instance.get_occup_term_date().strftime('%d-%B-%Y')
         return ''
 
     def get_urls(self):

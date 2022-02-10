@@ -1,18 +1,9 @@
 from datetime import datetime, timezone
 from django.core.management.base import BaseCommand
 import logging
-from multiprocessing import Process, Queue
 
 from organisation.models import DepartmentUser, CostCentre, Location
 from organisation.utils import ms_graph_users
-
-
-def get_users(queue):
-    # Worker function to call the Graph API via a process queue.
-    azure_users = queue.get()
-    azure_users = ms_graph_users()
-    queue.put(azure_users)
-    return
 
 
 class Command(BaseCommand):
@@ -21,20 +12,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Querying Microsoft Graph API for Azure AD user accounts')
-
-        # Call the MS Graph API in a separate process with a timeout.
-        azure_users = None
-        queue = Queue()
-        queue.put(azure_users)
-        process = Process(target=get_users, args=(queue,))
-        process.start()
-        process.join(timeout=80)  # Give this function a maximum time to finish (process will block for this duration, regardless).
-        logger.info('Completed')
-        azure_users = queue.get()
-
-        if not process.exitcode == 0:
-            logger.error('Queued process did not complete in time')
-            return
+        azure_users = ms_graph_users()
 
         if not azure_users:
             logger.error('Microsoft Graph API returned no data')
