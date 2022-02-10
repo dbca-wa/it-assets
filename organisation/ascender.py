@@ -36,7 +36,7 @@ FOREIGN_TABLE_FIELDS = (
     "geo_location_desc",
     "occup_type",
     ("job_start_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
-    ("occup_term_date", "job_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    ("occup_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
@@ -125,9 +125,9 @@ def ascender_job_sort_key(record):
     tomorrow = today + timedelta(days=1)
     # Initial score from occup_term_date
     score = (
-        (int(record["job_term_date"].replace("-", "")) * 10000)
-        if record["job_term_date"]
-        and record["job_term_date"] <= today.strftime("%Y-%m-%d")
+        (int(record["occup_term_date"].replace("-", "")) * 10000)
+        if record["occup_term_date"]
+        and record["occup_term_date"] <= today.strftime("%Y-%m-%d")
         else int(tomorrow.strftime("%Y%m%d0000"))
     )
     # Second score based emp_status

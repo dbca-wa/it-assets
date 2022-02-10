@@ -44,9 +44,9 @@ class Command(BaseCommand):
         jobs_active = []
         jobs_terminated = []
         for job in ascender_jobs.values():
-            if 'job_term_date' in job and job['job_term_date']:
-                job_term_date = datetime.strptime(job['job_term_date'], '%Y-%m-%d')
-                if job_term_date < today:
+            if 'occup_term_date' in job and job['occup_term_date']:
+                occup_term_date = datetime.strptime(job['occup_term_date'], '%Y-%m-%d')
+                if occup_term_date < today:
                     jobs_terminated.append(job)
                     continue
             jobs_active.append(job)
