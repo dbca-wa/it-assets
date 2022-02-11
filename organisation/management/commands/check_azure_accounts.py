@@ -94,5 +94,3 @@ class Command(BaseCommand):
                 du.assigned_licences = []
                 du.dir_sync_enabled = None
                 du.save()
-
-        logger.info('Completed')

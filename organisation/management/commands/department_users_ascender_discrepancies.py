@@ -40,5 +40,3 @@ class Command(BaseCommand):
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
         store = AzureBlobStorage(connect_string, options['container'])
         store.upload_file(options['path'], f.name)
-
-        logger.info('Completed')
