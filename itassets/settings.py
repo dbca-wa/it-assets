@@ -110,6 +110,10 @@ VERSION_NO = '2.3.24'
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
 ASCENDER_DEACTIVATE_EXPIRED = env('ASCENDER_DEACTIVATE_EXPIRED', False)
+ASCENDER_SFTP_HOST = env('ASCENDER_SFTP_HOST', None)
+ASCENDER_SFTP_PORT = env('ASCENDER_SFTP_PORT', 22)
+ASCENDER_SFTP_USERNAME = env('ASCENDER_SFTP_USERNAME', None)
+ASCENDER_SFTP_PASSWORD = env('ASCENDER_SFTP_PASSWORD', None)
 
 # Ascender database view information
 FOREIGN_DB_HOST = env('FOREIGN_DB_HOST', None)

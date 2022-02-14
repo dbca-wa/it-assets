@@ -1,7 +1,7 @@
-from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
 import logging
 import os
+import pysftp
 from tempfile import NamedTemporaryFile
 
 from organisation.models import DepartmentUser
@@ -9,23 +9,7 @@ from organisation.utils import department_user_ascender_sync
 
 
 class Command(BaseCommand):
-    help = 'Generates a CSV containing user data that should be updated in Ascender'
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--container',
-            action='store',
-            dest='container',
-            required=True,
-            help='Azure container name'
-        )
-        parser.add_argument(
-            '--path',
-            action='store',
-            dest='path',
-            required=True,
-            help='Upload file path'
-        )
+    help = 'Generates a CSV containing user data that should be updated in Ascender and uploads it'
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
@@ -38,7 +22,16 @@ class Command(BaseCommand):
         f = NamedTemporaryFile()
         f.write(data.getbuffer())
 
-        logger.info('Uploading CSV to Azure blob storage')
-        connect_string = os.environ.get('AZURE_CONNECTION_STRING')
-        store = AzureBlobStorage(connect_string, options['container'])
-        store.upload_file(options['path'], f.name)
+        host = os.environ.get('ASCENDER_SFTP_HOSTNAME')
+        port = int(os.environ.get('ASCENDER_SFTP_PORT'))
+        username = os.environ.get('ASCENDER_SFTP_USERNAME')
+        password = os.environ.get('ASCENDER_SFTP_PASSWORD')
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
+        logger.info('Connecting to Ascender SFTP')
+        sftp = pysftp.Connection(host=host, port=port, username=username, password=password, cnopts=cnopts)
+        dir = os.environ.get('ASCENDER_SFTP_DIRECTORY')
+        sftp.chdir(dir)
+        logger.info('Uploading CSV to Ascender SFTP')
+        sftp.put(localpath=f.name, remotepath='department_users_details.csv')
+        sftp.close()
