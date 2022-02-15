@@ -1,11 +1,11 @@
-from django.contrib import admin
+#from django.contrib import admin
 from reversion.admin import VersionAdmin
 
 from itassets.utils import ModelDescMixin
 from .models import Dependency, Platform, RiskAssessment
 
 
-@admin.register(Dependency)
+#@admin.register(Dependency)
 class DependencyAdmin(ModelDescMixin, VersionAdmin):
     fields = ("content_type", "object_id", "category")
     list_display = ("content_object", "category", "updated")
@@ -14,7 +14,7 @@ class DependencyAdmin(ModelDescMixin, VersionAdmin):
     search_fields = ("name",)
 
 
-@admin.register(Platform)
+#@admin.register(Platform)
 class PlatformAdmin(ModelDescMixin, VersionAdmin):
     fields = ("name", "dependencies", "tier", "health")
     list_display = ("name", "tier", "health", "updated")
@@ -23,7 +23,7 @@ class PlatformAdmin(ModelDescMixin, VersionAdmin):
     search_fields = ("name",)
 
 
-@admin.register(RiskAssessment)
+#@admin.register(RiskAssessment)
 class RiskAssessmentAdmin(ModelDescMixin, VersionAdmin):
     fields = ("content_type", "object_id", "category", "rating", "notes")
     list_display = ("content_object", "category", "rating", "updated")

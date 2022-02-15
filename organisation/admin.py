@@ -7,6 +7,7 @@ from django.utils.html import format_html
 from django.views.generic import TemplateView
 from leaflet.admin import LeafletGeoAdmin
 
+from itassets.utils import ModelDescMixin
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
 from .views import DepartmentUserExport, DepartmentUserAscenderDiscrepancyExport
 
@@ -28,7 +29,7 @@ class DepartmentUserForm(forms.ModelForm):
 
 
 @admin.register(DepartmentUser)
-class DepartmentUserAdmin(admin.ModelAdmin):
+class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
 
     class UpdateUserDataFromAscender(TemplateView):
         """A small custom view to allow confirmation of updating department users from cached
@@ -85,7 +86,8 @@ class DepartmentUserAdmin(admin.ModelAdmin):
         'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
     )
     list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
-    search_fields = ('name', 'email', 'title', 'employee_id', 'preferred_name')
+    model_description = DepartmentUser.__doc__
+    search_fields = ('name', 'email', 'title', 'employee_id', 'ad_guid', 'azure_guid')
     raw_id_fields = ('manager',)
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
@@ -152,6 +154,9 @@ class DepartmentUserAdmin(admin.ModelAdmin):
             ),
         }),
     )
+
+    def has_add_permission(self, request):
+        return False
 
     def ascender_full_name(self, instance):
         return instance.get_ascender_full_name()

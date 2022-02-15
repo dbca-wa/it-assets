@@ -20,3 +20,4 @@ start_server
 .coverage
 *.swp
 .python-version
+*.csv

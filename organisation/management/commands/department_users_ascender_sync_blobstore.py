@@ -1,16 +1,15 @@
 from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
-from io import BytesIO
 import logging
 import os
 from tempfile import NamedTemporaryFile
 
 from organisation.models import DepartmentUser
-from organisation.reports import department_user_ascender_discrepancies
+from organisation.utils import department_user_ascender_sync
 
 
 class Command(BaseCommand):
-    help = 'Generates an Excel spreadsheet containing discrepancies between department user and Ascender data and uploads to Azure blob storage'
+    help = 'Generates a CSV containing user data that should be updated in Ascender and uploads it to Azure blob storage'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -30,13 +29,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
-        logger.info('Generating discrepancies between department user and Ascender data')
-        users = DepartmentUser.objects.all()
-        spreadsheet = department_user_ascender_discrepancies(BytesIO(), users)
+        logger.info('Generating CSV of department user data')
+        users = DepartmentUser.objects.filter(employee_id__isnull=False).order_by('employee_id')
+        data = department_user_ascender_sync(users)
         f = NamedTemporaryFile()
-        f.write(spreadsheet.getbuffer())
+        f.write(data.getbuffer())
 
-        logger.info('Uploading discrepancies to Azure blob storage')
+        logger.info('Uploading CSV to Azure blob storage')
         connect_string = os.environ.get('AZURE_CONNECTION_STRING')
         store = AzureBlobStorage(connect_string, options['container'])
         store.upload_file(options['path'], f.name)

@@ -123,5 +123,3 @@ class Command(BaseCommand):
                     logger.info('Skipping {} (probably an agent)'.format(user['mail']))
                 elif resp.status_code == 201:
                     resp.raise_for_status()
-
-        logger.info('Completed')

@@ -13,5 +13,3 @@ class Command(BaseCommand):
 
         for user in DepartmentUser.objects.filter(pk__in=user_pks):
             user.audit_ad_actions()
-
-        logger.info('Completed')
