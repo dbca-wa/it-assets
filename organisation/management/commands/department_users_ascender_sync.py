@@ -9,15 +9,12 @@ from organisation.utils import department_user_ascender_sync
 
 
 class Command(BaseCommand):
-    help = 'Generates a CSV containing user data that should be updated in Ascender and uploads it'
+    help = 'Generates a CSV containing user data that should be updated in Ascender and uploads it to SFTP'
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Generating CSV of department user data')
-        users = DepartmentUser.objects.filter(
-            employee_id__isnull=False,
-            telephone__isnull=False,
-        ).exclude(telephone='').order_by('employee_id')
+        users = DepartmentUser.objects.filter(employee_id__isnull=False).order_by('employee_id')
         data = department_user_ascender_sync(users)
         f = NamedTemporaryFile()
         f.write(data.getbuffer())
