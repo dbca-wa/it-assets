@@ -16,7 +16,7 @@ LOGGER = logging.getLogger('organisation')
 
 
 class DepartmentUser(models.Model):
-    """Represents a Department user. Maps to an object managed by Active Directory.
+    """Represents a user account managed in Active Directory.
     """
     ACTIVE_FILTER = {'active': True, 'contractor': False}
     # The following choices are intended to match options in Ascender.
@@ -326,12 +326,11 @@ class DepartmentUser(models.Model):
     def get_ascender_org_path(self):
         """From Ascender data, return the users's organisation tree path as a list of section names.
         """
+        path = []
         if self.ascender_data and 'clevel1_desc' in self.ascender_data and 'clevel2_desc' in self.ascender_data and 'clevel3_desc' in self.ascender_data and 'clevel4_desc' in self.ascender_data and 'clevel5_desc' in self.ascender_data:
             data = [self.ascender_data['clevel1_desc'], self.ascender_data['clevel2_desc'], self.ascender_data['clevel3_desc'], self.ascender_data['clevel4_desc'], self.ascender_data['clevel5_desc']]
-            path = []
             [path.append(i) for i in data if i not in path]
-            return path
-        return []
+        return path
 
     def get_geo_location_desc(self):
         """From Ascender data, return the user's geographical location description.
