@@ -271,6 +271,13 @@ class DepartmentUser(models.Model):
             return self.org_unit.division_unit
         return self.org_unit
 
+    def get_division(self):
+        """Returns the name of the division this user belongs to, based upon their cost centre.
+        """
+        if self.cost_centre:
+            return self.cost_centre.get_division_name_display()
+        return None
+
     def get_licence(self):
         """Return Microsoft 365 licence description consistent with other OIM communications.
         """
@@ -793,13 +800,13 @@ class DepartmentUser(models.Model):
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
                 # Onprem AD users - Division
-                if self.dir_sync_enabled and self.group_unit and self.ad_guid and self.ad_data and 'Department' in self.ad_data and self.ad_data['Department'] != self.group_unit.name:
+                if self.dir_sync_enabled and self.get_division() and self.ad_guid and self.ad_data and 'Department' in self.ad_data and self.ad_data['Department'] != self.get_division():
                     # Generate and upload a "change" object to blob storage.
                     prop = 'Department'
                     change = {
                         'identity': self.ad_guid,
                         'property': prop,
-                        'value': self.group_unit.name,
+                        'value': self.get_division(),
                     }
                     f = NamedTemporaryFile()
                     f.write(json.dumps(change, indent=2).encode('utf-8'))
@@ -810,7 +817,7 @@ class DepartmentUser(models.Model):
                     LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
 
                 # Azure (cloud only) AD users - Division.
-                elif not self.dir_sync_enabled and self.group_unit and self.azure_guid and self.azure_ad_data and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.group_unit.name:
+                elif not self.dir_sync_enabled and self.get_division() and self.azure_guid and self.azure_ad_data and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.get_division():
                     token = ms_graph_client_token()
                     if token:
                         headers = {
@@ -818,10 +825,10 @@ class DepartmentUser(models.Model):
                             "Content-Type": "application/json",
                         }
                         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
-                        data = {"department": self.group_unit.name}
+                        data = {"department": self.get_division()}
                         resp = requests.patch(url, headers=headers, json=data)
                         resp.raise_for_status()
-                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account department set to {self.group_unit.name}')
+                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account department set to {self.get_division()}')
 
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database'.format(self.ascender_data['paypoint']))
