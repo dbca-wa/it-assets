@@ -9,4 +9,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Querying Ascender database for employee information')
-        ascender_db_import(verbose=options['verbosity'] > 0)
+        ascender_db_import()

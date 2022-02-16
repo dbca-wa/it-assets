@@ -162,7 +162,7 @@ def ascender_employee_fetch():
         yield (employee_id, records)
 
 
-def ascender_db_import(verbose=False):
+def ascender_db_import():
     """A utility function to cache data from Ascender to a matching DepartmentUser object.
     """
     employee_iter = ascender_employee_fetch()
@@ -187,15 +187,11 @@ def ascender_db_import(verbose=False):
                             'description': 'Update position_no value from Ascender',
                         },
                     )
-                    if verbose:
-                        LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
+                    LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
 
                 user.ascender_data = job
                 user.ascender_data_updated = TZ.localize(datetime.now())
                 user.update_from_ascender_data()  # This method calls save()
-            else:
-                if verbose:
-                    LOGGER.warning(f"Could not match Ascender employee ID {eid} to any department user")
 
 
 def get_ascender_matches():
