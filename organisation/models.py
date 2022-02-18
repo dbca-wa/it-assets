@@ -306,14 +306,14 @@ class DepartmentUser(models.Model):
         """From Ascender data, return the users's full name.
         """
         if self.ascender_data:
-            _ = []
+            name = []
             if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
-                _.append(self.ascender_data['first_name'])
+                name.append(self.ascender_data['first_name'])
             if 'second_name' in self.ascender_data and self.ascender_data['second_name']:
-                _.append(self.ascender_data['second_name'])
+                name.append(self.ascender_data['second_name'])
             if 'surname' in self.ascender_data and self.ascender_data['surname']:
-                _.append(self.ascender_data['surname'])
-            return ' '.join(_)
+                name.append(self.ascender_data['surname'])
+            return ' '.join(name)
         return ''
 
     def get_position_title(self):
@@ -363,111 +363,88 @@ class DepartmentUser(models.Model):
     def generate_ad_actions(self):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
-        TODO: refactor this method with reference to the ascender_onprem_diff management command,
-        once Ascender becomes the source of truth.
         """
         actions = []
 
         if self.dir_sync_enabled:
-            # On-prem AD
+            # On-prem AD - generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
             if not self.ad_guid or not self.ad_data:
                 return []
 
-            if 'DisplayName' in self.ad_data and self.ad_data['DisplayName'] != self.name:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='DisplayName',
-                    ad_field_value=self.ad_data['DisplayName'],
-                    field='name',
-                    field_value=self.name,
-                    completed=None,
-                )
-                actions.append(action)
-
-            if 'GivenName' in self.ad_data and self.ad_data['GivenName'] != self.given_name:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='GivenName',
-                    ad_field_value=self.ad_data['GivenName'],
-                    field='given_name',
-                    field_value=self.given_name,
-                    completed=None,
-                )
-                actions.append(action)
-
-            if 'Surname' in self.ad_data and self.ad_data['Surname'] != self.surname:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='Surname',
-                    ad_field_value=self.ad_data['Surname'],
-                    field='surname',
-                    field_value=self.surname,
-                    completed=None,
-                )
-                actions.append(action)
-
             if 'Title' in self.ad_data and self.ad_data['Title'] != self.title:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='Title',
-                    ad_field_value=self.ad_data['Title'],
-                    field='title',
-                    field_value=self.title,
-                    completed=None,
-                )
-                actions.append(action)
+                prop = 'Title'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.title,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                store = AzureBlobStorage(connect_string, 'azuread')
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'telephoneNumber' in self.ad_data and not compare_values(self.ad_data['telephoneNumber'], self.telephone):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='OfficePhone',
-                    ad_field_value=self.ad_data['telephoneNumber'],
-                    field='telephone',
-                    field_value=self.telephone,
-                    completed=None,
-                )
-                actions.append(action)
+                prop = 'telephoneNumber'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.telephone,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                store = AzureBlobStorage(connect_string, 'azuread')
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'Mobile' in self.ad_data and not compare_values(self.ad_data['Mobile'], self.mobile_phone):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='MobilePhone',
-                    ad_field_value=self.ad_data['Mobile'],
-                    field='mobile_phone',
-                    field_value=self.mobile_phone,
-                    completed=None,
-                )
-                actions.append(action)
+                prop = 'Mobile'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.mobile_phone,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                store = AzureBlobStorage(connect_string, 'azuread')
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location and self.location.name != self.ad_data['physicalDeliveryOfficeName']) or (not self.location and self.ad_data['physicalDeliveryOfficeName'])):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='Office',
-                    ad_field_value=self.ad_data['physicalDeliveryOfficeName'],
-                    field='location',
-                    field_value=self.location.name if self.location else None,
-                    completed=None,
-                )
-                actions.append(action)
+                prop = 'StreetAddress'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.location.name if self.location else None,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                store = AzureBlobStorage(connect_string, 'azuread')
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='EmployeeID',
-                    ad_field_value=self.ad_data['EmployeeID'],
-                    field='employee_id',
-                    field_value=self.employee_id,
-                    completed=None,
-                )
-                actions.append(action)
+                prop = 'EmployeeID'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.employee_id,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                store = AzureBlobStorage(connect_string, 'azuread')
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'Manager' in self.ad_data:
                 if self.ad_data['Manager'] and DepartmentUser.objects.filter(active=True, ad_data__DistinguishedName=self.ad_data['Manager']).exists():
@@ -476,116 +453,88 @@ class DepartmentUser(models.Model):
                     manager_ad = None
 
                 if self.manager != manager_ad:
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field='Manager',
-                        ad_field_value=self.manager.ad_guid if self.manager else None,
-                        field='manager',
-                        field_value=self.manager.email if self.manager else None,
-                        completed=None,
-                    )
-                    actions.append(action)
+                    prop = 'Manager'
+                    change = {
+                        'identity': self.ad_guid,
+                        'property': prop,
+                        'value': self.manager.ad_guid if self.manager else None,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                    store = AzureBlobStorage(connect_string, 'azuread')
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         else:
-            # Azure AD
+            # Azure AD - cloud-only user.
             if not self.azure_guid or not self.azure_ad_data:
                 return []
 
-            if 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='DisplayName',
-                    ad_field_value=self.azure_ad_data['displayName'],
-                    field='name',
-                    field_value=self.name,
-                    completed=None,
-                )
-                actions.append(action)
-
-            if 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='GivenName',
-                    ad_field_value=self.azure_ad_data['givenName'],
-                    field='given_name',
-                    field_value=self.given_name,
-                    completed=None,
-                )
-                actions.append(action)
-
-            if 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='Surname',
-                    ad_field_value=self.azure_ad_data['surname'],
-                    field='surname',
-                    field_value=self.surname,
-                    completed=None,
-                )
-                actions.append(action)
-
             if 'jobTitle' in self.azure_ad_data and self.azure_ad_data['jobTitle'] != self.title:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='JobTitle',
-                    ad_field_value=self.azure_ad_data['jobTitle'],
-                    field='title',
-                    field_value=self.title,
-                    completed=None,
-                )
-                actions.append(action)
+                token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"jobTitle": self.title}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account jobTitle set to {self.title}')
 
             if 'telephoneNumber' in self.azure_ad_data and not compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='TelephoneNumber',
-                    ad_field_value=self.azure_ad_data['telephoneNumber'],
-                    field='telephone',
-                    field_value=self.telephone,
-                    completed=None,
-                )
-                actions.append(action)
+                token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"businessPhones": [self.telephone if self.telephone else " "]}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
 
             if 'mobilePhone' in self.azure_ad_data and not compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='Mobile',
-                    ad_field_value=self.azure_ad_data['mobilePhone'],
-                    field='mobile_phone',
-                    field_value=self.mobile_phone,
-                    completed=None,
-                )
-                actions.append(action)
+                token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"mobilePhone": self.mobile_phone}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
 
             if 'officeLocation' in self.azure_ad_data and ((self.location and self.location.name != self.azure_ad_data['officeLocation']) or (not self.location and self.azure_ad_data['officeLocation'])):
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='StreetAddress',
-                    ad_field_value=self.azure_ad_data['officeLocation'],
-                    field='location',
-                    field_value=self.location.name if self.location else None,
-                    completed=None,
-                )
-                actions.append(action)
+                token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"officeLocation": self.location.name if self.location else None}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account officeLocation set to {self.location.name if self.location else None}')
 
             if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
-                action, created = ADAction.objects.get_or_create(
-                    department_user=self,
-                    action_type='Change account field',
-                    ad_field='EmployeeId',
-                    ad_field_value=self.azure_ad_data['employeeId'],
-                    field='employee_id',
-                    field_value=self.employee_id,
-                    completed=None,
-                )
-                actions.append(action)
+                token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"employeeId": self.employee_id}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
 
             if 'manager' in self.azure_ad_data:
                 if self.azure_ad_data['manager'] and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
@@ -593,17 +542,18 @@ class DepartmentUser(models.Model):
                 else:
                     manager_ad = None
 
-                if self.manager != manager_ad:
-                    action, created = ADAction.objects.get_or_create(
-                        department_user=self,
-                        action_type='Change account field',
-                        ad_field='Manager',
-                        ad_field_value=self.manager.ad_guid if self.manager else None,
-                        field='manager',
-                        field_value=self.manager.email if self.manager else None,
-                        completed=None,
-                    )
-                    actions.append(action)
+                if self.manager and self.manager.azure_guid and self.manager != manager_ad:
+                    token = ms_graph_client_token()
+                    if token:
+                        headers = {
+                            "Authorization": "Bearer {}".format(token["access_token"]),
+                            "Content-Type": "application/json",
+                        }
+                        url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}/manager/$ref"
+                        data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{self.manager.azure_guid}"}
+                        resp = requests.put(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account manager set to {self.manager}')
 
         return actions
 
