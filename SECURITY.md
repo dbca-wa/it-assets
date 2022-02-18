@@ -2,4 +2,4 @@
 
 ## Reporting a Vulnerability
 
-Please report any vulnerabilities to itsm at dbca.wa.gov.au
+Please report any vulnerabilities to OIMSecurity at dbca.wa.gov.au
