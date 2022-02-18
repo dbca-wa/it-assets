@@ -364,8 +364,6 @@ class DepartmentUser(models.Model):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
         """
-        actions = []
-
         if self.dir_sync_enabled:
             # On-prem AD - generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
             if not self.ad_guid or not self.ad_data:
@@ -554,8 +552,6 @@ class DepartmentUser(models.Model):
                         resp = requests.put(url, headers=headers, json=data)
                         resp.raise_for_status()
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account manager set to {self.manager}')
-
-        return actions
 
     def audit_ad_actions(self):
         """For this DepartmentUser object, check any incomplete ADAction
