@@ -13,7 +13,6 @@ from django.utils import timezone
 from itassets.models import OriginalConfigMixin
 from registers.models import ITSystem
 from rancher.models import Cluster, Workload, WorkloadListening
-from status.models import Host
 
 logger = logging.getLogger(__name__)
 
@@ -370,14 +369,6 @@ class WebServer(models.Model):
     desc = models.TextField(null=True, blank=True)
     modified = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    host = models.ForeignKey(
-        Host,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="webservers",
-        help_text="The equivalent Host object in the status application.",
-    )
 
     @property
     def hostname(self):
@@ -924,7 +915,7 @@ def apply_rules(context={}):
                 del_records.clear()
                 excluded_records.clear()
                 webserver_records.clear()
-                    
+
             webserver = record.webserver
 
             if path_normalizer_changed:
@@ -985,20 +976,20 @@ def apply_rules(context={}):
                     if log_record._changed:
                         log_record.save()
                         changed_records += 1
-    
+
                 if del_records:
                     WebAppAccessLog.objects.filter(id__in=del_records).delete()
-    
+
                 if excluded_records:
                     WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
-    
+
             if changed_records or del_records or excluded_records:
                 logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
 
             del_records.clear()
             excluded_records.clear()
             webserver_records.clear()
-                    
+
         log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
         log_starttime = log_obj.log_starttime if log_obj else None
         if context.get("lock_session"):
@@ -1035,9 +1026,9 @@ def apply_rules(context={}):
                 del_records.clear()
                 excluded_records.clear()
                 webserver_records.clear()
-                    
+
             webserver = record.webserver
-                    
+
             if path_normalizer_changed:
                 path_changed,request_path = RequestPathNormalizer.normalize_path(
                     record.webserver,
@@ -1096,20 +1087,20 @@ def apply_rules(context={}):
                     if log_record._changed:
                         log_record.save()
                         changed_records += 1
-    
+
                 if del_records:
                     WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
-    
+
                 if excluded_records:
                     WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
                     _change_dailyreport(log_day,webserver,excluded_records)
-    
+
             if changed_records or del_records or excluded_records:
                 logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
             del_records.clear()
             excluded_records.clear()
             webserver_records.clear()
-                    
+
         log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
         log_day = log_obj.log_day if log_obj else None
         if context.get("lock_session"):
@@ -1215,12 +1206,12 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
                 first_populate_log_day = None
 
         if not first_populate_log_day:
-            return 
+            return
 
         obj = WebAppAccessLog.objects.all().order_by("-log_starttime").first()
         last_log_datetime = timezone.localtime(obj.log_starttime) if obj else None
         if not last_log_datetime:
-            return 
+            return
         elif last_log_datetime.hour == 23:
             last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day) + timedelta(days=1))
         else:
@@ -1277,12 +1268,12 @@ class WebAppAccessDailyReport(models.Model):
                 first_populate_log_day = None
 
         if not first_populate_log_day:
-            return 
+            return
 
         obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
         last_populate_log_day = obj.log_day if obj else None
         if not last_populate_log_day:
-            return 
+            return
         last_populate_log_day += timedelta(days=1)
 
         populate_log_day = first_populate_log_day
