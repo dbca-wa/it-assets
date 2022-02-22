@@ -32,7 +32,6 @@ RUN poetry config virtualenvs.create false \
 # Install the project.
 FROM python_libs_itassets
 COPY gunicorn.py manage.py ./
-COPY assets ./assets
 COPY itassets ./itassets
 COPY registers ./registers
 COPY status ./status

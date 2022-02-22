@@ -46,7 +46,6 @@ INSTALLED_APPS = (
     # Project applications:
     'organisation',
     'registers',
-    'assets',
     'status',
     'nginx',
     'rancher',
