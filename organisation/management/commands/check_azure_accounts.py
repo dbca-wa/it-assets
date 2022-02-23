@@ -42,6 +42,7 @@ class Command(BaseCommand):
                         existing_user.azure_ad_data = az
                         existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                         existing_user.update_from_azure_ad_data()
+                        existing_user.generate_ad_actions()
                         logger.info('AZURE AD SYNC: linked existing user {} with Azure objectId {}'.format(az['mail'], az['objectId']))
                         continue  # Skip to the next Azure user.
 
@@ -81,6 +82,7 @@ class Command(BaseCommand):
                     existing_user.azure_ad_data = az
                     existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                     existing_user.update_from_azure_ad_data()
+                    existing_user.generate_ad_actions()
 
         # Iterate through department users and clear any nonexistent Azure AD GUID values.
         azure_users = {i['objectId']: i for i in azure_users}
