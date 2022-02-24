@@ -495,7 +495,7 @@ class DepartmentUser(models.Model):
                     store = AzureBlobStorage(connect_string, 'azuread')
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                     LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-        else:
+        elif self.active and not self.dir_sync_enabled:
             # Azure AD - cloud-only user.
             if not self.azure_guid or not self.azure_ad_data:
                 return []
