@@ -367,9 +367,9 @@ class DepartmentUser(models.Model):
         # Edge case: for agency contractors (i.e. those with no Ascender employee ID), check if the CC differs.
         # This case is an exception to the rule of Ascender being the source of truth for CC.
         if self.active and not self.employee_id and self.cost_centre:  # User has no employee ID set, but has a CC set.
-            LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
             # Onprem user.
             if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
                 prop = 'Company'
                 change = {
                     'identity': self.ad_guid,
@@ -384,6 +384,7 @@ class DepartmentUser(models.Model):
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage')
             elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+                LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
                 token = ms_graph_client_token()
                 if token:
                     headers = {
@@ -398,7 +399,7 @@ class DepartmentUser(models.Model):
 
         if self.active and self.dir_sync_enabled:
             if not self.ad_guid or not self.ad_data:
-                return []
+                return
 
             if 'Title' in self.ad_data and self.ad_data['Title'] != self.title:
                 prop = 'Title'
@@ -498,7 +499,7 @@ class DepartmentUser(models.Model):
         elif self.active and not self.dir_sync_enabled:
             # Azure AD - cloud-only user.
             if not self.azure_guid or not self.azure_ad_data:
-                return []
+                return
 
             if 'jobTitle' in self.azure_ad_data and self.azure_ad_data['jobTitle'] != self.title:
                 token = ms_graph_client_token()
