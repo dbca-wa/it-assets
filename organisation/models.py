@@ -366,7 +366,7 @@ class DepartmentUser(models.Model):
         """
         # Edge case: for agency contractors (i.e. those with no Ascender employee ID), check if the CC differs.
         # This case is an exception to the rule of Ascender being the source of truth for CC.
-        if not self.employee_id and self.cost_centre:  # User has no employee ID set, but has a CC set.
+        if self.active and not self.employee_id and self.cost_centre:  # User has no employee ID set, but has a CC set.
             LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
             # Onprem user.
             if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
@@ -396,7 +396,7 @@ class DepartmentUser(models.Model):
                     resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
-        if self.dir_sync_enabled:
+        if self.active and self.dir_sync_enabled:
             if not self.ad_guid or not self.ad_data:
                 return []
 
