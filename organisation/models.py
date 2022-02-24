@@ -446,7 +446,7 @@ class DepartmentUser(models.Model):
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
-            if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location and self.location.name != self.ad_data['physicalDeliveryOfficeName']) or (not self.location and self.ad_data['physicalDeliveryOfficeName'])):
+            if 'StreetAddress' in self.ad_data and ((self.location and self.location.name != self.ad_data['StreetAddress']) or (not self.location and self.ad_data['StreetAddress'])):
                 prop = 'StreetAddress'
                 change = {
                     'identity': self.ad_guid,
@@ -617,7 +617,7 @@ class DepartmentUser(models.Model):
                     action.delete()
                 elif action.field == 'cost_centre' and (self.cost_centre and self.ad_data['Company'] == self.cost_centre.code):
                     action.delete()
-                elif action.field == 'location' and (self.location and self.ad_data['physicalDeliveryOfficeName'] == self.location.name):
+                elif action.field == 'location' and (self.location and self.ad_data['StreetAddress'] == self.location.name):
                     action.delete()
                 elif action.field == 'employee_id' and self.ad_data['EmployeeID'] == self.employee_id:
                     action.delete()
