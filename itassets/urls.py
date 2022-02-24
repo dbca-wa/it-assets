@@ -7,7 +7,6 @@ from itassets.api_v3 import urlpatterns as api_v3_urlpatterns
 from itassets.api import urlpatterns as api_urlpatterns
 from rancher import urls as rancher_urls
 from registers import urls as registers_urls
-from assets import urls as assets_urls
 from organisation import urls as organisation_urls
 
 
@@ -21,7 +20,6 @@ urlpatterns = [
     path('api/v3/', include(api_v3_urlpatterns)),
     path('api/v1/', include(api_v1_urlpatterns)),
     path('api/', include(api_urlpatterns)),
-    path('assets/', include(assets_urls)),
     path('rancher/', include(rancher_urls)),
     path('registers/', include(registers_urls)),
     path('organisation/', include(organisation_urls)),

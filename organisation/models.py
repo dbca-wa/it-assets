@@ -364,8 +364,39 @@ class DepartmentUser(models.Model):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
         """
+        # Edge case: for agency contractors (i.e. those with no Ascender employee ID), check if the CC differs.
+        # This case is an exception to the rule of Ascender being the source of truth for CC.
+        if not self.employee_id and self.cost_centre:  # User has no employee ID set, but has a CC set.
+            LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
+            # Onprem user.
+            if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+                prop = 'Company'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.cost_centre.code,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+                store = AzureBlobStorage(connect_string, 'azuread')
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage')
+            elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+                token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+                    data = {"companyName": self.cost_centre.code}
+                    resp = requests.patch(url, headers=headers, json=data)
+                    resp.raise_for_status()
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
+
         if self.dir_sync_enabled:
-            # On-prem AD - generate and upload a "change" object to blob storage. A seperate process will consume that, and carry out the change.
             if not self.ad_guid or not self.ad_data:
                 return []
 
@@ -382,7 +413,7 @@ class DepartmentUser(models.Model):
                 connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                 store = AzureBlobStorage(connect_string, 'azuread')
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'telephoneNumber' in self.ad_data and not compare_values(self.ad_data['telephoneNumber'], self.telephone):
                 prop = 'telephoneNumber'
@@ -397,7 +428,7 @@ class DepartmentUser(models.Model):
                 connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                 store = AzureBlobStorage(connect_string, 'azuread')
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'Mobile' in self.ad_data and not compare_values(self.ad_data['Mobile'], self.mobile_phone):
                 prop = 'Mobile'
@@ -412,7 +443,7 @@ class DepartmentUser(models.Model):
                 connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                 store = AzureBlobStorage(connect_string, 'azuread')
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'physicalDeliveryOfficeName' in self.ad_data and ((self.location and self.location.name != self.ad_data['physicalDeliveryOfficeName']) or (not self.location and self.ad_data['physicalDeliveryOfficeName'])):
                 prop = 'StreetAddress'
@@ -427,7 +458,7 @@ class DepartmentUser(models.Model):
                 connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                 store = AzureBlobStorage(connect_string, 'azuread')
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'ONPREM SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
                 prop = 'EmployeeID'
@@ -442,7 +473,7 @@ class DepartmentUser(models.Model):
                 connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                 store = AzureBlobStorage(connect_string, 'azuread')
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'Manager' in self.ad_data:
                 if self.ad_data['Manager'] and DepartmentUser.objects.filter(active=True, ad_data__DistinguishedName=self.ad_data['Manager']).exists():
@@ -463,7 +494,7 @@ class DepartmentUser(models.Model):
                     connect_string = os.environ.get('AZURE_CONNECTION_STRING')
                     store = AzureBlobStorage(connect_string, 'azuread')
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                    LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         else:
             # Azure AD - cloud-only user.
             if not self.azure_guid or not self.azure_ad_data:
@@ -480,7 +511,7 @@ class DepartmentUser(models.Model):
                     data = {"jobTitle": self.title}
                     resp = requests.patch(url, headers=headers, json=data)
                     resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account jobTitle set to {self.title}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account jobTitle set to {self.title}')
 
             if 'telephoneNumber' in self.azure_ad_data and not compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
                 token = ms_graph_client_token()
@@ -493,7 +524,7 @@ class DepartmentUser(models.Model):
                     data = {"businessPhones": [self.telephone if self.telephone else " "]}
                     resp = requests.patch(url, headers=headers, json=data)
                     resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
 
             if 'mobilePhone' in self.azure_ad_data and not compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
                 token = ms_graph_client_token()
@@ -506,7 +537,7 @@ class DepartmentUser(models.Model):
                     data = {"mobilePhone": self.mobile_phone}
                     resp = requests.patch(url, headers=headers, json=data)
                     resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
 
             if 'officeLocation' in self.azure_ad_data and ((self.location and self.location.name != self.azure_ad_data['officeLocation']) or (not self.location and self.azure_ad_data['officeLocation'])):
                 token = ms_graph_client_token()
@@ -519,7 +550,7 @@ class DepartmentUser(models.Model):
                     data = {"officeLocation": self.location.name if self.location else None}
                     resp = requests.patch(url, headers=headers, json=data)
                     resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account officeLocation set to {self.location.name if self.location else None}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {self.location.name if self.location else None}')
 
             if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
                 token = ms_graph_client_token()
@@ -532,7 +563,7 @@ class DepartmentUser(models.Model):
                     data = {"employeeId": self.employee_id}
                     resp = requests.patch(url, headers=headers, json=data)
                     resp.raise_for_status()
-                    LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
 
             if 'manager' in self.azure_ad_data:
                 if self.azure_ad_data['manager'] and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
@@ -551,7 +582,7 @@ class DepartmentUser(models.Model):
                         data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{self.manager.azure_guid}"}
                         resp = requests.put(url, headers=headers, json=data)
                         resp.raise_for_status()
-                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account manager set to {self.manager}')
+                        LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
     def audit_ad_actions(self):
         """For this DepartmentUser object, check any incomplete ADAction
