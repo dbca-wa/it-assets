@@ -360,7 +360,7 @@ class DepartmentUser(models.Model):
             return datetime.strptime(self.ascender_data['occup_term_date'], '%Y-%m-%d').date()
         return ''
 
-    def generate_ad_actions(self):
+    def generate_ad_actions(self, ad_location=None):
         """For this DepartmentUser, generate ADAction objects that specify the changes which need to be
         carried out in order to synchronise AD (onprem/Azure) with IT Assets.
         """
@@ -368,7 +368,7 @@ class DepartmentUser(models.Model):
         # This case is an exception to the rule of Ascender being the source of truth for CC.
         if self.active and not self.employee_id and self.cost_centre:  # User has no employee ID set, but has a CC set.
             # Onprem user.
-            if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+            if ad_location == 'onprem' and self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
                 LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
                 prop = 'Company'
                 change = {
@@ -383,7 +383,7 @@ class DepartmentUser(models.Model):
                 store = AzureBlobStorage(connect_string, 'azuread')
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage')
-            elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+            elif ad_location == 'azure' and not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
                 LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
                 token = ms_graph_client_token()
                 if token:
@@ -397,7 +397,7 @@ class DepartmentUser(models.Model):
                     resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
-        if self.active and self.dir_sync_enabled:
+        if ad_location == 'onprem' and self.active and self.dir_sync_enabled:
             if not self.ad_guid or not self.ad_data:
                 return
 
@@ -446,20 +446,20 @@ class DepartmentUser(models.Model):
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
-            if 'StreetAddress' in self.ad_data and ((self.location and self.location.name != self.ad_data['StreetAddress']) or (not self.location and self.ad_data['StreetAddress'])):
-                prop = 'StreetAddress'
-                change = {
-                    'identity': self.ad_guid,
-                    'property': prop,
-                    'value': self.location.name if self.location else None,
-                }
-                f = NamedTemporaryFile()
-                f.write(json.dumps(change, indent=2).encode('utf-8'))
-                f.flush()
-                connect_string = os.environ.get('AZURE_CONNECTION_STRING')
-                store = AzureBlobStorage(connect_string, 'azuread')
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ONPREM SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            #if 'StreetAddress' in self.ad_data and ((self.location and self.location.name != self.ad_data['StreetAddress']) or (not self.location and self.ad_data['StreetAddress'])):
+            #    prop = 'StreetAddress'
+            #    change = {
+            #        'identity': self.ad_guid,
+            #        'property': prop,
+            #        'value': self.location.name if self.location else None,
+            #    }
+            #    f = NamedTemporaryFile()
+            #    f.write(json.dumps(change, indent=2).encode('utf-8'))
+            #    f.flush()
+            #    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+            #    store = AzureBlobStorage(connect_string, 'azuread')
+            #    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            #    LOGGER.info(f'ONPREM SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
             if 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
                 prop = 'EmployeeID'
@@ -496,7 +496,7 @@ class DepartmentUser(models.Model):
                     store = AzureBlobStorage(connect_string, 'azuread')
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                     LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-        elif self.active and not self.dir_sync_enabled:
+        elif ad_location == 'azure' and self.active and not self.dir_sync_enabled:
             # Azure AD - cloud-only user.
             if not self.azure_guid or not self.azure_ad_data:
                 return
