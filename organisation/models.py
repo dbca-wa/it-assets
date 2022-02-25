@@ -836,7 +836,10 @@ class DepartmentUser(models.Model):
             self.surname = self.azure_ad_data['surname']
             LOGGER.info(f'AZURE AD SYNC: {self} surname changed to {self.surname}')
         if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
-            self.dir_sync_enabled = self.azure_ad_data['onPremisesSyncEnabled']
+            if not self.azure_ad_data['onPremisesSyncEnabled']:  # False/None
+                self.dir_sync_enabled = False
+            else:
+                self.dir_sync_enabled = True
         if 'proxyAddresses' in self.azure_ad_data and self.azure_ad_data['proxyAddresses'] != self.proxy_addresses:
             self.proxy_addresses = self.azure_ad_data['proxyAddresses']
 
