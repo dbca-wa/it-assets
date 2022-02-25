@@ -394,7 +394,6 @@ class DepartmentUser(models.Model):
                     url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                     data = {"companyName": self.cost_centre.code}
                     resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
         if ad_location == 'onprem' and self.active and self.dir_sync_enabled:
@@ -511,7 +510,6 @@ class DepartmentUser(models.Model):
                     url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                     data = {"jobTitle": self.title}
                     resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account jobTitle set to {self.title}')
 
             if 'telephoneNumber' in self.azure_ad_data and not compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
@@ -524,7 +522,6 @@ class DepartmentUser(models.Model):
                     url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                     data = {"businessPhones": [self.telephone if self.telephone else " "]}
                     resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
 
             if 'mobilePhone' in self.azure_ad_data and not compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
@@ -537,7 +534,6 @@ class DepartmentUser(models.Model):
                     url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                     data = {"mobilePhone": self.mobile_phone}
                     resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
 
             if 'officeLocation' in self.azure_ad_data and ((self.location and self.location.name != self.azure_ad_data['officeLocation']) or (not self.location and self.azure_ad_data['officeLocation'])):
@@ -550,7 +546,6 @@ class DepartmentUser(models.Model):
                     url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                     data = {"officeLocation": self.location.name if self.location else None}
                     resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {self.location.name if self.location else None}')
 
             if 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
@@ -563,7 +558,6 @@ class DepartmentUser(models.Model):
                     url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                     data = {"employeeId": self.employee_id}
                     resp = requests.patch(url, headers=headers, json=data)
-                    resp.raise_for_status()
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
 
             if 'manager' in self.azure_ad_data:
@@ -582,7 +576,6 @@ class DepartmentUser(models.Model):
                         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}/manager/$ref"
                         data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{self.manager.azure_guid}"}
                         resp = requests.put(url, headers=headers, json=data)
-                        resp.raise_for_status()
                         LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
     def audit_ad_actions(self):
@@ -707,7 +700,6 @@ class DepartmentUser(models.Model):
                         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                         data = {"accountEnabled": False}
                         resp = requests.patch(url, headers=headers, json=data)
-                        resp.raise_for_status()
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account accountEnabled set to False')
 
         # Cost centre & Division - Ascender records cost centre as 'paypoint'.
@@ -774,7 +766,6 @@ class DepartmentUser(models.Model):
                         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                         data = {"companyName": self.cost_centre.code}
                         resp = requests.patch(url, headers=headers, json=data)
-                        resp.raise_for_status()
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
                 # Onprem AD users - Division
@@ -805,7 +796,6 @@ class DepartmentUser(models.Model):
                         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
                         data = {"department": self.get_division()}
                         resp = requests.patch(url, headers=headers, json=data)
-                        resp.raise_for_status()
                         LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account department set to {self.get_division()}')
 
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
@@ -836,7 +826,10 @@ class DepartmentUser(models.Model):
             self.surname = self.azure_ad_data['surname']
             LOGGER.info(f'AZURE AD SYNC: {self} surname changed to {self.surname}')
         if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
-            self.dir_sync_enabled = self.azure_ad_data['onPremisesSyncEnabled']
+            if not self.azure_ad_data['onPremisesSyncEnabled']:  # False/None
+                self.dir_sync_enabled = False
+            else:
+                self.dir_sync_enabled = True
         if 'proxyAddresses' in self.azure_ad_data and self.azure_ad_data['proxyAddresses'] != self.proxy_addresses:
             self.proxy_addresses = self.azure_ad_data['proxyAddresses']
 
