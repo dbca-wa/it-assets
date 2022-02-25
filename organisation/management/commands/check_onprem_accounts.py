@@ -47,6 +47,7 @@ class Command(BaseCommand):
                         du.ad_data = ad
                         du.ad_data_updated = datetime.now(timezone.utc)
                         du.update_from_onprem_ad_data()
+                        du.generate_ad_actions(ad_location='onprem')
                         logger.info('ONPREM AD SYNC: linked existing department user {} with onprem AD object {}'.format(du, ad['ObjectGUID']))
                 else:
                     # An existing department user is linked to this onprem AD user.
@@ -54,6 +55,7 @@ class Command(BaseCommand):
                     du.ad_data = ad
                     du.ad_data_updated = datetime.now(timezone.utc)
                     du.update_from_onprem_ad_data()
+                    du.generate_ad_actions(ad_location='onprem')
 
         # Iterate through department users and clear any nonexistent onprem GUID values.
         ad_users = {i['ObjectGUID']: i for i in ad_users}
