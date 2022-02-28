@@ -408,7 +408,7 @@ class DepartmentUser(models.Model):
                     f.flush()
                     if not log_only:
                         store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                    LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
                 # Azure (cloud only) AD users.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and settings.ASCENDER_DEACTIVATE_EXPIRED:
@@ -420,7 +420,7 @@ class DepartmentUser(models.Model):
                         data = {"accountEnabled": False}
                         if not log_only:
                             requests.patch(url, headers=headers, json=data)
-                        LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account accountEnabled set to False')
+                        LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
         if self.employee_id and self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
@@ -435,7 +435,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
         elif self.employee_id and not self.dir_sync_enabled and self.cost_centre and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
             if token:
@@ -446,7 +446,7 @@ class DepartmentUser(models.Model):
                 data = {"companyName": self.cost_centre.code}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
+                LOGGER.info(f'AZURE SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
         # Edge case: for agency contractors (i.e. those with no Ascender employee ID), check if the CC differs.
         # This case is an exception to the rule of Ascender being the source of truth for CC.
         elif not self.employee_id and self.cost_centre and self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:  # User has no employee ID set, but has a CC set.
@@ -462,7 +462,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         elif not self.employee_id and self.cost_centre and not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
             LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
             if token:
@@ -489,7 +489,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ASCENDER SYNC: {self} onprem AD change diff uploaded to blob storage')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.get_division() and self.azure_guid and self.azure_ad_data and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.get_division():
@@ -501,7 +501,7 @@ class DepartmentUser(models.Model):
                 data = {"department": self.get_division()}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'ASCENDER SYNC: {self} Azure AD account department set to {self.get_division()}')
+                LOGGER.info(f'AZURE SYNC: {self} Azure AD account department set to {self.get_division()}')
 
         # title (source of truth: IT Assets)
         # Onprem AD users
@@ -517,7 +517,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'jobTitle' in self.azure_ad_data and self.azure_ad_data['jobTitle'] != self.title:
             if token:
@@ -544,7 +544,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'telephoneNumber' in self.azure_ad_data and not compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
             if token:
@@ -571,7 +571,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'mobilePhone' in self.azure_ad_data and not compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
             if token:
@@ -598,7 +598,7 @@ class DepartmentUser(models.Model):
             f.flush()
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
             if token:
@@ -631,7 +631,7 @@ class DepartmentUser(models.Model):
                 f.flush()
                 if not log_only:
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                LOGGER.info(f'ONPREM AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'manager' in self.azure_ad_data:
             if self.azure_ad_data['manager'] and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
