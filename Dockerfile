@@ -35,7 +35,6 @@ COPY gunicorn.py manage.py ./
 COPY itassets ./itassets
 COPY registers ./registers
 COPY status ./status
-COPY tracking ./tracking
 COPY nginx ./nginx
 COPY rancher ./rancher
 COPY bigpicture ./bigpicture
