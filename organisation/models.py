@@ -531,22 +531,23 @@ class DepartmentUser(models.Model):
 
         # telephone (source of truth: IT Assets)
         # Onprem AD users
-        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'telephoneNumber' in self.ad_data and not compare_values(self.ad_data['telephoneNumber'].strip(), self.telephone):
-            prop = 'telephoneNumber'
-            change = {
-                'identity': self.ad_guid,
-                'property': prop,
-                'value': self.telephone,
-            }
-            f = NamedTemporaryFile()
-            f.write(json.dumps(change, indent=2).encode('utf-8'))
-            f.flush()
-            if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'telephoneNumber' in self.ad_data:
+            if (self.ad_data['telephoneNumber'] and not compare_values(self.ad_data['telephoneNumber'].strip(), self.telephone)) or (not self.ad_data['telephoneNumber'] and self.telephone):
+                prop = 'telephoneNumber'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.telephone,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
-        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'telephoneNumber' in self.azure_ad_data and not compare_values(self.azure_ad_data['telephoneNumber'].strip(), self.telephone):
-            if token:
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'telephoneNumber' in self.azure_ad_data:
+            if (self.azure_ad_data['telephoneNumber'] and not compare_values(self.azure_ad_data['telephoneNumber'].strip(), self.telephone)) or (not self.azure_ad_data['telephoneNumber'] and self.telephone) and token:
                 headers = {
                     "Authorization": "Bearer {}".format(token["access_token"]),
                     "Content-Type": "application/json",
@@ -558,22 +559,23 @@ class DepartmentUser(models.Model):
 
         # mobile (source of truth: IT Assets)
         # Onprem AD users
-        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Mobile' in self.ad_data and not compare_values(self.ad_data['Mobile'], self.mobile_phone):
-            prop = 'Mobile'
-            change = {
-                'identity': self.ad_guid,
-                'property': prop,
-                'value': self.mobile_phone,
-            }
-            f = NamedTemporaryFile()
-            f.write(json.dumps(change, indent=2).encode('utf-8'))
-            f.flush()
-            if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Mobile' in self.ad_data:
+            if (self.ad_data['Mobile'] and not compare_values(self.ad_data['Mobile'].strip(), self.mobile_phone)) or (not self.ad_data['Mobile'] and self.mobile_phone):
+                prop = 'Mobile'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': self.mobile_phone,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
-        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'mobilePhone' in self.azure_ad_data and not compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
-            if token:
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'mobilePhone' in self.azure_ad_data:
+            if (self.azure_ad_data['mobilePhone'] and not compare_values(self.azure_ad_data['mobilePhone'].strip(), self.mobile_phone)) or (not self.azure_ad_data['mobilePhone'] and self.mobile_phone) and token:
                 headers = {
                     "Authorization": "Bearer {}".format(token["access_token"]),
                     "Content-Type": "application/json",
