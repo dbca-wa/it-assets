@@ -423,7 +423,7 @@ class DepartmentUser(models.Model):
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
-        if self.employee_id and self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+        if self.employee_id and self.dir_sync_enabled and self.cost_centre and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
             prop = 'Company'
             change = {
                 'identity': self.ad_guid,
@@ -490,7 +490,6 @@ class DepartmentUser(models.Model):
             if not log_only:
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.get_division() and self.azure_guid and self.azure_ad_data and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.get_division():
             if token:
