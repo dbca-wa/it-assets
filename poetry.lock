@@ -445,14 +445,6 @@ qa = ["flake8 (==3.8.3)", "mypy (==0.782)"]
 testing = ["Django (<3.1)", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
-name = "json2html"
-version = "1.2.1"
-description = "JSON to HTML Table Representation"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "markdown"
 version = "3.3.6"
 description = "Python implementation of Markdown."
@@ -729,14 +721,6 @@ optional = false
 python-versions = "*"
 
 [[package]]
-name = "python-nmap"
-version = "0.6.1"
-description = "This is a python class to use nmap and access scan results from python3"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "pytz"
 version = "2021.3"
 description = "World timezone definitions, modern and historical"
@@ -940,7 +924,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "cfce0d37ac1926f08ef645fb2e1b87e002a92aff6c6668a303739df7d77ebba7"
+content-hash = "867800ba86dd1828f020cbf1a70da8905080591132d3492d6a9d5a4b6cb611c6"
 
 [metadata.files]
 appnope = [
@@ -1200,9 +1184,6 @@ jedi = [
     {file = "jedi-0.18.1-py2.py3-none-any.whl", hash = "sha256:637c9635fcf47945ceb91cd7f320234a7be540ded6f3e99a50cb6febdfd1ba8d"},
     {file = "jedi-0.18.1.tar.gz", hash = "sha256:74137626a64a99c8eb6ae5832d99b3bdd7d29a3850fe2aa80a4126b2a7d949ab"},
 ]
-json2html = [
-    {file = "json2html-1.2.1.tar.gz", hash = "sha256:a6c9cdb4ae09db1fe37e895eb706cb8cafcbf30a168e806d9ce105f3839f0d70"},
-]
 markdown = [
     {file = "Markdown-3.3.6-py3-none-any.whl", hash = "sha256:9923332318f843411e9932237530df53162e29dc7a4e2b91e35764583c46c9a3"},
     {file = "Markdown-3.3.6.tar.gz", hash = "sha256:76df8ae32294ec39dcf89340382882dfa12975f87f45c3ed1ecdb1e8cefc7006"},
@@ -1381,9 +1362,6 @@ python-dateutil = [
 ]
 python-levenshtein = [
     {file = "python-Levenshtein-0.12.0.tar.gz", hash = "sha256:033a11de5e3d19ea25c9302d11224e1a1898fe5abd23c61c7c360c25195e3eb1"},
-]
-python-nmap = [
-    {file = "python-nmap-0.6.1.tar.gz", hash = "sha256:80ba0eb10a52283a54a633f40b5baa9c2ff08675d6621dd089ead942852f5bd3"},
 ]
 pytz = [
     {file = "pytz-2021.3-py2.py3-none-any.whl", hash = "sha256:3672058bc3453457b622aab7a1c3bfd5ab0bdae451512f6cf25f64ed37f5b87c"},
