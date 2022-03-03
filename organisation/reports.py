@@ -170,8 +170,8 @@ def department_user_ascender_discrepancies(fileobj, users):
         )
         for user in qs:
             # Expiry date
-            if 'occup_term_date' in user.ascender_data and user.ascender_data['occup_term_date'] and 'AccountExpirationDate' in user.ad_data and user.ad_data['AccountExpirationDate']:
-                ascender_date = datetime.strptime(user.ascender_data['occup_term_date'], '%Y-%m-%d').date()
+            if 'job_end_date' in user.ascender_data and user.ascender_data['job_end_date'] and 'AccountExpirationDate' in user.ad_data and user.ad_data['AccountExpirationDate']:
+                ascender_date = datetime.strptime(user.ascender_data['job_end_date'], '%Y-%m-%d').date()
                 onprem_date = parse_windows_ts(user.ad_data['AccountExpirationDate']).date()
                 delta = ascender_date - onprem_date
                 if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.

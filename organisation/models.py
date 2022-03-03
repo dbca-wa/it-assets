@@ -353,11 +353,11 @@ class DepartmentUser(models.Model):
             return datetime.strptime(self.ascender_data['job_start_date'], '%Y-%m-%d').date()
         return ''
 
-    def get_occup_term_date(self):
-        """From Ascender data, return the user's occupation/job termination date.
+    def get_job_end_date(self):
+        """From Ascender data, return the user's occupation/job termination/end date.
         """
-        if self.ascender_data and 'occup_term_date' in self.ascender_data and self.ascender_data['occup_term_date']:
-            return datetime.strptime(self.ascender_data['occup_term_date'], '%Y-%m-%d').date()
+        if self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date']:
+            return datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
         return ''
 
     def sync_ad_data(self, container='azuread', log_only=False, token=None):
@@ -374,22 +374,22 @@ class DepartmentUser(models.Model):
         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
 
         # active (source of truth: Ascender)
-        if self.employee_id and self.ascender_data and 'occup_term_date' in self.ascender_data and self.ascender_data['occup_term_date']:
-            occup_term_date = datetime.strptime(self.ascender_data['occup_term_date'], '%Y-%m-%d')
+        if self.employee_id and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date']:
+            job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
             today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
 
             # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
-            if self.active and occup_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
+            if self.active and job_end_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
                 t = 'onprem' if self.dir_sync_enabled else 'cloud'
-                LOGGER.info(f'ASCENDER SYNC: {self} job is past termination date of {occup_term_date.date()}; deactivating their {t} AD account')
+                LOGGER.info(f'ASCENDER SYNC: {self} job is past termination date of {job_end_date.date()}; deactivating their {t} AD account')
 
                 # Create a DepartmentUserLog object to record this update.
                 if not log_only:
                     DepartmentUserLog.objects.create(
                         department_user=self,
                         log={
-                            'ascender_field': 'occup_term_date',
-                            'old_value': self.ascender_data['occup_term_date'],
+                            'ascender_field': 'job_end_date',
+                            'old_value': self.ascender_data['job_end_date'],
                             'new_value': None,
                             'description': f'Deactivate {t} AD account',
                         },

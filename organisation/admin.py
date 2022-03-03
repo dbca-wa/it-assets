@@ -92,7 +92,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
-        'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_termination_date', 'ascender_data_updated',
+        'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_end_date', 'ascender_data_updated',
     )
     fieldsets = (
         ('Microsoft 365, Azure AD and on-prem AD account information', {
@@ -123,7 +123,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'paypoint',
                 'employment_status',
                 'job_start_date',
-                'job_termination_date',
+                'job_end_date',
                 'ascender_data_updated',
             ),
         }),
@@ -187,9 +187,9 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
             return instance.get_job_start_date().strftime('%d-%B-%Y')
         return ''
 
-    def job_termination_date(self, instance):
-        if instance.get_occup_term_date():
-            return instance.get_occup_term_date().strftime('%d-%B-%Y')
+    def job_end_date(self, instance):
+        if instance.get_job_end_date():
+            return instance.get_job_end_date().strftime('%d-%B-%Y')
         return ''
 
     def get_urls(self):
