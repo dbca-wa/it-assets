@@ -213,7 +213,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         # Run the Ascender/Azure AD/on-prem AD update actions.
         #obj.update_from_ascender_data()
         #obj.update_from_azure_ad_data()
-        #obj.update_from_onprem_ad_data()
 
     def clear_ad_guid(self, request, queryset):
         # Action: allow a user's onprem AD GUID value to be cleared.

@@ -822,19 +822,6 @@ class DepartmentUser(models.Model):
 
         self.save()
 
-    def update_from_onprem_ad_data(self):
-        """For this DepartmentUser object, update the field values from cached on-premise AD data
-        (the source of truth for these values).
-        """
-        if not self.ad_guid or not self.ad_data:
-            return
-
-        if 'SamAccountName' in self.ad_data and self.ad_data['SamAccountName'] != self.username:
-            self.username = self.ad_data['SamAccountName']
-            LOGGER.info(f'ONPREM AD SYNC: {self} username changed to {self.username}')
-
-        self.save()
-
     def get_onprem_ad_domain(self):
         """If this user has onprem AD data cached, attempt to return the AD domain from their DistinguishedName.
         """
