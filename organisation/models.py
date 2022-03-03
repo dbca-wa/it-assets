@@ -188,8 +188,6 @@ class DepartmentUser(models.Model):
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
     assigned_licences = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Assigned Microsoft 365 licences')
-    username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the Address Book.
@@ -219,8 +217,6 @@ class DepartmentUser(models.Model):
     notes = models.TextField(
         null=True, blank=True,
         help_text='Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).')
-    working_hours = models.TextField(
-        null=True, blank=True, help_text="Description of normal working hours")
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES, null=True, blank=True,
         help_text='Employee network account status')

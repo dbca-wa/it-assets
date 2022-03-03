@@ -63,7 +63,6 @@ class Command(BaseCommand):
                 du.ad_guid = None
                 du.ad_data = {}
                 du.ad_data_updated = datetime.now(timezone.utc)
-                du.username = None
                 du.save()
 
         logger.info('Downloading Ascender user account data')
