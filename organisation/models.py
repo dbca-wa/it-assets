@@ -360,6 +360,13 @@ class DepartmentUser(models.Model):
             return datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
         return ''
 
+    def get_manager_name(self):
+        """From Ascender data, return the user's occupation/job termination/end date.
+        """
+        if self.ascender_data and 'manager_name' in self.ascender_data and self.ascender_data['manager_name']:
+            return self.ascender_data['manager_name']
+        return ''
+
     def sync_ad_data(self, container='azuread', log_only=False, token=None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Azure AD, onprem AD).

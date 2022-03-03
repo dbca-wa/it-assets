@@ -93,6 +93,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
         'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_end_date', 'ascender_data_updated',
+        'manager_name',
     )
     fieldsets = (
         ('Microsoft 365, Azure AD and on-prem AD account information', {
@@ -122,6 +123,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'geo_location_desc',
                 'paypoint',
                 'employment_status',
+                'manager_name',
                 'job_start_date',
                 'job_end_date',
                 'ascender_data_updated',
@@ -191,6 +193,9 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         if instance.get_job_end_date():
             return instance.get_job_end_date().strftime('%d-%B-%Y')
         return ''
+
+    def manager_name(self, instance):
+        return instance.get_manager_name()
 
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()
