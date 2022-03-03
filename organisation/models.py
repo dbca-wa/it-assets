@@ -11,7 +11,7 @@ import requests
 from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
-from .utils import compare_values, title_except
+from .utils import compare_values, title_except, parse_windows_ts
 LOGGER = logging.getLogger('organisation')
 
 
@@ -424,6 +424,29 @@ class DepartmentUser(models.Model):
                         if not log_only:
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
+
+        # Onprem AD account expiry date (source of truth: Ascender).
+        # Note that Azure AD has no concept of "expiry date".
+        if self.employee_id and self.dir_sync_enabled and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date'] and self.ad_data and 'AccountExpirationDate' in self.ad_data:
+            job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
+            if self.ad_data['AccountExpirationDate']:
+                account_expiration_date = parse_windows_ts(self.ad_data['AccountExpirationDate']).date()
+            else:
+                account_expiration_date = None
+            if job_end_date != account_expiration_date:
+                # Set the onprem AD account expiration date value.
+                prop = 'AccountExpirationDate'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': job_end_date.strftime("%m/%d/%Y"),
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
         if self.employee_id and self.dir_sync_enabled and self.cost_centre and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
