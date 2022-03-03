@@ -69,8 +69,8 @@ class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmi
         'infrastructure_location',
     )
     search_fields = (
-        'system_id', 'owner__username', 'owner__email', 'name', 'acronym', 'description',
-        'technology_custodian__username', 'technology_custodian__email', 'link', 'documentation',
+        'system_id', 'owner__email', 'name', 'acronym', 'description',
+        'technology_custodian__email', 'link', 'documentation',
         'cost_centre__code', 'dependencies__name',
     )
     readonly_fields = (

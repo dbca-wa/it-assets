@@ -30,19 +30,22 @@ FOREIGN_TABLE_FIELDS = (
     "award_desc",
     "emp_status",
     "emp_stat_desc",
-    ("loc_desc", "location_desc"),
+    "loc_desc",
     "paypoint",
     "paypoint_desc",
     "geo_location_desc",
     "occup_type",
     ("job_start_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
-    ("occup_term_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    ("job_end_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
     "email_address",
     "extended_lv",
     ("ext_lv_end_date", lambda record, val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    "licence_type",
+    "manager_emp_no",
+    "manager_name",
 )
 FOREIGN_DB_QUERY_SQL = 'SELECT {} FROM "{}"."{}" ORDER BY employee_no;'.format(
     ", ".join(
@@ -123,11 +126,11 @@ def ascender_job_sort_key(record):
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
-    # Initial score from occup_term_date
+    # Initial score from job_end_date
     score = (
-        (int(record["occup_term_date"].replace("-", "")) * 10000)
-        if record["occup_term_date"]
-        and record["occup_term_date"] <= today.strftime("%Y-%m-%d")
+        (int(record["job_end_date"].replace("-", "")) * 10000)
+        if record["job_end_date"]
+        and record["job_end_date"] <= today.strftime("%Y-%m-%d")
         else int(tomorrow.strftime("%Y%m%d0000"))
     )
     # Second score based emp_status

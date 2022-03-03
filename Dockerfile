@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
 RUN apt-get update -y \
   && apt-get upgrade -y \
-  && apt-get install --no-install-recommends -y wget git libmagic-dev gcc binutils gdal-bin proj-bin python3-dev nmap gzip curl \
+  && apt-get install --no-install-recommends -y wget git libmagic-dev gcc binutils gdal-bin proj-bin python3-dev gzip curl \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --upgrade pip
 
@@ -34,7 +34,6 @@ FROM python_libs_itassets
 COPY gunicorn.py manage.py ./
 COPY itassets ./itassets
 COPY registers ./registers
-COPY status ./status
 COPY nginx ./nginx
 COPY rancher ./rancher
 COPY bigpicture ./bigpicture

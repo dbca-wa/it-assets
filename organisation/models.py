@@ -11,7 +11,7 @@ import requests
 from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
-from .utils import compare_values, title_except
+from .utils import compare_values, title_except, parse_windows_ts
 LOGGER = logging.getLogger('organisation')
 
 
@@ -188,8 +188,6 @@ class DepartmentUser(models.Model):
         max_length=254, blank=True), blank=True, null=True, help_text='Email aliases')
     assigned_licences = ArrayField(base_field=models.CharField(
         max_length=254, blank=True), blank=True, null=True, help_text='Assigned Microsoft 365 licences')
-    username = models.CharField(
-        max_length=128, editable=False, blank=True, null=True, help_text='Pre-Windows 2000 login username.')  # SamAccountName in onprem AD
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the Address Book.
@@ -219,8 +217,6 @@ class DepartmentUser(models.Model):
     notes = models.TextField(
         null=True, blank=True,
         help_text='Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).')
-    working_hours = models.TextField(
-        null=True, blank=True, help_text="Description of normal working hours")
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES, null=True, blank=True,
         help_text='Employee network account status')
@@ -353,11 +349,18 @@ class DepartmentUser(models.Model):
             return datetime.strptime(self.ascender_data['job_start_date'], '%Y-%m-%d').date()
         return ''
 
-    def get_occup_term_date(self):
-        """From Ascender data, return the user's occupation/job termination date.
+    def get_job_end_date(self):
+        """From Ascender data, return the user's occupation/job termination/end date.
         """
-        if self.ascender_data and 'occup_term_date' in self.ascender_data and self.ascender_data['occup_term_date']:
-            return datetime.strptime(self.ascender_data['occup_term_date'], '%Y-%m-%d').date()
+        if self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date']:
+            return datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
+        return ''
+
+    def get_manager_name(self):
+        """From Ascender data, return the user's occupation/job termination/end date.
+        """
+        if self.ascender_data and 'manager_name' in self.ascender_data and self.ascender_data['manager_name']:
+            return self.ascender_data['manager_name']
         return ''
 
     def sync_ad_data(self, container='azuread', log_only=False, token=None):
@@ -374,22 +377,22 @@ class DepartmentUser(models.Model):
         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
 
         # active (source of truth: Ascender)
-        if self.employee_id and self.ascender_data and 'occup_term_date' in self.ascender_data and self.ascender_data['occup_term_date']:
-            occup_term_date = datetime.strptime(self.ascender_data['occup_term_date'], '%Y-%m-%d')
+        if self.employee_id and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date']:
+            job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
             today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
 
             # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
-            if self.active and occup_term_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
+            if self.active and job_end_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
                 t = 'onprem' if self.dir_sync_enabled else 'cloud'
-                LOGGER.info(f'ASCENDER SYNC: {self} job is past termination date of {occup_term_date.date()}; deactivating their {t} AD account')
+                LOGGER.info(f'ASCENDER SYNC: {self} job is past termination date of {job_end_date.date()}; deactivating their {t} AD account')
 
                 # Create a DepartmentUserLog object to record this update.
                 if not log_only:
                     DepartmentUserLog.objects.create(
                         department_user=self,
                         log={
-                            'ascender_field': 'occup_term_date',
-                            'old_value': self.ascender_data['occup_term_date'],
+                            'ascender_field': 'job_end_date',
+                            'old_value': self.ascender_data['job_end_date'],
                             'new_value': None,
                             'description': f'Deactivate {t} AD account',
                         },
@@ -421,6 +424,29 @@ class DepartmentUser(models.Model):
                         if not log_only:
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
+
+        # Onprem AD account expiry date (source of truth: Ascender).
+        # Note that Azure AD has no concept of "expiry date".
+        if self.employee_id and self.dir_sync_enabled and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date'] and self.ad_data and 'AccountExpirationDate' in self.ad_data:
+            job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
+            if self.ad_data['AccountExpirationDate']:
+                account_expiration_date = parse_windows_ts(self.ad_data['AccountExpirationDate']).date()
+            else:
+                account_expiration_date = None
+            if job_end_date != account_expiration_date:
+                # Set the onprem AD account expiration date value.
+                prop = 'AccountExpirationDate'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': job_end_date.strftime("%m/%d/%Y"),
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
         if self.employee_id and self.dir_sync_enabled and self.cost_centre and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
@@ -812,19 +838,6 @@ class DepartmentUser(models.Model):
                     self.assigned_licences.append(self.MS_LICENCE_SKUS[sku])
                 else:
                     self.assigned_licences.append(sku)
-
-        self.save()
-
-    def update_from_onprem_ad_data(self):
-        """For this DepartmentUser object, update the field values from cached on-premise AD data
-        (the source of truth for these values).
-        """
-        if not self.ad_guid or not self.ad_data:
-            return
-
-        if 'SamAccountName' in self.ad_data and self.ad_data['SamAccountName'] != self.username:
-            self.username = self.ad_data['SamAccountName']
-            LOGGER.info(f'ONPREM AD SYNC: {self} username changed to {self.username}')
 
         self.save()
 
