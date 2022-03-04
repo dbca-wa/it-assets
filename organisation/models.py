@@ -1,5 +1,5 @@
 from data_storage import AzureBlobStorage
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
@@ -429,10 +429,14 @@ class DepartmentUser(models.Model):
         # Note that Azure AD has no concept of "expiry date".
         if self.employee_id and self.dir_sync_enabled and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date'] and self.ad_data and 'AccountExpirationDate' in self.ad_data:
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
+            # Business rule: Ascender job_end_date is the final working day of a job. Onprem expiration date should be that date, plus one day.
+            job_end_date = job_end_date + timedelta(days=1)
+
             if self.ad_data['AccountExpirationDate']:
                 account_expiration_date = parse_windows_ts(self.ad_data['AccountExpirationDate']).date()
             else:
                 account_expiration_date = None
+
             if job_end_date != account_expiration_date:
                 # Set the onprem AD account expiration date value.
                 prop = 'AccountExpirationDate'
