@@ -40,7 +40,7 @@ class Command(BaseCommand):
                         existing_user.azure_guid = az['objectId']
                         existing_user.azure_ad_data = az
                         existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                        existing_user.update_from_azure_ad_data()
+                        existing_user.update_from_azure_ad_data()  # This method calls save()
                         logger.info(f"Linked existing user {az['mail']} with Azure objectId {az['objectId']}")
                         continue  # Skip to the next Azure user.
 
@@ -79,4 +79,4 @@ class Command(BaseCommand):
                     existing_user = DepartmentUser.objects.get(azure_guid=az['objectId'])
                     existing_user.azure_ad_data = az
                     existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                    existing_user.update_from_azure_ad_data()
+                    existing_user.update_from_azure_ad_data()  # This method calls save()
