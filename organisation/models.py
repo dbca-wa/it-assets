@@ -642,7 +642,7 @@ class DepartmentUser(models.Model):
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
 
-        # manager (source of truth: Ascender, except it's manually input by OIM staff in IT Assets)
+        # manager (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Manager' in self.ad_data:
             if self.ad_data['Manager'] and DepartmentUser.objects.filter(active=True, ad_data__DistinguishedName=self.ad_data['Manager']).exists():
@@ -800,6 +800,35 @@ class DepartmentUser(models.Model):
                     'description': 'Set CC value from Ascender',
                 },
             )
+
+        if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
+            manager = DepartmentUser.objects.get(employee_id=self.ascender_data['manager_emp_no'])
+
+            # The user's current manager differs from that in Ascender (it might be set to None).
+            if self.manager != manager:
+                if self.manager:
+                    LOGGER.info(f"ASCENDER SYNC: {self} manager {self.manager} differs from Ascender, updating it to {manager}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'manager',
+                            'old_value': self.manager.email,
+                            'new_value': manager.email,
+                            'description': 'Update manager value from Ascender',
+                        },
+                    )
+                else:
+                    LOGGER.info(f"ASCENDER SYNC: {self} manager set from Ascender to {manager}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'manager',
+                            'old_value': None,
+                            'new_value': manager.email,
+                            'description': 'Set manager value from Ascender',
+                        },
+                    )
+                self.manager = manager  # Change the department user's manager.
 
         self.save()
 
