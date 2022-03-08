@@ -276,7 +276,7 @@ class ADActionAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(LeafletGeoAdmin):
-    fields = ('name', 'address', 'pobox', 'phone', 'fax', 'point', 'active')
+    fields = ('name', 'address', 'pobox', 'phone', 'fax', 'point', 'active', 'ascender_desc')
     list_display = ('name', 'address', 'phone', 'fax', 'active')
     list_filter = ('active',)
     search_fields = ('name', 'address', 'phone', 'fax')
