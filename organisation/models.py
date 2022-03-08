@@ -801,6 +801,35 @@ class DepartmentUser(models.Model):
                 },
             )
 
+        if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
+            manager = DepartmentUser.objects.get(employee_id=self.ascender_data['manager_emp_no'])
+
+            # The user's current manager differs from that in Ascender (it might be set to None).
+            if self.manager != manager:
+                if self.manager:
+                    LOGGER.info(f"ASCENDER SYNC: {self} manager {self.manager} differs from Ascender, updating it to {manager}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'manager',
+                            'old_value': self.manager.email,
+                            'new_value': manager.email,
+                            'description': 'Update manager value from Ascender',
+                        },
+                    )
+                else:
+                    LOGGER.info(f"ASCENDER SYNC: {self} manager set from Ascender to {manager}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'manager',
+                            'old_value': None,
+                            'new_value': manager.email,
+                            'description': 'Set manager value from Ascender',
+                        },
+                    )
+                self.manager = manager  # Change the department user's manager.
+
         self.save()
 
     def update_from_azure_ad_data(self):
