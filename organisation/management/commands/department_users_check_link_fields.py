@@ -71,16 +71,6 @@ class Command(BaseCommand):
         for eid, jobs in employee_iter:
             employee_ids.append(eid)
 
-        # Iterate through department users and clear any nonexistent onprem GUID values.
-        logger.info('Comparing department users to Ascender employee IDs')
-        for du in DepartmentUser.objects.filter(employee_id__isnull=False):
-            if du.ad_guid not in ad_users:
-                logger.info(f"Employee ID {du.employee_id} not found in Ascender; clearing it from {du}")
-                du.employee_id = None
-                du.ascender_data = {}
-                du.ascender_data_updated = datetime.now(timezone.utc)
-                du.save()
-
         # Iterate through department users and clear any managers who are inactive.
         for du in DepartmentUser.objects.filter(manager__isnull=False):
             if not du.manager.active:
