@@ -279,6 +279,7 @@ class LocationAdmin(LeafletGeoAdmin):
     fields = ('name', 'address', 'pobox', 'phone', 'fax', 'point', 'active', 'ascender_desc')
     list_display = ('name', 'address', 'phone', 'fax', 'active')
     list_filter = ('active',)
+    readonly_fields = ('ascender_desc',)
     search_fields = ('name', 'address', 'phone', 'fax')
     settings_overrides = {
         'DEFAULT_CENTER': (-31.0, 115.0),
