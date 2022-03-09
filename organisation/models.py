@@ -1030,6 +1030,7 @@ class Location(models.Model):
     fax = models.CharField(max_length=128, null=True, blank=True)
     point = models.PointField(null=True, blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
+    ascender_desc = models.CharField(max_length=128, null=True, blank=True)  # Equivalent to geo_location_desc field in Ascender.
     active = models.BooleanField(default=True)
 
     class Meta:
