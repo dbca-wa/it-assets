@@ -108,6 +108,8 @@ VERSION_NO = '2.3.28'
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
 ASCENDER_DEACTIVATE_EXPIRED = env('ASCENDER_DEACTIVATE_EXPIRED', False)
+# Flag to control whether new Azure AD accounts should be created during sync.
+ASCENDER_CREATE_AZURE_AD = env('ASCENDER_CREATE_AZURE_AD', False)
 
 # Settings related to the Ascender SFTP target
 ASCENDER_SFTP_HOST = env('ASCENDER_SFTP_HOST', None)
