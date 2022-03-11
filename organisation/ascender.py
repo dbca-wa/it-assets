@@ -245,13 +245,20 @@ def ascender_db_import():
                     elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
                         email = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
                         mail_nickname = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
+                    else:
+                        # We can't generate a unique email with the supplied information; abort and send a warning.
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
+                        text_content = f"Ascender record:\n{job}\n"
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
                     display_name = f"{job['preferred_name'].capitalize()} {job['surname'].capitalize()}"
                     title = title_except(job['occup_pos_title'])
                     password = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(20))
                     token = ms_graph_client_token()
                     headers = {
                         "Authorization": "Bearer {}".format(token["access_token"]),
-                        "ConsistencyLevel": "eventual",
+                        "Content-Type": "application/json",
                     }
                     LOGGER.info(f"ASCENDER SYNC: Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
 
@@ -365,6 +372,52 @@ def ascender_db_import():
                         resp.raise_for_status()
                     except:
                         subject = f"ASCENDER SYNC: create new Azure AD user failed at assign license step ({email})"
+                        LOGGER.exception(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}\n
+                        Request URL: {url}\n
+                        Request body:\n
+                        {data}\n
+                        Response code: {resp.status_code}\n
+                        Response content:\n
+                        {resp.content}\n"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+
+                    # Next, add user to the minimum set of M365 groups.
+                    all_users_guid = "5dc9123b-e59c-4bed-9588-fab29cacebfc"
+                    dbca_guid = "329251f6-ff18-4015-958a-55085c641cdd"
+                    # Below are Azure GUIDs for the M365 groups for each division, mapped to the division code
+                    # (used in the CostCentre model).
+                    division_group_guids = {
+                        "BCS": "003ea951-4f8b-44cb-bf53-9efd968002b2",
+                        "BGPA": "cb59632a-f1dc-490b-b2f1-1a6eb469e56d",
+                        "CBS": "1b2777c4-4bd9-4a49-9f02-41a71ab69c1f",
+                        #"CPC": "",  # TODO
+                        "ODG": "fbe3c349-fcc2-4ad1-92f6-337fb977b1b6",
+                        "PWS": "64016b08-3466-4053-ba7c-713c8c7b5eeb",
+                        "RIA": "128f4b94-98b0-4361-955c-5cdfda65b4f6",
+                        "ZPA": "09b543ba-4cde-459a-a159-077bf2640c0e",
+                    }
+                    try:
+                        # All Users group
+                        url = f"https://graph.microsoft.com/v1.0/groups/{all_users_guid}/members/$ref"
+                        data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{guid}"}
+                        resp = requests.post(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        # DBCA group
+                        url = f"https://graph.microsoft.com/v1.0/groups/{dbca_guid}/members/$ref"
+                        resp = requests.post(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        # Division group
+                        if cc.code in division_group_guids:
+                            division_guid = division_group_guids[cc.code]
+                            url = f"https://graph.microsoft.com/v1.0/groups/{division_guid}/members/$ref"
+                            resp = requests.post(url, headers=headers, json=data)
+                            resp.raise_for_status()
+                    except:
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign M365 groups ({email})"
                         LOGGER.exception(subject)
                         text_content = f"""Ascender record:\n
                         {job}\n
