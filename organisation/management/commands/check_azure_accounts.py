@@ -68,6 +68,7 @@ class Command(BaseCommand):
                             title=az['jobTitle'],
                             telephone=az['telephoneNumber'],
                             mobile_phone=az['mobilePhone'],
+                            employee_id=az['employeeId'],
                             cost_centre=cost_centre,
                             location=location,
                             dir_sync_enabled=az['onPremisesSyncEnabled'],

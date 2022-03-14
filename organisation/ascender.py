@@ -1,10 +1,17 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from fuzzywuzzy import fuzz
 import logging
 import psycopg2
 import pytz
-from organisation.models import DepartmentUser, DepartmentUserLog
+import random
+import requests
+import string
+
+from itassets.utils import ms_graph_client_token
+from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location
+from organisation.utils import title_except
 
 LOGGER = logging.getLogger('organisation')
 TZ = pytz.timezone(settings.TIME_ZONE)
@@ -195,6 +202,250 @@ def ascender_db_import():
                 user.ascender_data = job
                 user.ascender_data_updated = TZ.localize(datetime.now())
                 user.update_from_ascender_data()  # This method calls save()
+            elif not DepartmentUser.objects.filter(employee_id=eid).exists() and settings.ASCENDER_CREATE_AZURE_AD:
+                # ENTRY POINT FOR NEW AZURE AD USER ACCOUNT CREATION.
+                # Short circuit: if job_end_date is in the past, skip.
+                if job['job_end_date'] and datetime.strptime(job['job_end_date'], '%Y-%m-%d').date() < date.today():
+                    continue
+                # Short circuit: if there is no value for licence_type, skip.
+                if not job['licence_type'] or job['licence_type'] == 'NULL':
+                    continue
+
+                cc = None
+                job_start_date = None
+                licence_type = None
+                manager = None
+                location = None
+
+                if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
+                    cc = CostCentre.objects.get(ascender_code=job['paypoint'])
+                if job['job_start_date']:
+                    job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
+                if job['licence_type']:
+                    if job['licence_type'] == 'ONPUL':
+                        licence_type = 'On-premise'
+                    elif job['licence_type'] == 'CLDUL':
+                        licence_type = 'Cloud'
+                if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
+                    manager = DepartmentUser.objects.get(employee_id=job['manager_emp_no'])
+                if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
+                    location = Location.objects.get(ascender_desc=job['geo_location_desc'])
+
+                if cc and job_start_date and licence_type and manager and location:
+                    email = None
+                    if not DepartmentUser.objects.filter(email=f"{job['preferred_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
+                        email = f"{job['preferred_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
+                        mail_nickname = f"{job['preferred_name'].lower()}.{job['surname'].lower()}"
+                    elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
+                        email = f"{job['first_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
+                        mail_nickname = f"{job['first_name'].lower()}.{job['surname'].lower()}"
+                    elif not DepartmentUser.objects.filter(email=f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
+                        email = f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
+                        mail_nickname = f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
+                    elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
+                        email = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
+                        mail_nickname = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
+                    else:
+                        # We can't generate a unique email with the supplied information; abort and send a warning.
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
+                        text_content = f"Ascender record:\n{job}\n"
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+                    display_name = f"{job['preferred_name'].capitalize()} {job['surname'].capitalize()}"
+                    title = title_except(job['occup_pos_title'])
+                    password = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(20))
+                    token = ms_graph_client_token()
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    LOGGER.info(f"ASCENDER SYNC: Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
+
+                    # Initially create the Azure AD user with the MS Graph API.
+                    try:
+                        url = "https://graph.microsoft.com/v1.0/users"
+                        data = {
+                            "accountEnabled": False,
+                            "displayName": display_name,
+                            "userPrincipalName": email,
+                            "mailNickname": mail_nickname,
+                            "passwordProfile": {
+                                "forceChangePasswordNextSignIn": True,
+                                "password": password,
+                            }
+                        }
+                        resp = requests.post(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        resp_json = resp.json()
+                        guid = resp_json['id']
+                    except:
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at initial creation step ({email})"
+                        LOGGER.exception(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}\n
+                        Request URL: {url}\n
+                        Request body:\n
+                        {data}\n
+                        Response code: {resp.status_code}\n
+                        Response content:\n
+                        {resp.content}\n"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+
+                    # Next, update the user details with additional information.
+                    try:
+                        url = f"https://graph.microsoft.com/v1.0/users/{guid}"
+                        data = {
+                            "mail": email,
+                            "employeeId": eid,
+                            "givenName": job['preferred_name'].capitalize(),
+                            "surname": job['surname'].capitalize(),
+                            "jobTitle": title,
+                            "companyName": cc.code,
+                            "department": cc.get_division_name_display(),
+                            "officeLocation": location.name,
+                            "streetAddress": location.address,
+                            "state": "Western Australia",
+                            "country": "Australia",
+                            "usageLocation": "AU",
+                        }
+                        resp = requests.patch(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                    except:
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at update step ({email})"
+                        LOGGER.exception(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}\n
+                        Request URL: {url}\n
+                        Request body:\n
+                        {data}\n
+                        Response code: {resp.status_code}\n
+                        Response content:\n
+                        {resp.content}\n"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+
+                    # Next, set the user manager.
+                    try:
+                        manager_url = f"https://graph.microsoft.com/v1.0/users/{guid}/manager/$ref"
+                        data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{manager.azure_guid}"}
+                        resp = requests.put(manager_url, headers=headers, json=data)
+                        resp.raise_for_status()
+                    except:
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign manager step ({email})"
+                        LOGGER.exception(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}\n
+                        Request URL: {url}\n
+                        Request body:\n
+                        {data}\n
+                        Response code: {resp.status_code}\n
+                        Response content:\n
+                        {resp.content}\n"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+
+                    # Next, add the required licenses to the user.
+                    try:
+                        url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
+                        if licence_type == "On-premise":
+                            data = {
+                                "addLicenses": [
+                                    {"skuId": "06ebc4ee-1bb5-47dd-8120-11324bc54e06", "disabledPlans": []},  # MICROSOFT 365 E5
+                                ],
+                                "removeLicenses": [],
+                            }
+                        elif licence_type == "Cloud":
+                            data = {
+                                "addLicenses": [
+                                    {"skuId": "66b55226-6b4f-492c-910c-a3b7a3c9d993", "disabledPlans": ['4a82b400-a79f-41a4-b4e2-e94f5787b113']},  # MICROSOFT 365 F3
+                                    {"skuId": "19ec0d23-8335-4cbd-94ac-6050e30712fa", "disabledPlans": []},  # EXCHANGE ONLINE (PLAN 2)
+                                    {"skuId": "2347355b-4e81-41a4-9c22-55057a399791", "disabledPlans": ['176a09a6-7ec5-4039-ac02-b2791c6ba793']},  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+                                ],
+                                "removeLicenses": [],
+                            }
+                        resp = requests.post(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                    except:
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign license step ({email})"
+                        LOGGER.exception(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}\n
+                        Request URL: {url}\n
+                        Request body:\n
+                        {data}\n
+                        Response code: {resp.status_code}\n
+                        Response content:\n
+                        {resp.content}\n"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+
+                    # TODO: we don't currently add groups to the user (performed manually by SD staff)
+                    # because the organisation is not consistent in the usage of group types, and we
+                    # can't administer some group types via the Graph API.
+                    '''
+                    # Next, add user to the minimum set of M365 groups.
+                    dbca_guid = "329251f6-ff18-4015-958a-55085c641cdd"
+                    # Below are Azure GUIDs for the M365 groups for each division, mapped to the division code
+                    # (used in the CostCentre model).
+                    division_group_guids = {
+                        "BCS": "003ea951-4f8b-44cb-bf53-9efd968002b2",
+                        "BGPA": "cb59632a-f1dc-490b-b2f1-1a6eb469e56d",
+                        "CBS": "1b2777c4-4bd9-4a49-9f02-41a71ab69c1f",
+                        "ODG": "fbe3c349-fcc2-4ad1-92f6-337fb977b1b6",
+                        "PWS": "64016b08-3466-4053-ba7c-713c8c7b5eeb",
+                        "RIA": "128f4b94-98b0-4361-955c-5cdfda65b4f6",
+                        "ZPA": "09b543ba-4cde-459a-a159-077bf2640c0e",
+                    }
+                    try:
+                        data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{guid}"}
+                        # DBCA group
+                        url = f"https://graph.microsoft.com/v1.0/groups/{dbca_guid}/members/$ref"
+                        resp = requests.post(url, headers=headers, json=data)
+                        resp.raise_for_status()
+                        # Division group
+                        if cc.division_name in division_group_guids:
+                            division_guid = division_group_guids[cc.code]
+                            url = f"https://graph.microsoft.com/v1.0/groups/{division_guid}/members/$ref"
+                            resp = requests.post(url, headers=headers, json=data)
+                            resp.raise_for_status()
+                    except:
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign M365 groups ({email})"
+                        LOGGER.exception(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}\n
+                        Request URL: {url}\n
+                        Request body:\n
+                        {data}\n
+                        Response code: {resp.status_code}\n
+                        Response content:\n
+                        {resp.content}\n"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg.send(fail_silently=True)
+                        continue
+                    '''
+
+                    subject = f"ASCENDER_SYNC: New Azure AD account created from Ascender data ({email})"
+                    text_content = f"""Ascender record:\n
+                    {job}\n
+                    Azure GUID: {guid}\n
+                    Employee ID: {eid}\n
+                    Email: {email}\n
+                    Mail nickname: {mail_nickname}\n
+                    Display name: {display_name}\n
+                    Title: {title}\n
+                    Cost centre: {cc.code}\n
+                    Division: {cc.get_division_name_display()}\n
+                    Licence: {licence_type}\n
+                    Manager: {manager}\n
+                    Location: {location}\n"""
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                    msg.send(fail_silently=True)
 
 
 def get_ascender_matches():
