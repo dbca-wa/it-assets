@@ -385,8 +385,11 @@ def ascender_db_import():
                         msg.send(fail_silently=True)
                         continue
 
+                    # TODO: we don't currently add groups to the user (performed manually by SD staff)
+                    # because the organisation is not consistent in the usage of group types, and we
+                    # can't administer some group types via the Graph API.
+                    '''
                     # Next, add user to the minimum set of M365 groups.
-                    all_users_guid = "5dc9123b-e59c-4bed-9588-fab29cacebfc"
                     dbca_guid = "329251f6-ff18-4015-958a-55085c641cdd"
                     # Below are Azure GUIDs for the M365 groups for each division, mapped to the division code
                     # (used in the CostCentre model).
@@ -394,24 +397,19 @@ def ascender_db_import():
                         "BCS": "003ea951-4f8b-44cb-bf53-9efd968002b2",
                         "BGPA": "cb59632a-f1dc-490b-b2f1-1a6eb469e56d",
                         "CBS": "1b2777c4-4bd9-4a49-9f02-41a71ab69c1f",
-                        #"CPC": "",  # TODO
                         "ODG": "fbe3c349-fcc2-4ad1-92f6-337fb977b1b6",
                         "PWS": "64016b08-3466-4053-ba7c-713c8c7b5eeb",
                         "RIA": "128f4b94-98b0-4361-955c-5cdfda65b4f6",
                         "ZPA": "09b543ba-4cde-459a-a159-077bf2640c0e",
                     }
                     try:
-                        # All Users group
-                        url = f"https://graph.microsoft.com/v1.0/groups/{all_users_guid}/members/$ref"
                         data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{guid}"}
-                        resp = requests.post(url, headers=headers, json=data)
-                        resp.raise_for_status()
                         # DBCA group
                         url = f"https://graph.microsoft.com/v1.0/groups/{dbca_guid}/members/$ref"
                         resp = requests.post(url, headers=headers, json=data)
                         resp.raise_for_status()
                         # Division group
-                        if cc.code in division_group_guids:
+                        if cc.division_name in division_group_guids:
                             division_guid = division_group_guids[cc.code]
                             url = f"https://graph.microsoft.com/v1.0/groups/{division_guid}/members/$ref"
                             resp = requests.post(url, headers=headers, json=data)
@@ -430,6 +428,7 @@ def ascender_db_import():
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
                         msg.send(fail_silently=True)
                         continue
+                    '''
 
                     subject = f"ASCENDER_SYNC: New Azure AD account created from Ascender data ({email})"
                     text_content = f"""Ascender record:\n
