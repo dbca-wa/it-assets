@@ -415,7 +415,7 @@ def ascender_db_import():
                             resp = requests.post(url, headers=headers, json=data)
                             resp.raise_for_status()
                     except:
-                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign M365 groups ({email})"
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign M365 groups step ({email})"
                         LOGGER.exception(subject)
                         text_content = f"""Ascender record:\n
                         {job}\n
@@ -431,7 +431,7 @@ def ascender_db_import():
                     '''
 
                     subject = f"ASCENDER_SYNC: New Azure AD account created from Ascender data ({email})"
-                    text_content = f"""Ascender record:\n
+                    text_content = f"""New account record:\n
                     {job}\n
                     Azure GUID: {guid}\n
                     Employee ID: {eid}\n
@@ -439,13 +439,85 @@ def ascender_db_import():
                     Mail nickname: {mail_nickname}\n
                     Display name: {display_name}\n
                     Title: {title}\n
-                    Cost centre: {cc.code}\n
+                    Cost centre: {cc}\n
                     Division: {cc.get_division_name_display()}\n
                     Licence: {licence_type}\n
                     Manager: {manager}\n
                     Location: {location}\n"""
                     msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
                     msg.send(fail_silently=True)
+
+                    # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.
+                    new_user = DepartmentUser.objects.create(
+                        azure_guid=guid,
+                        active=False,
+                        email=email,
+                        name=display_name,
+                        given_name=job['preferred_name'].capitalize(),
+                        surname=job['surname'].capitalize(),
+                        title=title,
+                        employee_id=eid,
+                        cost_centre=cc,
+                        location=location,
+                        manager=manager,
+                    )
+                    LOGGER.info(f"ASCENDER SYNC: Created new department user {new_user}")
+
+                    # TODO: function to email the new account's manager the checklist to finish account provision.
+                    subject = f"New user account creation details – {display_name}"
+                    text_content = f"""{manager.given_name},\n\n
+Please note that this is an automated email to inform you that a new user account has been automatically created, using the following details:\n\n
+Name: {display_name}\n
+Employee ID: {eid}\n
+Email: {email}\n
+Title: {title}\n
+Cost centre: {cc}\n
+Division: {cc.get_division_name_display()}\n
+M365 licence: {licence_type}\n
+Manager: {manager.get_full_name()}\n
+Location: {location}\n\n
+In order to finish provisioning the new user account, OIM requires you to submit some additional information to the OIM Service Desk Portal.
+Please visit the OIM portal and complete the “New User Completion” form at this link:\n\n
+https://dbca.freshservice.com/support/catalog/items/75\n\n
+Following submission of that form with the required information, OIM Service Desk staff will finish provisioning the new account.
+Once the account is fully provisioned and activated, you will be emailed instructions to provide to the new user so that they can
+obtain their password and log in. The new user will be required to telephone Service Desk and provide the following information to identify themselves:\n\n
+1.	Full Name\n
+2.	Cost centre name and number\n
+3.	Manager name and details\n
+4.	Employee ID\n
+5.	Work location\n\n
+Regards, OIM Service Desk\n"""
+                    html_content = f"""<p>{manager.given_name},</p>
+<p>Please note that this is an automated email to inform you that a new user account has been automatically created, using the following details:</p>
+<ul>
+<li>Name: {display_name}</li>
+<li>Employee ID: {eid}</li>
+<li>Email: {email}</li>
+<li>Title: {title}</li>
+<li>Cost centre: {cc}</li>
+<li>Division: {cc.get_division_name_display()}</li>
+<li>M365 licence: {licence_type}</li>
+<li>Manager: {manager.get_full_name()}</li>
+<li>Location: {location}</li>
+</ul>
+<p>In order to finish provisioning the new user account, OIM requires you to submit some additional information to the OIM Service Desk Portal.
+Please visit the OIM portal and complete the “New User Completion” form at this link:</p>
+<p><a href="https://dbca.freshservice.com/support/catalog/items/75">https://dbca.freshservice.com/support/catalog/items/75</a></p>
+<p>Following submission of that form with the required information, OIM Service Desk staff will finish provisioning the new account.
+Once the account is fully provisioned and activated, you will be emailed instructions to provide to the new user so that they can
+obtain their password and log in. The new user will be required to telephone Service Desk and provide the following information to identify themselves:</p>
+<ol>
+<li>Full Name</li>
+<li>Cost centre name and number</li>
+<li>Manager name and details</li>
+<li>Employee ID</li>
+<li>Work location</li>
+</ol>
+<p>Regards, OIM Service Desk</p>"""
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [manager.email])
+                    msg.attach_alternative(html_content, "text/html")
+                    msg.send(fail_silently=False)  # We need to know if this email fails to be sent.
 
 
 def get_ascender_matches():
