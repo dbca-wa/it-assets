@@ -689,7 +689,7 @@ class DepartmentUser(models.Model):
                 ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             else:
                 ascender_location = None
-            if self.ad_data['physicalDeliveryOfficeName']:
+            if self.ad_data['physicalDeliveryOfficeName'] and Location.objects.filter(name=self.ad_data['physicalDeliveryOfficeName']).exists():
                 ad_location = Location.objects.get(name=self.ad_data['physicalDeliveryOfficeName'])
             else:
                 ad_location = None
