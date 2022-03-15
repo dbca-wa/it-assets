@@ -682,6 +682,71 @@ class DepartmentUser(models.Model):
                         requests.put(manager_url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
+        # location (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'physicalDeliveryOfficeName' in self.ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
+            if Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+                ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
+            else:
+                ascender_location = None
+            if self.ad_data['physicalDeliveryOfficeName']:
+                ad_location = Location.objects.get(name=self.ad_data['physicalDeliveryOfficeName'])
+            else:
+                ad_location = None
+            # Only update if we matched a physical location from Ascender.
+            if ascender_location and ascender_location != ad_location:
+                # Update both physicalDeliveryOfficeName and StreetAddress in onprem AD.
+                prop = 'physicalDeliveryOfficeName'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': ascender_location.name,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                prop = 'streetAddress'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': ascender_location.address,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'officeLocation' in self.azure_ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
+            if Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+                ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
+            else:
+                ascender_location = None
+            if self.azure_ad_data['officeLocation']:
+                ad_location = Location.objects.get(name=self.azure_ad_data['officeLocation'])
+            else:
+                ad_location = None
+            # Only update if we matched a physical location from Ascender.
+            if ascender_location and ascender_location != ad_location:
+                # Update both officeLocation and streetAddress in Azure AD.
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    data = {
+                        "officeLocation": ascender_location.name,
+                        "streetAddress": ascender_location.address,
+                    }
+                    if not log_only:
+                        requests.patch(url, headers=headers, json=data)
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
+
     def audit_ad_actions(self):
         """For this DepartmentUser object, check any incomplete ADAction
         objects that specify changes to be made for the AD user. If the ADAction is no longer
