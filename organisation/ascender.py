@@ -463,61 +463,54 @@ def ascender_db_import():
                     )
                     LOGGER.info(f"ASCENDER SYNC: Created new department user {new_user}")
 
-                    # TODO: function to email the new account's manager the checklist to finish account provision.
-                    subject = f"New user account creation details – {display_name}"
-                    text_content = f"""{manager.given_name},\n\n
-Please note that this is an automated email to inform you that a new user account has been automatically created, using the following details:\n\n
-Name: {display_name}\n
-Employee ID: {eid}\n
-Email: {email}\n
-Title: {title}\n
-Cost centre: {cc}\n
-Division: {cc.get_division_name_display()}\n
+                    # Email the new account's manager the checklist to finish account provision.
+                    new_user_creation_email(new_user, licence_type)
+
+
+def new_user_creation_email(new_user, licence_type):
+    """This email function is split from the 'create' step so that it can be called again in the event of failure.
+    Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
+    """
+    subject = f"New user account creation details - {new_user.name}"
+    text_content = f"""Hi {new_user.manager.given_name},\n\n
+Please note this is an automated email to confirm that a new user account has been created, using the information that you provided in Ascender. The details are:\n\n
+Name: {new_user.name}\n
+Employee ID: {new_user.employee_id}\n
+Email: {new_user.email}\n
+Title: {new_user.title}\n
+Cost centre: {new_user.cost_centre}\n
+Division: {new_user.cost_centre.get_division_name_display()}\n
 M365 licence: {licence_type}\n
-Manager: {manager.get_full_name()}\n
-Location: {location}\n\n
-In order to finish provisioning the new user account, OIM requires you to submit some additional information to the OIM Service Desk Portal.
-Please visit the OIM portal and complete the “New User Completion” form at this link:\n\n
+Manager: {new_user.manager.name}\n
+Location: {new_user.location}\n\n
+In order to complete the new user account, Office of Information Management (OIM) requires you to complete some additional information via the OIM Service Desk Portal.
+This link will take you directly to the "New User Completion" form; please attach a copy of this email and complete the form in the Portal to place the request:\n\n
 https://dbca.freshservice.com/support/catalog/items/75\n\n
-Following submission of that form with the required information, OIM Service Desk staff will finish provisioning the new account.
-Once the account is fully provisioned and activated, you will be emailed instructions to provide to the new user so that they can
-obtain their password and log in. The new user will be required to telephone Service Desk and provide the following information to identify themselves:\n\n
-1.	Full Name\n
-2.	Cost centre name and number\n
-3.	Manager name and details\n
-4.	Employee ID\n
-5.	Work location\n\n
-Regards, OIM Service Desk\n"""
-                    html_content = f"""<p>{manager.given_name},</p>
-<p>Please note that this is an automated email to inform you that a new user account has been automatically created, using the following details:</p>
+Once you have placed the request, OIM Service Desk staff will complete the new account and provide you with confirmation and instructions for the new user.\n\n
+Regards,\n\n
+OIM Service Desk\n"""
+    html_content = f"""<p>Hi {new_user.manager.given_name},</p>
+<p>Please note this is an automated email to confirm that a new user account has been created, using the information that you provided in Ascender. The details are:</p>
 <ul>
-<li>Name: {display_name}</li>
-<li>Employee ID: {eid}</li>
-<li>Email: {email}</li>
-<li>Title: {title}</li>
-<li>Cost centre: {cc}</li>
-<li>Division: {cc.get_division_name_display()}</li>
+<li>Name: {new_user.name}</li>
+<li>Employee ID: {new_user.employee_id}</li>
+<li>Email: {new_user.email}</li>
+<li>Title: {new_user.title}</li>
+<li>Cost centre: {new_user.cost_centre}</li>
+<li>Division: {new_user.cost_centre.get_division_name_display()}</li>
 <li>M365 licence: {licence_type}</li>
-<li>Manager: {manager.get_full_name()}</li>
-<li>Location: {location}</li>
+<li>Manager: {new_user.manager.name}</li>
+<li>Location: {new_user.location}</li>
 </ul>
-<p>In order to finish provisioning the new user account, OIM requires you to submit some additional information to the OIM Service Desk Portal.
-Please visit the OIM portal and complete the “New User Completion” form at this link:</p>
-<p><a href="https://dbca.freshservice.com/support/catalog/items/75">https://dbca.freshservice.com/support/catalog/items/75</a></p>
-<p>Following submission of that form with the required information, OIM Service Desk staff will finish provisioning the new account.
-Once the account is fully provisioned and activated, you will be emailed instructions to provide to the new user so that they can
-obtain their password and log in. The new user will be required to telephone Service Desk and provide the following information to identify themselves:</p>
-<ol>
-<li>Full Name</li>
-<li>Cost centre name and number</li>
-<li>Manager name and details</li>
-<li>Employee ID</li>
-<li>Work location</li>
-</ol>
-<p>Regards, OIM Service Desk</p>"""
-                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [manager.email])
-                    msg.attach_alternative(html_content, "text/html")
-                    msg.send(fail_silently=False)  # We need to know if this email fails to be sent.
+<p>In order to complete the new user account, Office of Information Management (OIM) requires you to complete some additional information via the OIM Service Desk Portal.
+This <a href="https://dbca.freshservice.com/support/catalog/items/75">link</a> will take you directly to the "New User Completion" form; please attach a copy of this email and
+complete the form in the Portal to place the request</p>
+<p>Once you have placed the request, OIM Service Desk staff will complete the new account and provide you with confirmation and instructions for the new user.</p>
+<p>Regards,</p>
+<p>OIM Service Desk</p>"""
+    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [new_user.manager.email])
+    msg.attach_alternative(html_content, "text/html")
+    msg.send(fail_silently=False)
 
 
 def get_ascender_matches():
