@@ -615,7 +615,7 @@ class DepartmentUser(models.Model):
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
 
-        # employee_id (source of truth: Ascender, except it's manually input by OIM staff in IT Assets)
+        # employee_id (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
             prop = 'EmployeeID'
@@ -682,6 +682,7 @@ class DepartmentUser(models.Model):
                         requests.put(manager_url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
+        """
         # location (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'physicalDeliveryOfficeName' in self.ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
@@ -746,6 +747,7 @@ class DepartmentUser(models.Model):
                         requests.patch(url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
+        """
 
     def audit_ad_actions(self):
         """For this DepartmentUser object, check any incomplete ADAction
@@ -850,7 +852,6 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.cost_centre = cc  # Change the department user's cost centre.
-
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
             new_cc = CostCentre.objects.create(code=paypoint, ascender_code=paypoint)
@@ -866,9 +867,9 @@ class DepartmentUser(models.Model):
                 },
             )
 
+        # Manager
         if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
             manager = DepartmentUser.objects.get(employee_id=self.ascender_data['manager_emp_no'])
-
             # The user's current manager differs from that in Ascender (it might be set to None).
             if self.manager != manager:
                 if self.manager:
@@ -894,6 +895,37 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.manager = manager  # Change the department user's manager.
+
+        """
+        # Location (commented out at present)
+        if 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc'] and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+            location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
+            # The user's current location differs from that in Ascender.
+            if self.location != location:
+                if self.location:
+                    LOGGER.info(f"ASCENDER SYNC: {self} location {self.location} differs from Ascender location {location}, updating it")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'geo_location_desc',
+                            'old_value': self.location.name,
+                            'new_value': location.name,
+                            'description': 'Update location value from Ascender',
+                        },
+                    )
+                else:
+                    LOGGER.info(f"ASCENDER SYNC: {self} location set from Ascender location {location}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'location',
+                            'old_value': None,
+                            'new_value': location.name,
+                            'description': 'Set location value from Ascender',
+                        },
+                    )
+                self.location = location
+        """
 
         self.save()
 
