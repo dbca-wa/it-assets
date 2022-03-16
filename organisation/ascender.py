@@ -540,3 +540,38 @@ def get_ascender_matches():
                     continue
 
     return possible_matches
+
+
+def ascender_cc_manager_fetch():
+    """Returns all records from cc_manager_view.
+    """
+    conn = psycopg2.connect(
+        host=settings.FOREIGN_DB_HOST,
+        port=settings.FOREIGN_DB_PORT,
+        database=settings.FOREIGN_DB_NAME,
+        user=settings.FOREIGN_DB_USERNAME,
+        password=settings.FOREIGN_DB_PASSWORD,
+    )
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM "public"."cc_manager_view"')
+    records = []
+
+    while True:
+        row = cursor.fetchone()
+        if row is None:
+            break
+        records.append(row)
+
+    return records
+
+
+def update_cc_managers():
+    """Queries cc_manager_view and updates the cost centre manager for each.
+    """
+    records = ascender_cc_manager_fetch()
+    for r in records:
+        if CostCentre.objects.filter(ascender_code=r[1]).exists():
+            cc = CostCentre.objects.get(ascender_code=r[1])
+            if DepartmentUser.objects.filter(employee_id=r[6]).exists():
+                cc.manager = DepartmentUser.objects.get(employee_id=r[6])
+                cc.save()
