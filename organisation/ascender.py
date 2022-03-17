@@ -473,7 +473,7 @@ def new_user_creation_email(new_user, licence_type):
     """
     subject = f"New user account creation details - {new_user.name}"
     text_content = f"""Hi {new_user.manager.given_name},\n\n
-Please note this is an automated email to confirm that a new user account has been created, using the information that you provided in Ascender. The details are:\n\n
+This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:\n\n
 Name: {new_user.name}\n
 Employee ID: {new_user.employee_id}\n
 Email: {new_user.email}\n
@@ -483,14 +483,14 @@ Division: {new_user.cost_centre.get_division_name_display()}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n\n
-In order to complete the new user account, Office of Information Management (OIM) requires you to complete some additional information via the OIM Service Desk Portal.
-This link will take you directly to the "New User Completion" form; please attach a copy of this email and complete the form in the Portal to place the request:\n\n
+To finalise the new user account, Office of Information Management (OIM) requires the line manager to complete some additional information via the OIM Service Desk Portal.
+This link will take you directly to the "New User Completion" form; you will need to attach a copy of this email in the form before placing the request:\n\n
 https://dbca.freshservice.com/support/catalog/items/75\n\n
-Once you have placed the request, OIM Service Desk staff will complete the new account and provide you with confirmation and instructions for the new user.\n\n
+Once you have placed the request, OIM Service Desk will complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
     html_content = f"""<p>Hi {new_user.manager.given_name},</p>
-<p>Please note this is an automated email to confirm that a new user account has been created, using the information that you provided in Ascender. The details are:</p>
+<p>This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:</p>
 <ul>
 <li>Name: {new_user.name}</li>
 <li>Employee ID: {new_user.employee_id}</li>
@@ -502,13 +502,19 @@ OIM Service Desk\n"""
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
 </ul>
-<p>In order to complete the new user account, Office of Information Management (OIM) requires you to complete some additional information via the OIM Service Desk Portal.
-This <a href="https://dbca.freshservice.com/support/catalog/items/75">link</a> will take you directly to the "New User Completion" form; please attach a copy of this email and
-complete the form in the Portal to place the request</p>
+<p>To finalise the new user account, Office of Information Management (OIM) requires the line manager to complete some additional information via the OIM Service Desk Portal.
+This <a href="https://dbca.freshservice.com/support/catalog/items/75">link</a> will take you directly to the "New User Completion" form; you will need to attach
+a copy of this email in the form before placing the request.</p>
 <p>Once you have placed the request, OIM Service Desk staff will complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
-    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [new_user.manager.email])
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_content,
+        from_email=settings.NOREPLY_EMAIL,
+        to=[new_user.manager.email],
+        cc=[],
+    )
     msg.attach_alternative(html_content, "text/html")
     msg.send(fail_silently=False)
 
