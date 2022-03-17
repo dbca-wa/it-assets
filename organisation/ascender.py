@@ -415,7 +415,7 @@ def ascender_db_import():
                             resp = requests.post(url, headers=headers, json=data)
                             resp.raise_for_status()
                     except:
-                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign M365 groups ({email})"
+                        subject = f"ASCENDER SYNC: create new Azure AD user failed at assign M365 groups step ({email})"
                         LOGGER.exception(subject)
                         text_content = f"""Ascender record:\n
                         {job}\n
@@ -431,7 +431,7 @@ def ascender_db_import():
                     '''
 
                     subject = f"ASCENDER_SYNC: New Azure AD account created from Ascender data ({email})"
-                    text_content = f"""Ascender record:\n
+                    text_content = f"""New account record:\n
                     {job}\n
                     Azure GUID: {guid}\n
                     Employee ID: {eid}\n
@@ -439,13 +439,84 @@ def ascender_db_import():
                     Mail nickname: {mail_nickname}\n
                     Display name: {display_name}\n
                     Title: {title}\n
-                    Cost centre: {cc.code}\n
+                    Cost centre: {cc}\n
                     Division: {cc.get_division_name_display()}\n
                     Licence: {licence_type}\n
                     Manager: {manager}\n
                     Location: {location}\n"""
                     msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
                     msg.send(fail_silently=True)
+
+                    # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.
+                    new_user = DepartmentUser.objects.create(
+                        azure_guid=guid,
+                        active=False,
+                        email=email,
+                        name=display_name,
+                        given_name=job['preferred_name'].capitalize(),
+                        surname=job['surname'].capitalize(),
+                        title=title,
+                        employee_id=eid,
+                        cost_centre=cc,
+                        location=location,
+                        manager=manager,
+                    )
+                    LOGGER.info(f"ASCENDER SYNC: Created new department user {new_user}")
+
+                    # Email the new account's manager the checklist to finish account provision.
+                    new_user_creation_email(new_user, licence_type)
+
+
+def new_user_creation_email(new_user, licence_type):
+    """This email function is split from the 'create' step so that it can be called again in the event of failure.
+    Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
+    """
+    subject = f"New user account creation details - {new_user.name}"
+    text_content = f"""Hi {new_user.manager.given_name},\n\n
+This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:\n\n
+Name: {new_user.name}\n
+Employee ID: {new_user.employee_id}\n
+Email: {new_user.email}\n
+Title: {new_user.title}\n
+Cost centre: {new_user.cost_centre}\n
+Division: {new_user.cost_centre.get_division_name_display()}\n
+M365 licence: {licence_type}\n
+Manager: {new_user.manager.name}\n
+Location: {new_user.location}\n\n
+To finalise the new user account, Office of Information Management (OIM) requires the line manager to complete some additional information via the OIM Service Desk Portal.
+This link will take you directly to the "New User Completion" form; you will need to attach a copy of this email in the form before placing the request:\n\n
+https://dbca.freshservice.com/support/catalog/items/75\n\n
+Once you have placed the request, OIM Service Desk will complete the new account and provide you with confirmation and instructions for the new user.\n\n
+Regards,\n\n
+OIM Service Desk\n"""
+    html_content = f"""<p>Hi {new_user.manager.given_name},</p>
+<p>This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:</p>
+<ul>
+<li>Name: {new_user.name}</li>
+<li>Employee ID: {new_user.employee_id}</li>
+<li>Email: {new_user.email}</li>
+<li>Title: {new_user.title}</li>
+<li>Cost centre: {new_user.cost_centre}</li>
+<li>Division: {new_user.cost_centre.get_division_name_display()}</li>
+<li>M365 licence: {licence_type}</li>
+<li>Manager: {new_user.manager.name}</li>
+<li>Location: {new_user.location}</li>
+</ul>
+<p>To finalise the new user account, Office of Information Management (OIM) requires the line manager to complete some additional information via the OIM Service Desk Portal.
+This <a href="https://dbca.freshservice.com/support/catalog/items/75">link</a> will take you directly to the "New User Completion" form; you will need to attach
+a copy of this email in the form before placing the request.</p>
+<p>Once you have placed the request, OIM Service Desk staff will complete the new account and provide you with confirmation and instructions for the new user.</p>
+<p>Regards,</p>
+<p>OIM Service Desk</p>"""
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_content,
+        from_email=settings.NOREPLY_EMAIL,
+        to=[new_user.manager.email],
+        cc=[],
+    )
+    msg.attach_alternative(html_content, "text/html")
+    msg.send(fail_silently=False)
 
 
 def get_ascender_matches():
@@ -475,3 +546,38 @@ def get_ascender_matches():
                     continue
 
     return possible_matches
+
+
+def ascender_cc_manager_fetch():
+    """Returns all records from cc_manager_view.
+    """
+    conn = psycopg2.connect(
+        host=settings.FOREIGN_DB_HOST,
+        port=settings.FOREIGN_DB_PORT,
+        database=settings.FOREIGN_DB_NAME,
+        user=settings.FOREIGN_DB_USERNAME,
+        password=settings.FOREIGN_DB_PASSWORD,
+    )
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM "public"."cc_manager_view"')
+    records = []
+
+    while True:
+        row = cursor.fetchone()
+        if row is None:
+            break
+        records.append(row)
+
+    return records
+
+
+def update_cc_managers():
+    """Queries cc_manager_view and updates the cost centre manager for each.
+    """
+    records = ascender_cc_manager_fetch()
+    for r in records:
+        if CostCentre.objects.filter(ascender_code=r[1]).exists():
+            cc = CostCentre.objects.get(ascender_code=r[1])
+            if DepartmentUser.objects.filter(employee_id=r[6]).exists():
+                cc.manager = DepartmentUser.objects.get(employee_id=r[6])
+                cc.save()

@@ -615,7 +615,7 @@ class DepartmentUser(models.Model):
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
 
-        # employee_id (source of truth: Ascender, except it's manually input by OIM staff in IT Assets)
+        # employee_id (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
             prop = 'EmployeeID'
@@ -681,6 +681,73 @@ class DepartmentUser(models.Model):
                     if not log_only:
                         requests.put(manager_url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
+
+        """
+        # location (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'physicalDeliveryOfficeName' in self.ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
+            if Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+                ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
+            else:
+                ascender_location = None
+            if self.ad_data['physicalDeliveryOfficeName'] and Location.objects.filter(name=self.ad_data['physicalDeliveryOfficeName']).exists():
+                ad_location = Location.objects.get(name=self.ad_data['physicalDeliveryOfficeName'])
+            else:
+                ad_location = None
+            # Only update if we matched a physical location from Ascender.
+            if ascender_location and ascender_location != ad_location:
+                # Update both physicalDeliveryOfficeName and StreetAddress in onprem AD.
+                prop = 'physicalDeliveryOfficeName'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': ascender_location.name,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                prop = 'streetAddress'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': ascender_location.address,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'officeLocation' in self.azure_ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
+            if Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+                ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
+            else:
+                ascender_location = None
+            if self.azure_ad_data['officeLocation']:
+                ad_location = Location.objects.get(name=self.azure_ad_data['officeLocation'])
+            else:
+                ad_location = None
+            # Only update if we matched a physical location from Ascender.
+            if ascender_location and ascender_location != ad_location:
+                # Update both officeLocation and streetAddress in Azure AD.
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    data = {
+                        "officeLocation": ascender_location.name,
+                        "streetAddress": ascender_location.address,
+                    }
+                    if not log_only:
+                        requests.patch(url, headers=headers, json=data)
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
+        """
 
     def audit_ad_actions(self):
         """For this DepartmentUser object, check any incomplete ADAction
@@ -785,7 +852,6 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.cost_centre = cc  # Change the department user's cost centre.
-
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
             new_cc = CostCentre.objects.create(code=paypoint, ascender_code=paypoint)
@@ -801,9 +867,9 @@ class DepartmentUser(models.Model):
                 },
             )
 
+        # Manager
         if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
             manager = DepartmentUser.objects.get(employee_id=self.ascender_data['manager_emp_no'])
-
             # The user's current manager differs from that in Ascender (it might be set to None).
             if self.manager != manager:
                 if self.manager:
@@ -829,6 +895,37 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.manager = manager  # Change the department user's manager.
+
+        """
+        # Location (commented out at present)
+        if 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc'] and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+            location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
+            # The user's current location differs from that in Ascender.
+            if self.location != location:
+                if self.location:
+                    LOGGER.info(f"ASCENDER SYNC: {self} location {self.location} differs from Ascender location {location}, updating it")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'geo_location_desc',
+                            'old_value': self.location.name,
+                            'new_value': location.name,
+                            'description': 'Update location value from Ascender',
+                        },
+                    )
+                else:
+                    LOGGER.info(f"ASCENDER SYNC: {self} location set from Ascender location {location}")
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'location',
+                            'old_value': None,
+                            'new_value': location.name,
+                            'description': 'Set location value from Ascender',
+                        },
+                    )
+                self.location = location
+        """
 
         self.save()
 
