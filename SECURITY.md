@@ -5,6 +5,10 @@ security of our software products and services seriously, which includes all
 source code repositories managed through our GitHub organisation
 [dbca-wa](https://github.com/dbca-wa).
 
+This repository takes guidance relating to Secure Software Development from the
+[WA Government Cyber Security
+Policy](https://www.wa.gov.au/system/files/2022-01/WA%20Government%20Cyber%20Security%20Policy.pdf).
+
 If you believe that you have found a security vulnerability in any DBCA-managed
 repository, please report it to us as described below.
 
@@ -28,3 +32,11 @@ to help us better understand the nature and scope of the possible issue:
 
 This information will help us triage your report more quickly. Please note that
 we prefer all communications to be in English.
+
+## Automated monitoring of security issues
+
+This repository makes use of automated scanning to check for known security
+issues within software dependencies and built outputs. Where security issues
+are identified within project dependencies and/or outputs, updates to mitigate
+those issues will be incorporated into our normal development cycle and
+mitigated as soon as practical.
