@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.7.9-slim-buster as builder_base_itassets
+FROM python:3.9.11-slim-bullseye as builder_base
 MAINTAINER asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
@@ -10,7 +10,7 @@ RUN apt-get update -y \
   && pip install --upgrade pip
 
 # Install trivy into the base environment.
-FROM builder_base_itassets as builder_trivy_itassets
+FROM builder_base as builder_trivy_itassets
 RUN apt-get update -y \
   && apt-get install --no-install-recommends -y apt-transport-https gnupg lsb-release \
   && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add - \
@@ -22,7 +22,7 @@ RUN apt-get update -y \
 # Install Python libs using Poetry.
 FROM builder_trivy_itassets as python_libs_itassets
 WORKDIR /app
-ENV POETRY_VERSION=1.1.12
+ENV POETRY_VERSION=1.1.13
 RUN pip install "poetry==$POETRY_VERSION"
 RUN python -m venv /venv
 COPY poetry.lock pyproject.toml /app/

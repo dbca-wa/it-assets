@@ -4,12 +4,12 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from djqscsv import render_to_csv_response
+import json
 from msal import ConfidentialClientApplication
 import os
 import re
 import requests
 from restless.dj import DjangoResource
-import simdjson
 
 
 def ms_graph_client_token():
@@ -303,7 +303,7 @@ class LogRecordIterator(object):
                             self._index += 1
                             json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
                             self._data_block = None
-                            return simdjson.loads(json_str)
+                            return json.loads(json_str)
                         else:
                             raise Exception("The last record is incomplete in file({}).".format(self._input_file))
                     else:
@@ -325,7 +325,7 @@ class LogRecordIterator(object):
                     self._index += 1
                     json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
                     self._data_block = self._data_block[m.end():]
-                    return simdjson.loads(json_str)
+                    return json.loads(json_str)
                 else:
                     self._read = True
 
