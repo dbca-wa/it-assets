@@ -7,7 +7,7 @@ from restless.constants import OK
 from restless.dj import DjangoResource
 from restless.resources import skip_prepare
 
-from itassets.utils import FieldsFormatter, CSVDjangoResource
+from itassets.utils import FieldsFormatter
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
 
 
@@ -34,6 +34,7 @@ def format_location(request, value):
         location = Location.objects.get(pk=value)
         d = location.__dict__
         d.pop('_state')
+        d.pop('point')
         return d
     else:
         return None
@@ -241,9 +242,9 @@ class DepartmentUserResource(DjangoResource):
         return resp
 
 
-class LocationResource(CSVDjangoResource):
+class LocationResource(DjangoResource):
     VALUES_ARGS = (
-        'pk', 'name', 'address', 'phone', 'fax', 'point', 'url', 'active')
+        'pk', 'name', 'address', 'phone', 'fax', 'point', 'active')
 
     def list_qs(self):
         FILTERS = {}
