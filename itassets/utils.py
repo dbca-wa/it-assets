@@ -1,15 +1,12 @@
 import threading
 
 from django.db.models import Q
-from django.http import HttpResponse
 from django.contrib.auth.models import User
-from djqscsv import render_to_csv_response
+import json
 from msal import ConfidentialClientApplication
 import os
 import re
 import requests
-from restless.dj import DjangoResource
-import simdjson
 
 
 def ms_graph_client_token():
@@ -105,20 +102,6 @@ def get_query(query_string, search_fields):
         else:
             query = query & or_query
     return query
-
-
-class CSVDjangoResource(DjangoResource):
-    """Extend the restless DjangoResource class to add a CSV export endpoint.
-    """
-    @classmethod
-    def as_csv(self, request):
-        resource = self()
-        if not hasattr(resource, "list_qs"):
-            return HttpResponse(
-                "list_qs not implemented for {}".format(self.__name__))
-        resource.request = request
-        return render_to_csv_response(
-            resource.list_qs(), field_order=resource.VALUES_ARGS)
 
 
 class FieldsFormatter(object):
@@ -303,7 +286,7 @@ class LogRecordIterator(object):
                             self._index += 1
                             json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
                             self._data_block = None
-                            return simdjson.loads(json_str)
+                            return json.loads(json_str)
                         else:
                             raise Exception("The last record is incomplete in file({}).".format(self._input_file))
                     else:
@@ -325,7 +308,7 @@ class LogRecordIterator(object):
                     self._index += 1
                     json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
                     self._data_block = self._data_block[m.end():]
-                    return simdjson.loads(json_str)
+                    return json.loads(json_str)
                 else:
                     self._read = True
 

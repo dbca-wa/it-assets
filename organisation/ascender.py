@@ -483,10 +483,7 @@ Division: {new_user.cost_centre.get_division_name_display()}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n\n
-To finalise the new user account, Office of Information Management (OIM) requires the line manager to complete some additional information via the OIM Service Desk Portal.
-This link will take you directly to the "New User Completion" form; you will need to attach a copy of this email in the form before placing the request:\n\n
-https://dbca.freshservice.com/support/catalog/items/75\n\n
-Once you have placed the request, OIM Service Desk will complete the new account and provide you with confirmation and instructions for the new user.\n\n
+OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
     html_content = f"""<p>Hi {new_user.manager.given_name},</p>
@@ -502,10 +499,7 @@ OIM Service Desk\n"""
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
 </ul>
-<p>To finalise the new user account, Office of Information Management (OIM) requires the line manager to complete some additional information via the OIM Service Desk Portal.
-This <a href="https://dbca.freshservice.com/support/catalog/items/75">link</a> will take you directly to the "New User Completion" form; you will need to attach
-a copy of this email in the form before placing the request.</p>
-<p>Once you have placed the request, OIM Service Desk staff will complete the new account and provide you with confirmation and instructions for the new user.</p>
+<p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
     msg = EmailMultiAlternatives(
@@ -513,7 +507,7 @@ a copy of this email in the form before placing the request.</p>
         body=text_content,
         from_email=settings.NOREPLY_EMAIL,
         to=[new_user.manager.email],
-        cc=[],
+        cc=[settings.SERVICE_DESK_EMAIL],
     )
     msg.attach_alternative(html_content, "text/html")
     msg.send(fail_silently=False)

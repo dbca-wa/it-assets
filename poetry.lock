@@ -8,7 +8,7 @@ python-versions = "*"
 
 [[package]]
 name = "azure-core"
-version = "1.22.1"
+version = "1.23.0"
 description = "Microsoft Azure Core Library for Python"
 category = "main"
 optional = false
@@ -17,6 +17,7 @@ python-versions = ">=3.6"
 [package.dependencies]
 requests = ">=2.18.4"
 six = ">=1.11.0"
+typing-extensions = ">=4.0.1"
 
 [[package]]
 name = "azure-storage-blob"
@@ -141,22 +142,15 @@ resolved_reference = "6c987b75d0903fcc89aefff5f5956f3be3c2b238"
 
 [[package]]
 name = "dbca-utils"
-version = "1.1.5"
-description = ""
+version = "1.1.6"
+description = "Utilities for Django/Python apps"
 category = "main"
 optional = false
 python-versions = "*"
-develop = false
 
 [package.dependencies]
 Django = ">=2.1"
 requests = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/dbca-wa/dbca-utils.git"
-reference = "1.1.5"
-resolved_reference = "2a3e5ec46cdcee2e6e2bcd80f80a4a3ef4913759"
 
 [[package]]
 name = "decorator"
@@ -264,18 +258,6 @@ Markdown = "*"
 Pillow = "*"
 
 [[package]]
-name = "django-queryset-csv"
-version = "1.0.0"
-description = "A simple python module for writing querysets to csv"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-django = ">=1.8"
-unicodecsv = ">=0.14.1"
-
-[[package]]
 name = "django-reversion"
 version = "3.0.8"
 description = "An extension to the Django web framework that provides version control for model instances."
@@ -350,20 +332,19 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "importlib-metadata"
-version = "4.11.0"
+version = "4.11.3"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
 zipp = ">=0.5"
 
 [package.extras]
-docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
+docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
 perf = ["ipython"]
-testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "packaging", "pyfakefs", "flufl.flake8", "pytest-perf (>=0.9.2)", "pytest-black (>=0.3.7)", "pytest-mypy", "importlib-resources (>=1.3)"]
+testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "packaging", "pyfakefs", "flufl.flake8", "pytest-perf (>=0.9.2)", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)", "importlib-resources (>=1.3)"]
 
 [[package]]
 name = "ipdb"
@@ -380,7 +361,7 @@ toml = {version = ">=0.10.2", markers = "python_version > \"3.6\""}
 
 [[package]]
 name = "ipython"
-version = "7.31.1"
+version = "7.32.0"
 description = "IPython: Productive Interactive Computing"
 category = "dev"
 optional = false
@@ -537,7 +518,7 @@ jdcal = "*"
 
 [[package]]
 name = "paramiko"
-version = "2.9.2"
+version = "2.10.3"
 description = "SSH2 protocol library"
 category = "main"
 optional = false
@@ -547,6 +528,7 @@ python-versions = "*"
 bcrypt = ">=3.1.3"
 cryptography = ">=2.5"
 pynacl = ">=1.0.1"
+six = "*"
 
 [package.extras]
 all = ["pyasn1 (>=0.1.7)", "pynacl (>=1.0.1)", "bcrypt (>=3.1.3)", "invoke (>=1.3)", "gssapi (>=1.4.1)", "pywin32 (>=2.1.8)"]
@@ -621,14 +603,6 @@ optional = false
 python-versions = "*"
 
 [[package]]
-name = "pybind11"
-version = "2.5.0"
-description = "Seamless operability between C++11 and Python"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
@@ -688,20 +662,6 @@ python-versions = "*"
 paramiko = ">=1.17"
 
 [[package]]
-name = "pysimdjson"
-version = "2.5.1"
-description = "simdjson bindings for python"
-category = "main"
-optional = false
-python-versions = ">3.4"
-
-[package.extras]
-benchmark = ["pytest", "pytest-benchmark", "orjson", "python-rapidjson", "simplejson", "ujson"]
-dev = ["pybind11"]
-release = ["m2r", "sphinx", "ghp-import", "bumpversion"]
-test = ["pytest"]
-
-[[package]]
 name = "python-dateutil"
 version = "2.8.1"
 description = "Extensions to the standard Python datetime module"
@@ -722,7 +682,7 @@ python-versions = "*"
 
 [[package]]
 name = "pytz"
-version = "2021.3"
+version = "2022.1"
 description = "World timezone definitions, modern and historical"
 category = "main"
 optional = false
@@ -857,14 +817,14 @@ python-versions = "*"
 
 [[package]]
 name = "urllib3"
-version = "1.26.8"
+version = "1.26.9"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 
 [package.extras]
-brotli = ["brotlipy (>=0.6.0)"]
+brotli = ["brotlicffi (>=0.8.0)", "brotli (>=1.0.9)", "brotlipy (>=0.6.0)"]
 secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "certifi", "ipaddress"]
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
@@ -923,8 +883,8 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 
 [metadata]
 lock-version = "1.1"
-python-versions = "^3.7"
-content-hash = "b64498fcfc5ddc64a37c3d9f6e158677f0765a961cb290adc90ed4002b8697fe"
+python-versions = "^3.9"
+content-hash = "c45bf82e710d4eec9b9a92c529687909e2506a96b1ea9c934946dfa75cc44856"
 
 [metadata.files]
 appnope = [
@@ -932,8 +892,8 @@ appnope = [
     {file = "appnope-0.1.2.tar.gz", hash = "sha256:dd83cd4b5b460958838f6eb3000c660b1f9caf2a5b1de4264e941512f603258a"},
 ]
 azure-core = [
-    {file = "azure-core-1.22.1.zip", hash = "sha256:4b6e405268a33b873107796495cec3f2f1b1ffe935624ce0fbddff36d38d3a4d"},
-    {file = "azure_core-1.22.1-py3-none-any.whl", hash = "sha256:407381c74e2ccc16adb1f29c4a1b381ebd39e8661bbf60422926d8252d5b757d"},
+    {file = "azure-core-1.23.0.zip", hash = "sha256:a56a6f720d0948d3f3e4a25a5fe46df2f1b7f865c358d74e2ce47dbb49262608"},
+    {file = "azure_core-1.23.0-py3-none-any.whl", hash = "sha256:23c1389a115c328878c4eface3ca3899c2468313ea6f883f2347d6924cd887b2"},
 ]
 azure-storage-blob = [
     {file = "azure-storage-blob-12.3.1.zip", hash = "sha256:02030d657914c221961f6e7ebafc6ec36761649c04396b368e0b102cbcdcf26c"},
@@ -1090,7 +1050,9 @@ cryptography = [
     {file = "cryptography-3.4.8.tar.gz", hash = "sha256:94cc5ed4ceaefcbe5bf38c8fba6a21fc1d365bb8fb826ea1688e3370b2e24a1c"},
 ]
 data-storage = []
-dbca-utils = []
+dbca-utils = [
+    {file = "dbca-utils-1.1.6.tar.gz", hash = "sha256:12e101e905aecc1d622a4271f0f4b3ff830cff224238177b5223bae5c5357240"},
+]
 decorator = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
     {file = "decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330"},
@@ -1130,10 +1092,6 @@ django-markdownx = [
     {file = "django-markdownx-3.0.1.tar.gz", hash = "sha256:e18e395cad0ade96afbb250a81cad15618e417ac3c0d9c37d964be3d8fd57bcf"},
     {file = "django_markdownx-3.0.1-py2.py3-none-any.whl", hash = "sha256:f4d8998618c0548bf5349713d805e7440684d70116de0f10413932286c4e375f"},
 ]
-django-queryset-csv = [
-    {file = "django-queryset-csv-1.0.0.tar.gz", hash = "sha256:9ba890536fb48ba9bf2a2f75d1205ac01d58c127da19e5a8e8dc096c207d4818"},
-    {file = "django_queryset_csv-1.0.0-py2.7.egg", hash = "sha256:8f700ae5e28f2a3571f8101dd66f99a2a8cd52b3d281593c7389bbb68605065f"},
-]
 django-reversion = [
     {file = "django-reversion-3.0.8.tar.gz", hash = "sha256:49e9930f90322dc6a2754dd26144285cfcc1c5bd0c1c39ca95d5602c5054ae32"},
     {file = "django_reversion-3.0.8-py3-none-any.whl", hash = "sha256:9cfadeec2df37cb53d795ab79f6792f9eed8e70363dcf3a275dc19a58b971a8f"},
@@ -1162,15 +1120,15 @@ idna = [
     {file = "idna-3.3.tar.gz", hash = "sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-4.11.0-py3-none-any.whl", hash = "sha256:6affcdb3aec542dd98df8211e730bba6c5f2bec8288d47bacacde898f548c9ad"},
-    {file = "importlib_metadata-4.11.0.tar.gz", hash = "sha256:9e5e553bbba1843cb4a00823014b907616be46ee503d2b9ba001d214a8da218f"},
+    {file = "importlib_metadata-4.11.3-py3-none-any.whl", hash = "sha256:1208431ca90a8cca1a6b8af391bb53c1a2db74e5d1cef6ddced95d4b2062edc6"},
+    {file = "importlib_metadata-4.11.3.tar.gz", hash = "sha256:ea4c597ebf37142f827b8f39299579e31685c31d3a438b59f469406afd0f2539"},
 ]
 ipdb = [
     {file = "ipdb-0.13.9.tar.gz", hash = "sha256:951bd9a64731c444fd907a5ce268543020086a697f6be08f7cc2c9a752a278c5"},
 ]
 ipython = [
-    {file = "ipython-7.31.1-py3-none-any.whl", hash = "sha256:55df3e0bd0f94e715abd968bedd89d4e8a7bce4bf498fb123fed4f5398fea874"},
-    {file = "ipython-7.31.1.tar.gz", hash = "sha256:b5548ec5329a4bcf054a5deed5099b0f9622eb9ea51aaa7104d215fece201d8c"},
+    {file = "ipython-7.32.0-py3-none-any.whl", hash = "sha256:86df2cf291c6c70b5be6a7b608650420e89180c8ec74f376a34e2dc15c3400e7"},
+    {file = "ipython-7.32.0.tar.gz", hash = "sha256:468abefc45c15419e3c8e8c0a6a5c115b2127bafa34d7c641b1d443658793909"},
 ]
 isodate = [
     {file = "isodate-0.6.1-py2.py3-none-any.whl", hash = "sha256:0751eece944162659049d35f4f549ed815792b38793f07cf73381c1c87cbed96"},
@@ -1213,8 +1171,8 @@ openpyxl = [
     {file = "openpyxl-3.0.5.tar.gz", hash = "sha256:18e11f9a650128a12580a58e3daba14e00a11d9e907c554a17ea016bf1a2c71b"},
 ]
 paramiko = [
-    {file = "paramiko-2.9.2-py2.py3-none-any.whl", hash = "sha256:04097dbd96871691cdb34c13db1883066b8a13a0df2afd4cb0a92221f51c2603"},
-    {file = "paramiko-2.9.2.tar.gz", hash = "sha256:944a9e5dbdd413ab6c7951ea46b0ab40713235a9c4c5ca81cfe45c6f14fa677b"},
+    {file = "paramiko-2.10.3-py2.py3-none-any.whl", hash = "sha256:ac6593479f2b47a9422eca076b22cff9f795495e6733a64723efc75dd8c92101"},
+    {file = "paramiko-2.10.3.tar.gz", hash = "sha256:ddb1977853aef82804b35d72a0e597b244fa326c404c350bd00c5b01dbfee71a"},
 ]
 parso = [
     {file = "parso-0.8.3-py2.py3-none-any.whl", hash = "sha256:c001d4636cd3aecdaf33cbb40aebb59b094be2a74c556778ef5576c175e19e75"},
@@ -1310,10 +1268,6 @@ ptyprocess = [
     {file = "ptyprocess-0.7.0-py2.py3-none-any.whl", hash = "sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35"},
     {file = "ptyprocess-0.7.0.tar.gz", hash = "sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220"},
 ]
-pybind11 = [
-    {file = "pybind11-2.5.0-py2.py3-none-any.whl", hash = "sha256:205d9f9615eac190811cb8c3c2b2f95f6844ddba0fa0a1d45d00793338741601"},
-    {file = "pybind11-2.5.0.tar.gz", hash = "sha256:ea5a4e7a880112915463826f1acbec5892df36dfe102ecb249229ac514fb54ad"},
-]
 pycparser = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
     {file = "pycparser-2.21.tar.gz", hash = "sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206"},
@@ -1341,24 +1295,6 @@ pynacl = [
 pysftp = [
     {file = "pysftp-0.2.9.tar.gz", hash = "sha256:fbf55a802e74d663673400acd92d5373c1c7ee94d765b428d9f977567ac4854a"},
 ]
-pysimdjson = [
-    {file = "pysimdjson-2.5.1-cp35-cp35m-macosx_10_14_x86_64.whl", hash = "sha256:e860577eddb2601afcbcbf8a8b68eecd7e0029af4e9c2913484e5869bbb30cbe"},
-    {file = "pysimdjson-2.5.1-cp35-cp35m-manylinux2014_aarch64.whl", hash = "sha256:d0a6d4acacf4530ef2c65c8ef5366a350d56cdb218d7b5287ad8598cb6d0c6eb"},
-    {file = "pysimdjson-2.5.1-cp35-cp35m-manylinux2014_x86_64.whl", hash = "sha256:17c3773cfe21f78b0b5b282e99281aecd5dd074662039c4d9eb489c9b480167f"},
-    {file = "pysimdjson-2.5.1-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:8fdd58ddaef6c9e881d49028d120b3cec0d537e0efce837c82f56cbea619acbe"},
-    {file = "pysimdjson-2.5.1-cp36-cp36m-manylinux2014_aarch64.whl", hash = "sha256:0f35a6e42ac234eb054bcbd3c67b02ecee809868a6e301c475241e6f71e48b4c"},
-    {file = "pysimdjson-2.5.1-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:695538184af677de76c7820e35b2e9f84bf0ea719b926697cb6c60968e7e82fa"},
-    {file = "pysimdjson-2.5.1-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:11de98885fa8b62c3fd31e9d05f14bc13896f844377ab1a31780aff475565cd6"},
-    {file = "pysimdjson-2.5.1-cp37-cp37m-manylinux2014_aarch64.whl", hash = "sha256:8d85ab77b7bc62df7bd1b39231c7a955f07216a72744c8ab7c36202ee32feceb"},
-    {file = "pysimdjson-2.5.1-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:7a6917a748076cddfd19c5cabdecfb143f41eea99a6ea20418934b4449b659e5"},
-    {file = "pysimdjson-2.5.1-cp37-cp37m-win_amd64.whl", hash = "sha256:72ec63a40d967f9f2a2568f143227648e49ec93ee2fca0d8fe3dda9b5c67d215"},
-    {file = "pysimdjson-2.5.1-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:8385c2b775ea3de9a548942b5ae5ccbd512725c87965d068bdff3235ec59b313"},
-    {file = "pysimdjson-2.5.1-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:0867c9660cb0db92b398f4a48cf15110d44ac0456debb2ae109d561084558ea6"},
-    {file = "pysimdjson-2.5.1-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:65154471f8bd92f97feaa95a3e1c4899530774ab69e51e097082526982cd7024"},
-    {file = "pysimdjson-2.5.1-cp38-cp38-win_amd64.whl", hash = "sha256:f5faab579e939d3f278ef3686a3447350cd2837fcf03f94628600352eb4a6828"},
-    {file = "pysimdjson-2.5.1-pp36-pypy36_pp73-macosx_10_9_x86_64.whl", hash = "sha256:aa1aaa9d722d0a33ba369a2f7936f9bb3efe954a5238b4359e45c8d877f37181"},
-    {file = "pysimdjson-2.5.1.tar.gz", hash = "sha256:0ccfb9a2f89fbadaa080057150215cf642e05d9f244628aa856904868b553b94"},
-]
 python-dateutil = [
     {file = "python-dateutil-2.8.1.tar.gz", hash = "sha256:73ebfe9dbf22e832286dafa60473e4cd239f8592f699aa5adaf10050e6e1823c"},
     {file = "python_dateutil-2.8.1-py2.py3-none-any.whl", hash = "sha256:75bb3f31ea686f1197762692a9ee6a7550b59fc6ca3a1f4b5d7e32fb98e2da2a"},
@@ -1367,8 +1303,8 @@ python-levenshtein = [
     {file = "python-Levenshtein-0.12.0.tar.gz", hash = "sha256:033a11de5e3d19ea25c9302d11224e1a1898fe5abd23c61c7c360c25195e3eb1"},
 ]
 pytz = [
-    {file = "pytz-2021.3-py2.py3-none-any.whl", hash = "sha256:3672058bc3453457b622aab7a1c3bfd5ab0bdae451512f6cf25f64ed37f5b87c"},
-    {file = "pytz-2021.3.tar.gz", hash = "sha256:acad2d8b20a1af07d4e4c9d2e9285c5ed9104354062f275f3fcd88dcef4f1326"},
+    {file = "pytz-2022.1-py2.py3-none-any.whl", hash = "sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c"},
+    {file = "pytz-2022.1.tar.gz", hash = "sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7"},
 ]
 pyyaml = [
     {file = "PyYAML-5.4.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:3b2b1824fe7112845700f815ff6a489360226a5609b96ec2190a45e62a9fc922"},
@@ -1448,8 +1384,8 @@ unicodecsv = [
     {file = "unicodecsv-0.14.1.tar.gz", hash = "sha256:018c08037d48649a0412063ff4eda26eaa81eff1546dbffa51fa5293276ff7fc"},
 ]
 urllib3 = [
-    {file = "urllib3-1.26.8-py2.py3-none-any.whl", hash = "sha256:000ca7f471a233c2251c6c7023ee85305721bfdf18621ebff4fd17a8653427ed"},
-    {file = "urllib3-1.26.8.tar.gz", hash = "sha256:0e7c33d9a63e7ddfcb86780aac87befc2fbddf46c58dbb487e0855f7ceec283c"},
+    {file = "urllib3-1.26.9-py2.py3-none-any.whl", hash = "sha256:44ece4d53fb1706f667c9bd1c648f5469a2ec925fcf3a776667042d645472c14"},
+    {file = "urllib3-1.26.9.tar.gz", hash = "sha256:aabaf16477806a5e1dd19aa41f8c2b7950dd3c746362d7e3223dbe6de6ac448e"},
 ]
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
