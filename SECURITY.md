@@ -36,6 +36,17 @@ to help us better understand the nature and scope of the possible issue:
 This information will help us triage your report more quickly. Please note that
 we prefer all communications to be in English.
 
+## Updates related to security issues
+
+Updates and patches to this project which are related to identified security
+issues will be undertaken with reference to the "Patch applications" mitigation
+strategy as part of the [Essential Eight Maturity
+Model](https://www.cyber.gov.au/acsc/view-all-content/publications/essential-eight-maturity-model).
+In practice this means that patches, updates or mitigations for security
+vulnerabilites will be applied on an ongoing basis during the normal development
+cycle. In general we aim to apply mitigations within two weeks of release, or
+within 48 hours if an exploit exists.
+
 ## Automated monitoring of security issues
 
 This repository makes use of automated scanning to check for known security
