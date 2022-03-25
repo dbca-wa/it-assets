@@ -233,18 +233,22 @@ def ascender_db_import():
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
-                    if not DepartmentUser.objects.filter(email=f"{job['preferred_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['preferred_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['preferred_name'].lower()}.{job['surname'].lower()}"
-                    elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['first_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['first_name'].lower()}.{job['surname'].lower()}"
-                    elif not DepartmentUser.objects.filter(email=f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
-                    elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
+                    pref = job['preferred_name'].lower()
+                    first = job['first_name'].lower()
+                    sec = job['second_name'].lower()
+                    sur = job['surname'].lower()
+                    if not DepartmentUser.objects.filter(email=f"{pref}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{pref}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{pref}.{sur}"
+                    elif not DepartmentUser.objects.filter(email=f"{first}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{first}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{first}.{sur}"
+                    elif not DepartmentUser.objects.filter(email=f"{pref}{sec}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{pref}{sec}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{pref}{sec}.{sur}"
+                    elif not DepartmentUser.objects.filter(email=f"{first}{sec}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{first}{sec}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{first}{sec}.{sur}"
                     else:
                         # We can't generate a unique email with the supplied information; abort and send a warning.
                         subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
