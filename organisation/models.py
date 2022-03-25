@@ -332,7 +332,10 @@ class DepartmentUser(models.Model):
         path = []
         if self.ascender_data and 'clevel1_desc' in self.ascender_data and 'clevel2_desc' in self.ascender_data and 'clevel3_desc' in self.ascender_data and 'clevel4_desc' in self.ascender_data and 'clevel5_desc' in self.ascender_data:
             data = [self.ascender_data['clevel1_desc'], self.ascender_data['clevel2_desc'], self.ascender_data['clevel3_desc'], self.ascender_data['clevel4_desc'], self.ascender_data['clevel5_desc']]
-            [path.append(i) for i in data if i not in path]
+            for d in data:
+                branch = d.replace('ROTTNEST ISLAND AUTHORITY - ', '').replace('  ', ' ')
+                if branch not in path and branch != 'DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS':
+                    path.append(branch)
         return path
 
     def get_geo_location_desc(self):
