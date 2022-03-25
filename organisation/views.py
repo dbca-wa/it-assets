@@ -19,6 +19,10 @@ class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
 
 
+class UserAccounts(TemplateView):
+    template_name = 'organisation/user_accounts.html'
+
+
 class DepartmentUserAPIResource(View):
     """An API view that returns JSON of active department staff accounts.
     """
@@ -184,7 +188,7 @@ class DepartmentUserExport(View):
         return response
 
 
-class UserAccountExport(View):
+class UserAccountsExport(View):
     """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
