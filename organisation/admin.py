@@ -1,15 +1,12 @@
 from django import forms
 from django.contrib import admin
-from django.contrib import messages
-from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
-from django.views.generic import TemplateView
 from leaflet.admin import LeafletGeoAdmin
 
 from itassets.utils import ModelDescMixin
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
-from .views import DepartmentUserExport, DepartmentUserAscenderDiscrepancyExport
+from .views import DepartmentUserExport
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -31,39 +28,6 @@ class DepartmentUserForm(forms.ModelForm):
 @admin.register(DepartmentUser)
 class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
 
-    class UpdateUserDataFromAscender(TemplateView):
-        """A small custom view to allow confirmation of updating department users from cached
-        Ascender data.
-        """
-        template_name = 'admin/ascender_update_confirm.html'
-
-        def get_context_data(self, **kwargs):
-            context = super().get_context_data(**kwargs)
-            if 'pks' in self.request.GET and self.request.GET['pks']:
-                context['user_pks'] = self.request.GET['pks']
-                pks = self.request.GET['pks'].split(',')
-                context['department_users'] = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
-            # Get the admin site context (we passed in the ModelAdmin class as a kwarg via the URL pattern).
-            context['opts'] = DepartmentUser._meta
-            context['title'] = 'Update user data from Ascender'
-            # Include the admin site context.
-            context.update(admin.site.each_context(self.request))
-            return context
-
-        def post(self, request, *args, **kwargs):
-            pks = self.request.POST['user_pks'].split(',')
-            users = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
-            updates = 0
-            for user in users:
-                discrepancies = user.get_ascender_discrepancies()
-                if discrepancies:
-                    for d in discrepancies:
-                        setattr(user, d['field'], d['new_value'])
-                    user.save()
-                    updates += 1
-            messages.success(request, f'{updates} user(s) have been updated')
-            return HttpResponseRedirect(reverse('admin:organisation_departmentuser_changelist'))
-
     class AssignedLicenceFilter(admin.SimpleListFilter):
         title = 'assigned licences'
         parameter_name = 'assigned_licences'
@@ -78,7 +42,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
             if self.value():
                 return queryset.filter(assigned_licences__contains=[self.value()])
 
-    actions = ('clear_ad_guid', 'clear_azure_guid', 'update_data_from_ascender')
+    actions = ('clear_ad_guid', 'clear_azure_guid')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
@@ -189,8 +153,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
-            path('ascender-discrepancies/', DepartmentUserAscenderDiscrepancyExport.as_view(), name='ascender_discrepancies'),
-            path('ascender-update/', self.UpdateUserDataFromAscender.as_view(), name='ascender_update'),
         ] + urls
         return urls
 
@@ -213,15 +175,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         queryset.update(azure_guid=None)
         self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
     clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
-
-    def update_data_from_ascender(self, request, queryset):
-        # Action: allow a user to have data updated from cached Ascender data.
-        selected = queryset.values_list('pk', flat=True)
-        # Redirect to the URL for the view to confirm this action.
-        return HttpResponseRedirect('{}?pks={}'.format(
-            reverse('admin:ascender_update'), ','.join(str(pk) for pk in selected),
-        ))
-    update_data_from_ascender.short_description = "Update a user's information from cached Ascender data"
 
 
 @admin.register(ADAction)
