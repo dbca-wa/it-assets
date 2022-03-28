@@ -830,6 +830,8 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
+        # TODO: display name, first name, surname.
+
         # Cost centre & Division - Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             paypoint = self.ascender_data['paypoint']
@@ -950,15 +952,6 @@ class DepartmentUser(models.Model):
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
             LOGGER.info('AZURE AD SYNC: {} email changed to {}'.format(self, self.azure_ad_data['mail']))
             self.email = self.azure_ad_data['mail']
-        if 'displayName'in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
-            self.name = self.azure_ad_data['displayName']
-            LOGGER.info(f'AZURE AD SYNC: {self} name changed to {self.name}')
-        if 'givenName'in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
-            self.given_name = self.azure_ad_data['givenName']
-            LOGGER.info(f'AZURE AD SYNC: {self} given_name changed to {self.given_name}')
-        if 'surname'in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
-            self.surname = self.azure_ad_data['surname']
-            LOGGER.info(f'AZURE AD SYNC: {self} surname changed to {self.surname}')
         if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
             if not self.azure_ad_data['onPremisesSyncEnabled']:  # False/None
                 self.dir_sync_enabled = False
@@ -978,14 +971,6 @@ class DepartmentUser(models.Model):
                     self.assigned_licences.append(sku)
 
         self.save()
-
-    def get_onprem_ad_domain(self):
-        """If this user has onprem AD data cached, attempt to return the AD domain from their DistinguishedName.
-        """
-        if self.ad_data and 'DistinguishedName' in self.ad_data:
-            return '.'.join([i.replace('DC=', '') for i in self.ad_data['DistinguishedName'].split(',') if i.startswith('DC=')])
-
-        return None
 
 
 class DepartmentUserLog(models.Model):
