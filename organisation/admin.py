@@ -90,34 +90,18 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     search_fields = ('name', 'email', 'title', 'employee_id', 'ad_guid', 'azure_guid')
     raw_id_fields = ('manager',)
     readonly_fields = (
-        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
+        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name', 'ascender_preferred_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
         'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_end_date', 'ascender_data_updated',
-        'manager_name',
+        'manager_name', 'employee_id',
     )
     fieldsets = (
-        ('Microsoft 365, Azure AD and on-prem AD account information', {
-            'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
-            'fields': (
-                'active',
-                'email',
-                'name',
-                'given_name',
-                'surname',
-                'azure_guid',
-                'ad_guid',
-                'assigned_licences',
-                'proxy_addresses',
-                'dir_sync_enabled',
-            ),
-        }),
         ('Ascender account information', {
-            'description': '''<span class="errornote">These data are specific to the Ascender HR database.
-            The employee ID must be set here in order to enable synchronisation from Ascender.<br>
-            Data is these fields is maintained in Ascender by PSB and/or the employee.</span>''',
+            'description': '''<span class="errornote">These data are specific to the Ascender HR database. Data is these fields is maintained in Ascender.</span>''',
             'fields': (
                 'employee_id',
                 'ascender_full_name',
+                'ascender_preferred_name',
                 'ascender_org_path',
                 'position_title',
                 'geo_location_desc',
@@ -129,30 +113,30 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'ascender_data_updated',
             ),
         }),
+        ('Microsoft 365, Azure AD and on-prem AD account information', {
+            'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
+            'fields': (
+                'active',
+                'email',
+                'name',
+                'assigned_licences',
+                'dir_sync_enabled',
+            ),
+        }),
         ('User information fields', {
-            'description': '''<span class="errornote">Data in these fields should match information from Ascender,
-                but can be edited here for display in the Address Book.<br>
+            'description': '''<span class="errornote">Data in these fields can be edited here for display in the Address Book.<br>
                 Do not edit information in this section without written permission from People Services
                 or the cost centre manager (forms are required).</span>''',
             'fields': (
-                'title',
+                'org_unit',
+                'account_type',
                 'telephone',
                 'mobile_phone',
-                'manager',
-                'location',
                 'name_update_reference',
-                'org_unit',
-                'cost_centre',
-                'preferred_name',
-                'extension',
-                'home_phone',
-                'other_phone',
                 'vip',
                 'executive',
                 'contractor',
                 'security_clearance',
-                'account_type',
-                'notes',
             ),
         }),
     )
@@ -163,6 +147,10 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     def ascender_full_name(self, instance):
         return instance.get_ascender_full_name()
     ascender_full_name.short_description = 'full name'
+
+    def ascender_preferred_name(self, instance):
+        return instance.get_ascender_preferred_name()
+    ascender_preferred_name.short_description = 'preferred name'
 
     def ascender_org_path(self, instance):
         path = instance.get_ascender_org_path()

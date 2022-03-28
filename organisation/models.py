@@ -312,6 +312,11 @@ class DepartmentUser(models.Model):
             return ' '.join(name)
         return ''
 
+    def get_ascender_preferred_name(self):
+        if self.ascender_data and 'preferred_name' in self.ascender_data:
+            return self.ascender_data['preferred_name']
+        return ''
+
     def get_position_title(self):
         """From Ascender data, return the user's position title.
         """
