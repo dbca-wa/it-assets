@@ -384,7 +384,8 @@ class DepartmentUser(models.Model):
             token = ms_graph_client_token()
         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
 
-        # active (source of truth: Ascender)
+        # active (source of truth: Ascender).
+        # This captures Cloud-licenced users, which don't have an "expiry date".
         if self.employee_id and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date']:
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
             today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -433,8 +434,8 @@ class DepartmentUser(models.Model):
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
 
-        # Onprem AD account expiry date (source of truth: Ascender).
-        # Note that Azure AD has no concept of "expiry date".
+        # expiry date (source of truth: Ascender).
+        # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
         if self.employee_id and self.dir_sync_enabled and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date'] and self.ad_data and 'AccountExpirationDate' in self.ad_data:
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
             # Business rule: Ascender job_end_date is the final working day of a job. Onprem expiration date should be that date, plus one day.
@@ -459,6 +460,87 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+
+        # display_name (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'DisplayName' in self.ad_data and self.ad_data['DisplayName'] != self.name:
+            prop = 'DisplayName'
+            change = {
+                'identity': self.ad_guid,
+                'property': prop,
+                'value': self.name,
+            }
+            f = NamedTemporaryFile()
+            f.write(json.dumps(change, indent=2).encode('utf-8'))
+            f.flush()
+            if not log_only:
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users.
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
+            if token:
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                data = {"displayName": self.name}
+                if not log_only:
+                    requests.patch(url, headers=headers, json=data)
+                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account displayName set to {self.name}')
+
+        # given_name (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'GivenName' in self.ad_data and self.ad_data['GivenName'] != self.given_name:
+            prop = 'GivenName'
+            change = {
+                'identity': self.ad_guid,
+                'property': prop,
+                'value': self.given_name,
+            }
+            f = NamedTemporaryFile()
+            f.write(json.dumps(change, indent=2).encode('utf-8'))
+            f.flush()
+            if not log_only:
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users.
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
+            if token:
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                data = {"givenName": self.given_name}
+                if not log_only:
+                    requests.patch(url, headers=headers, json=data)
+                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account givenName set to {self.given_name}')
+
+        # surname (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Surname' in self.ad_data and self.ad_data['Surname'] != self.surname:
+            prop = 'Surname'
+            change = {
+                'identity': self.ad_guid,
+                'property': prop,
+                'value': self.surname,
+            }
+            f = NamedTemporaryFile()
+            f.write(json.dumps(change, indent=2).encode('utf-8'))
+            f.flush()
+            if not log_only:
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users.
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
+            if token:
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                data = {"surname": self.surname}
+                if not log_only:
+                    requests.patch(url, headers=headers, json=data)
+                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account surname set to {self.surname}')
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
         if self.employee_id and self.dir_sync_enabled and self.cost_centre and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
@@ -485,33 +567,6 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
-        # Edge case: for agency contractors (i.e. those with no Ascender employee ID), check if the CC differs.
-        # This case is an exception to the rule of Ascender being the source of truth for CC.
-        elif not self.employee_id and self.cost_centre and self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:  # User has no employee ID set, but has a CC set.
-            LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
-            prop = 'Company'
-            change = {
-                'identity': self.ad_guid,
-                'property': prop,
-                'value': self.cost_centre.code,
-            }
-            f = NamedTemporaryFile()
-            f.write(json.dumps(change, indent=2).encode('utf-8'))
-            f.flush()
-            if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-        elif not self.employee_id and self.cost_centre and not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
-            LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
-            if token:
-                headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
-                    "Content-Type": "application/json",
-                }
-                data = {"companyName": self.cost_centre.code}
-                if not log_only:
-                    requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
         # division (source of truth: Ascender, recorded in AD to the Department field).
         # Onprem AD users
@@ -540,7 +595,7 @@ class DepartmentUser(models.Model):
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE SYNC: {self} Azure AD account department set to {self.get_division()}')
 
-        # title (source of truth: IT Assets)
+        # title (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Title' in self.ad_data and self.ad_data['Title'] != self.title:
             prop = 'Title'
@@ -690,7 +745,6 @@ class DepartmentUser(models.Model):
                         requests.put(manager_url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
-        """
         # location (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'physicalDeliveryOfficeName' in self.ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
@@ -755,7 +809,6 @@ class DepartmentUser(models.Model):
                         requests.patch(url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
-        """
 
     def audit_ad_actions(self):
         """For this DepartmentUser object, check any incomplete ADAction
