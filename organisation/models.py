@@ -967,8 +967,7 @@ class DepartmentUser(models.Model):
                     )
                 self.manager = manager  # Change the department user's manager.
 
-        """
-        # Location (commented out at present)
+        # Location
         if 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc'] and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
             location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             # The user's current location differs from that in Ascender.
@@ -996,7 +995,6 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.location = location
-        """
 
         self.save()
 
