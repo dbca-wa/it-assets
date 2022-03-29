@@ -830,7 +830,68 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # TODO: display name, first name, surname.
+        # First name
+        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+            if not self.given_name:
+                given_name = ''
+            else:
+                given_name = self.given_name
+            if self.ascender_data['first_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['first_name'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender first name {first_name}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'first_name',
+                        'old_value': self.given_name,
+                        'new_value': first_name,
+                        'description': 'Update given_name value from Ascender',
+                    },
+                )
+                self.given_name = first_name
+                self.name = f'{first_name} {self.surname}'  # Also update display name
+
+        # Surname
+        if 'surname' in self.ascender_data and self.ascender_data['surname']:
+            if not self.surname:
+                surname = ''
+            else:
+                surname = self.surname
+            if self.ascender_data['surname'].upper() != surname.upper():
+                new_surname = self.ascender_data['surname'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} surname {self.surname} differs from Ascender surname {new_surname}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'surname',
+                        'old_value': self.surname,
+                        'new_value': new_surname,
+                        'description': 'Update surname value from Ascender',
+                    },
+                )
+                self.surname = new_surname
+                self.name = f'{self.given_name} {new_surname}'  # Also update display name
+
+        # Preferred name
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
+            if not self.preferred_name:
+                preferred_name = ''
+            else:
+                preferred_name = self.preferred_name
+            if self.ascender_data['preferred_name'].upper() != preferred_name.upper():
+                new_preferred_name = self.ascender_data['preferred_name'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} preferred name {self.preferred_name} differs from Ascender preferred name {new_preferred_name}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'preferred_name',
+                        'old_value': self.preferred_name,
+                        'new_value': new_preferred_name,
+                        'description': 'Update preferred_name value from Ascender',
+                    },
+                )
+                self.preferred_name = new_preferred_name
+                self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
 
         # Cost centre & Division - Ascender records cost centre as 'paypoint'.
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
