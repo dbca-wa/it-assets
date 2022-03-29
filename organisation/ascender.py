@@ -174,6 +174,8 @@ def ascender_employee_fetch():
 
 def ascender_db_import():
     """A utility function to cache data from Ascender to a matching DepartmentUser object.
+    In addition, this function will create a new Azure AD account based on Ascender records
+    that match a set of rules.
     """
     employee_iter = ascender_employee_fetch()
 
@@ -217,17 +219,22 @@ def ascender_db_import():
                 manager = None
                 location = None
 
+                # Rule: user must have a CC recorded, and that CC must exist in our database.
                 if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
                     cc = CostCentre.objects.get(ascender_code=job['paypoint'])
+                # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
                     job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
+                # Rule: user must have a valid M365 licence type recorded.
                 if job['licence_type']:
                     if job['licence_type'] == 'ONPUL':
                         licence_type = 'On-premise'
                     elif job['licence_type'] == 'CLDUL':
                         licence_type = 'Cloud'
+                # Rule: user must have a manager recorded, and that manager must exist in our database.
                 if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
                     manager = DepartmentUser.objects.get(employee_id=job['manager_emp_no'])
+                # Rule: user must have a physical location recorded, and that location must exist in our database.
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
 
@@ -250,7 +257,9 @@ def ascender_db_import():
                         email = f"{first}{sec}.{sur}@dbca.wa.gov.au"
                         mail_nickname = f"{first}{sec}.{sur}"
                     else:
-                        # We can't generate a unique email with the supplied information; abort and send a warning.
+                        # We can't generate a unique email with the supplied information; abort and send a note to the admins.
+                        # This email should pick up instances where the function can't match any existing CC, manager or location
+                        # and allow manual intervention.
                         subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
                         text_content = f"Ascender record:\n{job}\n"
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)

@@ -946,7 +946,7 @@ class DepartmentUser(models.Model):
                 self.preferred_name = new_preferred_name
                 self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
 
-        # Cost centre & Division - Ascender records cost centre as 'paypoint'.
+        # Cost centre (Ascender records cost centre as 'paypoint').
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             paypoint = self.ascender_data['paypoint']
             cc = CostCentre.objects.get(ascender_code=paypoint)
