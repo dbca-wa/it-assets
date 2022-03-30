@@ -789,7 +789,7 @@ class DepartmentUser(models.Model):
                 ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             else:
                 ascender_location = None
-            if self.azure_ad_data['officeLocation']:
+            if self.azure_ad_data['officeLocation'] and Location.objects.filter(name=self.azure_ad_data['officeLocation']).exists():
                 ad_location = Location.objects.get(name=self.azure_ad_data['officeLocation'])
             else:
                 ad_location = None
@@ -1058,9 +1058,6 @@ class DepartmentUser(models.Model):
         if not self.azure_guid or not self.azure_ad_data:
             return
 
-        if 'accountEnabled' in self.azure_ad_data and self.azure_ad_data['accountEnabled'] != self.active:
-            self.active = self.azure_ad_data['accountEnabled']
-            LOGGER.info(f'AZURE AD SYNC: {self} active changed to {self.active}')
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
             LOGGER.info('AZURE AD SYNC: {} email changed to {}'.format(self, self.azure_ad_data['mail']))
             self.email = self.azure_ad_data['mail']
