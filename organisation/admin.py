@@ -47,9 +47,9 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
-        'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
+        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'account_type',
     )
-    list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
+    list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
     model_description = DepartmentUser.__doc__
     search_fields = ('name', 'email', 'title', 'employee_id', 'ad_guid', 'azure_guid')
     raw_id_fields = ('manager',)
