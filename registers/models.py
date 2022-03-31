@@ -467,6 +467,10 @@ class ChangeRequest(models.Model):
         return path.basename(self.implementation_docs.name)
 
     @property
+    def test_result_docs_filename(self):
+        return path.basename(self.test_result_docs.name)
+
+    @property
     def broadcast_filename(self):
         return path.basename(self.broadcast.name)
 
