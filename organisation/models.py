@@ -823,6 +823,7 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
+        """
         # First name
         if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
             if not self.given_name:
@@ -885,6 +886,7 @@ class DepartmentUser(models.Model):
                 )
                 self.preferred_name = new_preferred_name
                 self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
+        """
 
         # Cost centre (Ascender records cost centre as 'paypoint').
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
@@ -960,6 +962,7 @@ class DepartmentUser(models.Model):
                     )
                 self.manager = manager  # Change the department user's manager.
 
+        """
         # Location
         if 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc'] and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
             location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
@@ -988,6 +991,7 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.location = location
+        """
 
         self.save()
 
