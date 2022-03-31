@@ -1151,7 +1151,7 @@ class OrgUnit(models.Model):
         (5, 'Office'),
         (10, 'Work centre'),
     )
-    TYPE_CHOICES_DICT = dict(TYPE_CHOICES)
+    active = models.BooleanField(default=True)
     unit_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES)
     name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
@@ -1164,7 +1164,7 @@ class OrgUnit(models.Model):
         related_name='division_orgunits',
         help_text='Division-level unit to which this unit belongs',
     )
-    active = models.BooleanField(default=True)
+    ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
 
     class Meta:
         ordering = ('name',)
@@ -1191,6 +1191,7 @@ DIVISION_CHOICES = (
 class CostCentre(models.Model):
     """Models the details of a Department cost centre / chart of accounts.
     """
+    active = models.BooleanField(default=True)
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
@@ -1210,7 +1211,6 @@ class CostCentre(models.Model):
         DepartmentUser, on_delete=models.SET_NULL, related_name='tech_ccs',
         help_text='Technical Contact', null=True, blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
-    active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ('code',)
