@@ -461,6 +461,7 @@ class DepartmentUser(models.Model):
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
+        """
         # display_name (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'DisplayName' in self.ad_data and self.ad_data['DisplayName'] != self.name:
@@ -541,6 +542,7 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account surname set to {self.surname}')
+        """
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
         if self.employee_id and self.dir_sync_enabled and self.cost_centre and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
@@ -595,6 +597,7 @@ class DepartmentUser(models.Model):
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE SYNC: {self} Azure AD account department set to {self.get_division()}')
 
+        """
         # title (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Title' in self.ad_data and self.ad_data['Title'] != self.title:
@@ -621,6 +624,7 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account jobTitle set to {self.title}')
+        """
 
         # telephone (source of truth: IT Assets)
         # Onprem AD users
@@ -745,6 +749,7 @@ class DepartmentUser(models.Model):
                         requests.put(manager_url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
+        """
         # location (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'physicalDeliveryOfficeName' in self.ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
@@ -809,6 +814,7 @@ class DepartmentUser(models.Model):
                         requests.patch(url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
+        """
 
     def update_from_ascender_data(self):
         """For this DepartmentUser object, update the field values from cached Ascender data
