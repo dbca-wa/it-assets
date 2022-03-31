@@ -2,7 +2,7 @@ from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
+from django.contrib.postgres.fields import ArrayField, CIEmailField
 from django.contrib.gis.db import models
 import json
 import logging
@@ -228,22 +228,22 @@ class DepartmentUser(models.Model):
         default=False, editable=False, help_text='Automatically set from account type.')
 
     # Cache of Ascender data
-    ascender_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
+    ascender_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(
         null=True, editable=False, help_text="Timestamp of when Ascender data was last updated for this user")
     # Cache of on-premise AD data
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
         help_text="On-premise Active Directory unique object ID")
-    ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
+    ad_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
     ad_data_updated = models.DateTimeField(null=True, editable=False)
     # Cache of Azure AD data
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
         editable=False, help_text="Azure Active Directory unique object ID")
-    azure_ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
+    azure_ad_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
-    dir_sync_enabled = models.NullBooleanField(default=None, help_text="Azure AD account is synced to on-prem AD")
+    dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Azure AD account is synced to on-prem AD")
 
     def __str__(self):
         return self.email
@@ -1035,7 +1035,7 @@ class DepartmentUserLog(models.Model):
     """
     created = models.DateTimeField(auto_now_add=True)
     department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
-    log = JSONField(default=dict, editable=False)
+    log = models.JSONField(default=dict, editable=False)
 
     def __str__(self):
         return '{} {} {}'.format(

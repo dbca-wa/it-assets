@@ -1,7 +1,7 @@
 from datetime import date
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.postgres.fields import JSONField
+#from django.contrib.postgres.fields import JSONField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
@@ -227,7 +227,7 @@ class ITSystem(models.Model):
         choices=INFRASTRUCTURE_LOCATION_CHOICES, null=True, blank=True,
         help_text='The primary location of the infrastructure on which this system runs')
     risks = GenericRelation(RiskAssessment)
-    extra_data = JSONField(null=True, blank=True)
+    extra_data = models.JSONField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'IT System'

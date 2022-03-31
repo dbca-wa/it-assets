@@ -23,6 +23,7 @@ else:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'itassets.urls'
 WSGI_APPLICATION = 'itassets.wsgi.application'
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 INSTALLED_APPS = (
     'whitenoise.runserver_nostatic',
