@@ -296,4 +296,6 @@ CSP_DEFAULT_SRC = (
     "'self'",
     "static.dbca.wa.gov.au",
     "cdnjs.cloudflare.com",
+    "cdn.jsdelivr.net",
+    "code.jquery.com",
 )
