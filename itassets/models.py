@@ -1,9 +1,10 @@
 from django.db import models
 from django.core.exceptions import FieldDoesNotExist
-from django.contrib.postgres.fields import JSONField,ArrayField
+
 
 class OriginalConfigMixin(models.Model):
-    original_configs = JSONField(null=True,editable=False)
+    original_configs = models.JSONField(null=True,editable=False)
+
     def set_config(self,field_name,field_value,update_fields):
         """
         set model field to new value.
@@ -16,13 +17,13 @@ class OriginalConfigMixin(models.Model):
             original_configs_field = self._meta.get_field("original_configs")
         except FieldDoesNotExist as ex:
             pass
-    
+
         if field.editable and original_configs_field:
             #field is editable,update the original value
             if isinstance(field,models.ForeignKey):
                 if (self.original_configs.get(field_name) if self.original_configs else None) == (field_value.pk if field_value else None):
                     #configure is not changed
-                    return 
+                    return
                 else:
                     #configure is changed
                     if not self.original_configs:
@@ -36,7 +37,7 @@ class OriginalConfigMixin(models.Model):
                         #configure was not edited by the user
                         setattr(self,field_name,field_value)
                         update_fields.append(field_name)
-    
+
                     self.original_configs[field_name] = (field_value.pk if field_value else None)
                     if "original_configs" not in update_fields:
                         update_fields.append("original_configs")
@@ -52,7 +53,7 @@ class OriginalConfigMixin(models.Model):
                         #configure was not edited by the user
                         setattr(self,field_name,field_value)
                         update_fields.append(field_name)
-    
+
                     self.original_configs[field_name] = field_value
                     if "original_configs" not in update_fields:
                         update_fields.append("original_configs")
@@ -66,4 +67,3 @@ class OriginalConfigMixin(models.Model):
 
     class Meta:
         abstract = True
-
