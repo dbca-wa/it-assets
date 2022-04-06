@@ -1,4 +1,4 @@
-import simdjson
+import json
 import traceback
 import logging
 import datetime
@@ -15,7 +15,7 @@ from . import models
 from itassets.utils import LogRecordIterator
 
 from .utils import to_datetime,set_fields
-from . import  containerstatus_harvester
+from . import containerstatus_harvester
 from . import podstatus_harvester
 from . import modeldata
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 harvestername = "containerlog"
 
 log_levels = [
-    (re.compile("(^|[^a-zA-Z]+)TRACE[^a-zA-Z]+"),(models.ContainerLog.TRACE,True)), #(message regex pattern,(message leve, start a new message?))
+    (re.compile("(^|[^a-zA-Z]+)TRACE[^a-zA-Z]+"),(models.ContainerLog.TRACE,True)),  # (message regex pattern,(message leve, start a new message?))
     (re.compile("(^|[^a-zA-Z]+)DEBUG[^a-zA-Z]+"),(models.ContainerLog.DEBUG,True)),
     (re.compile("(^|[^a-zA-Z]+)INFO[^a-zA-Z]+"),(models.ContainerLog.INFO,True)),
     (re.compile("(^|[^a-zA-Z]+)WARN(ING)?[^a-zA-Z]+"),(models.ContainerLog.WARNING,True)),
@@ -38,6 +38,8 @@ log_levels = [
     (re.compile("(exception|error|failed|wrong|err|traceback)[^a-zA-Z0-9]+",re.IGNORECASE),(models.ContainerLog.ERROR,False))
 ]
 _containerlog_client = None
+
+
 def get_client(cache=True):
     """
     Return the blob resource client
@@ -56,6 +58,7 @@ def get_client(cache=True):
             return client
 
     return _containerlog_client
+
 
 def update_workload_latest_containers(context,containerlog):
     container = containerlog.container
@@ -85,6 +88,7 @@ def update_workload_latest_containers(context,containerlog):
                 container_data[2] = container_data[2] | status
                 if "latest_containers" not in workload_update_fields:
                     workload_update_fields.append("latest_containers")
+
 
 def _add_notify_log(context,containerlog):
     if settings.DISABLE_LOG_NOTIFICATION_EMAIL:
@@ -129,7 +133,7 @@ def _add_notify_log(context,containerlog):
                         break
                     elif del_notify_contacts:
                         continue
-                
+
                     for wlid in dep.del_dependent_workloads:
                         wl = models.Workload.objects.filter(id=wlid).only("containerimage").first()
                         if not wl:
@@ -140,7 +144,7 @@ def _add_notify_log(context,containerlog):
 
                 if notify_contacts:
                     break
-                
+
             notify_contacts = notify_contacts or del_notify_contacts
             context["notify_contacts"][workload] = notify_contacts
     else:
@@ -161,6 +165,7 @@ def _add_notify_log(context,containerlog):
 
     container_logs.append("{} {}:{}".format(containerlog.logtime.strftime("%Y-%m-%d %H:%M:%S.%f"),containerlog.get_level_display(),containerlog.message))
 
+
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
     context["logstatus"]["harvester"].message="{}:Begin to process container log file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"), metadata["resource_id"])
@@ -170,7 +175,7 @@ def process_status_file(context,metadata,status_file):
         status_records = LogRecordIterator(status_file)
     else:
         with open(status_file,"r") as f:
-            status_records = simdjson.loads(f.read())
+            status_records = json.loads(f.read())
 
     records = 0
     for record in status_records:
@@ -184,7 +189,7 @@ def process_status_file(context,metadata,status_file):
             message = record["logentry"].strip()
             if not message:
                 continue
- 
+
             message = message.replace("\x00","").replace("\\n","\n")
             message = message.strip()
             """
@@ -367,6 +372,7 @@ def process_status_file(context,metadata,status_file):
             del context["logstatus"]["containerlogs"][key]
     logger.info("Harvest {1} records from file '{0}'".format(status_file,records))
 
+
 def process_status(context):
     def _func(status,metadata,status_file):
         if context["logstatus"]["max_harvest_files"]:
@@ -424,12 +430,14 @@ def process_status(context):
 
     return _func
 
+
 def clean_expired_containerlogs(harvester):
     now = timezone.now()
     harvester.message="{}:Begin to clean expired containers".format(now.strftime("%Y-%m-%d %H:%M:%S"))
     harvester.last_heartbeat = now
     harvester.save(update_fields=["message","last_heartbeat"])
     modeldata.clean_expired_containerlogs()
+
 
 def harvest(reconsume=None,max_harvest_files=None,context={}):
     need_clean = [False]
@@ -455,8 +463,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                     if get_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
                         get_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
                     modeldata.clean_containerlogs()
-        
-        
+
                 context["logstatus"] = context.get("logstatus",{})
                 context["logstatus"] = {
                     "reconsume":reconsume  if reconsume is not None else context["logstatus"].get("reconsume",False),
@@ -472,7 +479,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 context["workloads"] = context.get("workloads",{})
                 #consume container log file
                 result = get_client().consume(process_status(context),f_post_consume=_post_consume)
-        
+
                 if result[1]:
                     if result[0]:
                         message = """Failed to harvest container log,
@@ -502,7 +509,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                     )
                 else:
                     message = "Succeed to harvest container log, no new container log file was added since last harvesting"
-            
+
                 harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
                 return result
             except:
@@ -510,7 +517,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 message = "Failed to harvest container log.{}".format(traceback.format_exc())
                 logger.error(message)
                 return ([],[(None,None,None,message)])
-    except exceptions.AlreadyLocked as ex: 
+    except exceptions.AlreadyLocked as ex:
         harvester.status = models.Harvester.SKIPPED
         message = "The previous harvest process is still running.{}".format(str(ex))
         logger.warning(message)
@@ -534,6 +541,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
         harvester.endtime = timezone.now()
         harvester.last_heartbeat = harvester.endtime
         harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
+
 
 def harvest_all(context={}):
     podstatus_harvester.harvest(context)
@@ -582,5 +590,3 @@ def harvest_all(context={}):
             mail = EmailMessage("Some errors/warnings occured in your workloads.",html_content,settings.NOREPLY_EMAIL,contacts)
             mail.content_subtype = "html"
             mail.send()
-
-
