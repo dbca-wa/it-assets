@@ -1,15 +1,12 @@
 from django import forms
 from django.contrib import admin
-from django.contrib import messages
-from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
-from django.views.generic import TemplateView
 from leaflet.admin import LeafletGeoAdmin
 
 from itassets.utils import ModelDescMixin
 from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
-from .views import DepartmentUserExport, DepartmentUserAscenderDiscrepancyExport
+from .views import DepartmentUserExport
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -31,39 +28,6 @@ class DepartmentUserForm(forms.ModelForm):
 @admin.register(DepartmentUser)
 class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
 
-    class UpdateUserDataFromAscender(TemplateView):
-        """A small custom view to allow confirmation of updating department users from cached
-        Ascender data.
-        """
-        template_name = 'admin/ascender_update_confirm.html'
-
-        def get_context_data(self, **kwargs):
-            context = super().get_context_data(**kwargs)
-            if 'pks' in self.request.GET and self.request.GET['pks']:
-                context['user_pks'] = self.request.GET['pks']
-                pks = self.request.GET['pks'].split(',')
-                context['department_users'] = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
-            # Get the admin site context (we passed in the ModelAdmin class as a kwarg via the URL pattern).
-            context['opts'] = DepartmentUser._meta
-            context['title'] = 'Update user data from Ascender'
-            # Include the admin site context.
-            context.update(admin.site.each_context(self.request))
-            return context
-
-        def post(self, request, *args, **kwargs):
-            pks = self.request.POST['user_pks'].split(',')
-            users = DepartmentUser.objects.filter(pk__in=pks, employee_id__isnull=False)
-            updates = 0
-            for user in users:
-                discrepancies = user.get_ascender_discrepancies()
-                if discrepancies:
-                    for d in discrepancies:
-                        setattr(user, d['field'], d['new_value'])
-                    user.save()
-                    updates += 1
-            messages.success(request, f'{updates} user(s) have been updated')
-            return HttpResponseRedirect(reverse('admin:organisation_departmentuser_changelist'))
-
     class AssignedLicenceFilter(admin.SimpleListFilter):
         title = 'assigned licences'
         parameter_name = 'assigned_licences'
@@ -78,46 +42,30 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
             if self.value():
                 return queryset.filter(assigned_licences__contains=[self.value()])
 
-    actions = ('clear_ad_guid', 'clear_azure_guid', 'update_data_from_ascender')
+    actions = ('clear_ad_guid', 'clear_azure_guid')
     # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
-        'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
+        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'account_type',
     )
-    list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
+    list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
     model_description = DepartmentUser.__doc__
     search_fields = ('name', 'email', 'title', 'employee_id', 'ad_guid', 'azure_guid')
     raw_id_fields = ('manager',)
     readonly_fields = (
-        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name',
+        'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name', 'ascender_preferred_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
         'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_end_date', 'ascender_data_updated',
-        'manager_name',
+        'manager_name', 'extended_leave', 'employee_id',
     )
     fieldsets = (
-        ('Microsoft 365, Azure AD and on-prem AD account information', {
-            'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
-            'fields': (
-                'active',
-                'email',
-                'name',
-                'given_name',
-                'surname',
-                'azure_guid',
-                'ad_guid',
-                'assigned_licences',
-                'proxy_addresses',
-                'dir_sync_enabled',
-            ),
-        }),
         ('Ascender account information', {
-            'description': '''<span class="errornote">These data are specific to the Ascender HR database.
-            The employee ID must be set here in order to enable synchronisation from Ascender.<br>
-            Data is these fields is maintained in Ascender by PSB and/or the employee.</span>''',
+            'description': '''<span class="errornote">These data are specific to the Ascender HR database. Data is these fields is maintained in Ascender.</span>''',
             'fields': (
                 'employee_id',
                 'ascender_full_name',
+                'ascender_preferred_name',
                 'ascender_org_path',
                 'position_title',
                 'geo_location_desc',
@@ -126,33 +74,32 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'manager_name',
                 'job_start_date',
                 'job_end_date',
+                'extended_leave',
                 'ascender_data_updated',
             ),
         }),
-        ('User information fields', {
-            'description': '''<span class="errornote">Data in these fields should match information from Ascender,
-                but can be edited here for display in the Address Book.<br>
-                Do not edit information in this section without written permission from People Services
-                or the cost centre manager (forms are required).</span>''',
+        ('Microsoft 365 and Active Directory account information', {
+            'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
             'fields': (
-                'title',
+                'active',
+                'email',
+                'name',
+                'assigned_licences',
+                'dir_sync_enabled',
+            ),
+        }),
+        ('User information fields', {
+            'description': '''<span class="errornote">Data in these fields can be edited here for display in the Address Book.<br>
+                Do not edit information in this section without a service request from an authorised person.</span>''',
+            'fields': (
                 'telephone',
                 'mobile_phone',
-                'manager',
-                'location',
                 'name_update_reference',
-                'org_unit',
-                'cost_centre',
-                'preferred_name',
-                'extension',
-                'home_phone',
-                'other_phone',
+                'account_type',
                 'vip',
                 'executive',
                 'contractor',
                 'security_clearance',
-                'account_type',
-                'notes',
             ),
         }),
     )
@@ -163,6 +110,10 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     def ascender_full_name(self, instance):
         return instance.get_ascender_full_name()
     ascender_full_name.short_description = 'full name'
+
+    def ascender_preferred_name(self, instance):
+        return instance.get_ascender_preferred_name()
+    ascender_preferred_name.short_description = 'preferred name'
 
     def ascender_org_path(self, instance):
         path = instance.get_ascender_org_path()
@@ -197,12 +148,15 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     def manager_name(self, instance):
         return instance.get_manager_name()
 
+    def extended_leave(self, instance):
+        if instance.get_extended_leave():
+            return instance.get_extended_leave().strftime('%d-%B-%Y')
+        return ''
+
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()
         urls = [
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
-            path('ascender-discrepancies/', DepartmentUserAscenderDiscrepancyExport.as_view(), name='ascender_discrepancies'),
-            path('ascender-update/', self.UpdateUserDataFromAscender.as_view(), name='ascender_update'),
         ] + urls
         return urls
 
@@ -225,15 +179,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         queryset.update(azure_guid=None)
         self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
     clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
-
-    def update_data_from_ascender(self, request, queryset):
-        # Action: allow a user to have data updated from cached Ascender data.
-        selected = queryset.values_list('pk', flat=True)
-        # Redirect to the URL for the view to confirm this action.
-        return HttpResponseRedirect('{}?pks={}'.format(
-            reverse('admin:ascender_update'), ','.join(str(pk) for pk in selected),
-        ))
-    update_data_from_ascender.short_description = "Update a user's information from cached Ascender data"
 
 
 @admin.register(ADAction)
@@ -289,9 +234,10 @@ class LocationAdmin(LeafletGeoAdmin):
 
 @admin.register(OrgUnit)
 class OrgUnitAdmin(admin.ModelAdmin):
-    list_display = ('name', 'unit_type', 'division_unit', 'users', 'cc', 'manager', 'active')
+    list_display = ('name', 'unit_type', 'division_unit', 'users', 'cc', 'manager', 'active', 'ascender_code')
     search_fields = ('name', 'acronym', 'manager__name', 'location__name')
     raw_id_fields = ('manager',)
+    readonly_fields = ('ascender_code',)
     list_filter = ('unit_type', 'active')
 
     def users(self, obj):

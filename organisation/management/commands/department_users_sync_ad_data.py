@@ -20,5 +20,5 @@ class Command(BaseCommand):
         logger.info('Checking department users for required changes to sync to AD')
         token = ms_graph_client_token()
 
-        for du in DepartmentUser.objects.filter(active=True):
+        for du in DepartmentUser.objects.filter():
             du.sync_ad_data(log_only=options['log_only'], token=token)

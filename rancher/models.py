@@ -9,7 +9,7 @@ import traceback
 
 from django.db import models,transaction
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.fields import ArrayField
 from django.urls import reverse
 from django.utils import timezone
 from django.core.exceptions import ValidationError,FieldDoesNotExist
@@ -26,7 +26,7 @@ class DbObjectMixin(object):
     """
     A mixin class to provide property "db_obj" which is the object with same id in database
     Return None if the object is a new instance.
-    
+
     """
     _db_obj = None
 
@@ -488,7 +488,7 @@ class Vulnerability(models.Model):
     fixedversion = models.CharField(max_length=128, editable=False,null=True)
     publisheddate = models.CharField(max_length=64, editable=False,null=True)
     lastmodifieddate = models.CharField(max_length=64, editable=False,null=True)
-    scan_result = JSONField(null=True,editable=False)
+    scan_result = models.JSONField(null=True,editable=False)
     oss= models.ManyToManyField(OperatingSystem,editable=False)
 
     @classmethod
@@ -545,15 +545,15 @@ class ContainerImageFamily(DeletedMixin,models.Model):
     contacts = ArrayField(models.EmailField(editable=True),editable=True,null=True)
     enable_notify = models.BooleanField(default=True)
     enable_warning_msg = models.BooleanField(default=True)
-    config = JSONField(null=False,blank=True,default=dict)
+    config = models.JSONField(null=False,blank=True,default=dict)
     sourcecode = models.TextField(null=True,blank=True,help_text="""The source code of a python module.
     This module can declare two methods:
-    1. Method 'filter' 
+    1. Method 'filter'
         Parameters:
             containerlog
         Return:
             True if this message need to be send to the developers; otherwise return False
-    2. Method 'loglevel' 
+    2. Method 'loglevel'
         Parameters:
             message
         Return:
@@ -634,7 +634,7 @@ class ContainerImageFamily(DeletedMixin,models.Model):
         Return workloads which resource has been changed ;otherwise return []
         """
         logger.debug("Scan resources for image family '{}'.".format(self))
-        if not scan_modules: 
+        if not scan_modules:
             scan_modules = list(EnvScanModule.objects.filter(active=True).order_by("-priority"))
 
         resource_changed_wls = []
@@ -646,7 +646,7 @@ class ContainerImageFamily(DeletedMixin,models.Model):
 
     def __str__(self):
         if self.account:
-            return "{}/{}".format(self.account,self.name)  
+            return "{}/{}".format(self.account,self.name)
         else:
             return self.name
 
@@ -678,7 +678,7 @@ class EnvScanModule(DbObjectMixin,models.Model):
     BLOB_CREDENTIAL =34
 
     SERVICES = 999
-    
+
     RESOURCE_TYPES = (
         (POSTGRES,"Postgres"),
         (ORACLE,"Oracle"),
@@ -807,7 +807,7 @@ class ContainerImage(DeletedMixin,models.Model):
     workloads = models.PositiveSmallIntegerField(default=0,editable=False)
     scan_status = models.SmallIntegerField(choices=STATUSES,editable=False,db_index=True,default=NOT_SCANED)
     scaned = models.DateTimeField(editable=False,null=True)
-    scan_result = JSONField(editable=False, null=True)
+    scan_result = models.JSONField(editable=False, null=True)
     scan_message = models.TextField(null=True,editable=False)
     criticals = models.SmallIntegerField(editable=False,default=0)
     highs = models.SmallIntegerField(editable=False,default=0)
@@ -1017,7 +1017,7 @@ class Workload(DeletedMixin,models.Model):
     image_pullpolicy = models.CharField(max_length=64, editable=False, null=True)
     cmd = models.CharField(max_length=2048, editable=False, null=True)
     schedule = models.CharField(max_length=128, editable=False, null=True)
-    suspend = models.NullBooleanField(editable=False)
+    suspend = models.BooleanField(null=True, editable=False)
     failedjobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
     successfuljobshistorylimit = models.PositiveSmallIntegerField(null=True, editable=False)
     concurrency_policy = models.CharField(max_length=128, editable=False, null=True)
@@ -1059,7 +1059,7 @@ class Workload(DeletedMixin,models.Model):
                         self.save(update_fields=["resource_changed"])
                     return False
 
-        if not scan_modules: 
+        if not scan_modules:
             scan_modules = list(EnvScanModule.objects.filter(active=True).order_by("-priority"))
 
         #get the default value from configuration
@@ -1111,7 +1111,7 @@ class Workload(DeletedMixin,models.Model):
                     config_items = [res["config_items"]]
 
                 if not all(item in envitems for item in config_items):
-                    #some env item is not declared 
+                    #some env item is not declared
                     continue
                 config_values = [envitems[item] for item in config_items]
 
@@ -1206,15 +1206,15 @@ class Workload(DeletedMixin,models.Model):
                     dependent_workloads.sort()
                 elif dependent_workloads is None:
                     dependent_workloads = []
-    
+
                 if del_dependent_workloads:
                     del_dependent_workloads.sort()
                 elif del_dependent_workloads is None:
                     del_dependent_workloads = []
-    
+
                 dependency_id = str(dependency_id)
                 dependency_display = str(dependency_display)
-    
+
                 dependency,created = WorkloadDependency.objects.get_or_create(
                     workload=workload,
                     dependency_type=dependency_type,
@@ -1241,7 +1241,7 @@ class Workload(DeletedMixin,models.Model):
                             if obj.id not in processed_ids:
                                 tasks.add(obj)
                     return (dependency,True)
-    
+
                 update_fields = []
                 previous_workloads = dependency.dependent_workloads
                 previous_del_workloads = dependency.del_dependent_workloads
@@ -1277,7 +1277,7 @@ class Workload(DeletedMixin,models.Model):
             logger.debug("Scan dependency for workload '{}'.".format(workload))
             if not workload.resource_changed:
                 return False
-    
+
             if workload.dependency_scaned and (workload.dependency_scaned >= scan_time or (not rescan and workload.dependency_scaned >= workload.resource_changed and (not workload.dependency_scan_requested or workload.dependency_scan_requested < workload.dependency_scaned))):
                 #already scaned, no need to scan again
                 update_fields = []
@@ -1290,12 +1290,12 @@ class Workload(DeletedMixin,models.Model):
                 if update_fields:
                     workload.save(update_fields=update_fields)
                 return False
-    
+
             if workload.dependency_scaned and workload.dependency_scaned >= workload.resource_changed and (workload.dependency_scan_requested and workload.dependency_scan_requested > workload.dependency_scaned):
                 update_by_request = True
             else:
                 update_by_request = False
-    
+
             #find all dependencies through imagefamily
             dependency_ids = set()
             dependency_changed = False
@@ -1319,7 +1319,7 @@ class Workload(DeletedMixin,models.Model):
             )
             dependency_ids.add(dependency.id)
             dependency_changed = dependency_changed or dep_changed
-    
+
             #find all resource dependencies
             dependency = None
             for resource in WorkloadResource.objects.filter(workload=workload).order_by("resource_type","resource_id"):
@@ -1352,7 +1352,7 @@ class Workload(DeletedMixin,models.Model):
                                 resource_type=resource.resource_type,
                                 resource_id__startswith=resource.resource_id
                             ).exclude(config_source = WorkloadResource.SERVICE)
-    
+
                         for dep_resource in qs:
                             if dep_resource.workload.deleted:
                                 if dep_resource.workload.id not in del_workload_ids:
@@ -1360,8 +1360,8 @@ class Workload(DeletedMixin,models.Model):
                             else:
                                 if dep_resource.workload.id not in workload_ids:
                                     workload_ids.append(dep_resource.workload.id)
-    
-    
+
+
                     else:
                         resource_id,db_name = resource.resource_id.rsplit("/",1)
                         resource_id = "{}/".format(resource_id)
@@ -1421,8 +1421,8 @@ class Workload(DeletedMixin,models.Model):
                         else:
                             if dep_resource.workload.id not in workload_ids:
                                 workload_ids.append(dep_resource.workload.id)
-    
-    
+
+
                 dependency,dep_changed = _update_or_create(
                     workload,
                     resource.resource_type,
@@ -1436,7 +1436,7 @@ class Workload(DeletedMixin,models.Model):
                 dependency_ids.add(dependency.id)
                 dependency_changed = dependency_changed or dep_changed
 
-    
+
             #delete the removed dependencies
             for obj in WorkloadDependency.objects.filter(workload=workload).exclude(id__in=dependency_ids):
                 with transaction.atomic():
@@ -1452,7 +1452,7 @@ class Workload(DeletedMixin,models.Model):
                         if obj.id not in processed_ids:
                             tasks.add(obj)
                 dependency_changed = True
-    
+
             workload.dependency_scaned = scan_time
             workload.dependency_scan_requested = None
             if dependency_changed or not workload.dependency_changed:
@@ -1560,7 +1560,7 @@ class Workload(DeletedMixin,models.Model):
 
             _run(task)
 
-        
+
         tree.wltree = dep_tree
         tree.wltree_wls = list(workloadids)
         tree.wltree_wls.sort()
@@ -1573,7 +1573,7 @@ class Workload(DeletedMixin,models.Model):
             tree.save()
 
         return tree
-            
+
     def populate_resource_dependent_tree(self,depth=None,workload_cache={},dependency_cache={},tree=None,populate_time=timezone.now()):
         """
         Tree data structure
@@ -1585,7 +1585,7 @@ class Workload(DeletedMixin,models.Model):
                 ]]
 
                 ... #more dependent tree of workloads which are dependent on the same resource type
-            ]] 
+            ]]
             ... #more dependent tree of workloads which are dependent on the different resource type
         ]]
         """
@@ -1719,8 +1719,8 @@ class Workload(DeletedMixin,models.Model):
         else:
             tree.save()
         return tree
-            
-            
+
+
     def get_absolute_url(self):
         return reverse('workload_detail', kwargs={'pk': self.pk})
 
@@ -1772,7 +1772,7 @@ class WorkloadResource(models.Model):
     resource_type = models.PositiveSmallIntegerField(choices=EnvScanModule.RESOURCE_TYPES,editable=False)
     resource_id = models.CharField(max_length=512,editable=False,db_index=True)
     config_source = models.PositiveSmallIntegerField(choices=CONFIG_SOURCES,editable=False)
-    properties = JSONField(null=False,default=dict)
+    properties = models.JSONField(null=False,default=dict)
     scan_module = models.ForeignKey(EnvScanModule, on_delete=models.PROTECT, related_name='resources', editable=False,null=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -1810,13 +1810,13 @@ class WorkloadDependentTree(models.Model):
     workload = models.OneToOneField(Workload, on_delete=models.CASCADE, related_name='dependenttree',editable=False)
     imagefamily = models.ForeignKey(ContainerImageFamily,on_delete=models.PROTECT,related_name="dependenttrees",editable=False)
 
-    restree = JSONField(editable=False,null=True)
+    restree = models.JSONField(editable=False,null=True)
     restree_wls = ArrayField(models.IntegerField(null=False),editable=False,null=True)
     restree_created = models.DateTimeField(editable=False,null=True)
     restree_updated = models.DateTimeField(editable=False,null=True)
     restree_update_requested = models.DateTimeField(editable=False,null=True)
 
-    wltree = JSONField(editable=False,null=True)
+    wltree = models.JSONField(editable=False,null=True)
     wltree_wls = ArrayField(models.IntegerField(null=False),editable=False,null=True)
     wltree_created = models.DateTimeField(editable=False,null=True)
     wltree_updated = models.DateTimeField(editable=False,null=True)
@@ -1900,7 +1900,7 @@ class WorkloadVolume(models.Model):
     volume_claim = models.ForeignKey(PersistentVolumeClaim, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
     volume = models.ForeignKey(PersistentVolume, on_delete=models.CASCADE, related_name='+',editable=False,null=True)
     volumepath = models.CharField(max_length=612,editable=False,null=True)
-    other_config = JSONField(null=True)
+    other_config = models.JSONField(null=True)
 
     writable = models.BooleanField(default=False,editable=False)
 
@@ -2192,7 +2192,7 @@ class ITSystemListener(object):
             db_extra_data = utils.parse_json(db_obj.extra_data)
             extra_data = utils.parse_json(instance.extra_data)
             if (db_obj.acronym == instance.acronym
-                and db_extra_data.get("url_synonyms") == extra_data.get("url_synonyms") 
+                and db_extra_data.get("url_synonyms") == extra_data.get("url_synonyms")
                 and db_extra_data.get("synonyms") ==  extra_data.get("synonyms")
             ):
                 return
@@ -2226,7 +2226,7 @@ class ITSystemListener(object):
                     qs = qs.filter(containerimage__account__isnull=True)
 
                 qs = qs.filter(containerimage__name=workload.containerimage.name)
-                
+
                 for o in qs:
                     o.update_itsystem(itsystems=itsystems)
 

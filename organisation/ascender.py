@@ -174,6 +174,8 @@ def ascender_employee_fetch():
 
 def ascender_db_import():
     """A utility function to cache data from Ascender to a matching DepartmentUser object.
+    In addition, this function will create a new Azure AD account based on Ascender records
+    that match a set of rules.
     """
     employee_iter = ascender_employee_fetch()
 
@@ -217,36 +219,47 @@ def ascender_db_import():
                 manager = None
                 location = None
 
+                # Rule: user must have a CC recorded, and that CC must exist in our database.
                 if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
                     cc = CostCentre.objects.get(ascender_code=job['paypoint'])
+                # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
                     job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
+                # Rule: user must have a valid M365 licence type recorded.
                 if job['licence_type']:
                     if job['licence_type'] == 'ONPUL':
                         licence_type = 'On-premise'
                     elif job['licence_type'] == 'CLDUL':
                         licence_type = 'Cloud'
+                # Rule: user must have a manager recorded, and that manager must exist in our database.
                 if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
                     manager = DepartmentUser.objects.get(employee_id=job['manager_emp_no'])
+                # Rule: user must have a physical location recorded, and that location must exist in our database.
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
-                    if not DepartmentUser.objects.filter(email=f"{job['preferred_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['preferred_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['preferred_name'].lower()}.{job['surname'].lower()}"
-                    elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['first_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['first_name'].lower()}.{job['surname'].lower()}"
-                    elif not DepartmentUser.objects.filter(email=f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['preferred_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
-                    elif not DepartmentUser.objects.filter(email=f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au").exists():
-                        email = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}@dbca.wa.gov.au"
-                        mail_nickname = f"{job['first_name'].lower()}.{job['second_name'].lower()}.{job['surname'].lower()}"
+                    pref = job['preferred_name'].lower()
+                    first = job['first_name'].lower()
+                    sec = job['second_name'].lower()
+                    sur = job['surname'].lower()
+                    if not DepartmentUser.objects.filter(email=f"{pref}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{pref}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{pref}.{sur}"
+                    elif not DepartmentUser.objects.filter(email=f"{first}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{first}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{first}.{sur}"
+                    elif not DepartmentUser.objects.filter(email=f"{pref}{sec}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{pref}{sec}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{pref}{sec}.{sur}"
+                    elif not DepartmentUser.objects.filter(email=f"{first}{sec}.{sur}@dbca.wa.gov.au").exists():
+                        email = f"{first}{sec}.{sur}@dbca.wa.gov.au"
+                        mail_nickname = f"{first}{sec}.{sur}"
                     else:
-                        # We can't generate a unique email with the supplied information; abort and send a warning.
+                        # We can't generate a unique email with the supplied information; abort and send a note to the admins.
+                        # This email should pick up instances where the function can't match any existing CC, manager or location
+                        # and allow manual intervention.
                         subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
                         text_content = f"Ascender record:\n{job}\n"
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
@@ -460,6 +473,8 @@ def ascender_db_import():
                         cost_centre=cc,
                         location=location,
                         manager=manager,
+                        ascender_data=job,
+                        ascender_data_updated=TZ.localize(datetime.now()),
                     )
                     LOGGER.info(f"ASCENDER SYNC: Created new department user {new_user}")
 
@@ -471,6 +486,11 @@ def new_user_creation_email(new_user, licence_type):
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
     """
+    org_path = new_user.get_ascender_org_path()
+    if org_path and len(org_path) > 1:
+        org_unit = org_path[1]
+    else:
+        org_unit = ''
     subject = f"New user account creation details - {new_user.name}"
     text_content = f"""Hi {new_user.manager.given_name},\n\n
 This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:\n\n
@@ -480,6 +500,8 @@ Email: {new_user.email}\n
 Title: {new_user.title}\n
 Cost centre: {new_user.cost_centre}\n
 Division: {new_user.cost_centre.get_division_name_display()}\n
+Organisational unit: {org_unit}\n
+Employment status: {new_user.ascender_data['emp_stat_desc']}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n\n
@@ -495,6 +517,8 @@ OIM Service Desk\n"""
 <li>Title: {new_user.title}</li>
 <li>Cost centre: {new_user.cost_centre}</li>
 <li>Division: {new_user.cost_centre.get_division_name_display()}</li>
+<li>Organisational unit: {org_unit}</li>
+<li>Employment status: {new_user.ascender_data['emp_stat_desc']}</li>
 <li>M365 licence: {licence_type}</li>
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>

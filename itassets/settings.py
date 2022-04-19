@@ -23,6 +23,7 @@ else:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'itassets.urls'
 WSGI_APPLICATION = 'itassets.wsgi.application'
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 INSTALLED_APPS = (
     'whitenoise.runserver_nostatic',
@@ -61,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
     'dbca_utils.middleware.SSOLoginMiddleware',
 ]
 
@@ -286,3 +288,14 @@ LOGGING = {
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+# django-csp config
+# Reference: https://django-csp.readthedocs.io/en/latest/configuration.html
+# NOTE: add any CDN domains here where they are used to load external resources.
+CSP_DEFAULT_SRC = (
+    "'self'",
+    "static.dbca.wa.gov.au",
+    "cdnjs.cloudflare.com",
+    "cdn.jsdelivr.net",
+    "code.jquery.com",
+)

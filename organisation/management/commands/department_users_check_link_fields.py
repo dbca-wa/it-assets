@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from django.core.management.base import BaseCommand
 import logging
 
-from organisation.ascender import ascender_employee_fetch
 from organisation.models import DepartmentUser
 from organisation.utils import ms_graph_users, get_ad_users_json
 
@@ -64,12 +63,6 @@ class Command(BaseCommand):
                 du.ad_data = {}
                 du.ad_data_updated = datetime.now(timezone.utc)
                 du.save()
-
-        logger.info('Downloading Ascender user account data')
-        employee_iter = ascender_employee_fetch()
-        employee_ids = []
-        for eid, jobs in employee_iter:
-            employee_ids.append(eid)
 
         # Iterate through department users and clear any managers who are inactive.
         for du in DepartmentUser.objects.filter(manager__isnull=False):

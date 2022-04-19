@@ -70,8 +70,11 @@
     </tr>
     {% endif %}
     <tr>
-        <th>Test date</th>
-        <td>{% if object.test_date %}{{ object.test_date }}{% endif %}</td>
+        <th>Testing results</th>
+        <td>
+            {% if object.test_date %}Test date: {{ object.test_date }}{% endif %}
+            {% if object.test_result_docs %}<br>Uploaded test results: <a href="{{ object.test_result_docs.url }}">{{ object.test_result_docs_filename }}</a>{% endif %}
+        </td>
     </tr>
     <tr>
         <th>Planned start date & time</th>
@@ -98,9 +101,8 @@
         {% if object.implementation %}
         {{ object|change_markdown:"implementation"|safe }}
         {% endif %}
-        <br>
         {% if object.implementation_docs %}
-        Uploaded instructions: <a href="{% get_media_prefix %}{{ object.implementation_docs.name }}">{{ object.implementation_docs_filename }}</a>
+        <br>Uploaded instructions: <a href="{{ object.implementation_docs.url }}">{{ object.implementation_docs_filename }}</a>
         {% endif %}
         </td>
     </tr>
@@ -112,7 +114,7 @@
         {% endif %}
         <br>
         {% if object.broadcast %}
-        Uploaded broadcast: <a href="{% get_media_prefix %}{{ object.broadcast.name }}">{{ object.broadcast_filename }}</a>
+        Uploaded broadcast: <a href="{{ object.broadcast.url }}">{{ object.broadcast_filename }}</a>
         {% endif %}
         </td>
     </tr>

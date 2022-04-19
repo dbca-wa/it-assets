@@ -2,7 +2,7 @@ from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField, ArrayField, CIEmailField
+from django.contrib.postgres.fields import ArrayField, CIEmailField
 from django.contrib.gis.db import models
 import json
 import logging
@@ -11,7 +11,7 @@ import requests
 from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
-from .utils import compare_values, title_except, parse_windows_ts
+from .utils import compare_values, parse_windows_ts
 LOGGER = logging.getLogger('organisation')
 
 
@@ -200,9 +200,6 @@ class DepartmentUser(models.Model):
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
     other_phone = models.CharField(max_length=128, null=True, blank=True)
-    employee_id = models.CharField(
-        max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
-        help_text='Ascender employee number')
     name_update_reference = models.CharField(
         max_length=512, null=True, blank=True, verbose_name='update reference',
         help_text='Reference for name/CC change request')
@@ -227,23 +224,26 @@ class DepartmentUser(models.Model):
     shared_account = models.BooleanField(
         default=False, editable=False, help_text='Automatically set from account type.')
 
-    # Cache of Ascender data
-    ascender_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
+    # Ascender data
+    employee_id = models.CharField(
+        max_length=128, null=True, unique=True, blank=True, verbose_name='Employee ID',
+        help_text='Ascender employee number')
+    ascender_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of staff Ascender data")
     ascender_data_updated = models.DateTimeField(
         null=True, editable=False, help_text="Timestamp of when Ascender data was last updated for this user")
-    # Cache of on-premise AD data
+    # On-premise AD data
     ad_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="AD GUID",
         help_text="On-premise Active Directory unique object ID")
-    ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
+    ad_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of on-premise AD data")
     ad_data_updated = models.DateTimeField(null=True, editable=False)
-    # Cache of Azure AD data
+    # Azure AD data
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
         editable=False, help_text="Azure Active Directory unique object ID")
-    azure_ad_data = JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
+    azure_ad_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
-    dir_sync_enabled = models.NullBooleanField(default=None, help_text="Azure AD account is synced to on-prem AD")
+    dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Azure AD account is synced to on-prem AD")
 
     def __str__(self):
         return self.email
@@ -312,6 +312,11 @@ class DepartmentUser(models.Model):
             return ' '.join(name)
         return ''
 
+    def get_ascender_preferred_name(self):
+        if self.ascender_data and 'preferred_name' in self.ascender_data:
+            return self.ascender_data['preferred_name']
+        return ''
+
     def get_position_title(self):
         """From Ascender data, return the user's position title.
         """
@@ -330,9 +335,25 @@ class DepartmentUser(models.Model):
         """From Ascender data, return the users's organisation tree path as a list of section names.
         """
         path = []
-        if self.ascender_data and 'clevel1_desc' in self.ascender_data and 'clevel2_desc' in self.ascender_data and 'clevel3_desc' in self.ascender_data and 'clevel4_desc' in self.ascender_data and 'clevel5_desc' in self.ascender_data:
-            data = [self.ascender_data['clevel1_desc'], self.ascender_data['clevel2_desc'], self.ascender_data['clevel3_desc'], self.ascender_data['clevel4_desc'], self.ascender_data['clevel5_desc']]
-            [path.append(i) for i in data if i not in path]
+        if (
+            self.ascender_data
+            and 'clevel1_desc' in self.ascender_data
+            and 'clevel2_desc' in self.ascender_data
+            and 'clevel3_desc' in self.ascender_data
+            and 'clevel4_desc' in self.ascender_data
+            and 'clevel5_desc' in self.ascender_data
+        ):
+            data = [
+                self.ascender_data['clevel1_desc'],
+                self.ascender_data['clevel2_desc'],
+                self.ascender_data['clevel3_desc'],
+                self.ascender_data['clevel4_desc'],
+                self.ascender_data['clevel5_desc'],
+            ]
+            for d in data:
+                branch = d.replace('ROTTNEST ISLAND AUTHORITY - ', '').replace('  ', ' ')
+                if branch not in path and branch != 'DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS':
+                    path.append(branch)
         return path
 
     def get_geo_location_desc(self):
@@ -363,6 +384,19 @@ class DepartmentUser(models.Model):
             return self.ascender_data['manager_name']
         return ''
 
+    def get_extended_leave(self):
+        """From Ascender data, return the date from which a user's extended leave ends (if applicable).
+        """
+        if (
+            self.ascender_data
+            and 'extended_lv' in self.ascender_data
+            and 'ext_lv_end_date' in self.ascender_data
+            and self.ascender_data['extended_lv'] == 'Y'
+            and self.ascender_data['ext_lv_end_date']
+        ):
+            return datetime.strptime(self.ascender_data['ext_lv_end_date'], '%Y-%m-%d').date()
+        return ''
+
     def sync_ad_data(self, container='azuread', log_only=False, token=None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Azure AD, onprem AD).
@@ -375,16 +409,25 @@ class DepartmentUser(models.Model):
         if not token:
             token = ms_graph_client_token()
         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+        acct = 'onprem' if self.dir_sync_enabled else 'cloud'
+        today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)  # We need a datetime object.
 
-        # active (source of truth: Ascender)
-        if self.employee_id and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date']:
+        # active (source of truth: Ascender).
+        # This also includes Cloud-licenced users, which don't have an "expiry date".
+        # SCENARIO 1: Ascender record indicates that a user's job has finished (is in the past) but their account is active - deactivate their account.
+        if (
+            self.active
+            and self.employee_id
+            and self.ascender_data
+            and 'job_end_date' in self.ascender_data
+            and self.ascender_data['job_end_date']
+            and settings.ASCENDER_DEACTIVATE_EXPIRED
+        ):
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
-            today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
 
-            # Where a user has a job which in which the termination date is in the past, deactivate the user's AD account.
-            if self.active and job_end_date < today and settings.ASCENDER_DEACTIVATE_EXPIRED:
-                t = 'onprem' if self.dir_sync_enabled else 'cloud'
-                LOGGER.info(f'ASCENDER SYNC: {self} job is past termination date of {job_end_date.date()}; deactivating their {t} AD account')
+            # Where a user has a job which in which the job end date is in the past, deactivate the user's AD account.
+            if job_end_date < today:
+                LOGGER.info(f'ASCENDER SYNC: {self} job is past end date of {job_end_date.date()}; deactivating their {acct} AD account')
 
                 # Create a DepartmentUserLog object to record this update.
                 if not log_only:
@@ -394,12 +437,12 @@ class DepartmentUser(models.Model):
                             'ascender_field': 'job_end_date',
                             'old_value': self.ascender_data['job_end_date'],
                             'new_value': None,
-                            'description': f'Deactivate {t} AD account',
+                            'description': f'Deactivate {acct} AD account',
                         },
                     )
 
                 # Onprem AD users.
-                if self.dir_sync_enabled and self.ad_guid and self.ad_data and settings.ASCENDER_DEACTIVATE_EXPIRED:
+                if self.dir_sync_enabled and self.ad_guid and self.ad_data:
                     prop = 'Enabled'
                     change = {
                         'identity': self.ad_guid,
@@ -414,7 +457,7 @@ class DepartmentUser(models.Model):
                     LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
                 # Azure (cloud only) AD users.
-                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and settings.ASCENDER_DEACTIVATE_EXPIRED:
+                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
                     if token:
                         headers = {
                             "Authorization": "Bearer {}".format(token["access_token"]),
@@ -425,9 +468,78 @@ class DepartmentUser(models.Model):
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
 
-        # Onprem AD account expiry date (source of truth: Ascender).
-        # Note that Azure AD has no concept of "expiry date".
-        if self.employee_id and self.dir_sync_enabled and self.ascender_data and 'job_end_date' in self.ascender_data and self.ascender_data['job_end_date'] and self.ad_data and 'AccountExpirationDate' in self.ad_data:
+        """
+        # NOTE: this scenario is not currently in use.
+        # SCENARIO 2: Ascender record indicates that a user's job has not finished but their account is inactive - activate their account.
+        elif (
+            not self.active
+            and self.employee_id
+            and self.ascender_data
+            and 'job_end_date' in self.ascender_data
+            and 'extended_lv' in self.ascender_data
+            and settings.ASCENDER_DEACTIVATE_EXPIRED
+        ):
+            if self.ascender_data['job_end_date']:
+                job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
+            else:
+                job_end_date = None
+
+            # Where a user has a job with no end date or where the job end date is not in the past, AND they are not on extended leave: activate the user's AD account.
+            if (not job_end_date or job_end_date >= today) and self.ascender_data['extended_lv'] != 'Y':
+                #LOGGER.info(f'ASCENDER SYNC: {self} job end date is not in the past; activating their {acct} AD account')
+
+                # Create a DepartmentUserLog object to record this update.
+                if not log_only:
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'job_end_date',
+                            'old_value': self.ascender_data['job_end_date'],
+                            'new_value': None,
+                            'description': f'Activate {acct} AD account',
+                        },
+                    )
+
+                # Onprem AD users.
+                if self.dir_sync_enabled and self.ad_guid and self.ad_data:
+                    prop = 'Enabled'
+                    change = {
+                        'identity': self.ad_guid,
+                        'property': prop,
+                        'value': True,
+                    }
+                    f = NamedTemporaryFile()
+                    f.write(json.dumps(change, indent=2).encode('utf-8'))
+                    f.flush()
+                    if not log_only:
+                        store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+
+                # Azure (cloud only) AD users.
+                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
+                    if token:
+                        headers = {
+                            "Authorization": "Bearer {}".format(token["access_token"]),
+                            "Content-Type": "application/json",
+                        }
+                        data = {"accountEnabled": True}
+                        if not log_only:
+                            requests.patch(url, headers=headers, json=data)
+                        LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to True')
+        """
+
+        # expiry date (source of truth: Ascender).
+        # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
+        # SCENARIO 1: the user has a job end date value set in Ascender.
+        if (
+            self.employee_id
+            and self.dir_sync_enabled
+            and self.ascender_data
+            and 'job_end_date' in self.ascender_data
+            and self.ascender_data['job_end_date']
+            and self.ad_data
+            and 'AccountExpirationDate' in self.ad_data
+        ):
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d').date()
             # Business rule: Ascender job_end_date is the final working day of a job. Onprem expiration date should be that date, plus one day.
             job_end_date = job_end_date + timedelta(days=1)
@@ -452,8 +564,127 @@ class DepartmentUser(models.Model):
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
+        # SCENARIO 2: the user has no job end date set in Ascender (i.e. is permanent to the department).
+        elif (
+            self.employee_id
+            and self.dir_sync_enabled
+            and self.ascender_data
+            and 'job_end_date' in self.ascender_data
+            and not self.ascender_data['job_end_date']
+            and self.ad_data
+            and 'AccountExpirationDate' in self.ad_data
+        ):
+            if self.ad_data['AccountExpirationDate']:
+                account_expiration_date = parse_windows_ts(self.ad_data['AccountExpirationDate']).date()
+            else:
+                account_expiration_date = None
+
+            if account_expiration_date:  # User has an account expiration set in onprem AD; remove this.
+                # Unset the onprem AD account expiration date value.
+                prop = 'AccountExpirationDate'
+                change = {
+                    'identity': self.ad_guid,
+                    'property': prop,
+                    'value': None,
+                }
+                f = NamedTemporaryFile()
+                f.write(json.dumps(change, indent=2).encode('utf-8'))
+                f.flush()
+                if not log_only:
+                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+
+        # display_name (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'DisplayName' in self.ad_data and self.ad_data['DisplayName'] != self.name:
+            prop = 'DisplayName'
+            change = {
+                'identity': self.ad_guid,
+                'property': prop,
+                'value': self.name,
+            }
+            f = NamedTemporaryFile()
+            f.write(json.dumps(change, indent=2).encode('utf-8'))
+            f.flush()
+            if not log_only:
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users.
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
+            if token:
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                data = {"displayName": self.name}
+                if not log_only:
+                    requests.patch(url, headers=headers, json=data)
+                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account displayName set to {self.name}')
+
+        # given_name (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'GivenName' in self.ad_data and self.ad_data['GivenName'] != self.given_name:
+            prop = 'GivenName'
+            change = {
+                'identity': self.ad_guid,
+                'property': prop,
+                'value': self.given_name,
+            }
+            f = NamedTemporaryFile()
+            f.write(json.dumps(change, indent=2).encode('utf-8'))
+            f.flush()
+            if not log_only:
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users.
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
+            if token:
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                data = {"givenName": self.given_name}
+                if not log_only:
+                    requests.patch(url, headers=headers, json=data)
+                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account givenName set to {self.given_name}')
+
+        # surname (source of truth: Ascender)
+        # Onprem AD users
+        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Surname' in self.ad_data and self.ad_data['Surname'] != self.surname:
+            prop = 'Surname'
+            change = {
+                'identity': self.ad_guid,
+                'property': prop,
+                'value': self.surname,
+            }
+            f = NamedTemporaryFile()
+            f.write(json.dumps(change, indent=2).encode('utf-8'))
+            f.flush()
+            if not log_only:
+                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+        # Azure (cloud only) AD users.
+        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
+            if token:
+                headers = {
+                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Content-Type": "application/json",
+                }
+                data = {"surname": self.surname}
+                if not log_only:
+                    requests.patch(url, headers=headers, json=data)
+                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account surname set to {self.surname}')
+
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
-        if self.employee_id and self.dir_sync_enabled and self.cost_centre and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:
+        if (
+            self.employee_id
+            and self.dir_sync_enabled
+            and self.cost_centre
+            and self.ad_guid
+            and self.ad_data
+            and 'Company' in self.ad_data
+            and self.ad_data['Company'] != self.cost_centre.code
+        ):
             prop = 'Company'
             change = {
                 'identity': self.ad_guid,
@@ -467,7 +698,15 @@ class DepartmentUser(models.Model):
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
-        elif self.employee_id and not self.dir_sync_enabled and self.cost_centre and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
+        elif (
+            self.employee_id
+            and not self.dir_sync_enabled
+            and self.cost_centre
+            and self.azure_guid
+            and self.azure_ad_data
+            and 'companyName' in self.azure_ad_data
+            and self.azure_ad_data['companyName'] != self.cost_centre.code
+        ):
             if token:
                 headers = {
                     "Authorization": "Bearer {}".format(token["access_token"]),
@@ -477,37 +716,17 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
-        # Edge case: for agency contractors (i.e. those with no Ascender employee ID), check if the CC differs.
-        # This case is an exception to the rule of Ascender being the source of truth for CC.
-        elif not self.employee_id and self.cost_centre and self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Company' in self.ad_data and self.ad_data['Company'] != self.cost_centre.code:  # User has no employee ID set, but has a CC set.
-            LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
-            prop = 'Company'
-            change = {
-                'identity': self.ad_guid,
-                'property': prop,
-                'value': self.cost_centre.code,
-            }
-            f = NamedTemporaryFile()
-            f.write(json.dumps(change, indent=2).encode('utf-8'))
-            f.flush()
-            if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-        elif not self.employee_id and self.cost_centre and not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'companyName' in self.azure_ad_data and self.azure_ad_data['companyName'] != self.cost_centre.code:
-            LOGGER.info(f'EDGE CASE: {self} has no employee ID but cost centre is set, assuming agency contractor')
-            if token:
-                headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
-                    "Content-Type": "application/json",
-                }
-                data = {"companyName": self.cost_centre.code}
-                if not log_only:
-                    requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
 
         # division (source of truth: Ascender, recorded in AD to the Department field).
         # Onprem AD users
-        if self.dir_sync_enabled and self.get_division() and self.ad_guid and self.ad_data and 'Department' in self.ad_data and self.ad_data['Department'] != self.get_division():
+        if (
+            self.dir_sync_enabled
+            and self.ad_guid
+            and self.ad_data
+            and self.get_division()
+            and 'Department' in self.ad_data
+            and self.ad_data['Department'] != self.get_division()
+        ):
             prop = 'Department'
             change = {
                 'identity': self.ad_guid,
@@ -521,7 +740,14 @@ class DepartmentUser(models.Model):
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
-        elif not self.dir_sync_enabled and self.get_division() and self.azure_guid and self.azure_ad_data and 'department' in self.azure_ad_data and self.azure_ad_data['department'] != self.get_division():
+        elif (
+            not self.dir_sync_enabled
+            and self.azure_guid
+            and self.azure_ad_data
+            and 'department' in self.azure_ad_data
+            and self.get_division()
+            and self.azure_ad_data['department'] != self.get_division()
+        ):
             if token:
                 headers = {
                     "Authorization": "Bearer {}".format(token["access_token"]),
@@ -532,7 +758,7 @@ class DepartmentUser(models.Model):
                     requests.patch(url, headers=headers, json=data)
                 LOGGER.info(f'AZURE SYNC: {self} Azure AD account department set to {self.get_division()}')
 
-        # title (source of truth: IT Assets)
+        # title (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Title' in self.ad_data and self.ad_data['Title'] != self.title:
             prop = 'Title'
@@ -562,7 +788,13 @@ class DepartmentUser(models.Model):
         # telephone (source of truth: IT Assets)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'telephoneNumber' in self.ad_data:
-            if (self.ad_data['telephoneNumber'] and not compare_values(self.ad_data['telephoneNumber'].strip(), self.telephone)) or (not self.ad_data['telephoneNumber'] and self.telephone):
+            if (
+                self.ad_data['telephoneNumber']
+                and not compare_values(self.ad_data['telephoneNumber'].strip(), self.telephone)
+            ) or (
+                self.telephone
+                and not self.ad_data['telephoneNumber']
+            ):
                 prop = 'telephoneNumber'
                 change = {
                     'identity': self.ad_guid,
@@ -577,20 +809,33 @@ class DepartmentUser(models.Model):
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'telephoneNumber' in self.azure_ad_data:
-            if (self.azure_ad_data['telephoneNumber'] and not compare_values(self.azure_ad_data['telephoneNumber'].strip(), self.telephone)) or (not self.azure_ad_data['telephoneNumber'] and self.telephone) and token:
-                headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
-                    "Content-Type": "application/json",
-                }
-                data = {"businessPhones": [self.telephone if self.telephone else " "]}
-                if not log_only:
-                    requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
+            if (
+                self.azure_ad_data['telephoneNumber']
+                and not compare_values(self.azure_ad_data['telephoneNumber'].strip(), self.telephone)
+            ) or (
+                self.telephone
+                and not self.azure_ad_data['telephoneNumber']
+            ):
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    data = {"businessPhones": [self.telephone if self.telephone else " "]}
+                    if not log_only:
+                        requests.patch(url, headers=headers, json=data)
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
 
         # mobile (source of truth: IT Assets)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'Mobile' in self.ad_data:
-            if (self.ad_data['Mobile'] and not compare_values(self.ad_data['Mobile'].strip(), self.mobile_phone)) or (not self.ad_data['Mobile'] and self.mobile_phone):
+            if (
+                self.ad_data['Mobile']
+                and not compare_values(self.ad_data['Mobile'].strip(), self.mobile_phone)
+            ) or (
+                self.mobile_phone
+                and not self.ad_data['Mobile']
+            ):
                 prop = 'Mobile'
                 change = {
                     'identity': self.ad_guid,
@@ -605,19 +850,32 @@ class DepartmentUser(models.Model):
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'mobilePhone' in self.azure_ad_data:
-            if (self.azure_ad_data['mobilePhone'] and not compare_values(self.azure_ad_data['mobilePhone'].strip(), self.mobile_phone)) or (not self.azure_ad_data['mobilePhone'] and self.mobile_phone) and token:
-                headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
-                    "Content-Type": "application/json",
-                }
-                data = {"mobilePhone": self.mobile_phone}
-                if not log_only:
-                    requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
+            if (
+                self.azure_ad_data['mobilePhone']
+                and not compare_values(self.azure_ad_data['mobilePhone'].strip(), self.mobile_phone)
+            ) or (
+                self.mobile_phone
+                and not self.azure_ad_data['mobilePhone']
+            ):
+                if token:
+                    headers = {
+                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Content-Type": "application/json",
+                    }
+                    data = {"mobilePhone": self.mobile_phone}
+                    if not log_only:
+                        requests.patch(url, headers=headers, json=data)
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
 
         # employee_id (source of truth: Ascender)
         # Onprem AD users
-        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'EmployeeID' in self.ad_data and self.ad_data['EmployeeID'] != self.employee_id:
+        if (
+            self.dir_sync_enabled
+            and self.ad_guid
+            and self.ad_data
+            and 'EmployeeID' in self.ad_data
+            and self.ad_data['EmployeeID'] != self.employee_id
+        ):
             prop = 'EmployeeID'
             change = {
                 'identity': self.ad_guid,
@@ -631,7 +889,13 @@ class DepartmentUser(models.Model):
                 store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
-        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'employeeId' in self.azure_ad_data and self.azure_ad_data['employeeId'] != self.employee_id:
+        elif (
+            not self.dir_sync_enabled
+            and self.azure_guid
+            and self.azure_ad_data
+            and 'employeeId' in self.azure_ad_data
+            and self.azure_ad_data['employeeId'] != self.employee_id
+        ):
             if token:
                 headers = {
                     "Authorization": "Bearer {}".format(token["access_token"]),
@@ -682,10 +946,16 @@ class DepartmentUser(models.Model):
                         requests.put(manager_url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
 
-        """
         # location (source of truth: Ascender)
         # Onprem AD users
-        if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'physicalDeliveryOfficeName' in self.ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
+        if (
+            self.dir_sync_enabled
+            and self.ad_guid
+            and self.ad_data
+            and 'physicalDeliveryOfficeName' in self.ad_data
+            and 'geo_location_desc' in self.ascender_data
+            and self.ascender_data['geo_location_desc']
+        ):
             if Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
                 ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             else:
@@ -722,12 +992,19 @@ class DepartmentUser(models.Model):
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
-        elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'officeLocation' in self.azure_ad_data and 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc']:
+        elif (
+            not self.dir_sync_enabled
+            and self.azure_guid
+            and self.azure_ad_data
+            and 'officeLocation' in self.azure_ad_data
+            and 'geo_location_desc' in self.ascender_data
+            and self.ascender_data['geo_location_desc']
+        ):
             if Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
                 ascender_location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             else:
                 ascender_location = None
-            if self.azure_ad_data['officeLocation']:
+            if self.azure_ad_data['officeLocation'] and Location.objects.filter(name=self.azure_ad_data['officeLocation']).exists():
                 ad_location = Location.objects.get(name=self.azure_ad_data['officeLocation'])
             else:
                 ad_location = None
@@ -747,73 +1024,6 @@ class DepartmentUser(models.Model):
                         requests.patch(url, headers=headers, json=data)
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
                     LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
-        """
-
-    def audit_ad_actions(self):
-        """For this DepartmentUser object, check any incomplete ADAction
-        objects that specify changes to be made for the AD user. If the ADAction is no longer
-        required (e.g. changes have been completed/reverted), delete the ADAction object.
-        """
-        actions = ADAction.objects.filter(department_user=self, completed__isnull=True)
-
-        # Short-circuit: if the DepartmentUser is non-active, delete all outstanding ADActions.
-        if not self.active:
-            for action in actions:
-                action.delete()
-
-        if self.dir_sync_enabled:
-            # Onprem AD
-            if not self.ad_guid or not self.ad_data:
-                return
-
-            for action in actions:
-                if action.field == 'name' and self.ad_data['DisplayName'] == self.name:
-                    action.delete()
-                elif action.field == 'given_name' and self.ad_data['GivenName'] == self.given_name:
-                    action.delete()
-                elif action.field == 'surname' and self.ad_data['Surname'] == self.surname:
-                    action.delete()
-                elif action.field == 'title' and self.ad_data['Title'] == self.title:
-                    action.delete()
-                elif action.field == 'telephone' and compare_values(self.ad_data['telephoneNumber'], self.telephone):
-                    action.delete()
-                elif action.field == 'mobile_phone' and compare_values(self.ad_data['Mobile'], self.mobile_phone):
-                    action.delete()
-                elif action.field == 'cost_centre' and (self.cost_centre and self.ad_data['Company'] == self.cost_centre.code):
-                    action.delete()
-                elif action.field == 'location' and (self.location and self.ad_data['StreetAddress'] == self.location.name):
-                    action.delete()
-                elif action.field == 'employee_id' and self.ad_data['EmployeeID'] == self.employee_id:
-                    action.delete()
-                elif action.field == 'manager' and DepartmentUser.objects.filter(ad_data__DistinguishedName=self.ad_data['Manager']).exists() and self.manager == DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data['Manager']):
-                    action.delete()
-        else:
-            # Azure AD
-            if not self.azure_guid or not self.azure_ad_data:
-                return
-
-            for action in actions:
-                if action.field == 'name' and self.azure_ad_data['displayName'] == self.name:
-                    action.delete()
-                elif action.field == 'given_name' and self.azure_ad_data['givenName'] == self.given_name:
-                    action.delete()
-                elif action.field == 'surname' and self.azure_ad_data['surname'] == self.surname:
-                    action.delete()
-                elif action.field == 'title' and self.azure_ad_data['jobTitle'] == self.title:
-                    action.delete()
-                elif action.field == 'telephone' and compare_values(self.azure_ad_data['telephoneNumber'], self.telephone):
-                    action.delete()
-                elif action.field == 'mobile_phone' and compare_values(self.azure_ad_data['mobilePhone'], self.mobile_phone):
-                    action.delete()
-                elif action.field == 'cost_centre' and (self.cost_centre and self.azure_ad_data['companyName'] == self.cost_centre.code):
-                    action.delete()
-                elif action.field == 'location' and (self.location and self.azure_ad_data['officeLocation'] == self.location.name):
-                    action.delete()
-                elif action.field == 'employee_id' and self.azure_ad_data['employeeId'] == self.employee_id:
-                    action.delete()
-                elif action.field == 'manager' and self.azure_ad_data and 'manager' in self.azure_ad_data and self.azure_ad_data['manager']:
-                    if DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists() and self.manager == DepartmentUser.objects.get(azure_guid=self.azure_ad_data['manager']['id']):
-                        action.delete()
 
     def update_from_ascender_data(self):
         """For this DepartmentUser object, update the field values from cached Ascender data
@@ -822,7 +1032,70 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # Cost centre & Division - Ascender records cost centre as 'paypoint'.
+        # First name
+        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+            if not self.given_name:
+                given_name = ''
+            else:
+                given_name = self.given_name
+            if self.ascender_data['first_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['first_name'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender first name {first_name}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'first_name',
+                        'old_value': self.given_name,
+                        'new_value': first_name,
+                        'description': 'Update given_name value from Ascender',
+                    },
+                )
+                self.given_name = first_name
+                self.name = f'{first_name} {self.surname}'  # Also update display name
+
+        # Surname
+        if 'surname' in self.ascender_data and self.ascender_data['surname']:
+            if not self.surname:
+                surname = ''
+            else:
+                surname = self.surname
+            if self.ascender_data['surname'].upper() != surname.upper():
+                new_surname = self.ascender_data['surname'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} surname {self.surname} differs from Ascender surname {new_surname}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'surname',
+                        'old_value': self.surname,
+                        'new_value': new_surname,
+                        'description': 'Update surname value from Ascender',
+                    },
+                )
+                self.surname = new_surname
+                self.name = f'{self.given_name} {new_surname}'  # Also update display name
+
+        # Preferred name
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
+            if not self.preferred_name:
+                preferred_name = ''
+            else:
+                preferred_name = self.preferred_name
+            if self.ascender_data['preferred_name'].upper() != preferred_name.upper():
+                new_preferred_name = self.ascender_data['preferred_name'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} preferred name {self.preferred_name} differs from Ascender preferred name {new_preferred_name}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'preferred_name',
+                        'old_value': self.preferred_name,
+                        'new_value': new_preferred_name,
+                        'description': 'Update preferred_name value from Ascender',
+                    },
+                )
+                self.preferred_name = new_preferred_name
+                self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
+
+        # Cost centre (Ascender records cost centre as 'paypoint').
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             paypoint = self.ascender_data['paypoint']
             cc = CostCentre.objects.get(ascender_code=paypoint)
@@ -896,8 +1169,7 @@ class DepartmentUser(models.Model):
                     )
                 self.manager = manager  # Change the department user's manager.
 
-        """
-        # Location (commented out at present)
+        # Location
         if 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc'] and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
             location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             # The user's current location differs from that in Ascender.
@@ -925,7 +1197,6 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.location = location
-        """
 
         self.save()
 
@@ -942,16 +1213,7 @@ class DepartmentUser(models.Model):
         if 'mail'in self.azure_ad_data and self.azure_ad_data['mail'] != self.email:
             LOGGER.info('AZURE AD SYNC: {} email changed to {}'.format(self, self.azure_ad_data['mail']))
             self.email = self.azure_ad_data['mail']
-        if 'displayName'in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
-            self.name = self.azure_ad_data['displayName']
-            LOGGER.info(f'AZURE AD SYNC: {self} name changed to {self.name}')
-        if 'givenName'in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
-            self.given_name = self.azure_ad_data['givenName']
-            LOGGER.info(f'AZURE AD SYNC: {self} given_name changed to {self.given_name}')
-        if 'surname'in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
-            self.surname = self.azure_ad_data['surname']
-            LOGGER.info(f'AZURE AD SYNC: {self} surname changed to {self.surname}')
-        if 'onPremisesSyncEnabled' in self.azure_ad_data and self.azure_ad_data['onPremisesSyncEnabled'] != self.dir_sync_enabled:
+        if 'onPremisesSyncEnabled' in self.azure_ad_data:
             if not self.azure_ad_data['onPremisesSyncEnabled']:  # False/None
                 self.dir_sync_enabled = False
             else:
@@ -971,65 +1233,6 @@ class DepartmentUser(models.Model):
 
         self.save()
 
-    def get_onprem_ad_domain(self):
-        """If this user has onprem AD data cached, attempt to return the AD domain from their DistinguishedName.
-        """
-        if self.ad_data and 'DistinguishedName' in self.ad_data:
-            return '.'.join([i.replace('DC=', '') for i in self.ad_data['DistinguishedName'].split(',') if i.startswith('DC=')])
-
-        return None
-
-    def get_ascender_discrepancies(self):
-        """Returns a list of discrepancies between object field values and their associated Ascender data.
-        """
-        if not self.employee_id or not self.ascender_data:
-            return
-
-        discrepancies = []
-
-        # As field values might be None, we have to go through some rigamole to compare them.
-        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
-            given_name = self.given_name.upper() if self.given_name else ''
-            if given_name != self.ascender_data['first_name'].upper():
-                discrepancies.append({
-                    'field': 'given_name',
-                    'field_desc': 'given name',
-                    'old_value': self.given_name,
-                    'new_value': self.ascender_data['first_name'].title(),
-                })
-        if 'surname' in self.ascender_data and self.ascender_data['surname']:
-            surname = self.surname.upper() if self.surname else ''
-            if surname != self.ascender_data['surname'].upper():
-                discrepancies.append({
-                    'field': 'surname',
-                    'field_desc': 'surname',
-                    'old_value': self.surname,
-                    'new_value': self.ascender_data['surname'].title(),
-                })
-        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
-            preferred_name = self.preferred_name.upper() if self.preferred_name else ''
-            if preferred_name != self.ascender_data['preferred_name'].upper():
-                discrepancies.append({
-                    'field': 'preferred_name',
-                    'field_desc': 'preferred name',
-                    'old_value': self.preferred_name,
-                    'new_value': self.ascender_data['preferred_name'].title(),
-                })
-        if 'occup_pos_title' in self.ascender_data and self.ascender_data['occup_pos_title']:
-            # Handle title with a bit more nuance.
-            title = self.title.upper().replace('&', 'AND').replace(',', '') if self.title else ''
-            ascender_title = self.ascender_data['occup_pos_title'].upper().replace('&', 'AND').replace(',', '')
-            if title != ascender_title:
-                discrepancies.append({
-                    'field': 'title',
-                    'field_desc': 'title',
-                    'old_value': self.title,
-                    'new_value': title_except(self.ascender_data['occup_pos_title']),
-                })
-        # FIXME: for now, don't check phone number or mobile phone number.
-
-        return discrepancies or None
-
 
 class DepartmentUserLog(models.Model):
     """Represents an event carried out on a DepartmentUser object that may need to be reported
@@ -1037,7 +1240,7 @@ class DepartmentUserLog(models.Model):
     """
     created = models.DateTimeField(auto_now_add=True)
     department_user = models.ForeignKey(DepartmentUser, on_delete=models.CASCADE)
-    log = JSONField(default=dict, editable=False)
+    log = models.JSONField(default=dict, editable=False)
 
     def __str__(self):
         return '{} {} {}'.format(
@@ -1153,7 +1356,7 @@ class OrgUnit(models.Model):
         (5, 'Office'),
         (10, 'Work centre'),
     )
-    TYPE_CHOICES_DICT = dict(TYPE_CHOICES)
+    active = models.BooleanField(default=True)
     unit_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES)
     name = models.CharField(max_length=256)
     acronym = models.CharField(max_length=16, null=True, blank=True)
@@ -1166,7 +1369,7 @@ class OrgUnit(models.Model):
         related_name='division_orgunits',
         help_text='Division-level unit to which this unit belongs',
     )
-    active = models.BooleanField(default=True)
+    ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
 
     class Meta:
         ordering = ('name',)
@@ -1193,6 +1396,7 @@ DIVISION_CHOICES = (
 class CostCentre(models.Model):
     """Models the details of a Department cost centre / chart of accounts.
     """
+    active = models.BooleanField(default=True)
     code = models.CharField(max_length=16, unique=True)
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
@@ -1212,7 +1416,6 @@ class CostCentre(models.Model):
         DepartmentUser, on_delete=models.SET_NULL, related_name='tech_ccs',
         help_text='Technical Contact', null=True, blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
-    active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ('code',)

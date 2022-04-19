@@ -6,7 +6,10 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
+from django.views.decorators.clickjacking import xframe_options_exempt
+from csp.decorators import csp_exempt
 from itassets.utils import breadcrumbs_list
 
 from .forms import ConfirmPhoneNosForm
@@ -14,9 +17,17 @@ from .models import DepartmentUser, Location, OrgUnit, ADAction
 from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
 from .utils import parse_windows_ts
 
+decorators = [xframe_options_exempt, csp_exempt]
 
+
+@method_decorator(decorators, name='dispatch')
 class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
+
+
+@method_decorator(decorators, name='dispatch')
+class UserAccounts(TemplateView):
+    template_name = 'organisation/user_accounts.html'
 
 
 class DepartmentUserAPIResource(View):
@@ -184,7 +195,7 @@ class DepartmentUserExport(View):
         return response
 
 
-class UserAccountExport(View):
+class UserAccountsExport(View):
     """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
