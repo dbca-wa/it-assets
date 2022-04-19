@@ -47,11 +47,9 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
-        #'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'account_type',
-        'email', 'title', 'employee_id', 'active', 'vip', 'executive', 'cost_centre', 'account_type',
+        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'account_type',
     )
-    #list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
-    list_filter = (AssignedLicenceFilter, 'account_type', 'active', 'vip', 'executive', 'shared_account')
+    list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
     model_description = DepartmentUser.__doc__
     search_fields = ('name', 'email', 'title', 'employee_id', 'ad_guid', 'azure_guid')
     raw_id_fields = ('manager',)
@@ -59,71 +57,8 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name', 'ascender_preferred_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
         'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_end_date', 'ascender_data_updated',
-        'manager_name', 'extended_leave', #'employee_id',
+        'manager_name', 'extended_leave', 'employee_id',
     )
-    fieldsets = (
-        ('Microsoft 365, Azure AD and on-prem AD account information', {
-            'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
-            'fields': (
-                'active',
-                'email',
-                'name',
-                'given_name',
-                'surname',
-                'azure_guid',
-                'ad_guid',
-                'assigned_licences',
-                'proxy_addresses',
-                'dir_sync_enabled',
-            ),
-        }),
-        ('Ascender account information', {
-            'description': '''<span class="errornote">These data are specific to the Ascender HR database.
-            The employee ID must be set here in order to enable synchronisation from Ascender.<br>
-            Data is these fields is maintained in Ascender by PSB and/or the employee.</span>''',
-            'fields': (
-                'employee_id',
-                'ascender_full_name',
-                'ascender_org_path',
-                'position_title',
-                'geo_location_desc',
-                'paypoint',
-                'employment_status',
-                'manager_name',
-                'job_start_date',
-                'job_end_date',
-                'extended_leave',
-                'ascender_data_updated',
-            ),
-        }),
-        ('User information fields', {
-            'description': '''<span class="errornote">Data in these fields should match information from Ascender,
-                but can be edited here for display in the Address Book.<br>
-                Do not edit information in this section without written permission from People Services
-                or the cost centre manager (forms are required).</span>''',
-            'fields': (
-                'title',
-                'telephone',
-                'mobile_phone',
-                'manager',
-                'location',
-                'name_update_reference',
-                'org_unit',
-                'cost_centre',
-                'preferred_name',
-                'extension',
-                'home_phone',
-                'other_phone',
-                'vip',
-                'executive',
-                'contractor',
-                'security_clearance',
-                'account_type',
-                'notes',
-            ),
-        }),
-    )
-    """
     fieldsets = (
         ('Ascender account information', {
             'description': '''<span class="errornote">These data are specific to the Ascender HR database. Data is these fields is maintained in Ascender.</span>''',
@@ -143,7 +78,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'ascender_data_updated',
             ),
         }),
-        ('Microsoft 365, Azure AD and on-prem AD account information', {
+        ('Microsoft 365 and Active Directory account information', {
             'description': '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
             'fields': (
                 'active',
@@ -155,14 +90,12 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         }),
         ('User information fields', {
             'description': '''<span class="errornote">Data in these fields can be edited here for display in the Address Book.<br>
-                Do not edit information in this section without written permission from People Services
-                or the cost centre manager (forms are required).</span>''',
+                Do not edit information in this section without a service request from an authorised person.</span>''',
             'fields': (
-                'org_unit',
-                'account_type',
                 'telephone',
                 'mobile_phone',
                 'name_update_reference',
+                'account_type',
                 'vip',
                 'executive',
                 'contractor',
@@ -170,7 +103,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
             ),
         }),
     )
-    """
 
     def has_add_permission(self, request):
         return False
