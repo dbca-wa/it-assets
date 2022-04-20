@@ -24,6 +24,11 @@ decorators = [xframe_options_exempt, csp_exempt]
 class AddressBook(TemplateView):
     template_name = 'organisation/address_book.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'DBCA Address Book'
+        context['site_acronym'] = 'Address Book'
+        return context
 
 @method_decorator(decorators, name='dispatch')
 class UserAccounts(TemplateView):
