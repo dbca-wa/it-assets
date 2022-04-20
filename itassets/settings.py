@@ -106,7 +106,7 @@ MERAKI_API_KEY = env('MERAKI_API_KEY', None)
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.3.28'
+VERSION_NO = '2.3.48'
 
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
@@ -294,6 +294,7 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 # NOTE: add any CDN domains here where they are used to load external resources.
 CSP_DEFAULT_SRC = (
     "'self'",
+    "'unsafe-inline'",  # Required to allow inline styles/scripts.
     "static.dbca.wa.gov.au",
     "cdnjs.cloudflare.com",
     "cdn.jsdelivr.net",
