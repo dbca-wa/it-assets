@@ -5,22 +5,14 @@ from django.contrib import messages
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
 from django.core.mail import EmailMultiAlternatives
 from django.urls import path
-
-from django_json_widget.widgets import JSONEditorWidget
-
 from pytz import timezone
 
-from itassets.utils import ModelDescMixin,SecretPermissionMixin,RequestMixin
+from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
 from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
 
+
 class ITSystemForm(forms.ModelForm):
-    class Meta:
-        model = ITSystem
-        exclude = []
-        widgets = {
-            'extra_data': JSONEditorWidget
-        }
 
     def clean_biller_code(self):
         # Validation on the biller_code field - must be unique (ignore null values).
@@ -31,7 +23,7 @@ class ITSystemForm(forms.ModelForm):
 
 
 @register(ITSystem)
-class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmin):
+class ITSystemAdmin(ModelDescMixin, ModelAdmin):
 
     class PlatformFilter(SimpleListFilter):
         """SimpleListFilter to filter on True/False if an object has a value for platform.
@@ -52,7 +44,6 @@ class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmi
                 return queryset.filter(platform__isnull=True)
 
     model_description = ITSystem.__doc__
-    filter_horizontal = ('user_groups', 'dependencies')
     list_display = (
         'system_id',
         'name',
@@ -79,7 +70,7 @@ class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmi
     )
     raw_id_fields = (
         'owner', 'technology_custodian', 'information_custodian', 'cost_centre', 'bh_support', 'ah_support')
-    _fieldsets = [
+    fieldsets = [
         ('Overview', {
             'description': '<span class="errornote">Data in these fields is maintained in SharePoint.</span>''',
             'fields': (
@@ -108,8 +99,7 @@ class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmi
                 'emergency_operations',
                 'online_bookings',
                 'visitor_safety',
-                'platform',
-                'dependencies',
+                #'platform',
             ),
         }),
         ('Retention and disposal', {
@@ -123,25 +113,10 @@ class ITSystemAdmin(RequestMixin,SecretPermissionMixin,ModelDescMixin, ModelAdmi
             ),
         }),
     ]
-    _fieldsets_security = _fieldsets + [(
-        'Meta Data', {
-            'description': '<span class="errornote">Data in these fields is used as metadata.</span>',
-            'fields': (
-                'extra_data',
-            ),
-        }
-    )]
-    # Override the default reversion/change_list.html template to add export links:
+    # Override the default change_list.html template to add export links:
     change_list_template = 'admin/registers/itsystem/change_list.html'
     form = ITSystemForm  # Use the custom ModelForm.
     save_on_top = True
-
-    @property
-    def fieldsets(self):
-        if self.secretpermission_granted():
-            return self._fieldsets_security
-        else:
-            return self._fieldsets
 
     def get_urls(self):
         urls = super(ITSystemAdmin, self).get_urls()

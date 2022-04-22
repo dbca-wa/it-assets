@@ -1,8 +1,26 @@
 {% extends "base_b4.html" %}
 
-{% block page_content_inner %}
+{% block page_content %}
+<br>
+<div class="container">
+    <div class="row">
+        <div class="col-sm-4">
+            <h1>{{ page_title }}</h1>
+        </div>
+        <div class="col-sm-8 d-none d-sm-block">
+            <div class="alert alert-secondary">
+                <p><b>To update information in the address book, please obtain approval from a Cost Centre manager or higher before contacting the following:</b></p>
+                <ul>
+                    <li>For changes to Teams/work phone or work mobile number, contact the <a href="mailto:oim.servicedesk@dbca.wa.gov.au">OIM Service Desk</a>.</li>
+                    <li>For all other changes, please contact the appropriate officer in <a href="https://dpaw.sharepoint.com/Divisions/corporate/people-services/SitePages/Home.aspx" target="_blank">People Services Branch</a>.</li>
+                </ul>
+                <p><i><b>Important Notice:</b> Address Book information supports the department's shared <abbr class="glossary" title="Information and related Technology">IT</abbr> common operating environment (Shared <abbr class="glossary" title="Information and related Technology">IT</abbr> <abbr class="glossary" title="Common Operating Environment">COE</abbr>) <a href="https://dpaw.sharepoint.com/Divisions/corporate/oim/SitePages/Identity-and-Access-Management.aspx" target="_blank">identity and access management</a>. Cost Centre managers are responsible for ensuring their staff's Address Book information is correct.</i></p>
+            </div>
+        </div>
+    </div>
+</div>
 <div id="addressbook-app"></div>
-{% endblock %}
+{% endblock page_content %}
 
 {% block extra_js %}
 <script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.5/js/chunk-vendors.js"></script>
