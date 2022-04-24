@@ -1,4 +1,4 @@
-import simdjson
+import json
 import traceback
 import logging
 
@@ -7,15 +7,14 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 
 from data_storage import HistoryDataConsumeClient,LocalStorage,exceptions,LockSession
-from . import models 
+from . import models
 from itassets.utils import LogRecordIterator
 from .utils import to_datetime,set_fields
 
 logger = logging.getLogger(__name__)
 _podstatus_client = None
-
-
 harvestername = "podstatus"
+
 
 def get_client(cache=True):
     """
@@ -52,6 +51,7 @@ def to_workload_kind(controllerkind):
 
     return kind
 
+
 def process_status_file(context,metadata,status_file):
     now = timezone.now()
     context["podstatus"]["harvester"].message="{}:Begin to process pod status file '{}'".format(now.strftime("%Y-%m-%d %H:%M:%S"),metadata["resource_id"])
@@ -61,7 +61,7 @@ def process_status_file(context,metadata,status_file):
         status_records = LogRecordIterator(status_file)
     else:
         with open(status_file,"r") as f:
-            status_records = simdjson.loads(f.read())
+            status_records = json.loads(f.read())
 
     records = 0
     for record in status_records:
@@ -221,6 +221,8 @@ def process_status(context):
         context["podstatus"]["harvested_files"] += 1
 
     return _func
+
+
 def harvest(reconsume=None,max_harvest_files=None,context={}):
     now = timezone.now()
     harvester = models.Harvester(name=harvestername,starttime=now,last_heartbeat=now,status=models.Harvester.RUNNING)
@@ -233,7 +235,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
 
             context["podstatus"] = context.get("podstatus",{})
             context["podstatus"].update({
-                "reconsume":reconsume  if reconsume is not None else context["podstatus"].get("reconsume",False),
+                "reconsume":reconsume if reconsume is not None else context["podstatus"].get("reconsume",False),
                 "max_harvest_files":max_harvest_files if max_harvest_files is not None else context["podstatus"].get("max_harvest_files",None),
                 "lock_session":lock_session,
                 "removable_workloads":set(),
@@ -248,7 +250,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
 
             #consume pod status file
             result = get_client().consume(process_status(context))
-    
+
             if result[1]:
                 if result[0]:
                     message = """Failed to harvest pod status,
@@ -278,7 +280,7 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
                 )
             else:
                 message = "Succeed to harvest pod status, no new pod status file was added since last harvesting"
-                
+
             harvester.status = models.Harvester.FAILED if result[1] else models.Harvester.SUCCEED
             return result
 
@@ -297,5 +299,3 @@ def harvest(reconsume=None,max_harvest_files=None,context={}):
         harvester.endtime = timezone.now()
         harvester.last_heartbeat = harvester.endtime
         harvester.save(update_fields=["endtime","message","status","last_heartbeat"])
-        
-

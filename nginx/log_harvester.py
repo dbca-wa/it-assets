@@ -1,13 +1,10 @@
-import os
-import simdjson
+import json
 import traceback
 import logging
-from datetime import datetime,date,timedelta
-from collections import OrderedDict
+from datetime import datetime, timedelta
 
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
-from django.db import models,transaction,connection
+from django.db import connection
 from django.utils import timezone
 from django.http import QueryDict
 
@@ -16,8 +13,9 @@ from .models import WebAppAccessLog,WebApp,WebAppLocation,RequestParameterFilter
 from itassets.utils import LogRecordIterator
 
 logger = logging.getLogger(__name__)
-
 _consume_client = None
+
+
 def get_consume_client():
     """
     Return the blob resource client
@@ -32,18 +30,20 @@ def get_consume_client():
         )
     return _consume_client
 
+
 def to_float(data):
     try:
         return float(data)
     except:
         return 0
 
+
 def process_log_file(context,metadata,log_file):
     if settings.NGINXLOG_STREAMING_PARSE:
         log_records = LogRecordIterator(log_file)
     else:
         with open(log_file,"r") as f:
-            log_records = simdjson.loads(f.read())
+            log_records = json.loads(f.read())
 
     records = 0
     webserver_records = {}
@@ -77,7 +77,7 @@ def process_log_file(context,metadata,log_file):
                 original_request_path = request_path
             elif len(request_path) > 512:
                 request_path = request_path[0:512]
-    
+
             parameters_changed,path_parameters = RequestParameterFilter.filter_parameters(
                 record["webserver"],
                 request_path,
@@ -96,7 +96,7 @@ def process_log_file(context,metadata,log_file):
             if request_path is None:
                 continue
 
-            if webserver :
+            if webserver:
                 if record["webserver"] != webserver:
                     for log_record in webserver_records.values():
                         log_record.save()
@@ -104,7 +104,6 @@ def process_log_file(context,metadata,log_file):
                     webserver = record["webserver"]
             else:
                 webserver = record["webserver"]
-            
 
             key = (request_path,http_status,path_parameters)
 
@@ -114,10 +113,10 @@ def process_log_file(context,metadata,log_file):
                 accesslog.total_response_time += to_float(record["total_response_time"])
                 if accesslog.max_response_time < to_float(record["max_response_time"]):
                     accesslog.max_response_time = to_float(record["max_response_time"])
-    
+
                 if accesslog.min_response_time > to_float(record["min_response_time"]):
                     accesslog.min_response_time = to_float(record["min_response_time"])
-    
+
                 accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
                 if all_path_parameters:
                     if accesslog.all_path_parameters:
@@ -150,7 +149,7 @@ def process_log_file(context,metadata,log_file):
                         context["webapps"] = {}
                     context["webapps"][accesslog.webserver] = WebApp.objects.filter(name=accesslog.webserver).first()
                 accesslog.webapp = context["webapps"][accesslog.webserver]
-    
+
                 if accesslog.webapp and not accesslog.webapp.redirect_to and not accesslog.webapp.redirect_to_other:
                     if accesslog.webapp not in context.get("webapplocations",{}):
                         if "webapplocations" not in context:
@@ -170,7 +169,7 @@ def process_log_file(context,metadata,log_file):
         log_record.save()
 
     logger.info("Harvest {1} records from log file '{0}'".format(log_file,records))
-            
+
 
 def process_log(context):
     def _func(status,metadata,log_file):
@@ -185,17 +184,18 @@ def process_log(context):
         context["lock_session"].renew()
 
     return _func
-                        
+
+
 def harvest(reconsume=False):
     try:
         with LockSession(get_consume_client(),settings.NGINXLOG_MAX_CONSUME_TIME_PER_LOG) as lock_session:
             if reconsume and get_consume_client().is_client_exist(clientid=settings.RESOURCE_CLIENTID):
                 get_consume_client().delete_clients(clientid=settings.RESOURCE_CLIENTID)
-        
+
             if reconsume:
                 WebAppAccessLog.objects.all().delete()
                 WebAppAccessDailyLog.objects.all().delete()
-        
+
             context = {
                 "reconsume":reconsume,
                 "lock_session":lock_session
@@ -217,14 +217,14 @@ def harvest(reconsume=False):
                 context["parameter_filter_map"] = {}
                 applied = apply_rules(context)
             """
-        
+
             #consume nginx config file
             result = get_consume_client().consume(process_log(context))
             #populate daily log
             lock_session.renew()
             #populate daily report
             WebAppAccessDailyReport.populate_data(lock_session)
-    
+
             now = timezone.localtime()
             if now.hour >= 0 and now.hour <= 2:
                 obj = WebAppAccessLog.objects.all().order_by("-log_starttime").first()
@@ -236,7 +236,7 @@ def harvest(reconsume=False):
                         logger.info("Delete expired web app access log.last_log_datetime={}, sql = {}".format(last_log_datetime,sql))
                         cursor.execute(sql)
                     lock_session.renew()
-    
+
                 obj = WebAppAccessDailyLog.objects.all().order_by("-log_day").first()
                 if obj:
                     last_log_day = obj.log_day
@@ -245,10 +245,9 @@ def harvest(reconsume=False):
                     with connection.cursor() as cursor:
                         logger.info("Delete expired web app access daily log.last_log_day={}, sql = {}".format(last_log_day,sql))
                         cursor.execute(sql)
-    
+
             return result
-    except exceptions.AlreadyLocked as ex: 
+    except exceptions.AlreadyLocked as ex:
         msg = "The previous harvest process is still running.{}".format(str(ex))
         logger.info(msg)
         return ([],[(None,None,None,msg)])
-        
