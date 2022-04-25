@@ -11,7 +11,7 @@ import requests
 from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
-from .utils import compare_values, parse_windows_ts
+from .utils import compare_values, parse_windows_ts, title_except
 LOGGER = logging.getLogger('organisation')
 
 
@@ -1170,7 +1170,11 @@ class DepartmentUser(models.Model):
                 self.manager = manager  # Change the department user's manager.
 
         # Location
-        if 'geo_location_desc' in self.ascender_data and self.ascender_data['geo_location_desc'] and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists():
+        if (
+            'geo_location_desc' in self.ascender_data
+            and self.ascender_data['geo_location_desc']
+            and Location.objects.filter(ascender_desc=self.ascender_data['geo_location_desc']).exists()
+        ):
             location = Location.objects.get(ascender_desc=self.ascender_data['geo_location_desc'])
             # The user's current location differs from that in Ascender.
             if self.location != location:
@@ -1197,6 +1201,23 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.location = location
+
+        # Title
+        if 'occup_pos_title' in self.ascender_data and self.ascender_data['occup_pos_title']:
+            ascender_title = title_except(self.ascender_data['occup_pos_title'])
+            current_title = self.title if self.title else ''
+            if ascender_title.upper() != current_title.upper():
+                LOGGER.info(f"ASCENDER SYNC: {self} title {self.title} differs from Ascender title {ascender_title}, updating it")
+                DepartmentUserLog.objects.create(
+                    department_user=self,
+                    log={
+                        'ascender_field': 'occup_pos_title',
+                        'old_value': self.title,
+                        'new_value': ascender_title,
+                        'description': 'Update title value from Ascender',
+                    },
+                )
+                self.title = ascender_title
 
         self.save()
 
