@@ -106,7 +106,7 @@ MERAKI_API_KEY = env('MERAKI_API_KEY', None)
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.3.48'
+VERSION_NO = '2.3.49'
 
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
