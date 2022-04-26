@@ -1274,6 +1274,7 @@ class DepartmentUserLog(models.Model):
 class ADAction(models.Model):
     """Represents a single "action" or change that needs to be carried out to the Active Directory
     object which matches a DepartmentUser object.
+    DEPRECATED, to be removed.
     """
     ACTION_TYPE_CHOICES = (
         ('Change email', 'Change email'),  # Separate from 'change field' because this is a significant operation.
