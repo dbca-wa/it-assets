@@ -468,66 +468,6 @@ class DepartmentUser(models.Model):
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
 
-        """
-        # NOTE: this scenario is not currently in use.
-        # SCENARIO 2: Ascender record indicates that a user's job has not finished but their account is inactive - activate their account.
-        elif (
-            not self.active
-            and self.employee_id
-            and self.ascender_data
-            and 'job_end_date' in self.ascender_data
-            and 'extended_lv' in self.ascender_data
-            and settings.ASCENDER_DEACTIVATE_EXPIRED
-        ):
-            if self.ascender_data['job_end_date']:
-                job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
-            else:
-                job_end_date = None
-
-            # Where a user has a job with no end date or where the job end date is not in the past, AND they are not on extended leave: activate the user's AD account.
-            if (not job_end_date or job_end_date >= today) and self.ascender_data['extended_lv'] != 'Y':
-                #LOGGER.info(f'ASCENDER SYNC: {self} job end date is not in the past; activating their {acct} AD account')
-
-                # Create a DepartmentUserLog object to record this update.
-                if not log_only:
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'job_end_date',
-                            'old_value': self.ascender_data['job_end_date'],
-                            'new_value': None,
-                            'description': f'Activate {acct} AD account',
-                        },
-                    )
-
-                # Onprem AD users.
-                if self.dir_sync_enabled and self.ad_guid and self.ad_data:
-                    prop = 'Enabled'
-                    change = {
-                        'identity': self.ad_guid,
-                        'property': prop,
-                        'value': True,
-                    }
-                    f = NamedTemporaryFile()
-                    f.write(json.dumps(change, indent=2).encode('utf-8'))
-                    f.flush()
-                    if not log_only:
-                        store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
-                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-
-                # Azure (cloud only) AD users.
-                elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
-                    if token:
-                        headers = {
-                            "Authorization": "Bearer {}".format(token["access_token"]),
-                            "Content-Type": "application/json",
-                        }
-                        data = {"accountEnabled": True}
-                        if not log_only:
-                            requests.patch(url, headers=headers, json=data)
-                        LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to True')
-        """
-
         # expiry date (source of truth: Ascender).
         # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
         # SCENARIO 1: the user has a job end date value set in Ascender.
