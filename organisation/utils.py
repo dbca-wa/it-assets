@@ -15,8 +15,8 @@ TZ = pytz.timezone(settings.TIME_ZONE)
 
 def title_except(
     s,
-    exceptions=('the', 'of', 'for', 'and'),
-    acronyms=('OIM', 'IT', 'PVS', 'SFM', 'OT', 'NP', 'FMDP', 'VRM', 'TEC', 'GIS', 'ODG', 'RIA', 'ICT', 'RSD'),
+    exceptions=('the', 'of', 'for', 'and', 'or'),
+    acronyms=('OIM', 'IT', 'PVS', 'SFM', 'OT', 'NP', 'FMDP', 'VRM', 'TEC', 'GIS', 'ODG', 'RIA', 'ICT', 'RSD', 'CIS'),
 ):
     """Utility function to title-case words in a job title, except for all the exceptions and edge cases.
     """
