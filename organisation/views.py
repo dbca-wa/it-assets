@@ -26,7 +26,7 @@ class AddressBook(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['site_title'] = 'Office for Information Management'
+        context['site_title'] = 'Office of Information Management'
         context['site_acronym'] = 'OIM'
         context['page_title'] = 'Address Book'
         return context

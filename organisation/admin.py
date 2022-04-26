@@ -43,7 +43,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 return queryset.filter(assigned_licences__contains=[self.value()])
 
     actions = ('clear_ad_guid', 'clear_azure_guid')
-    # Override the default reversion/change_list.html template:
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
@@ -181,7 +180,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
 
 
-@admin.register(ADAction)
+#@admin.register(ADAction)
 class ADActionAdmin(admin.ModelAdmin):
 
     class CompletedFilter(admin.SimpleListFilter):
