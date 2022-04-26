@@ -38,7 +38,6 @@ INSTALLED_APPS = (
     'django_json_widget',
     # Third-party applications:
     'django_extensions',
-    'reversion',
     'crispy_forms',
     'leaflet',
     'webtemplate_dbca',

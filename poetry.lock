@@ -285,17 +285,6 @@ Markdown = "*"
 Pillow = "*"
 
 [[package]]
-name = "django-reversion"
-version = "3.0.9"
-description = "An extension to the Django web framework that provides version control for model instances."
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-django = ">=1.11"
-
-[[package]]
 name = "et-xmlfile"
 version = "1.1.0"
 description = "An implementation of lxml.xmlfile for the standard library"
@@ -911,7 +900,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "05d11d4764054b2560d84b6d4bee521c53f1f2fdd11d6088541417a59782e171"
+content-hash = "fbd99d7991e3ecb41db7aace3534be6ded12c97ec2d5ee048bd35e4e06fc58ce"
 
 [metadata.files]
 appnope = [
@@ -1126,10 +1115,6 @@ django-leaflet = [
 django-markdownx = [
     {file = "django-markdownx-3.0.1.tar.gz", hash = "sha256:e18e395cad0ade96afbb250a81cad15618e417ac3c0d9c37d964be3d8fd57bcf"},
     {file = "django_markdownx-3.0.1-py2.py3-none-any.whl", hash = "sha256:f4d8998618c0548bf5349713d805e7440684d70116de0f10413932286c4e375f"},
-]
-django-reversion = [
-    {file = "django-reversion-3.0.9.tar.gz", hash = "sha256:a5af55f086a3f9c38be2f049c251e06005b9ed48ba7a109473736b1fc95a066f"},
-    {file = "django_reversion-3.0.9-py3-none-any.whl", hash = "sha256:1b57127a136b969f4b843a915c72af271febe7f336469db6c27121f8adcad35c"},
 ]
 et-xmlfile = [
     {file = "et_xmlfile-1.1.0-py3-none-any.whl", hash = "sha256:a2ba85d1d6a74ef63837eed693bcb89c3f752169b0e3e7ae5b16ca5e1b3deada"},

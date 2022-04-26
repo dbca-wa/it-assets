@@ -78,7 +78,6 @@ class RiskAssessment(models.Model):
 
     class Meta:
         # Business rule: a given content object may only have a single risk assessment for a given category.
-        # Risk assessments may change over time, but revisions will be saved using django-reversion.
         unique_together = ("category", "content_type", "object_id")
 
     def __str__(self):
