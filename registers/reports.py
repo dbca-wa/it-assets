@@ -107,9 +107,9 @@ def it_system_export(fileobj, it_systems):
                 i.get_system_type_display() if i.system_type else '',
                 i.cost_centre.code if i.cost_centre else '',
                 i.division_name,
-                i.owner.get_full_name() if i.owner else '',
-                i.technology_custodian.get_full_name() if i.technology_custodian else '',
-                i.information_custodian.get_full_name() if i.information_custodian else '',
+                i.owner.name if i.owner else '',
+                i.technology_custodian.name if i.technology_custodian else '',
+                i.information_custodian.name if i.information_custodian else '',
                 i.link,
                 i.technical_documentation if i.technical_documentation else '',
                 i.application_server,
@@ -168,9 +168,9 @@ def it_system_hardware_export(fileobj, hardware):
                         i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
                         str(i.patch_group), it.system_id, it.name, str(it.cost_centre),
                         it.get_availability_display(),
-                        it.technology_custodian.get_full_name() if it.technology_custodian else '',
-                        it.owner.get_full_name() if it.owner else '',
-                        it.information_custodian.get_full_name() if it.information_custodian else ''
+                        it.technology_custodian.name if it.technology_custodian else '',
+                        it.owner.name if it.owner else '',
+                        it.information_custodian.name if it.information_custodian else ''
                     ])
             else:
                 # No IT Systems - just record the hardware details.
@@ -204,9 +204,9 @@ def change_request_export(fileobj, rfcs):
         for i in rfcs:
             changes.write_row(row, 0, [
                 i.pk, i.title, i.get_change_type_display(),
-                i.requester.get_full_name() if i.requester else '',
-                i.endorser.get_full_name() if i.endorser else '',
-                i.implementer.get_full_name() if i.implementer else '',
+                i.requester.name if i.requester else '',
+                i.endorser.name if i.endorser else '',
+                i.implementer.name if i.implementer else '',
                 i.get_status_display(), i.test_date,
                 i.planned_start.astimezone(TZ) if i.planned_start else '',
                 i.planned_end.astimezone(TZ) if i.planned_end else '',
@@ -252,10 +252,10 @@ def it_system_platform_export(fileobj, it_systems, platforms):
                 i.name,
                 i.get_status_display(),
                 i.division_name,
-                i.cost_centre.division.manager.get_full_name() if i.division_name else '',
-                i.owner.get_full_name() if i.owner else '',
-                i.technology_custodian.get_full_name() if i.technology_custodian else '',
-                i.information_custodian.get_full_name() if i.information_custodian else '',
+                i.cost_centre.division.manager.name if i.division_name else '',
+                i.owner.name if i.owner else '',
+                i.technology_custodian.name if i.technology_custodian else '',
+                i.information_custodian.name if i.information_custodian else '',
                 i.get_seasonality_display() if i.seasonality else '',
                 i.get_availability_display() if i.availability else '',
                 i.link,

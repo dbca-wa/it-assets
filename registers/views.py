@@ -506,12 +506,12 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
                     {} ("{}") has been endorsed by {}, and it is now in review by the OIM Change
                     Manager.\n
                     {}\n
-                    """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                    """.format(rfc.pk, rfc.title, rfc.endorser.name, detail_url)
                 html_content = """<p>This is an automated message to let you know that change request
                     {0} ("{1}") has been endorsed by {2}, and it is now in review by the OIM Change
                     Manager.</p>
                     <ul><li><a href="{3}">{3}</a></li></ul>
-                    """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                    """.format(rfc.pk, rfc.title, rfc.endorser.name, detail_url)
                 msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
                 msg.attach_alternative(html_content, 'text/html')
                 msg.send()
@@ -522,12 +522,12 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
                         {} ("{}") has been endorsed by {}, and you should now review it to determine if
                         subject matter expert review is necessary.\n
                         {}\n
-                        """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                        """.format(rfc.pk, rfc.title, rfc.endorser.name, detail_url)
                     html_content = """<p>This is an automated message to let you know that change request
                         {0} ("{1}") has been endorsed by {2}, and you should now review it to determine if
                         subject matter expert review is necessary.</p>
                         <ul><li><a href="{3}">{3}</a></li></ul>
-                        """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                        """.format(rfc.pk, rfc.title, rfc.endorser.name, detail_url)
                     subject = subject + " - Ready for SME review"
                     changeManagers = User.objects.filter(groups__name='Change Managers')
                     msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [i.email for i in changeManagers])
@@ -572,12 +572,12 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
                 {} ("{}") has been rejected by {}. Its status has been reset to "Draft" for updates
                 and re-submission.\n
                 {}\n
-                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.name, detail_url)
             html_content = """<p>This is an automated message to let you know that change request
                 {0} ("{1}") has been rejected by {2}. Its status has been reset to "Draft" for updates
                 and re-submission.</p>
                 <ul><li><a href="{3}">{3}</a></li></ul>
-                """.format(rfc.pk, rfc.title, rfc.endorser.get_full_name(), detail_url)
+                """.format(rfc.pk, rfc.title, rfc.endorser.name, detail_url)
             msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [rfc.requester.email])
             msg.attach_alternative(html_content, 'text/html')
             msg.send()

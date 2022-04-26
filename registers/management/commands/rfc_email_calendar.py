@@ -121,9 +121,9 @@ class Command(BaseCommand):
                         rfc.title,
                         rfc.get_change_type_display(),
                         rfc.get_status_display(),
-                        rfc.requester.get_full_name() if rfc.requester else '',
-                        rfc.endorser.get_full_name() if rfc.endorser else '',
-                        rfc.implementer.get_full_name() if rfc.implementer else '',
+                        rfc.requester.name if rfc.requester else '',
+                        rfc.endorser.name if rfc.endorser else '',
+                        rfc.implementer.name if rfc.implementer else '',
                         '{}\n{}'.format(rfc.planned_start.strftime('%A, %d-%b-%Y %H:%M'), planned_end)
                     ]
                 )

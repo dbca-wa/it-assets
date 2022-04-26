@@ -557,7 +557,7 @@ def get_ascender_matches():
                 if sn_ratio > 80 and fn_ratio > 65:
                     possible_matches.append([
                         user.pk,
-                        user.get_full_name(),
+                        user.name,
                         '{} {}'.format(data['first_name'], data['surname']),
                         data['employee_id'],
                     ])

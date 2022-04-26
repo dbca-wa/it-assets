@@ -11,7 +11,7 @@ class Command(BaseCommand):
 
         for rfc in rfcs:
             if rfc.endorser:
-                msg = 'Request for endorsement emailed to {}.'.format(rfc.endorser.get_full_name())
+                msg = 'Request for endorsement emailed to {}.'.format(rfc.endorser.name)
                 rfc.email_endorser()
                 log = ChangeLog(change_request=rfc, log=msg)
                 log.save()

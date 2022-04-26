@@ -66,11 +66,11 @@ class Command(BaseCommand):
                     if link:
                         type_fields['link_75000295285'] = link
                     if system.owner:
-                        type_fields['system_owner_75000295285'] = system.owner.get_full_name()
+                        type_fields['system_owner_75000295285'] = system.owner.name
                     if system.technology_custodian:
-                        type_fields['technology_custodian_75000295285'] = system.technology_custodian.get_full_name()
+                        type_fields['technology_custodian_75000295285'] = system.technology_custodian.name
                     if system.information_custodian:
-                        type_fields['information_custodian_75000295285'] = system.information_custodian.get_full_name()
+                        type_fields['information_custodian_75000295285'] = system.information_custodian.name
                     if type_fields:
                         data['type_fields'] = type_fields
 
@@ -95,12 +95,12 @@ class Command(BaseCommand):
                             data['name'] = name
                         if link and asset['type_fields']['link_75000295285'] != link:
                             type_fields['link_75000295285'] = link
-                        if system.owner and asset['type_fields']['system_owner_75000295285'] != system.owner.get_full_name():
-                            type_fields['system_owner_75000295285'] = system.owner.get_full_name()
-                        if system.technology_custodian and asset['type_fields']['technology_custodian_75000295285'] != system.technology_custodian.get_full_name():
-                            type_fields['technology_custodian_75000295285'] = system.technology_custodian.get_full_name()
-                        if system.information_custodian and asset['type_fields']['information_custodian_75000295285'] != system.information_custodian.get_full_name():
-                            type_fields['information_custodian_75000295285'] = system.information_custodian.get_full_name()
+                        if system.owner and asset['type_fields']['system_owner_75000295285'] != system.owner.name:
+                            type_fields['system_owner_75000295285'] = system.owner.name
+                        if system.technology_custodian and asset['type_fields']['technology_custodian_75000295285'] != system.technology_custodian.name:
+                            type_fields['technology_custodian_75000295285'] = system.technology_custodian.name
+                        if system.information_custodian and asset['type_fields']['information_custodian_75000295285'] != system.information_custodian.name:
+                            type_fields['information_custodian_75000295285'] = system.information_custodian.name
 
                         # Did any of the asset's type_fields need to be updated?
                         if type_fields:
@@ -130,12 +130,12 @@ class Command(BaseCommand):
                             data['name'] = name
                         if link and asset['type_fields']['link_75000295285'] != link:
                             type_fields['link_75000295285'] = link
-                        if system.owner and asset['type_fields']['system_owner_75000295285'] != system.owner.get_full_name():
-                            type_fields['system_owner_75000295285'] = system.owner.get_full_name()
-                        if system.technology_custodian and asset['type_fields']['technology_custodian_75000295285'] != system.technology_custodian.get_full_name():
-                            type_fields['technology_custodian_75000295285'] = system.technology_custodian.get_full_name()
-                        if system.information_custodian and asset['type_fields']['information_custodian_75000295285'] != system.information_custodian.get_full_name():
-                            type_fields['information_custodian_75000295285'] = system.information_custodian.get_full_name()
+                        if system.owner and asset['type_fields']['system_owner_75000295285'] != system.owner.name:
+                            type_fields['system_owner_75000295285'] = system.owner.name
+                        if system.technology_custodian and asset['type_fields']['technology_custodian_75000295285'] != system.technology_custodian.name:
+                            type_fields['technology_custodian_75000295285'] = system.technology_custodian.name
+                        if system.information_custodian and asset['type_fields']['information_custodian_75000295285'] != system.information_custodian.name:
+                            type_fields['information_custodian_75000295285'] = system.information_custodian.name
 
                         # Did any of the asset's type_fields need to be updated?
                         if type_fields:

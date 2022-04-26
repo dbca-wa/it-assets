@@ -468,6 +468,10 @@ class DepartmentUser(models.Model):
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
 
+        # Future scenarios:
+        # SCENARIO 2: Ascender record indicates that a user is on extended leave.
+        # SCENARIO 3: Ascender record indicates that a user is seconded to another organisation.
+
         # expiry date (source of truth: Ascender).
         # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
         # SCENARIO 1: the user has a job end date value set in Ascender.

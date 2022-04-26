@@ -25,16 +25,16 @@ def department_user_export(fileobj, users):
         row = 1
         for i in users:
             users_sheet.write_row(row, 0, [
-                i.get_full_name(),
+                i.name,
                 i.email,
                 i.title,
                 i.get_account_type_display(),
                 i.employee_id,
                 i.get_employment_status(),
                 i.cost_centre.code if i.cost_centre else '',
-                i.cost_centre.manager.get_full_name() if i.cost_centre and i.cost_centre.manager else '',
+                i.cost_centre.manager.name if i.cost_centre and i.cost_centre.manager else '',
                 i.cost_centre.manager.email if i.cost_centre and i.cost_centre.manager else '',
-                i.cost_centre.business_manager.get_full_name() if i.cost_centre and i.cost_centre.business_manager else '',
+                i.cost_centre.business_manager.name if i.cost_centre and i.cost_centre.business_manager else '',
                 i.cost_centre.business_manager.email if i.cost_centre and i.cost_centre.business_manager else '',
                 i.active,
                 i.get_licence(),
@@ -75,12 +75,12 @@ def user_account_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'ACCOUNT NAME', 'COST CENTRE', 'CONTACT NUMBER', 'OFFICE LOCATION', 'SHARED/ROLE-BASED ACCOUNT?', 'ACCOUNT ACTIVE?'
+            'NAME', 'COST CENTRE', 'CONTACT NUMBER', 'OFFICE LOCATION', 'SHARED/ROLE-BASED ACCOUNT?', 'ACCOUNT ACTIVE?'
         ))
         row = 1
         for i in users:
             users_sheet.write_row(row, 0, [
-                i.get_full_name(),
+                i.name,
                 i.cost_centre.code if i.cost_centre else '',
                 i.telephone,
                 i.location.name if i.location else '',
@@ -134,7 +134,7 @@ def department_user_ascender_discrepancies(fileobj, users):
         )
         for user in qs:
             no_empid_sheet.write_row(row, 0, [
-                user.get_full_name(),
+                user.name,
                 user.cost_centre.code if user.cost_centre else '',
                 user.get_account_type_display(),
                 ', '.join(user.assigned_licences),
@@ -164,10 +164,8 @@ def department_user_ascender_discrepancies(fileobj, users):
             assigned_licences__contains=['MICROSOFT 365 E5'],
         ).exclude(
             account_type__in=excludes,
-        ).order_by(
-            'given_name',
-            'surname',
-        )
+        ).order_by('name')
+
         for user in qs:
             # Expiry date
             if 'job_end_date' in user.ascender_data and user.ascender_data['job_end_date'] and 'AccountExpirationDate' in user.ad_data and user.ad_data['AccountExpirationDate']:
@@ -176,7 +174,7 @@ def department_user_ascender_discrepancies(fileobj, users):
                 delta = ascender_date - onprem_date
                 if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
                     users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
+                        user.name,
                         user.get_account_type_display(),
                         'Expiry date',
                         onprem_date.strftime("%d/%b/%Y"),
@@ -203,7 +201,7 @@ def department_user_ascender_discrepancies(fileobj, users):
                         cc_diff = True
                 if cc_diff:
                     users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
+                        user.name,
                         user.get_account_type_display(),
                         'Cost centre',
                         user.cost_centre.code if user.cost_centre else '',
@@ -215,7 +213,7 @@ def department_user_ascender_discrepancies(fileobj, users):
             title = user.title.upper() if user.title else ''
             if 'occup_pos_title' in user.ascender_data and user.ascender_data['occup_pos_title'].upper() != title:
                 users_sheet.write_row(row, 0, [
-                    user.get_full_name(),
+                    user.name,
                     user.get_account_type_display(),
                     'Title',
                     user.title,
@@ -227,7 +225,7 @@ def department_user_ascender_discrepancies(fileobj, users):
             first_name = user.given_name.upper() if user.given_name else ''
             if 'first_name' in user.ascender_data and user.ascender_data['first_name'].upper() != first_name:
                 users_sheet.write_row(row, 0, [
-                    user.get_full_name(),
+                    user.name,
                     user.get_account_type_display(),
                     'First name',
                     user.given_name,
@@ -239,7 +237,7 @@ def department_user_ascender_discrepancies(fileobj, users):
             surname = user.surname.upper() if user.surname else ''
             if 'surname' in user.ascender_data and user.ascender_data['surname'].upper() != surname:
                 users_sheet.write_row(row, 0, [
-                    user.get_full_name(),
+                    user.name,
                     user.get_account_type_display(),
                     'Surname',
                     user.surname,
@@ -264,7 +262,7 @@ def department_user_ascender_discrepancies(fileobj, users):
                     t2 = ''
                 if t1 != t2:
                     users_sheet.write_row(row, 0, [
-                        user.get_full_name(),
+                        user.name,
                         user.get_account_type_display(),
                         'Telephone',
                         user.telephone,
