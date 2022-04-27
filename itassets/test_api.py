@@ -52,7 +52,7 @@ class ApiTestCase(TestCase):
         self.user2 = mixer.blend(
             DepartmentUser, active=True,
             email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
-            account_type=0,  # Fixed term contract
+            account_type=3,  # Agency contract
             cost_centre=self.cc1,
         )
         self.inactive_user = mixer.blend(
