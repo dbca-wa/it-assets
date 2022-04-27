@@ -225,6 +225,14 @@ def ascender_db_import():
                 # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
                     job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
+                # Secondary rule: we might set a limit for the number of days ahead of their starting date which we
+                # want to create an Azure AD account. If this value is not set (False/None), assume that there is
+                # no limit.
+                if job['job_start_date'] and job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
+                    today = date.today()
+                    diff = job_start_date - today
+                    if diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
+                        job_start_date = None  # Start start exceeds our limit, clear this so that we don't create an AD account yet.
                 # Rule: user must have a valid M365 licence type recorded.
                 if job['licence_type']:
                     if job['licence_type'] == 'ONPUL':
@@ -504,7 +512,8 @@ Organisational unit: {org_unit}\n
 Employment status: {new_user.ascender_data['emp_stat_desc']}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
-Location: {new_user.location}\n\n
+Location: {new_user.location}\n
+Job start date: {new_user.ascender_data['job_start_date']}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -522,6 +531,7 @@ OIM Service Desk\n"""
 <li>M365 licence: {licence_type}</li>
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
+<li>Job start date: {new_user.ascender_data['job_start_date']}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
