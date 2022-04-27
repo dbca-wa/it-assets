@@ -63,10 +63,3 @@ class Command(BaseCommand):
                 du.ad_data = {}
                 du.ad_data_updated = datetime.now(timezone.utc)
                 du.save()
-
-        # Iterate through department users and clear any managers who are inactive.
-        for du in DepartmentUser.objects.filter(manager__isnull=False):
-            if not du.manager.active:
-                logger.info(f"Manager {du.manager} is inactive; clearing them from {du}")
-                du.manager = None
-                du.save()
