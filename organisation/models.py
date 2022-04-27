@@ -256,6 +256,12 @@ class DepartmentUser(models.Model):
                 self.employee_id = None
         if self.account_type in [5, 9, 10]:  # Shared/role-based/system account types.
             self.shared_account = True
+        # If an account type is not set, set one here.
+        if not self.account_type:
+            if self.active:
+                self.account_type = 16  # Unknown - AD active
+            elif not self.active:
+                self.account_type = 14  # Unknown - AD disabled
         super(DepartmentUser, self).save(*args, **kwargs)
 
     @property
