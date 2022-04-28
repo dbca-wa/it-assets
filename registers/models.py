@@ -262,9 +262,9 @@ class ITSystem(models.Model):
             template = 'registers/itsystem.md'
         d = self.__dict__
         d['status'] = self.get_status_display()
-        d['owner'] = self.owner.get_full_name() if self.owner else ''
-        d['technology_custodian'] = self.technology_custodian.get_full_name() if self.technology_custodian else ''
-        d['information_custodian'] = self.information_custodian.get_full_name() if self.information_custodian else ''
+        d['owner'] = self.owner.name if self.owner else ''
+        d['technology_custodian'] = self.technology_custodian.name if self.technology_custodian else ''
+        d['information_custodian'] = self.information_custodian.name if self.information_custodian else ''
         if not d['system_reqs']:
             d['system_reqs'] = 'Not specified'
         if not d['documentation']:
@@ -274,7 +274,7 @@ class ITSystem(models.Model):
             d['bh_support_telephone'] = ''
             d['bh_support_email'] = ''
         else:
-            d['bh_support_name'] = self.bh_support.get_full_name()
+            d['bh_support_name'] = self.bh_support.name
             d['bh_support_telephone'] = self.bh_support.telephone
             d['bh_support_email'] = self.bh_support.email
         return render_to_string(template, d)
@@ -503,13 +503,13 @@ class ChangeRequest(models.Model):
             Please visit the following URL, review the change request details and register
             endorsement or rejection of the change:\n
             {}\n
-            """.format(self.requester.get_full_name(), endorse_url)
+            """.format(self.requester.name, endorse_url)
         html_content = """<p>This is an automated message to let you know that you have
             been assigned as the endorser for a change request submitted to OIM by {0}.</p>
             <p>Please visit the following URL, review the change request details and register
             endorsement or rejection of the change:</p>
             <ul><li><a href="{1}">{1}</a></li></ul>
-            """.format(self.requester.get_full_name(), endorse_url)
+            """.format(self.requester.name, endorse_url)
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.endorser.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()

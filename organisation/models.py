@@ -256,6 +256,12 @@ class DepartmentUser(models.Model):
                 self.employee_id = None
         if self.account_type in [5, 9, 10]:  # Shared/role-based/system account types.
             self.shared_account = True
+        # If an account type is not set, set one here.
+        if not self.account_type:
+            if self.active:
+                self.account_type = 16  # Unknown - AD active
+            elif not self.active:
+                self.account_type = 14  # Unknown - AD disabled
         super(DepartmentUser, self).save(*args, **kwargs)
 
     @property
@@ -467,6 +473,10 @@ class DepartmentUser(models.Model):
                         if not log_only:
                             requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
+
+        # Future scenarios:
+        # SCENARIO 2: Ascender record indicates that a user is on extended leave.
+        # SCENARIO 3: Ascender record indicates that a user is seconded to another organisation.
 
         # expiry date (source of truth: Ascender).
         # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
@@ -972,15 +982,15 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # First name
-        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+        # First name - note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
             if not self.given_name:
                 given_name = ''
             else:
                 given_name = self.given_name
-            if self.ascender_data['first_name'].upper() != given_name.upper():
-                first_name = self.ascender_data['first_name'].title()
-                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender first name {first_name}, updating it")
+            if self.ascender_data['preferred_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['preferred_name'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender preferred name name {first_name}, updating it")
                 DepartmentUserLog.objects.create(
                     department_user=self,
                     log={

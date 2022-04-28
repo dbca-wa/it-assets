@@ -176,7 +176,7 @@ def email_endorser(modeladmin, request, queryset):
     for rfc in queryset:
         if rfc.is_submitted:
             rfc.email_endorser()
-            msg = 'Request for approval emailed to {}.'.format(rfc.endorser.get_full_name())
+            msg = 'Request for approval emailed to {}.'.format(rfc.endorser.name)
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
             messages.success(request, msg)
@@ -191,7 +191,7 @@ def email_requester(modeladmin, request, queryset):
     for rfc in queryset:
         if rfc.status == 3 and rfc.planned_end <= datetime.now().astimezone(timezone(settings.TIME_ZONE)) and rfc.completed is None:
             rfc.email_requester()
-            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.requester.get_full_name())
+            msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.requester.name)
             log = ChangeLog(change_request=rfc, log=msg)
             log.save()
             messages.success(request, msg)
@@ -294,25 +294,25 @@ class ChangeRequestAdmin(ModelAdmin):
 
     def requester_name(self, obj):
         if obj.requester:
-            return obj.requester.get_full_name()
+            return obj.requester.name
         return ''
     requester_name.short_description = 'requester'
 
     def endorser_name(self, obj):
         if obj.endorser:
-            return obj.endorser.get_full_name()
+            return obj.endorser.name
         return ''
     endorser_name.short_description = 'endorser'
 
     def implementer_name(self, obj):
         if obj.implementer:
-            return obj.implementer.get_full_name()
+            return obj.implementer.name
         return ''
     implementer_name.short_description = 'implementer'
 
     def sme_name(self, obj):
         if obj.sme:
-            return obj.sme.get_full_name()
+            return obj.sme.name
         return ''
     sme_name.short_description = 'sme'
 

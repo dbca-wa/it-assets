@@ -46,7 +46,7 @@ class Command(BaseCommand):
 
                     # Create changelog
                     msg = '''Reminder of incomplete change: {} sent to assigned requester {} on {}
-                        '''.format(rfc, rfc.requester.get_full_name(), datetime.now().astimezone().strftime('%d/%b/%Y at %H:%M'))
+                        '''.format(rfc, rfc.requester.name, datetime.now().astimezone().strftime('%d/%b/%Y at %H:%M'))
                     log = ChangeLog(change_request=rfc, log=msg)
                     log.save()
                     logger.info(msg)

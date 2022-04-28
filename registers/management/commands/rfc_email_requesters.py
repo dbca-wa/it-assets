@@ -15,7 +15,7 @@ class Command(BaseCommand):
 
         for rfc in rfcs:
             if rfc.requester:
-                msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.requester.get_full_name())
+                msg = 'Request for completion record-keeping emailed to {}.'.format(rfc.requester.name)
                 rfc.email_requester()
                 log = ChangeLog(change_request=rfc, log=msg)
                 log.save()

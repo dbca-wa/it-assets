@@ -8,6 +8,5 @@ urlpatterns = [
     path('adaction/', views.ADActionList.as_view(), name='ad_action_list'),
     path('adaction/<int:pk>/', views.ADActionDetail.as_view(), name='ad_action_detail'),
     path('adaction/<int:pk>/complete/', views.ADActionComplete.as_view(), name='ad_action_complete'),
-    path('departmentuser/confirm-phone-nos/', views.ConfirmPhoneNos.as_view(), name='confirm_phone_nos'),
     path('departmentuser/sync-issues/', views.SyncIssues.as_view(), name='sync_issues'),
 ]
