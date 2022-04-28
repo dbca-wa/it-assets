@@ -248,10 +248,10 @@ def ascender_db_import():
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
-                    pref = job['preferred_name'].lower()
-                    first = job['first_name'].lower()
-                    sec = job['second_name'].lower()
-                    sur = job['surname'].lower()
+                    pref = job['preferred_name'].lower().replace(' ', '')
+                    first = job['first_name'].lower().replace(' ', '')
+                    sec = job['second_name'].lower().replace(' ', '')
+                    sur = job['surname'].lower().replace(' ', '')
                     if not DepartmentUser.objects.filter(email=f"{pref}.{sur}@dbca.wa.gov.au").exists():
                         email = f"{pref}.{sur}@dbca.wa.gov.au"
                         mail_nickname = f"{pref}.{sur}"
