@@ -982,15 +982,15 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # First name
-        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+        # First name - note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
             if not self.given_name:
                 given_name = ''
             else:
                 given_name = self.given_name
-            if self.ascender_data['first_name'].upper() != given_name.upper():
-                first_name = self.ascender_data['first_name'].title()
-                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender first name {first_name}, updating it")
+            if self.ascender_data['preferred_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['preferred_name'].title()
+                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender preferred name name {first_name}, updating it")
                 DepartmentUserLog.objects.create(
                     department_user=self,
                     log={
