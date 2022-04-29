@@ -257,7 +257,7 @@ class DepartmentUser(models.Model):
         if self.account_type in [5, 9, 10]:  # Shared/role-based/system account types.
             self.shared_account = True
         # If an account type is not set, set one here.
-        if not self.account_type:
+        if self.account_type is None:
             if self.active:
                 self.account_type = 16  # Unknown - AD active
             elif not self.active:
