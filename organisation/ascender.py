@@ -275,7 +275,7 @@ def ascender_db_import():
                         continue
                     display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
                     title = title_except(job['occup_pos_title'])
-                    password = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(20))
+                    password = 'Password12345678' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(5))
                     token = ms_graph_client_token()
                     headers = {
                         "Authorization": "Bearer {}".format(token["access_token"]),
