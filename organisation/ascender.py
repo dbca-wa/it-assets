@@ -273,7 +273,7 @@ def ascender_db_import():
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
                         msg.send(fail_silently=True)
                         continue
-                    display_name = f"{job['preferred_name'].capitalize()} {job['surname'].capitalize()}"
+                    display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
                     title = title_except(job['occup_pos_title'])
                     password = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(20))
                     token = ms_graph_client_token()
@@ -321,8 +321,8 @@ def ascender_db_import():
                         data = {
                             "mail": email,
                             "employeeId": eid,
-                            "givenName": job['preferred_name'].capitalize(),
-                            "surname": job['surname'].capitalize(),
+                            "givenName": job['preferred_name'].title(),
+                            "surname": job['surname'].title(),
                             "jobTitle": title,
                             "companyName": cc.code,
                             "department": cc.get_division_name_display(),
@@ -464,7 +464,8 @@ def ascender_db_import():
                     Division: {cc.get_division_name_display()}\n
                     Licence: {licence_type}\n
                     Manager: {manager}\n
-                    Location: {location}\n"""
+                    Location: {location}\n
+                    Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n"""
                     msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
                     msg.send(fail_silently=True)
 
@@ -474,8 +475,8 @@ def ascender_db_import():
                         active=False,
                         email=email,
                         name=display_name,
-                        given_name=job['preferred_name'].capitalize(),
-                        surname=job['surname'].capitalize(),
+                        given_name=job['preferred_name'].title(),
+                        surname=job['surname'].title(),
                         title=title,
                         employee_id=eid,
                         cost_centre=cc,
@@ -487,10 +488,10 @@ def ascender_db_import():
                     LOGGER.info(f"ASCENDER SYNC: Created new department user {new_user}")
 
                     # Email the new account's manager the checklist to finish account provision.
-                    new_user_creation_email(new_user, licence_type)
+                    new_user_creation_email(new_user, licence_type, job_start_date)
 
 
-def new_user_creation_email(new_user, licence_type):
+def new_user_creation_email(new_user, licence_type, job_start_date):
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
     """
@@ -513,7 +514,7 @@ Employment status: {new_user.ascender_data['emp_stat_desc']}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n
-Job start date: {new_user.ascender_data['job_start_date']}\n\n
+Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -531,7 +532,7 @@ OIM Service Desk\n"""
 <li>M365 licence: {licence_type}</li>
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
-<li>Job start date: {new_user.ascender_data['job_start_date']}</li>
+<li>Job start date: {job_start_date.strftime('%d/%b/%Y')}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
