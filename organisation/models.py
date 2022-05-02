@@ -1341,7 +1341,7 @@ class OrgUnit(models.Model):
         related_name='division_orgunits',
         help_text='Division-level unit to which this unit belongs',
     )
-    ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
+    ascender_clevel = models.CharField(max_length=128, null=True, blank=True, unique=True)
 
     class Meta:
         ordering = ('name',)
