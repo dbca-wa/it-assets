@@ -1,21 +1,14 @@
 from datetime import date, datetime
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.models import Group
-from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-from django.urls import reverse
-from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
+from django.views.generic import View, ListView, TemplateView
 from django.views.decorators.clickjacking import xframe_options_exempt
 from csp.decorators import csp_exempt
-from itassets.utils import breadcrumbs_list
 
-from .forms import ConfirmPhoneNosForm
-from .models import DepartmentUser, Location, OrgUnit, ADAction
-from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
-from .utils import parse_windows_ts
+from .models import DepartmentUser, Location, OrgUnit
+from .reports import department_user_export, user_account_export
 
 decorators = [xframe_options_exempt, csp_exempt]
 
