@@ -1,21 +1,14 @@
 from datetime import date, datetime
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.models import Group
-from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-from django.urls import reverse
-from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.views.generic import View, ListView, DetailView, UpdateView, FormView, TemplateView
+from django.views.generic import View, ListView, TemplateView
 from django.views.decorators.clickjacking import xframe_options_exempt
 from csp.decorators import csp_exempt
-from itassets.utils import breadcrumbs_list
 
-from .forms import ConfirmPhoneNosForm
-from .models import DepartmentUser, Location, OrgUnit, ADAction
-from .reports import department_user_export, user_account_export, department_user_ascender_discrepancies
-from .utils import parse_windows_ts
+from .models import DepartmentUser, Location, OrgUnit
+from .reports import department_user_export, user_account_export
 
 decorators = [xframe_options_exempt, csp_exempt]
 
@@ -31,9 +24,64 @@ class AddressBook(TemplateView):
         context['page_title'] = 'Address Book'
         return context
 
-@method_decorator(decorators, name='dispatch')
-class UserAccounts(TemplateView):
+
+class UserAccounts(LoginRequiredMixin, ListView):
     template_name = 'organisation/user_accounts.html'
+    model = DepartmentUser
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = DepartmentUser.objects.filter(
+            Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
+            Q(assigned_licences__contains=['OFFICE 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E1'])
+        ).prefetch_related(
+            'cost_centre',
+        ).order_by('name')
+
+        # Filter the queryset
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"]
+            queryset = queryset.filter(
+                Q(name__icontains=query_str) |
+                Q(cost_centre__code__icontains=query_str)
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Department user Microsoft 365 licences'
+        # Pass in any query string
+        if "q" in self.request.GET:
+            context["query_string"] = self.request.GET["q"]
+        return context
+
+
+class UserAccountsExport(View):
+    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=department_user_m365_licences_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        # TODO: filtering via request params.
+        queryset = DepartmentUser.objects.filter(
+            Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
+            Q(assigned_licences__contains=['OFFICE 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E1'])
+        ).order_by('name')
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"]
+            queryset = queryset.filter(
+                Q(name__icontains=query_str) |
+                Q(cost_centre__code__icontains=query_str)
+            )
+        response = user_account_export(response, queryset)
+        return response
 
 
 class DepartmentUserAPIResource(View):
@@ -198,142 +246,4 @@ class DepartmentUserExport(View):
             users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
 
         response = department_user_export(response, users)
-        return response
-
-
-class UserAccountsExport(View):
-    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=user_accounts_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
-        # TODO: filtering via request params.
-        users = DepartmentUser.objects.filter(active=True)
-        response = user_account_export(response, users)
-        return response
-
-
-class ADActionList(LoginRequiredMixin, ListView):
-    model = ADAction
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.filter(completed__isnull=True).order_by('created')
-
-    def dispatch(self, request, *args, **kwargs):
-        if not (request.user.is_superuser or (request.user.is_staff and Group.objects.get(name='OIM Staff') in request.user.groups.all())):
-            return HttpResponseForbidden('Unauthorised')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Active Directory actions'
-        # Breadcrumb links:
-        links = [(None, 'AD actions')]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        return context
-
-
-class ADActionDetail(LoginRequiredMixin, DetailView):
-    model = ADAction
-
-    def dispatch(self, request, *args, **kwargs):
-        if not (request.user.is_superuser or (request.user.is_staff and Group.objects.get(name='OIM Staff') in request.user.groups.all())):
-            return HttpResponseForbidden('Unauthorised')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        obj = self.get_object()
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Active Directory action {}'.format(obj.pk)
-        # Breadcrumb links:
-        links = [(reverse("ad_action_list"), "AD actions"), (None, obj.pk)]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        return context
-
-
-class ADActionComplete(LoginRequiredMixin, UpdateView):
-    model = ADAction
-
-    def dispatch(self, request, *args, **kwargs):
-        if not (request.user.is_superuser or (request.user.is_staff and Group.objects.get(name='OIM Staff') in request.user.groups.all())):
-            return HttpResponseForbidden('Unauthorised')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        # We should already have checked permissions in dispatch, so 'complete' the ADAction.
-        action = self.get_object()
-        action.completed = timezone.localtime()
-        action.completed_by = request.user
-        action.save()
-        messages.success(request, "Action {} has been marked as marked as completed".format(action.pk))
-        return HttpResponseRedirect(reverse("ad_action_list"))
-
-
-class SyncIssues(LoginRequiredMixin, TemplateView):
-    template_name = 'organisation/sync_issues.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Ascender / Active Directory sync issues'
-
-        # Current, active Department users having an M365 licence but no employee ID.
-        context['deptuser_no_empid'] = DepartmentUser.objects.filter(
-            active=True,
-            email__icontains='@dbca.wa.gov.au',
-            employee_id__isnull=True,
-            account_type__in=[2, 3, 0, 8, 6, 1, None],
-            azure_guid__isnull=False,
-            assigned_licences__contains=['MICROSOFT 365 E5'],
-        )
-
-        # Department users not linked with onprem AD or Azure AD.
-        context['deptuser_not_linked'] = []
-        du_users = DepartmentUser.objects.filter(active=True, email__contains='@dbca.wa.gov.au', employee_id__isnull=False)
-        for du in du_users:
-            if du.get_licence() and (not du.ad_guid or not du.azure_guid):
-                context['deptuser_not_linked'].append(du)
-
-        # Department users linked to onprem AD but employee ID differs.
-        context['onprem_ad_empid_diff'] = []
-        for du in du_users:
-            if du.ad_data and 'EmployeeID' in du.ad_data and du.ad_data['EmployeeID'] != du.employee_id:
-                context['onprem_ad_empid_diff'].append(du)
-
-        # Department user Ascender expiry date differs from onprem AD expiry date.
-        context['deptuser_expdate_diff'] = []
-        for du in du_users:
-            if du.ascender_data and du.ad_data:
-                if du.ascender_data['job_end_date'] and du.ad_data['AccountExpirationDate']:
-                    ascender_date = datetime.strptime(du.ascender_data['job_end_date'], '%Y-%m-%d').date()
-                    onprem_date = parse_windows_ts(du.ad_data['AccountExpirationDate']).date()
-                    delta = ascender_date - onprem_date
-                    if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
-                        context['deptuser_expdate_diff'].append([du, ascender_date, onprem_date])
-
-        # Department user title differs from Ascender
-        context['deptuser_title_diff'] = []
-        for du in du_users:
-            title = du.title.upper() if du.title else ''
-            if du.ascender_data and 'occup_pos_title' in du.ascender_data and du.ascender_data['occup_pos_title'] != title:
-                context['deptuser_title_diff'].append(du)
-
-        return context
-
-
-class DepartmentUserAscenderDiscrepancyExport(View):
-    """A custom view to export discrepancies between Ascender and department user data to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=ascender_ad_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-        users = DepartmentUser.objects.all()
-        response = department_user_ascender_discrepancies(response, users)
         return response

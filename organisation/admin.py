@@ -34,13 +34,16 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
 
         def lookups(self, request, model_admin):
             return (
-                ('MICROSOFT 365 E5', 'MICROSOFT 365 E5 (On-premise)'),
-                ('MICROSOFT 365 F3', 'MICROSOFT 365 F3 (Cloud)'),
+                ('MICROSOFT 365 E5', 'Microsoft 365 E5 (On-premise)'),
+                ('MICROSOFT 365 F3', 'Microsoft 365 F3 (Cloud)'),
+                (None, 'No licence')
             )
 
         def queryset(self, request, queryset):
             if self.value():
                 return queryset.filter(assigned_licences__contains=[self.value()])
+            else:
+                return queryset.filter(assigned_licences=[])
 
     actions = ('clear_ad_guid', 'clear_azure_guid')
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
