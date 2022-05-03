@@ -31,9 +31,64 @@ class AddressBook(TemplateView):
         context['page_title'] = 'Address Book'
         return context
 
-@method_decorator(decorators, name='dispatch')
-class UserAccounts(TemplateView):
+
+class UserAccounts(LoginRequiredMixin, ListView):
     template_name = 'organisation/user_accounts.html'
+    model = DepartmentUser
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = DepartmentUser.objects.filter(
+            Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
+            Q(assigned_licences__contains=['OFFICE 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E1'])
+        ).prefetch_related(
+            'cost_centre',
+        ).order_by('name')
+
+        # Filter the queryset
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"]
+            queryset = queryset.filter(
+                Q(name__icontains=query_str) |
+                Q(cost_centre__code__icontains=query_str)
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Department user Microsoft 365 licences'
+        # Pass in any query string
+        if "q" in self.request.GET:
+            context["query_string"] = self.request.GET["q"]
+        return context
+
+
+class UserAccountsExport(View):
+    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
+    """
+    def get(self, request, *args, **kwargs):
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=department_user_m365_licences_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
+
+        # TODO: filtering via request params.
+        queryset = DepartmentUser.objects.filter(
+            Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
+            Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
+            Q(assigned_licences__contains=['OFFICE 365 E5']) |
+            Q(assigned_licences__contains=['OFFICE 365 E1'])
+        ).order_by('name')
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"]
+            queryset = queryset.filter(
+                Q(name__icontains=query_str) |
+                Q(cost_centre__code__icontains=query_str)
+            )
+        response = user_account_export(response, queryset)
+        return response
 
 
 class DepartmentUserAPIResource(View):
@@ -198,19 +253,6 @@ class DepartmentUserExport(View):
             users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
 
         response = department_user_export(response, users)
-        return response
-
-
-class UserAccountsExport(View):
-    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=user_accounts_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-
-        # TODO: filtering via request params.
-        users = DepartmentUser.objects.filter(active=True)
-        response = user_account_export(response, users)
         return response
 
 

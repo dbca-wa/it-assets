@@ -75,25 +75,23 @@ def user_account_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'COST CENTRE', 'CONTACT NUMBER', 'OFFICE LOCATION', 'SHARED/ROLE-BASED ACCOUNT?', 'ACCOUNT ACTIVE?'
+            'NAME', 'COST CENTRE', 'MICROSOFT 365 LICENCE', 'ACCOUNT ACTIVE?', 'SHARED/ROLE-BASED ACCOUNT?'
         ))
         row = 1
         for i in users:
             users_sheet.write_row(row, 0, [
                 i.name,
                 i.cost_centre.code if i.cost_centre else '',
-                i.telephone,
-                i.location.name if i.location else '',
-                i.shared_account,
+                i.get_licence(),
                 i.active,
+                i.shared_account,
             ])
             row += 1
         users_sheet.set_column('A:A', 30)
         users_sheet.set_column('B:B', 15)
         users_sheet.set_column('C:C', 22)
-        users_sheet.set_column('D:D', 50)
+        users_sheet.set_column('D:D', 17)
         users_sheet.set_column('E:E', 29)
-        users_sheet.set_column('F:F', 17)
 
     return fileobj
 
