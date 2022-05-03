@@ -275,59 +275,6 @@ class ADActionComplete(LoginRequiredMixin, UpdateView):
         return HttpResponseRedirect(reverse("ad_action_list"))
 
 
-class SyncIssues(LoginRequiredMixin, TemplateView):
-    template_name = 'organisation/sync_issues.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Ascender / Active Directory sync issues'
-
-        # Current, active Department users having an M365 licence but no employee ID.
-        context['deptuser_no_empid'] = DepartmentUser.objects.filter(
-            active=True,
-            email__icontains='@dbca.wa.gov.au',
-            employee_id__isnull=True,
-            account_type__in=[2, 3, 0, 8, 6, 1, None],
-            azure_guid__isnull=False,
-            assigned_licences__contains=['MICROSOFT 365 E5'],
-        )
-
-        # Department users not linked with onprem AD or Azure AD.
-        context['deptuser_not_linked'] = []
-        du_users = DepartmentUser.objects.filter(active=True, email__contains='@dbca.wa.gov.au', employee_id__isnull=False)
-        for du in du_users:
-            if du.get_licence() and (not du.ad_guid or not du.azure_guid):
-                context['deptuser_not_linked'].append(du)
-
-        # Department users linked to onprem AD but employee ID differs.
-        context['onprem_ad_empid_diff'] = []
-        for du in du_users:
-            if du.ad_data and 'EmployeeID' in du.ad_data and du.ad_data['EmployeeID'] != du.employee_id:
-                context['onprem_ad_empid_diff'].append(du)
-
-        # Department user Ascender expiry date differs from onprem AD expiry date.
-        context['deptuser_expdate_diff'] = []
-        for du in du_users:
-            if du.ascender_data and du.ad_data:
-                if du.ascender_data['job_end_date'] and du.ad_data['AccountExpirationDate']:
-                    ascender_date = datetime.strptime(du.ascender_data['job_end_date'], '%Y-%m-%d').date()
-                    onprem_date = parse_windows_ts(du.ad_data['AccountExpirationDate']).date()
-                    delta = ascender_date - onprem_date
-                    if delta.days > 1 or delta.days < -1:  # Allow one day difference, maximum.
-                        context['deptuser_expdate_diff'].append([du, ascender_date, onprem_date])
-
-        # Department user title differs from Ascender
-        context['deptuser_title_diff'] = []
-        for du in du_users:
-            title = du.title.upper() if du.title else ''
-            if du.ascender_data and 'occup_pos_title' in du.ascender_data and du.ascender_data['occup_pos_title'] != title:
-                context['deptuser_title_diff'].append(du)
-
-        return context
-
-
 class DepartmentUserAscenderDiscrepancyExport(View):
     """A custom view to export discrepancies between Ascender and department user data to an Excel spreadsheet.
     """
