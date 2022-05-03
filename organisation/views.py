@@ -315,14 +315,3 @@ class ADActionComplete(LoginRequiredMixin, UpdateView):
         action.save()
         messages.success(request, "Action {} has been marked as marked as completed".format(action.pk))
         return HttpResponseRedirect(reverse("ad_action_list"))
-
-
-class DepartmentUserAscenderDiscrepancyExport(View):
-    """A custom view to export discrepancies between Ascender and department user data to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=ascender_ad_discrepancies_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
-        users = DepartmentUser.objects.all()
-        response = department_user_ascender_discrepancies(response, users)
-        return response
