@@ -532,6 +532,7 @@ Name: {new_user.name}\n
 Employee ID: {new_user.employee_id}\n
 Email: {new_user.email}\n
 Title: {new_user.title}\n
+Position number: {new_user.ascender_data['position_no']}\n
 Cost centre: {new_user.cost_centre}\n
 Division: {new_user.cost_centre.get_division_name_display()}\n
 Organisational unit: {org_unit}\n
@@ -550,6 +551,7 @@ OIM Service Desk\n"""
 <li>Employee ID: {new_user.employee_id}</li>
 <li>Email: {new_user.email}</li>
 <li>Title: {new_user.title}</li>
+<li>Position number: {new_user.ascender_data['position_no']}</li>
 <li>Cost centre: {new_user.cost_centre}</li>
 <li>Division: {new_user.cost_centre.get_division_name_display()}</li>
 <li>Organisational unit: {org_unit}</li>
