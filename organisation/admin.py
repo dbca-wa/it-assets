@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from leaflet.admin import LeafletGeoAdmin
 
 from itassets.utils import ModelDescMixin
-from .models import DepartmentUser, ADAction, Location, OrgUnit, CostCentre
+from .models import DepartmentUser, Location, OrgUnit, CostCentre
 from .views import DepartmentUserExport
 
 
@@ -36,14 +36,15 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
             return (
                 ('MICROSOFT 365 E5', 'Microsoft 365 E5 (On-premise)'),
                 ('MICROSOFT 365 F3', 'Microsoft 365 F3 (Cloud)'),
-                (None, 'No licence')
+                ('NONE', 'No licence')
             )
 
         def queryset(self, request, queryset):
             if self.value():
-                return queryset.filter(assigned_licences__contains=[self.value()])
-            else:
-                return queryset.filter(assigned_licences=[])
+                if self.value() == "NONE":
+                    return queryset.filter(assigned_licences=[])
+                else:
+                    return queryset.filter(assigned_licences__contains=[self.value()])
 
     actions = ('clear_ad_guid', 'clear_azure_guid')
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
@@ -181,44 +182,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         queryset.update(azure_guid=None)
         self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
     clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
-
-
-#@admin.register(ADAction)
-class ADActionAdmin(admin.ModelAdmin):
-
-    class CompletedFilter(admin.SimpleListFilter):
-        """SimpleListFilter to filter on True/False if an object has a value for completed.
-        """
-        title = 'completed'
-        parameter_name = 'completed_boolean'
-
-        def lookups(self, request, model_admin):
-            return (
-                ('true', 'Complete'),
-                ('false', 'Incomplete'),
-            )
-
-        def queryset(self, request, queryset):
-            if self.value() == 'true':
-                return queryset.filter(completed__isnull=False)
-            if self.value() == 'false':
-                return queryset.filter(completed__isnull=True)
-
-    date_hierarchy = 'created'
-    fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
-    list_display = ('created', 'department_user', 'azure_guid', 'action', 'completed', 'completed_by')
-    list_filter = (CompletedFilter, 'action_type')
-    readonly_fields = ('department_user', 'action_type', 'ad_field', 'field_value', 'completed')
-    search_fields = ('department_user__name',)
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(Location)
