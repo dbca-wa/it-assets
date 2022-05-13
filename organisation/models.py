@@ -1,7 +1,6 @@
 from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField, CIEmailField
 from django.contrib.gis.db import models
 import json
@@ -514,6 +513,18 @@ class DepartmentUser(models.Model):
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
+                # Create a DepartmentUserLog object to record this update.
+                if not log_only:
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'job_end_date',
+                            'old_value': account_expiration_date.strftime("%m/%d/%Y"),
+                            'new_value': job_end_date.strftime("%m/%d/%Y"),
+                            'description': f'Set expiry date for onprem AD account',
+                        },
+                    )
+
         # SCENARIO 2: the user has no job end date set in Ascender (i.e. is permanent to the department).
         elif (
             self.employee_id
@@ -543,6 +554,18 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+
+                # Create a DepartmentUserLog object to record this update.
+                if not log_only:
+                    DepartmentUserLog.objects.create(
+                        department_user=self,
+                        log={
+                            'ascender_field': 'job_end_date',
+                            'old_value': account_expiration_date.strftime("%m/%d/%Y"),
+                            'new_value': None,
+                            'description': f'Set expiry date for onprem AD account',
+                        },
+                    )
 
         # display_name (source of truth: Ascender)
         # Onprem AD users
