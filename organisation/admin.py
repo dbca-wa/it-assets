@@ -50,7 +50,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
-        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'account_type',
+        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'org_unit', 'account_type',
     )
     list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
     model_description = DepartmentUser.__doc__
