@@ -199,10 +199,10 @@ class LocationAdmin(LeafletGeoAdmin):
 
 @admin.register(OrgUnit)
 class OrgUnitAdmin(admin.ModelAdmin):
-    list_display = ('name', 'division_unit', 'users', 'cc', 'manager', 'active')
-    search_fields = ('name', 'acronym', 'manager__name', 'location__name', 'ascender_clevel')
-    raw_id_fields = ('manager',)
-    readonly_fields = ('ascender_clevel',)
+    list_display = ('name', 'division_unit', 'location', 'users', 'cc', 'active')
+    fields = ('active', 'name', 'location', 'division_unit', 'ascender_clevel')
+    search_fields = ('name', 'location__name', 'ascender_clevel')
+    readonly_fields = ('division_unit', 'ascender_clevel')
     list_filter = ('active',)
 
     def users(self, obj):
