@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.9.11-slim-bullseye as builder_base
+FROM python:3.9.12-slim-bullseye as builder_base
 MAINTAINER asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
