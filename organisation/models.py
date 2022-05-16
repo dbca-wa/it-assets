@@ -1102,8 +1102,8 @@ class DepartmentUser(models.Model):
                 path = self.get_ascender_org_path()
                 path.reverse()
                 for name in path:
-                    if OrgUnit.objects.filter(ascender_clevel=name).exists():
-                        self.org_unit = OrgUnit.objects.get(ascender_clevel=name)
+                    if OrgUnit.objects.filter(ascender_clevel__contains=name).exists():
+                        self.org_unit = OrgUnit.objects.filter(ascender_clevel__contains=name).first()
                         break  # Break out of the loop on the first match.
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
@@ -1123,8 +1123,8 @@ class DepartmentUser(models.Model):
             path = self.get_ascender_org_path()
             path.reverse()
             for name in path:
-                if OrgUnit.objects.filter(ascender_clevel=name).exists():
-                    self.org_unit = OrgUnit.objects.get(ascender_clevel=name)
+                if OrgUnit.objects.filter(ascender_clevel__contains=name).exists():
+                    self.org_unit = OrgUnit.objects.filter(ascender_clevel__contains=name).first()
                     break  # Break out of the loop on the first match.
 
         # Manager
