@@ -221,6 +221,14 @@ def ascender_db_import():
                 # Rule: user must have a CC recorded, and that CC must exist in our database.
                 if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
                     cc = CostCentre.objects.get(ascender_code=job['paypoint'])
+                else:
+                    # Email an alert that a new CC exists.
+                    subject = f"ASCENDER SYNC: create new Azure AD user process encountered new cost centre {job['paypoint']}"
+                    LOGGER.warning(subject)
+                    text_content = f"""Ascender record:\n
+                    {job}"""
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                    msg.send(fail_silently=True)
                 # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
                     job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
@@ -244,6 +252,14 @@ def ascender_db_import():
                 # Rule: user must have a physical location recorded, and that location must exist in our database.
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
+                else:
+                    # Email an alert that a new geo_location_desc exists.
+                    subject = f"ASCENDER SYNC: create new Azure AD user process encountered new location description {job['geo_location_desc']}"
+                    LOGGER.warning(subject)
+                    text_content = f"""Ascender record:\n
+                    {job}"""
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                    msg.send(fail_silently=True)
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
