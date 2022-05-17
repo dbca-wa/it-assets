@@ -92,7 +92,7 @@ TEMPLATES = [
     }
 ]
 
-ADMINS = env('ADMIN_EMAILS', 'asi@dbca.wa.gov.au').split(',')
+ADMIN_EMAILS = env('ADMIN_EMAILS', 'asi@dbca.wa.gov.au').split(',')
 SERVICE_DESK_EMAIL = env('SERVICE_DESK_EMAIL', 'oim.servicedesk@dbca.wa.gov.au')
 API_RESPONSE_CACHE_SECONDS = env('API_RESPONSE_CACHE_SECONDS', 60)
 FRESHSERVICE_ENDPOINT = env('FRESHSERVICE_ENDPOINT', None)
@@ -105,7 +105,7 @@ MERAKI_API_KEY = env('MERAKI_API_KEY', None)
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.3.51'
+VERSION_NO = '2.3.58'
 
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.

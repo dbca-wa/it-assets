@@ -199,7 +199,6 @@ def ascender_db_import():
                             'description': 'Update position_no value from Ascender',
                         },
                     )
-                    LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
 
                 user.ascender_data = job
                 user.ascender_data_updated = TZ.localize(datetime.now())
@@ -283,7 +282,7 @@ def ascender_db_import():
                         # and allow manual intervention.
                         subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
                         text_content = f"Ascender record:\n{job}\n"
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
                     display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
@@ -324,7 +323,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -358,7 +357,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -379,7 +378,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -415,7 +414,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -459,7 +458,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
                     '''
@@ -479,7 +478,7 @@ def ascender_db_import():
                     Manager: {manager}\n
                     Location: {location}\n
                     Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n"""
-                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                     msg.send(fail_silently=True)
 
                     # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.

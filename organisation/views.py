@@ -127,6 +127,7 @@ class DepartmentUserAPIResource(View):
                     'cost_centre': user.cost_centre.code if user.cost_centre else None,
                     'employee_id': user.employee_id if user.employee_id else None,  # NOTE: employee ID is used in the Moodle employee sync process.
                     'manager': {'id': user.manager.pk, 'name': user.manager.name, 'email': user.manager.email} if user.manager else {},
+                    #'division': user.cost_centre.get_division_name_display() if user.cost_centre else None,
                 } for user in queryset
             ]
 
