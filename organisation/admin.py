@@ -199,10 +199,10 @@ class LocationAdmin(LeafletGeoAdmin):
 
 @admin.register(OrgUnit)
 class OrgUnitAdmin(admin.ModelAdmin):
-    list_display = ('name', 'division_unit', 'users', 'cc', 'manager', 'active')
-    search_fields = ('name', 'acronym', 'manager__name', 'location__name', 'ascender_clevel')
-    raw_id_fields = ('manager',)
-    readonly_fields = ('ascender_clevel',)
+    list_display = ('name', 'division_unit', 'location', 'users', 'cc', 'active')
+    fields = ('active', 'name', 'location', 'division_unit', 'ascender_clevel')
+    search_fields = ('name', 'location__name', 'ascender_clevel')
+    readonly_fields = ('division_unit', 'ascender_clevel')
     list_filter = ('active',)
 
     def users(self, obj):
@@ -216,12 +216,12 @@ class OrgUnitAdmin(admin.ModelAdmin):
 
 @admin.register(CostCentre)
 class CostCentreAdmin(admin.ModelAdmin):
-    list_display = (
-        'code', 'chart_acct_name', 'division_name', 'users', 'manager', 'business_manager', 'active'
-    )
+    fields = ('active', 'code', 'chart_acct_name', 'division_name', 'org_position', 'manager', 'ascender_code')
+    list_display = ('code', 'chart_acct_name', 'division_name', 'users', 'manager', 'active')
     search_fields = ('code', 'chart_acct_name', 'org_position__name', 'division_name')
     list_filter = ('active', 'chart_acct_name', 'division_name')
-    raw_id_fields = ('org_position', 'manager', 'business_manager', 'admin', 'tech_contact')
+    raw_id_fields = ('org_position', 'manager')
+    readonly_fields = ('ascender_code',)
 
     def users(self, obj):
         return format_html(

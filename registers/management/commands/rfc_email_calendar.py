@@ -158,12 +158,12 @@ class Command(BaseCommand):
             error = 'IT Assets email RFC calendar raised an exception at {}'.format(datetime.now().astimezone(timezone(settings.TIME_ZONE)).isoformat())
             text_content = 'Exception:\n\n{}'.format(ex)
             if not settings.DEBUG:
-                # Send an email to ADMINS.
+                # Send an email to admins.
                 msg = EmailMultiAlternatives(
                     subject=error,
                     body=text_content,
                     from_email=settings.NOREPLY_EMAIL,
-                    to=settings.ADMINS,
+                    to=settings.ADMIN_EMAILS,
                 )
                 msg.send()
             raise CommandError(error)

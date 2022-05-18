@@ -149,7 +149,7 @@ def ascender_job_sort_key(record):
 
 
 def ascender_employee_fetch():
-    """Returns an iterator to navigate (employee_id,sorted employee jobs)
+    """Returns an iterator of tuples (employee_id, [sorted employee jobs])
     """
     ascender_iter = ascender_db_fetch()
     employee_id = None
@@ -172,12 +172,13 @@ def ascender_employee_fetch():
         yield (employee_id, records)
 
 
-def ascender_db_import():
+def ascender_db_import(employee_iter=None):
     """A utility function to cache data from Ascender to a matching DepartmentUser object.
     In addition, this function will create a new Azure AD account based on Ascender records
     that match a set of rules.
     """
-    employee_iter = ascender_employee_fetch()
+    if not employee_iter:
+        employee_iter = ascender_employee_fetch()
 
     for eid, jobs in employee_iter:
         # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
@@ -199,17 +200,21 @@ def ascender_db_import():
                             'description': 'Update position_no value from Ascender',
                         },
                     )
-                    LOGGER.info(f"ASCENDER SYNC: generated log for {user} (changed position_no)")
 
                 user.ascender_data = job
                 user.ascender_data_updated = TZ.localize(datetime.now())
                 user.update_from_ascender_data()  # This method calls save()
             elif not DepartmentUser.objects.filter(employee_id=eid).exists() and settings.ASCENDER_CREATE_AZURE_AD:
                 # ENTRY POINT FOR NEW AZURE AD USER ACCOUNT CREATION.
-                # Short circuit: if job_end_date is in the past, skip.
-                if job['job_end_date'] and datetime.strptime(job['job_end_date'], '%Y-%m-%d').date() < date.today():
-                    continue
-                # Short circuit: if there is no value for licence_type, skip.
+                # Parse job end date (if present). Ascender records "no end date" using a date far in the future (DATE_MAX).
+                job_end_date = None
+                if job['job_end_date'] and datetime.strptime(job['job_end_date'], '%Y-%m-%d').date() != DATE_MAX:
+                    job_end_date = datetime.strptime(job['job_end_date'], '%Y-%m-%d').date()
+                    # Short circuit: if job_end_date is in the past, skip account creation.
+                    if job_end_date < date.today():
+                        continue
+
+                # Short circuit: if there is no value for licence_type, skip account creation.
                 if not job['licence_type'] or job['licence_type'] == 'NULL':
                     continue
 
@@ -222,6 +227,14 @@ def ascender_db_import():
                 # Rule: user must have a CC recorded, and that CC must exist in our database.
                 if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
                     cc = CostCentre.objects.get(ascender_code=job['paypoint'])
+                else:
+                    # Email an alert that a new CC exists.
+                    subject = f"ASCENDER SYNC: create new Azure AD user process encountered new cost centre {job['paypoint']}"
+                    LOGGER.warning(subject)
+                    text_content = f"""Ascender record:\n
+                    {job}"""
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                    msg.send(fail_silently=True)
                 # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
                     job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
@@ -245,6 +258,14 @@ def ascender_db_import():
                 # Rule: user must have a physical location recorded, and that location must exist in our database.
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
+                else:
+                    # Email an alert that a new geo_location_desc exists.
+                    subject = f"ASCENDER SYNC: create new Azure AD user process encountered new location description {job['geo_location_desc']}"
+                    LOGGER.warning(subject)
+                    text_content = f"""Ascender record:\n
+                    {job}"""
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                    msg.send(fail_silently=True)
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
@@ -283,12 +304,15 @@ def ascender_db_import():
                         # and allow manual intervention.
                         subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
                         text_content = f"Ascender record:\n{job}\n"
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
                     display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
                     title = title_except(job['occup_pos_title'])
-                    password = 'Password12345678' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(5))
+                    # Ensure that the generated password meets our security complexity requirements.
+                    p = list('Pass1234' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12)))
+                    random.shuffle(p)
+                    password = ''.join(p)
                     token = ms_graph_client_token()
                     headers = {
                         "Authorization": "Bearer {}".format(token["access_token"]),
@@ -324,7 +348,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -358,7 +382,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -379,7 +403,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -415,7 +439,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
 
@@ -459,7 +483,7 @@ def ascender_db_import():
                         Response code: {resp.status_code}\n
                         Response content:\n
                         {resp.content}\n"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
                     '''
@@ -479,7 +503,7 @@ def ascender_db_import():
                     Manager: {manager}\n
                     Location: {location}\n
                     Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n"""
-                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMINS)
+                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                     msg.send(fail_silently=True)
 
                     # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.
@@ -511,14 +535,24 @@ def ascender_db_import():
                             new_user.save()
                             break
 
+                    # If we couldn't match an OrgUnit, send an alert.
+                    if not new_user.org_unit:
+                        subject = f"ASCENDER SYNC: create new Azure AD user process couldn't find matching OrgUnit for {path}"
+                        LOGGER.warning(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
+
                     # Email the new account's manager the checklist to finish account provision.
-                    new_user_creation_email(new_user, licence_type, job_start_date)
+                    new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
                     LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
 
 
-def new_user_creation_email(new_user, licence_type, job_start_date):
+def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date=None):
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
+    We also require the user's job start and end dates (end date may be None).
     """
     org_path = new_user.get_ascender_org_path()
     if org_path and len(org_path) > 1:
@@ -541,6 +575,8 @@ M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n
 Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n
+Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}\n\n
+Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ''}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -560,6 +596,8 @@ OIM Service Desk\n"""
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
 <li>Job start date: {job_start_date.strftime('%d/%b/%Y')}</li>
+<li>Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}</li>
+<li>Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ''}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
@@ -615,7 +653,8 @@ def ascender_cc_manager_fetch():
         password=settings.FOREIGN_DB_PASSWORD,
     )
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM "public"."cc_manager_view"')
+    cc_manager_query_sql = f'SELECT * FROM "{settings.FOREIGN_SCHEMA}"."{settings.FOREIGN_TABLE_CC_MANAGER}"'
+    cursor.execute(cc_manager_query_sql)
     records = []
 
     while True:
