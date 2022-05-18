@@ -576,6 +576,7 @@ Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n
 Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n
 Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}\n\n
+Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ''}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -596,6 +597,7 @@ OIM Service Desk\n"""
 <li>Location: {new_user.location}</li>
 <li>Job start date: {job_start_date.strftime('%d/%b/%Y')}</li>
 <li>Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}</li>
+<li>Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ''}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
@@ -651,7 +653,8 @@ def ascender_cc_manager_fetch():
         password=settings.FOREIGN_DB_PASSWORD,
     )
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM "public"."cc_manager_view"')
+    cc_manager_query_sql = f'SELECT * FROM "{settings.FOREIGN_SCHEMA}"."{settings.FOREIGN_TABLE_CC_MANAGER}"'
+    cursor.execute(cc_manager_query_sql)
     records = []
 
     while True:
