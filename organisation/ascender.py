@@ -205,10 +205,15 @@ def ascender_db_import():
                 user.update_from_ascender_data()  # This method calls save()
             elif not DepartmentUser.objects.filter(employee_id=eid).exists() and settings.ASCENDER_CREATE_AZURE_AD:
                 # ENTRY POINT FOR NEW AZURE AD USER ACCOUNT CREATION.
-                # Short circuit: if job_end_date is in the past, skip.
-                if job['job_end_date'] and datetime.strptime(job['job_end_date'], '%Y-%m-%d').date() < date.today():
-                    continue
-                # Short circuit: if there is no value for licence_type, skip.
+                # Parse job end date (if present). Ascender records "no end date" using a date far in the future (DATE_MAX).
+                job_end_date = None
+                if job['job_end_date'] and datetime.strptime(job['job_end_date'], '%Y-%m-%d').date() != DATE_MAX:
+                    job_end_date = datetime.strptime(job['job_end_date'], '%Y-%m-%d').date()
+                    # Short circuit: if job_end_date is in the past, skip account creation.
+                    if job_end_date < date.today():
+                        continue
+
+                # Short circuit: if there is no value for licence_type, skip account creation.
                 if not job['licence_type'] or job['licence_type'] == 'NULL':
                     continue
 
@@ -303,7 +308,10 @@ def ascender_db_import():
                         continue
                     display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
                     title = title_except(job['occup_pos_title'])
-                    password = 'Password12345678' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(5))
+                    # Ensure that the generated password meets our security complexity requirements.
+                    p = list('Pass1234' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12)))
+                    random.shuffle(p)
+                    password = ''.join(p)
                     token = ms_graph_client_token()
                     headers = {
                         "Authorization": "Bearer {}".format(token["access_token"]),
@@ -527,11 +535,11 @@ def ascender_db_import():
                             break
 
                     # Email the new account's manager the checklist to finish account provision.
-                    new_user_creation_email(new_user, licence_type, job_start_date)
+                    new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
                     LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
 
 
-def new_user_creation_email(new_user, licence_type, job_start_date):
+def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date):
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
     """
@@ -556,6 +564,7 @@ M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n
 Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n
+Job end date: {job_end_date.strftime('%d/%b/%Y')}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -575,6 +584,7 @@ OIM Service Desk\n"""
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
 <li>Job start date: {job_start_date.strftime('%d/%b/%Y')}</li>
+<li>Job end date: {job_end_date.strftime('%d/%b/%Y')}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
