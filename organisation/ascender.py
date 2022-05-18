@@ -149,7 +149,7 @@ def ascender_job_sort_key(record):
 
 
 def ascender_employee_fetch():
-    """Returns an iterator to navigate (employee_id,sorted employee jobs)
+    """Returns an iterator of tuples (employee_id, [sorted employee jobs])
     """
     ascender_iter = ascender_db_fetch()
     employee_id = None
@@ -172,12 +172,13 @@ def ascender_employee_fetch():
         yield (employee_id, records)
 
 
-def ascender_db_import():
+def ascender_db_import(employee_iter=None):
     """A utility function to cache data from Ascender to a matching DepartmentUser object.
     In addition, this function will create a new Azure AD account based on Ascender records
     that match a set of rules.
     """
-    employee_iter = ascender_employee_fetch()
+    if not employee_iter:
+        employee_iter = ascender_employee_fetch()
 
     for eid, jobs in employee_iter:
         # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
@@ -534,14 +535,24 @@ def ascender_db_import():
                             new_user.save()
                             break
 
+                    # If we couldn't match an OrgUnit, send an alert.
+                    if not new_user.org_unit:
+                        subject = f"ASCENDER SYNC: create new Azure AD user process couldn't find matching OrgUnit for {path}"
+                        LOGGER.warning(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
+
                     # Email the new account's manager the checklist to finish account provision.
                     new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
                     LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
 
 
-def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date):
+def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date=None):
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
+    We also require the user's job start and end dates (end date may be None).
     """
     org_path = new_user.get_ascender_org_path()
     if org_path and len(org_path) > 1:
@@ -564,7 +575,7 @@ M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n
 Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n
-Job end date: {job_end_date.strftime('%d/%b/%Y')}\n\n
+Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -584,7 +595,7 @@ OIM Service Desk\n"""
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
 <li>Job start date: {job_start_date.strftime('%d/%b/%Y')}</li>
-<li>Job end date: {job_end_date.strftime('%d/%b/%Y')}</li>
+<li>Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>
