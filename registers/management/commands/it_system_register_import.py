@@ -63,7 +63,7 @@ class Command(BaseCommand):
                 logger.info('Changing {} status to Decommissioned'.format(it_system))
 
             # System owner
-            if 'SystemOwnerLookupId' in system and system['SystemOwnerLookupId']:
+            if 'SystemOwnerLookupId' in system and system['SystemOwnerLookupId'] and system['SystemOwnerLookupId'] in users_dict:
                 owner_email = users_dict[system['SystemOwnerLookupId']]
             else:
                 owner_email = None
@@ -90,7 +90,7 @@ class Command(BaseCommand):
                     logger.warning('No owner recorded for {}, clearing'.format(it_system))
 
             # Technology custodian
-            if 'TechnicalCustodianLookupId' in system and system['TechnicalCustodianLookupId']:
+            if 'TechnicalCustodianLookupId' in system and system['TechnicalCustodianLookupId'] and system['TechnicalCustodianLookupId'] in users_dict:
                 custodian_email = users_dict[system['TechnicalCustodianLookupId']]
             else:
                 custodian_email = None
@@ -115,7 +115,7 @@ class Command(BaseCommand):
                     logger.warning('No tech custodian recorded for {}, clearing'.format(it_system))
 
             # Information custodian
-            if 'InformationCustodianLookupId' in system and system['InformationCustodianLookupId']:
+            if 'InformationCustodianLookupId' in system and system['InformationCustodianLookupId'] and system['InformationCustodianLookupId'] in users_dict:
                 info_email = users_dict[system['InformationCustodianLookupId']]
             else:
                 info_email = None
