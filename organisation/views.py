@@ -9,6 +9,7 @@ from csp.decorators import csp_exempt
 
 from .models import DepartmentUser, Location, OrgUnit
 from .reports import department_user_export, user_account_export
+from .utils import title_except
 
 decorators = [xframe_options_exempt, csp_exempt]
 
@@ -127,7 +128,8 @@ class DepartmentUserAPIResource(View):
                     'cost_centre': user.cost_centre.code if user.cost_centre else None,
                     'employee_id': user.employee_id if user.employee_id else None,  # NOTE: employee ID is used in the Moodle employee sync process.
                     'manager': {'id': user.manager.pk, 'name': user.manager.name, 'email': user.manager.email} if user.manager else {},
-                    #'division': user.cost_centre.get_division_name_display() if user.cost_centre else None,
+                    'division': user.cost_centre.get_division_name_display() if user.cost_centre else None,
+                    'unit': title_except(user.get_ascender_org_path()[-1]) if user.get_ascender_org_path() else None,
                 } for user in queryset
             ]
 
