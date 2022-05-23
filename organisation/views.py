@@ -7,7 +7,7 @@ from django.views.generic import View, ListView, TemplateView
 from django.views.decorators.clickjacking import xframe_options_exempt
 from csp.decorators import csp_exempt
 
-from .models import DepartmentUser, Location, OrgUnit
+from .models import DepartmentUser, Location, OrgUnit, DepartmentUserLog
 from .reports import department_user_export, user_account_export
 from .utils import title_except
 
@@ -250,3 +250,30 @@ class DepartmentUserExport(View):
 
         response = department_user_export(response, users)
         return response
+
+
+class DepartmentUserLogList(LoginRequiredMixin, ListView):
+    model = DepartmentUserLog
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter the queryset
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"].strip()
+            queryset = queryset.filter(
+                Q(log__description__icontains=query_str) |
+                Q(department_user__name__icontains=query_str)
+            )
+        queryset = queryset.order_by('-created')
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['site_title'] = 'Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Department user change log (automated sync)'
+        # Pass in any query string
+        if "q" in self.request.GET:
+            context["query_string"] = self.request.GET["q"]
+        return context
