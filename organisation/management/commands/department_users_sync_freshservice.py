@@ -78,7 +78,6 @@ class Command(BaseCommand):
                 if data:
                     # Update the Freshservice requester.
                     resp = update_freshservice_object('requesters', requester['id'], data)
-                    resp.raise_for_status()
 
             elif agent:
                 data = {}
@@ -103,7 +102,6 @@ class Command(BaseCommand):
                 if data:
                     # Update the Freshservice agent.
                     resp = update_freshservice_object('agents', agent['id'], data)
-                    resp.raise_for_status()
 
             else:
                 data = {
@@ -121,5 +119,3 @@ class Command(BaseCommand):
                 resp = create_freshservice_object('requesters', data)
                 if resp.status_code == 409:
                     logger.info('Skipping {} (probably an agent)'.format(user['mail']))
-                elif resp.status_code == 201:
-                    resp.raise_for_status()

@@ -1,0 +1,53 @@
+{% extends "base_b4.html" %}
+{% load bootstrap_pagination %}
+
+{% block page_content %}
+<br>
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <h1>{{ page_title }}</h1>
+
+            <!-- Search bar -->
+            <form action="" method="get">
+                <div class="row">
+                    <div class="hidden-xs col-sm-1">
+                        <label for="search_field">Search:</label>
+                    </div>
+                    <div class="col-xs-12 col-sm-6">
+                        <input id="search_field" type="text" class="form-control" name="q" value="{{ query_string }}">
+                    </div>
+                </div>
+            </form>
+            <hr>
+
+            {% if object_list %}
+            {% if page_obj.has_other_pages %}{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}{% endif %}
+            <table class="table table-striped table-bordered table-condensed">
+                <thead>
+                    <tr>
+                        <th>Date & time</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Ascender attribute</th>
+                        <th>New value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for obj in object_list %}
+                    <tr>
+                        <td>{{ obj.created|date:"d-M-Y H:i" }}</td>
+                        <td>{{ obj.department_user.name }}</td>
+                        <td>{{ obj.log.description }}</td>
+                        <td>{{ obj.log.ascender_field }}</td>
+                        <td>{{ obj.log.new_value }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% if page_obj.has_other_pages %}{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}{% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock page_content %}
