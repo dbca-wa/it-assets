@@ -25,13 +25,13 @@
 {% endblock page_content %}
 
 {% block extra_js %}
-<script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.6/js/chunk-vendors.js"></script>
-<script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.6/js/addressbook.js"></script>
+<script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.7/js/chunk-vendors.js"></script>
+<script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.7/js/addressbook.js"></script>
 <script>
 var addressbook = null;
 window.onload = function () {
     addressbook = addressbookApp('#addressbook-app', {
-        baseUrl: 'https://static.dbca.wa.gov.au/sites/address-book/0.3.5',
+        baseUrl: 'https://static.dbca.wa.gov.au/sites/address-book/0.3.7',
         itAssetsUrl: 'https://itassets.dbca.wa.gov.au',
         kmiUrl: 'https://kmi.dbca.wa.gov.au/geoserver/gwc/service/wmts',
     });
