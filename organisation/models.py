@@ -952,7 +952,7 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
-                prop = 'streetAddress'
+                prop = 'StreetAddress'
                 change = {
                     'identity': self.ad_guid,
                     'property': prop,
