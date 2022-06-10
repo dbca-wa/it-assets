@@ -262,11 +262,13 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         # Set the requester as the request user (email match case-insensitive).
         if DepartmentUser.objects.filter(email__iexact=self.request.user.email).exists():
             rfc.requester = DepartmentUser.objects.get(email__iexact=self.request.user.email)
-        # Set the endorser and implementer (if required).
+        # Set the endorser, implementer and SME (if required).
         if self.request.POST.get('endorser_choice'):
             rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
         if self.request.POST.get('implementer_choice'):
             rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
+        if self.request.POST.get('sme_choice'):
+            rfc.sme = DepartmentUser.objects.get(pk=int(self.request.POST.get('sme_choice')))
         # Autocomplete normal/standard change fields.
         if 'std' in self.kwargs and self.kwargs['std']:
             rfc.change_type = 1
@@ -348,11 +350,13 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         rfc = form.save(commit=False)
-        # Set the endorser and implementer (if required).
+        # Set the endorser, implementer and SME (if required).
         if self.request.POST.get('endorser_choice'):
             rfc.endorser = DepartmentUser.objects.get(pk=int(self.request.POST.get('endorser_choice')))
         if self.request.POST.get('implementer_choice'):
             rfc.implementer = DepartmentUser.objects.get(pk=int(self.request.POST.get('implementer_choice')))
+        if self.request.POST.get('sme_choice'):
+            rfc.sme = DepartmentUser.objects.get(pk=int(self.request.POST.get('sme_choice')))
         rfc.save()
 
         errors = False
@@ -374,6 +378,10 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
             # Implementer is required.
             if not rfc.implementer:
                 form.add_error('implementer_choice', 'Implementer cannot be blank.')
+                errors = True
+            # SME is required.
+            if not rfc.sme:
+                form.add_error('sme_choice', 'SME cannot be blank.')
                 errors = True
             # Planned start is required.
             if not rfc.planned_start:

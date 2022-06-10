@@ -31,6 +31,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
         required=False, label='Endorser email', help_text='The person who will endorse this change prior to CAB')
     implementer_choice = UserChoiceField(
         required=False, label='Implementer email', help_text='The person who will implement this change')
+    sme_choice = UserChoiceField(
+        required=False, label='SME email', help_text='The nominated subject matter expert for this change')
 
     def __init__(self, *args, **kwargs):
         super(ChangeRequestCreateForm, self).__init__(*args, **kwargs)
@@ -39,7 +41,7 @@ class ChangeRequestCreateForm(forms.ModelForm):
         # Add a CSS class to user choice fields, to upgrade them easier using JS.
         self.fields['endorser_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
-        self.fields['test_result_docs'].help_text += ' - OPTIONAL'
+        self.fields['sme_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementation'].help_text = 'Implementation/deployment instructions, including any rollback procedure (Markdown syntax supported)'
         self.fields['implementation'].widget = MarkdownxWidget()
         self.fields['communication'].widget = MarkdownxWidget()
@@ -65,14 +67,25 @@ class ChangeRequestCreateForm(forms.ModelForm):
             Fieldset(
                 'Endorsement, Implementer and Subject matter expert',
                 HTML('<p>Endorser and implementer must be nominated prior to submission for endorsement.</p>'),
-                'endorser_choice', 'implementer_choice',
+                'endorser_choice',
+                'implementer_choice',
+                'sme_choice',
             ),
             Fieldset(
-                'Testing and Implementation',
-                HTML('<p>Test and implementation dates & times must be supplied prior to submission for endorsement.'),
+                'Pre-change testing',
+                HTML('<p>Testing details must be supplied prior to submission for endorsement.'),
                 # We need to add some data attributes to the date[time] fields for the tempusdominus JS lib.
                 Field('test_date', data_toggle='datetimepicker', data_target='#id_test_date', css_class="datetimepicker-input"),
                 'test_result_docs',
+            ),
+            Fieldset(
+                'Implementation',
+                Div(
+                    HTML('''<p>Implementation details must be supplied prior to submission for endorsement.
+                         Text instructions or an uploaded document (e.g. Word, PDF) are acceptable. Implemenation instructions
+                         should include any details related to post-change testing and any rollback procedures.</p><br>'''),
+                    css_id='div_id_implementation_note'
+                ),
                 Field('planned_start', data_toggle='datetimepicker', data_target='#id_planned_start', css_class="datetimepicker-input"),
                 Field('planned_end', data_toggle='datetimepicker', data_target='#id_planned_end', css_class="datetimepicker-input"),
                 'outage',
@@ -82,7 +95,8 @@ class ChangeRequestCreateForm(forms.ModelForm):
                          should include any details related to post-change testing and any rollback procedures.</p><br>'''),
                     css_id='div_id_implementation_note'
                 ),
-                'implementation', 'implementation_docs',
+                'implementation',
+                'implementation_docs',
             ),
             Fieldset(
                 'Communication',
