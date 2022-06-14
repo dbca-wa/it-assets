@@ -7,6 +7,7 @@ from leaflet.admin import LeafletGeoAdmin
 from itassets.utils import ModelDescMixin
 from .models import DepartmentUser, Location, OrgUnit, CostCentre
 from .views import DepartmentUserExport
+from .utils import title_except
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -46,11 +47,11 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 else:
                     return queryset.filter(assigned_licences__contains=[self.value()])
 
-    actions = ('clear_ad_guid', 'clear_azure_guid')
+    #actions = ('clear_ad_guid', 'clear_azure_guid')
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
-        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'org_unit', 'account_type',
+        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'division', 'unit', 'account_type',
     )
     list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
     model_description = DepartmentUser.__doc__
@@ -110,6 +111,12 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def division(self, instance):
+        return instance.cost_centre.get_division_name_display() if instance.cost_centre else ''
+
+    def unit(self, instance):
+        return title_except(instance.get_ascender_org_path()[-1]) if instance.get_ascender_org_path() else ''
+
     def ascender_full_name(self, instance):
         return instance.get_ascender_full_name()
     ascender_full_name.short_description = 'full name'
@@ -163,14 +170,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         ] + urls
         return urls
 
-    def save_model(self, request, obj, form, change):
-        """Following save, carry out any required sync actions.
-        """
-        super().save_model(request, obj, form, change)
-        # Run the Ascender/Azure AD/on-prem AD update actions.
-        #obj.update_from_ascender_data()
-        #obj.update_from_azure_ad_data()
-
     def clear_ad_guid(self, request, queryset):
         # Action: allow a user's onprem AD GUID value to be cleared.
         queryset.update(ad_guid=None)
@@ -197,7 +196,7 @@ class LocationAdmin(LeafletGeoAdmin):
     }
 
 
-@admin.register(OrgUnit)
+#@admin.register(OrgUnit)
 class OrgUnitAdmin(admin.ModelAdmin):
     list_display = ('name', 'division_unit', 'location', 'users', 'cc', 'active')
     fields = ('active', 'name', 'location', 'division_unit', 'ascender_clevel')
@@ -216,16 +215,8 @@ class OrgUnitAdmin(admin.ModelAdmin):
 
 @admin.register(CostCentre)
 class CostCentreAdmin(admin.ModelAdmin):
-    fields = ('active', 'code', 'chart_acct_name', 'division_name', 'org_position', 'manager', 'ascender_code')
-    list_display = ('code', 'chart_acct_name', 'division_name', 'users', 'manager', 'active')
-    search_fields = ('code', 'chart_acct_name', 'org_position__name', 'division_name')
+    fields = ('active', 'code', 'chart_acct_name', 'division_name', 'manager', 'ascender_code')
+    list_display = ('code', 'ascender_code', 'chart_acct_name', 'division_name', 'manager', 'active')
+    search_fields = ('code', 'chart_acct_name', 'division_name', 'ascender_code')
     list_filter = ('active', 'chart_acct_name', 'division_name')
-    raw_id_fields = ('org_position', 'manager')
-    readonly_fields = ('ascender_code',)
-
-    def users(self, obj):
-        return format_html(
-            '<a href="{}?cost_centre={}">{}</a>',
-            reverse('admin:organisation_departmentuser_changelist'),
-            obj.pk, obj.departmentuser_set.count()
-        )
+    readonly_fields = ('manager', 'ascender_code')
