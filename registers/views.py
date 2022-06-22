@@ -319,6 +319,8 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
             form.fields['endorser_choice'].choices = [(rfc.endorser.pk, rfc.endorser.email)]
         if rfc.implementer:
             form.fields['implementer_choice'].choices = [(rfc.implementer.pk, rfc.implementer.email)]
+        if rfc.sme:
+            form.fields['sme_choice'].choices = [(rfc.sme.pk, rfc.sme.email)]
         return form
 
     def get_context_data(self, **kwargs):
