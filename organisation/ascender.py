@@ -535,15 +535,6 @@ def ascender_db_import(employee_iter=None):
                             new_user.save()
                             break
 
-                    # If we couldn't match an OrgUnit, send an alert.
-                    if not new_user.org_unit:
-                        subject = f"ASCENDER SYNC: create new Azure AD user process couldn't find matching OrgUnit for {path}"
-                        LOGGER.warning(subject)
-                        text_content = f"""Ascender record:\n
-                        {job}"""
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                        msg.send(fail_silently=True)
-
                     # Email the new account's manager the checklist to finish account provision.
                     new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
                     LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
