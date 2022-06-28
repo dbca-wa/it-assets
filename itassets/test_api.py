@@ -33,14 +33,12 @@ class ApiTestCase(TestCase):
             name='Divison 1', unit_type=1, division_unit=self.dept, location=self.loc1, acronym='DIV1', active=True)
         self.branch1 = OrgUnit.objects.create(
             name='Branch 1', unit_type=2, division_unit=self.div1, location=self.loc1, acronym='BRANCH1', active=True)
-        self.cc1 = CostCentre.objects.create(
-            code='001', division_name=self.div1.name, org_position=self.div1)
+        self.cc1 = CostCentre.objects.create(code='001', division_name=self.div1.name)
         self.div2 = OrgUnit.objects.create(
             name='Divison 2', unit_type=1, division_unit=self.dept, location=self.loc2, acronym='DIV2', active=True)
         self.branch2 = OrgUnit.objects.create(
             name='Branch 2', unit_type=2, division_unit=self.div2, location=self.loc2, acronym='BRANCH2', active=True)
-        self.cc2 = CostCentre.objects.create(
-            code='002', division_name=self.div2.name, org_position=self.div2)
+        self.cc2 = CostCentre.objects.create(code='002', division_name=self.div2.name)
 
         # Generate some other DepartmentUser objects.
         self.user1 = mixer.blend(

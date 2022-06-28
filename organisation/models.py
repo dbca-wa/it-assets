@@ -1325,20 +1325,9 @@ class CostCentre(models.Model):
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
     division_name = models.CharField(max_length=128, choices=DIVISION_CHOICES, null=True, blank=True)
-    org_position = models.ForeignKey(
-        OrgUnit, on_delete=models.PROTECT, blank=True, null=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.SET_NULL, related_name='manage_ccs',
         null=True, blank=True)
-    business_manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, related_name='bmanage_ccs',
-        help_text='Business Manager', null=True, blank=True)
-    admin = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, related_name='admin_ccs',
-        help_text='Adminstration Officer', null=True, blank=True)
-    tech_contact = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, related_name='tech_ccs',
-        help_text='Technical Contact', null=True, blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
 
     class Meta:
