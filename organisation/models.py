@@ -1098,13 +1098,6 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.cost_centre = cc  # Change the department user's cost centre.
-                # Also set the user's org unit.
-                path = self.get_ascender_org_path()
-                path.reverse()
-                for name in path:
-                    if OrgUnit.objects.filter(ascender_clevel__contains=name).exists():
-                        self.org_unit = OrgUnit.objects.filter(ascender_clevel__contains=name).first()
-                        break  # Break out of the loop on the first match.
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
             new_cc = CostCentre.objects.create(code=paypoint, ascender_code=paypoint)
@@ -1119,13 +1112,6 @@ class DepartmentUser(models.Model):
                     'description': 'Set CC value from Ascender',
                 },
             )
-            # Also set the user's org unit.
-            path = self.get_ascender_org_path()
-            path.reverse()
-            for name in path:
-                if OrgUnit.objects.filter(ascender_clevel__contains=name).exists():
-                    self.org_unit = OrgUnit.objects.filter(ascender_clevel__contains=name).first()
-                    break  # Break out of the loop on the first match.
 
         # Manager
         if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
