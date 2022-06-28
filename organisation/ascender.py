@@ -10,7 +10,7 @@ import requests
 import string
 
 from itassets.utils import ms_graph_client_token
-from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location, OrgUnit
+from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location
 from organisation.utils import title_except
 
 LOGGER = logging.getLogger('organisation')
@@ -523,17 +523,6 @@ def ascender_db_import(employee_iter=None):
                         ascender_data_updated=TZ.localize(datetime.now()),
                     )
                     LOGGER.info(f"ASCENDER SYNC: Created new department user {new_user}")
-
-                    # Second step: work out what the user's OrgUnit should be.
-                    path = new_user.get_ascender_org_path()
-                    path.reverse()
-                    for name in path:
-                        if OrgUnit.objects.filter(ascender_clevel=name).exists():
-                            ou = OrgUnit.objects.get(ascender_clevel=name)
-                            LOGGER.info(f"ASCENDER SYNC: {new_user} -> {ou}")
-                            new_user.org_unit = ou
-                            new_user.save()
-                            break
 
                     # Email the new account's manager the checklist to finish account provision.
                     new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
