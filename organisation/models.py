@@ -1098,13 +1098,6 @@ class DepartmentUser(models.Model):
                         },
                     )
                 self.cost_centre = cc  # Change the department user's cost centre.
-                # Also set the user's org unit.
-                path = self.get_ascender_org_path()
-                path.reverse()
-                for name in path:
-                    if OrgUnit.objects.filter(ascender_clevel__contains=name).exists():
-                        self.org_unit = OrgUnit.objects.filter(ascender_clevel__contains=name).first()
-                        break  # Break out of the loop on the first match.
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
             LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
             new_cc = CostCentre.objects.create(code=paypoint, ascender_code=paypoint)
@@ -1119,13 +1112,6 @@ class DepartmentUser(models.Model):
                     'description': 'Set CC value from Ascender',
                 },
             )
-            # Also set the user's org unit.
-            path = self.get_ascender_org_path()
-            path.reverse()
-            for name in path:
-                if OrgUnit.objects.filter(ascender_clevel__contains=name).exists():
-                    self.org_unit = OrgUnit.objects.filter(ascender_clevel__contains=name).first()
-                    break  # Break out of the loop on the first match.
 
         # Manager
         if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
@@ -1339,20 +1325,9 @@ class CostCentre(models.Model):
     chart_acct_name = models.CharField(
         max_length=256, blank=True, null=True, verbose_name='chart of accounts name')
     division_name = models.CharField(max_length=128, choices=DIVISION_CHOICES, null=True, blank=True)
-    org_position = models.ForeignKey(
-        OrgUnit, on_delete=models.PROTECT, blank=True, null=True)
     manager = models.ForeignKey(
         DepartmentUser, on_delete=models.SET_NULL, related_name='manage_ccs',
         null=True, blank=True)
-    business_manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, related_name='bmanage_ccs',
-        help_text='Business Manager', null=True, blank=True)
-    admin = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, related_name='admin_ccs',
-        help_text='Adminstration Officer', null=True, blank=True)
-    tech_contact = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, related_name='tech_ccs',
-        help_text='Technical Contact', null=True, blank=True)
     ascender_code = models.CharField(max_length=16, null=True, blank=True, unique=True)
 
     class Meta:
