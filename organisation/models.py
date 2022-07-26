@@ -1266,6 +1266,7 @@ class Location(models.Model):
 
 class OrgUnit(models.Model):
     """Represents an element within the Department organisational hierarchy.
+    This model has largely been deprecated from usage.
     """
     TYPE_CHOICES = (
         (0, 'Department (Tier one)'),
