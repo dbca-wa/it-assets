@@ -66,6 +66,7 @@ STATUS_RANKING = [
     "NON",
     "NPAYF",
     "NPAYP",
+    "CCFA",
     "PFAS",
     "PFA",
     "PFT",
@@ -75,7 +76,6 @@ STATUS_RANKING = [
     "PPT",
     "CPA",
     "CPT",
-    "CCFA",
     "CAS",
     "SEAS",
     "TRAIN",
@@ -126,9 +126,9 @@ def ascender_db_fetch():
 def ascender_job_sort_key(record):
     """
     Sort the job based the score
-    1.the initial score is based on the job's terminate date
-      if the job is terminated, the initial score is populated from the job's terminate date
-      if the job is not terminated , the initial score is populated from tommorrow, that means all not terminated jobs have the same initial score
+    1.the initial score is based on the job's end date
+      if the job is ended, the initial score is populated from the job's end date
+      if the job is not ended , the initial score is populated from tommorrow, that means all not terminated jobs have the same initial score
     2.secondary score is based on emp_status
     """
     today = datetime.now().date()
