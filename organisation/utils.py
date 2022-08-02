@@ -178,6 +178,18 @@ def ms_graph_inactive_users(days=45):
     return users
 
 
+def ms_graph_user(token, azure_guid):
+    """Query the Microsoft Graph REST API details of a signle Azure AD user account in our tenancy.
+    """
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
+    }
+    url = f"https://graph.microsoft.com/v1.0/user/{azure_guid}"
+    resp = requests.get(url, headers=headers)
+    return resp
+
+
 def get_ad_users_json(container, azure_json_path):
     """Pass in the container name and path to a JSON dump of AD users, return parsed JSON.
     """

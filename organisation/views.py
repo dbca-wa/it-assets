@@ -27,6 +27,9 @@ class AddressBook(TemplateView):
 
 
 class UserAccounts(LoginRequiredMixin, ListView):
+    """A custom view to return a subset of DepartmentUser objects having licensed AD accounts
+    (though not necessarily enabled) as well as a 'current' job in Ascender (i.e. past its end date).
+    """
     template_name = 'organisation/user_accounts.html'
     model = DepartmentUser
     paginate_by = 50
@@ -48,6 +51,11 @@ class UserAccounts(LoginRequiredMixin, ListView):
                 Q(name__icontains=query_str) |
                 Q(cost_centre__code__icontains=query_str)
             )
+
+        # Last filter: Ascender job_end_date value is not in the past, or is absent.
+        # We need to turn our queryset into a list comprehension to use the model property for filtering.
+        queryset = [du for du in queryset if (not du.get_job_end_date() or du.get_job_end_date() >= date.today())]
+
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -62,25 +70,32 @@ class UserAccounts(LoginRequiredMixin, ListView):
 
 
 class UserAccountsExport(View):
-    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
+    """A custom view to return the data from the UserAccounts view as an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=department_user_m365_licences_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
-        # TODO: filtering via request params.
+        # TODO: this query violates DRY. Refactor it one day.
         queryset = DepartmentUser.objects.filter(
             Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
             Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
             Q(assigned_licences__contains=['OFFICE 365 E5']) |
             Q(assigned_licences__contains=['OFFICE 365 E1'])
         ).order_by('name')
+
+        # Filter the queryset by request params.
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             queryset = queryset.filter(
                 Q(name__icontains=query_str) |
                 Q(cost_centre__code__icontains=query_str)
             )
+
+        # Last filter: Ascender job_end_date value is not in the past, or is absent.
+        # We need to turn our queryset into a list comprehension to use the model property for filtering.
+        queryset = [du for du in queryset if (not du.get_job_end_date() or du.get_job_end_date() >= date.today())]
+
         response = user_account_export(response, queryset)
         return response
 
