@@ -519,7 +519,7 @@ class DepartmentUser(models.Model):
                         department_user=self,
                         log={
                             'ascender_field': 'job_end_date',
-                            'old_value': account_expiration_date.strftime("%m/%d/%Y"),
+                            'old_value': account_expiration_date.strftime("%m/%d/%Y") if account_expiration_date else None,
                             'new_value': job_end_date.strftime("%m/%d/%Y"),
                             'description': f'Set expiry date for onprem AD account',
                         },
