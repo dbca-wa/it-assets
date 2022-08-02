@@ -27,6 +27,9 @@ class AddressBook(TemplateView):
 
 
 class UserAccounts(LoginRequiredMixin, ListView):
+    """A custom view to return a subset of DepartmentUser objects having licensed AD accounts
+    (though not necessarily enabled) as well as a 'current' job in Ascender (i.e. past its end date).
+    """
     template_name = 'organisation/user_accounts.html'
     model = DepartmentUser
     paginate_by = 50
@@ -67,12 +70,13 @@ class UserAccounts(LoginRequiredMixin, ListView):
 
 
 class UserAccountsExport(View):
-    """A custom view to return a subset of "active" DepartmentUser data to an Excel spreadsheet.
+    """A custom view to return the data from the UserAccounts view as an Excel spreadsheet.
     """
     def get(self, request, *args, **kwargs):
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=department_user_m365_licences_{}_{}.xlsx'.format(date.today().isoformat(), datetime.now().strftime('%H%M'))
 
+        # TODO: this query violates DRY. Refactor it one day.
         queryset = DepartmentUser.objects.filter(
             Q(assigned_licences__contains=['MICROSOFT 365 E5']) |
             Q(assigned_licences__contains=['MICROSOFT 365 F3']) |
