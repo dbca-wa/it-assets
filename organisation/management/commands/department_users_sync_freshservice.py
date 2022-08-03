@@ -55,6 +55,10 @@ class Command(BaseCommand):
             else:
                 agent = None
 
+            # Telephone: for 'numbers' which consist of one or more spaces, change these to None in-place.
+            if user['telephoneNumber'] and not user['telephoneNumber'].strip():
+                user['telephoneNumber'] = None
+
             if requester:  # Freshservice requester exists, check for any updates.
                 data = {}
                 if requester['first_name'] and requester['first_name'] != user['givenName']:
@@ -78,7 +82,6 @@ class Command(BaseCommand):
                 if data:
                     # Update the Freshservice requester.
                     resp = update_freshservice_object('requesters', requester['id'], data)
-
             elif agent:
                 data = {}
                 if user['givenName'] and agent['first_name'] != user['givenName']:
@@ -102,7 +105,6 @@ class Command(BaseCommand):
                 if data:
                     # Update the Freshservice agent.
                     resp = update_freshservice_object('agents', agent['id'], data)
-
             else:
                 data = {
                     'primary_email': user['mail'].lower(),
