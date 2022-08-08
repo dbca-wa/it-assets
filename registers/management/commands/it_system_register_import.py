@@ -35,7 +35,11 @@ class Command(BaseCommand):
                 prod_systems = prod_systems.exclude(pk=it_system.pk)
             else:
                 logger.warning('Failed to match {} - {}, creating new system'.format(system_id, name))
-                it_system = ITSystem.objects.create(system_id=system_id, name=name)
+                try:
+                    it_system = ITSystem.objects.create(system_id=system_id, name=name)
+                except Exception as e:
+                    logger.warning('Exception duing creation of new IT System')
+                    logger.exception(e)
                 prod_systems = prod_systems.exclude(pk=it_system.pk)
 
             # Name
