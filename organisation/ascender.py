@@ -269,7 +269,9 @@ def ascender_db_import(employee_iter=None):
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
-                    # Make no assumption about names (presence or absence).
+                    mail_nickname = None
+
+                    # Make no assumption about names (presence or absence). Remove any spaces within name text.
                     if job['preferred_name']:
                         pref = job['preferred_name'].lower().replace(' ', '')
                     else:
@@ -286,29 +288,34 @@ def ascender_db_import(employee_iter=None):
                         sur = job['surname'].lower().replace(' ', '')
                     else:
                         sur = ''
-                    if not DepartmentUser.objects.filter(email=f"{pref}.{sur}@dbca.wa.gov.au").exists():
-                        email = f"{pref}.{sur}@dbca.wa.gov.au"
-                        mail_nickname = f"{pref}.{sur}"
-                    elif not DepartmentUser.objects.filter(email=f"{first}.{sur}@dbca.wa.gov.au").exists():
-                        email = f"{first}.{sur}@dbca.wa.gov.au"
-                        mail_nickname = f"{first}.{sur}"
-                    elif not DepartmentUser.objects.filter(email=f"{pref}{sec}.{sur}@dbca.wa.gov.au").exists():
-                        email = f"{pref}{sec}.{sur}@dbca.wa.gov.au"
-                        mail_nickname = f"{pref}{sec}.{sur}"
-                    elif not DepartmentUser.objects.filter(email=f"{first}{sec}.{sur}@dbca.wa.gov.au").exists():
-                        email = f"{first}{sec}.{sur}@dbca.wa.gov.au"
-                        mail_nickname = f"{first}{sec}.{sur}"
-                    else:
+
+                    # Patterns used for new email address generation, in order of preference:
+                    email_patterns = [
+                        f"{pref}.{sur}@dbca.wa.gov.au",
+                        f"{first}.{sur}@dbca.wa.gov.au",
+                        f"{pref}{sec}.{sur}@dbca.wa.gov.au",
+                        f"{first}{sec}.{sur}@dbca.wa.gov.au",
+                    ]
+
+                    for pattern in email_patterns:
+                        if not DepartmentUser.objects.filter(email=pattern).exists():
+                            email = pattern
+                            mail_nickname = pattern.split("@")[0]
+                            break
+
+                    if not email and mail_nickname:
                         # We can't generate a unique email with the supplied information; abort and send a note to the admins.
-                        # This email should pick up instances where the function can't match any existing CC, manager or location
+                        # This alert should pick up instances where the function can't match any existing CC, manager or location
                         # and allow manual intervention.
                         subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
                         text_content = f"Ascender record:\n{job}\n"
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
                         continue
+
                     display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
                     title = title_except(job['occup_pos_title'])
+
                     # Ensure that the generated password meets our security complexity requirements.
                     p = list('Pass1234' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12)))
                     random.shuffle(p)
