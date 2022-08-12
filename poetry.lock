@@ -180,7 +180,7 @@ python-versions = "*"
 
 [[package]]
 name = "django"
-version = "3.2.14"
+version = "3.2.15"
 description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
 category = "main"
 optional = false
@@ -192,8 +192,8 @@ pytz = "*"
 sqlparse = ">=0.2.2"
 
 [package.extras]
-argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
+argon2 = ["argon2-cffi (>=19.1.0)"]
 
 [[package]]
 name = "django-bootstrap-pagination"
@@ -894,7 +894,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "5f4a6f79a392ce6fb7ed5fc40f9d3ca1d29b8a0f9512a7bb1cefb29e75c347e9"
+content-hash = "4fe8c70396c7d4328d772b891785f31e64bc8f37376a9bdf03aff9186d823cd2"
 
 [metadata.files]
 appnope = [
