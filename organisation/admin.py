@@ -2,10 +2,9 @@ from django import forms
 from django.contrib import admin
 from django.urls import path, reverse
 from django.utils.html import format_html
-from leaflet.admin import LeafletGeoAdmin
 
 from itassets.utils import ModelDescMixin
-from .models import DepartmentUser, Location, OrgUnit, CostCentre
+from .models import DepartmentUser, Location, CostCentre
 from .views import DepartmentUserExport
 from .utils import title_except
 
@@ -184,19 +183,13 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
 
 
 @admin.register(Location)
-class LocationAdmin(LeafletGeoAdmin):
-    fields = ('name', 'address', 'pobox', 'phone', 'fax', 'point', 'active', 'ascender_desc')
-    list_display = ('name', 'address', 'phone', 'fax', 'active')
-    list_filter = ('active',)
+class LocationAdmin(admin.ModelAdmin):
+    fields = ('name', 'ascender_desc')
+    list_display = ('name', 'ascender_desc')
     readonly_fields = ('ascender_desc',)
-    search_fields = ('name', 'address', 'phone', 'fax')
-    settings_overrides = {
-        'DEFAULT_CENTER': (-31.0, 115.0),
-        'DEFAULT_ZOOM': 5
-    }
+    search_fields = ('name', 'ascender_desc')
 
 
-#@admin.register(OrgUnit)
 class OrgUnitAdmin(admin.ModelAdmin):
     list_display = ('name', 'division_unit', 'location', 'users', 'cc', 'active')
     fields = ('active', 'name', 'location', 'division_unit', 'ascender_clevel')

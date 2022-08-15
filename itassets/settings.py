@@ -40,7 +40,6 @@ INSTALLED_APPS = (
     # Third-party applications:
     'django_extensions',
     'crispy_forms',
-    'leaflet',
     'webtemplate_dbca',
     'bootstrap_pagination',
     'markdownx',
@@ -65,10 +64,6 @@ MIDDLEWARE = [
     'csp.middleware.CSPMiddleware',
     'dbca_utils.middleware.SSOLoginMiddleware',
 ]
-
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-)
 
 TEMPLATES = [
     {

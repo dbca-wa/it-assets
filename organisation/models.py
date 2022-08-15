@@ -1246,6 +1246,7 @@ class DepartmentUserLog(models.Model):
 
 class Location(models.Model):
     """A model to represent a physical location.
+    This model has largely been deprecated from usage.
     """
     name = models.CharField(max_length=256, unique=True)
     address = models.TextField(unique=True, blank=True)

@@ -257,20 +257,6 @@ python-versions = "*"
 future = "*"
 
 [[package]]
-name = "django-leaflet"
-version = "0.28.2"
-description = "Use Leaflet in your django projects"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-Django = "*"
-
-[package.extras]
-docs = ["sphinx", "sphinx-autobuild"]
-
-[[package]]
 name = "django-markdownx"
 version = "3.0.1"
 description = "A comprehensive Markdown editor built for Django."
@@ -894,7 +880,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "4fe8c70396c7d4328d772b891785f31e64bc8f37376a9bdf03aff9186d823cd2"
+content-hash = "7af27dad6d599249ddc6b9a20fa5dfe026575167638854be413197c6e8937373"
 
 [metadata.files]
 appnope = [
@@ -1099,10 +1085,6 @@ django-extensions = [
 ]
 django-json-widget = [
     {file = "django-json-widget-1.1.1.tar.gz", hash = "sha256:ec948a4c379687f9c854748ba540fdbeb1b1730846ca953f186818521de7e696"},
-]
-django-leaflet = [
-    {file = "django-leaflet-0.28.2.tar.gz", hash = "sha256:14b6b11cf81f40113f832cc77686a9b0c67b35d12d1f10d973f083997e6be8de"},
-    {file = "django_leaflet-0.28.2-py3-none-any.whl", hash = "sha256:4f9e3147f438f4329b0f3bfd10d379ceaffe9267adf5cca05cb1a7c9e24e585b"},
 ]
 django-markdownx = [
     {file = "django-markdownx-3.0.1.tar.gz", hash = "sha256:e18e395cad0ade96afbb250a81cad15618e417ac3c0d9c37d964be3d8fd57bcf"},
