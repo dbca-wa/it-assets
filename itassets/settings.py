@@ -40,7 +40,6 @@ INSTALLED_APPS = (
     # Third-party applications:
     'django_extensions',
     'crispy_forms',
-    'leaflet',
     'webtemplate_dbca',
     'bootstrap_pagination',
     'markdownx',
