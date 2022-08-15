@@ -259,13 +259,26 @@ def ascender_db_import(employee_iter=None):
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
                 else:
-                    # Email an alert that a new geo_location_desc exists.
-                    subject = f"ASCENDER SYNC: create new Azure AD user process encountered new location description {job['geo_location_desc']}"
-                    LOGGER.warning(subject)
-                    text_content = f"""Ascender record:\n
-                    {job}"""
-                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
+                    # Attempt to manually create a new location description from Ascender data, and send a note to admins.
+                    try:
+                        location = Location.objects.create(
+                            name=job['geo_location_desc'],
+                            ascender_desc=job['geo_location_desc'],
+                        )
+                        subject = f"ASCENDER SYNC: create new Azure AD user process created new location, description {job['geo_location_desc']}"
+                        LOGGER.info(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
+                    except:
+                        # In the event of an error (probably due to a duplicate name), fail gracefully and alert the admins.
+                        subject = f"ASCENDER SYNC: exception during creation of new location in new Azure AD user process, description {job['geo_location_desc']}"
+                        LOGGER.error(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
 
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
