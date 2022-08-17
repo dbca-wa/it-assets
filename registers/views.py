@@ -180,13 +180,18 @@ class StandardChangeDetail(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        rfc = self.get_object()
+        std_change = self.get_object()
         context['site_title'] = 'DBCA Office of Information Management'
         context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Standard change #{}'.format(rfc)
+        context['page_title'] = 'Standard change #{}'.format(std_change)
         # Breadcrumb links:
-        links = [(reverse("change_request_list"), "Change request register"), (reverse("standard_change_list"), 'Standard changes'), (None, rfc.pk)]
+        links = [(reverse("change_request_list"), "Change request register"), (reverse("standard_change_list"), 'Standard changes'), (None, std_change.pk)]
         context['breadcrumb_trail'] = breadcrumbs_list(links)
+        # Context variables that determine if determine is certain template elements are displayed.
+        emails = []
+        if std_change.endorser:
+            emails.append(std_change.endorser.email.lower())
+        context['user_authorised'] = self.request.user.email.lower() in [emails] or self.request.user.is_staff is True
         return context
 
 

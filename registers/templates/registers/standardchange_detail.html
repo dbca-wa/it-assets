@@ -26,6 +26,19 @@
                 <th>Description</th>
                 <td>{{ object|change_markdown:"description"|safe }}</td>
             </tr>
+            {% if user_authorised %}
+            <tr>
+                <th>Implementation instructions</th>
+                <td>
+                {% if object.implementation %}
+                {{ object|change_markdown:"implementation"|safe }}
+                {% endif %}
+                {% if object.implementation_docs %}
+                <br>Uploaded instructions: <a href="{{ object.implementation_docs.url }}">{{ object.implementation_docs_filename }}</a>
+                {% endif %}
+                </td>
+            </tr>
+            {% endif %}
             <tr>
                 <th>IT System(s) affected</th>
                 <td>{{ object.systems_affected }}</td>
