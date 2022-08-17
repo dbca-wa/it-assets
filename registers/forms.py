@@ -1,9 +1,10 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, Field, Submit, Div, HTML
 from crispy_forms.bootstrap import FormActions
+from datetime import date
 from django import forms
 from markdownx.widgets import MarkdownxWidget
-from .models import ChangeRequest
+from .models import ChangeRequest, StandardChange
 
 
 class BaseFormHelper(FormHelper):
@@ -145,6 +146,7 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
         super(StandardChangeRequestCreateForm, self).__init__(*args, **kwargs)
         self.fields['standard_change'].required = True
         self.fields['standard_change'].help_text = 'Standard change reference'
+        self.fields['standard_change'].queryset = StandardChange.objects.filter(expiry__gte=date.today()).order_by('name')
         self.fields['implementer_choice'].widget.attrs['class'] = 'select-user-choice'
         self.fields['implementer_choice'].label = 'Implementer email'
         self.helper = BaseFormHelper()
@@ -163,7 +165,10 @@ class StandardChangeRequestCreateForm(forms.ModelForm):
             Fieldset(
                 'Implementation',
                 HTML('<p>Implementer and implementation dates & times must be supplied prior to submission.'),
-                'implementer_choice', 'planned_start', 'planned_end', 'outage',
+                'implementer_choice',
+                Field('planned_start', data_toggle='datetimepicker', data_target='#id_planned_start', css_class="datetimepicker-input"),
+                Field('planned_end', data_toggle='datetimepicker', data_target='#id_planned_end', css_class="datetimepicker-input"),
+                'outage',
             ),
             Fieldset(
                 'Communication',

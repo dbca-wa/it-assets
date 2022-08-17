@@ -343,6 +343,12 @@ class StandardChange(models.Model):
             return ', '.join([i.name for i in self.it_systems.all()])
         return 'Not specified'
 
+    def formatted_markdown(self, field):
+        """From the passed-in field, return the object field value rendered as HTML (assumes that
+        the field value is Markdown-formatted text).
+        """
+        return markdownify(getattr(self, field))
+
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.

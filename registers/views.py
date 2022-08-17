@@ -178,6 +178,17 @@ class StandardChangeList(LoginRequiredMixin, ListView):
 class StandardChangeDetail(LoginRequiredMixin, DetailView):
     model = StandardChange
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rfc = self.get_object()
+        context['site_title'] = 'DBCA Office of Information Management'
+        context['site_acronym'] = 'OIM'
+        context['page_title'] = 'Standard change #{}'.format(rfc)
+        # Breadcrumb links:
+        links = [(reverse("change_request_list"), "Change request register"), (reverse("standard_change_list"), 'Standard changes'), (None, rfc.pk)]
+        context['breadcrumb_trail'] = breadcrumbs_list(links)
+        return context
+
 
 class ChangeRequestDetail(LoginRequiredMixin, DetailView):
     model = ChangeRequest
@@ -189,7 +200,6 @@ class ChangeRequestDetail(LoginRequiredMixin, DetailView):
         context['site_acronym'] = 'OIM'
         context['page_title'] = 'Change request #{}'.format(rfc)
         # Breadcrumb links:
-        links = [(None, 'Change request register'), ()]
         links = [(reverse("change_request_list"), "Change request register"), (None, rfc.pk)]
         context['breadcrumb_trail'] = breadcrumbs_list(links)
 
@@ -234,6 +244,13 @@ class ChangeRequestCreate(LoginRequiredMixin, CreateView):
         elif 'emerg' in self.kwargs and self.kwargs['emerg']:
             return EmergencyChangeRequestForm
         return ChangeRequestCreateForm
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if 'std' in self.kwargs and self.kwargs['std'] and 'id' in self.request.GET and self.request.GET['id']:
+            if StandardChange.objects.filter(pk=self.request.GET["id"]).exists():
+                initial["standard_change"] = StandardChange.objects.get(pk=self.request.GET["id"])
+        return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -373,16 +390,16 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
             if not rfc.requester:
                 form.add_error('requester', 'Requester cannot be blank.')
                 errors = True
-            # Endorser is required.
-            if not rfc.endorser:
+            # Endorser is required for normal changes (not standard changes).
+            if rfc.is_normal_change and not rfc.endorser:
                 form.add_error('endorser_choice', 'Endorser cannot be blank.')
                 errors = True
             # Implementer is required.
             if not rfc.implementer:
                 form.add_error('implementer_choice', 'Implementer cannot be blank.')
                 errors = True
-            # SME is required.
-            if not rfc.sme:
+            # SME is required for normal changes (not standard changes).
+            if rfc.is_normal_change and not rfc.sme:
                 form.add_error('sme_choice', 'SME cannot be blank.')
                 errors = True
             # Planned start is required.
@@ -408,22 +425,18 @@ class ChangeRequestChange(LoginRequiredMixin, UpdateView):
                 if rfc.is_standard_change:
                     rfc.status = 2
                     rfc.save()
-                    msg = 'Standard change request {} submitted to CAB.'.format(rfc.pk)
+                    msg = f"Standard change request {rfc.pk} submitted to CAB by {self.request.user.get_full_name()}."
                     messages.success(self.request, msg)
-                    log = ChangeLog(change_request=rfc, log=msg)
-                    log.save()
+                    ChangeLog(change_request=rfc, log=msg).save()
                 # Normal change workflow: submit for endorsement, then to CAB.
                 else:
                     rfc.status = 1
                     rfc.save()
                     rfc.email_endorser()
-                    msg = 'Change request {} submitted for endorsement by {}.'.format(rfc.pk, self.request.user.get_full_name())
+                    msg = f"Change request {rfc.pk} submitted for endorsement by {self.request.user.get_full_name()}."
                     messages.success(self.request, msg)
-                    log = ChangeLog(change_request=rfc, log=msg)
-                    log.save()
-                    log = ChangeLog(
-                        change_request=rfc, log='Request for endorsement of change request {} emailed to {}.'.format(rfc.pk, rfc.endorser.email))
-                    log.save()
+                    ChangeLog(change_request=rfc, log=msg).save()
+                    ChangeLog(change_request=rfc, log=f"Request for endorsement of change request {rfc.pk} emailed to {rfc.endorser.email}.").save()
 
         # Emergency RFC changes.
         if self.request.POST.get('save') and rfc.is_emergency_change:
@@ -507,7 +520,7 @@ class ChangeRequestEndorse(LoginRequiredMixin, UpdateView):
                 # The Change Manager will process it further.
                 rfc.status = 7
                 rfc.save()
-                msg = 'Change request {} has been endorsed by {}; it is now with the Change Manager to be reviewed.'.format(rfc.pk, self.request.user.get_full_name())
+                msg = 'Change request {} has been endorsed by {}; it is now with the SME to be reviewed.'.format(rfc.pk, self.request.user.get_full_name())
                 messages.success(self.request, msg)
                 log = ChangeLog(change_request=rfc, log=msg)
                 log.save()
