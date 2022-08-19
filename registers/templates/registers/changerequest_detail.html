@@ -10,7 +10,7 @@
 {% if object.is_draft and not object.is_emergency_change and is_requester %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit change request</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update / submit change request</a>
     </div>
 </div>
 <br>
@@ -19,7 +19,7 @@
 {% if object.is_submitted and is_endorser %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">Endorse / reject change request</a>
     </div>
 </div>
 <br>
@@ -28,7 +28,7 @@
 {% if object.is_sme_review and user_is_change_manager and not object.sme %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_sme_review' object.id %}" role="button"><span  aria-hidden="true"></span>Subject matter expert review</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_sme_review' object.id %}" role="button"><span  aria-hidden="true"></span>Subject matter expert review</a>
     </div>
 </div>
 <br>
@@ -37,7 +37,7 @@
 {% if object.is_sme_review and is_sme %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">SME endorse / reject change request</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_endorse' object.pk %}" role="button">SME endorse / reject change request</a>
     </div>
 </div>
 <br>
@@ -46,7 +46,7 @@
 {% if object.is_scheduled and user_is_change_manager %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_approval' object.id %}" role="button"><span  aria-hidden="true"></span>CAB: approve this change</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_approval' object.id %}" role="button"><span  aria-hidden="true"></span>CAB: approve this change</a>
     </div>
 </div>
 <br>
@@ -55,7 +55,7 @@
 {% if may_complete %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_complete' object.pk %}" role="button">Record change request outcome</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_complete' object.pk %}" role="button">Record change request outcome</a>
     </div>
 </div>
 <br>
@@ -64,7 +64,7 @@
 {% if object.is_emergency_change and user_authorised and not object.completed %}
 <div class="row">
     <div class="col">
-        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update details</a></a>
+        <a class="btn btn-primary" href="{% url 'change_request_change' object.pk %}" role="button">Update details</a>
     </div>
 </div>
 <br>
