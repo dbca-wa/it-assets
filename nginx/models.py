@@ -1,10 +1,10 @@
 import re
 import types
 import logging
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
-from django.db import models,transaction,connection
+from django.db import models, transaction, connection
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
@@ -225,7 +225,9 @@ class WebApp(OriginalConfigMixin, models.Model):
     )
     redirect_to_other = models.CharField(max_length=128, editable=False, null=True)
     redirect_path = models.CharField(max_length=128, editable=False, null=True)
-    clientip_subnet = models.CharField(max_length=64, editable=False, null=True,verbose_name="users")
+    clientip_subnet = models.CharField(
+        max_length=64, editable=False, null=True, verbose_name="users"
+    )
     configure_txt = models.TextField(editable=False)
     auth_domain = models.PositiveSmallIntegerField(
         editable=False, choices=SSO_AUTH_DOMAINS
@@ -253,32 +255,48 @@ class WebApp(OriginalConfigMixin, models.Model):
 
     def set_location_score(self):
         locations = list(WebAppLocation.objects.filter(app=self))
-        #set the score for exact location, non regex location, and prefix location
+        # set the score for exact location, non regex location, and prefix location
         for location in locations:
-            location.score = WebAppLocation.LOCATION_SCORES[location.location_type] * 1000 + len(location.location)
+            location.score = WebAppLocation.LOCATION_SCORES[
+                location.location_type
+            ] * 1000 + len(location.location)
             location.save(update_fields=["score"])
 
-    def get_matched_location(self,request_path,locations=None):
+    def get_matched_location(self, request_path, locations=None):
         """
         locations: all locations belonging to a webapp and also order by score desc
         """
-        locations = locations or WebAppLocation.objects.filter(app=self).order_by("-score")
+        locations = locations or WebAppLocation.objects.filter(app=self).order_by(
+            "-score"
+        )
         saved_location = None
         saved_matched_path = None
         saved_regex_location = None
         saved_regex_matched_path = None
         for location in locations:
-            if location.location_type != WebAppLocation.PREFIX_LOCATION or not saved_location:
-                matched,matched_path = location.is_match(request_path)
+            if (
+                location.location_type != WebAppLocation.PREFIX_LOCATION
+                or not saved_location
+            ):
+                matched, matched_path = location.is_match(request_path)
             if matched:
-                if location.location_type in (WebAppLocation.EXACT_LOCATION,WebAppLocation.NON_REGEX_LOCATION):
+                if location.location_type in (
+                    WebAppLocation.EXACT_LOCATION,
+                    WebAppLocation.NON_REGEX_LOCATION,
+                ):
                     return location
                 elif location.location_type == WebAppLocation.PREFIX_LOCATION:
                     saved_location = location
                     saved_matched_path = matched_path
                 elif saved_location:
                     if matched_path.startswith(saved_matched_path):
-                        if not saved_regex_location or not saved_regex_matched_path.startswith(saved_matched_path) or len(saved_regex_matched_path) < len(matched_path):
+                        if (
+                            not saved_regex_location
+                            or not saved_regex_matched_path.startswith(
+                                saved_matched_path
+                            )
+                            or len(saved_regex_matched_path) < len(matched_path)
+                        ):
                             saved_regex_location = location
                             saved_regex_matched_path = matched_path
                     elif saved_regex_location:
@@ -292,10 +310,12 @@ class WebApp(OriginalConfigMixin, models.Model):
                         saved_regex_matched_path = matched_path
                 elif saved_regex_location:
                     if request_path.startswith(saved_regex_matched_path):
-                        if request_path.startswith(matched_path) and len(matched_path) > len(saved_regex_matched_path):
+                        if request_path.startswith(matched_path) and len(
+                            matched_path
+                        ) > len(saved_regex_matched_path):
                             saved_regex_location = location
                             saved_regex_matched_path = matched_path
-                    elif request_path.startswith(matched_path) :
+                    elif request_path.startswith(matched_path):
                         saved_regex_location = location
                         saved_regex_matched_path = matched_path
                     elif len(matched_path) > len(saved_regex_matched_path):
@@ -423,19 +443,23 @@ class WebAppLocation(OriginalConfigMixin, models.Model):
     )
 
     LOCATION_SCORES = {
-        EXACT_LOCATION:900,
-        PREFIX_LOCATION:700,
-        CASE_SENSITIVE_REGEX_LOCATION:600,
-        CASE_INSENSITIVE_REGEX_LOCATION:500,
-        NON_REGEX_LOCATION:800
+        EXACT_LOCATION: 900,
+        PREFIX_LOCATION: 700,
+        CASE_SENSITIVE_REGEX_LOCATION: 600,
+        CASE_INSENSITIVE_REGEX_LOCATION: 500,
+        NON_REGEX_LOCATION: 800,
     }
 
     LOCATION_MATCH = {
-        EXACT_LOCATION:lambda loc,path:loc.location == path,
-        PREFIX_LOCATION:lambda loc,path:path.startswith(loc.location),
-        CASE_SENSITIVE_REGEX_LOCATION:lambda loc,path:True if loc.location_re.search(path) else False,
-        CASE_INSENSITIVE_REGEX_LOCATION:lambda loc,path:True if loc.location_re.search(path) else False,
-        NON_REGEX_LOCATION:lambda loc,path:path.startswith(loc.location)
+        EXACT_LOCATION: lambda loc, path: loc.location == path,
+        PREFIX_LOCATION: lambda loc, path: path.startswith(loc.location),
+        CASE_SENSITIVE_REGEX_LOCATION: lambda loc, path: True
+        if loc.location_re.search(path)
+        else False,
+        CASE_INSENSITIVE_REGEX_LOCATION: lambda loc, path: True
+        if loc.location_re.search(path)
+        else False,
+        NON_REGEX_LOCATION: lambda loc, path: path.startswith(loc.location),
     }
 
     NO_SSO_AUTH = 0
@@ -468,7 +492,7 @@ class WebAppLocation(OriginalConfigMixin, models.Model):
     location_type = models.PositiveSmallIntegerField(
         editable=False, choices=LOCATION_TYPES
     )
-    score = models.PositiveIntegerField(editable=False,default=0)
+    score = models.PositiveIntegerField(editable=False, default=0)
     auth_type = models.PositiveSmallIntegerField(choices=SSO_AUTH_TYPES)
     cors_enabled = models.BooleanField(default=False, editable=False)
     forward_protocol = models.PositiveSmallIntegerField(
@@ -488,31 +512,31 @@ class WebAppLocation(OriginalConfigMixin, models.Model):
     )
     created = models.DateTimeField(auto_now_add=True)
 
-    def is_match(self,path):
+    def is_match(self, path):
         if self.location_type == self.EXACT_LOCATION:
             if self.location == path:
-                return (True,self.location)
+                return (True, self.location)
         elif self.location_type == self.PREFIX_LOCATION:
             if path.startswith(self.location):
-                return (True,self.location)
+                return (True, self.location)
         elif self.location_type == self.NON_REGEX_LOCATION:
             if path.startswith(self.location):
-                return (True,self.location)
+                return (True, self.location)
         else:
             m = self.location_re.search(path)
             if m:
-                return (True,m.group(0))
+                return (True, m.group(0))
 
-        return (False,"")
+        return (False, "")
 
     @property
     def location_re(self):
-        if self.location_type == self.CASE_SENSITIVE_REGEX_LOCATION :
+        if self.location_type == self.CASE_SENSITIVE_REGEX_LOCATION:
             if not self._location_re:
                 self._location_re = re.compile(self.location)
-        elif self.location_type == self.CASE_INSENSITIVE_REGEX_LOCATION :
+        elif self.location_type == self.CASE_INSENSITIVE_REGEX_LOCATION:
             if not self._location_re:
-                self._location_re = re.compile(self.location,re.IGNORECASE)
+                self._location_re = re.compile(self.location, re.IGNORECASE)
 
         return self._location_re
 
@@ -578,12 +602,14 @@ class WebAppLocationServer(models.Model):
 
     @classmethod
     def refresh_rancher_workload(cls, cluster):
-        for location_server in cls.objects.filter(
-            server__category=WebServer.RANCHER_CLUSTER
-        ).filter(
-            models.Q(server__name__startswith=cluster.name)
-            | models.Q(server__name=cluster.ip)
-        ).filter(rancher_workload__isnull=True):
+        for location_server in (
+            cls.objects.filter(server__category=WebServer.RANCHER_CLUSTER)
+            .filter(
+                models.Q(server__name__startswith=cluster.name)
+                | models.Q(server__name=cluster.ip)
+            )
+            .filter(rancher_workload__isnull=True)
+        ):
             rancher_workload = location_server.locate_rancher_workload()
             if location_server.rancher_workload != rancher_workload:
                 location_server.rancher_workload = rancher_workload
@@ -593,7 +619,7 @@ class WebAppLocationServer(models.Model):
         return "{}:{}".format(self.server.name, self.port)
 
     class Meta:
-        unique_together = [["location","server","port"]]
+        unique_together = [["location", "server", "port"]]
 
 
 class RequestPathNormalizer(models.Model):
@@ -601,115 +627,179 @@ class RequestPathNormalizer(models.Model):
     _f_normalize = None
     _module = None
 
-    filter_code = models.CharField(max_length=512,null=False,unique=True,help_text="A lambda function with two parameters 'webserver' and 'request_path'")
-    normalize_code = models.TextField(null=False,help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path")
+    filter_code = models.CharField(
+        max_length=512,
+        null=False,
+        unique=True,
+        help_text="A lambda function with two parameters 'webserver' and 'request_path'",
+    )
+    normalize_code = models.TextField(
+        null=False,
+        help_text="The source code of the module which contains a method 'def normalize(request_path)' to return a normalized request  path",
+    )
 
-    order = models.PositiveSmallIntegerField(null=False,default=1,help_text="The order to find the filter rule, high order means hight priority")
-    changed = models.DateTimeField(null=False,auto_now=True,help_text="The last time when the filter was changed")
-    applied = models.DateTimeField(null=True,editable=False,help_text="The last time when the filter was applied to the existed data")
+    order = models.PositiveSmallIntegerField(
+        null=False,
+        default=1,
+        help_text="The order to find the filter rule, high order means hight priority",
+    )
+    changed = models.DateTimeField(
+        null=False, auto_now=True, help_text="The last time when the filter was changed"
+    )
+    applied = models.DateTimeField(
+        null=True,
+        editable=False,
+        help_text="The last time when the filter was applied to the existed data",
+    )
 
     def clean(self):
-        #valdate the filter code
+        # valdate the filter code
         try:
-            self.filter("test.dbca.wa.gov.au","/test")
+            self.filter("test.dbca.wa.gov.au", "/test")
         except Exception as ex:
             raise ValidationError("Invalid filter code.{}".format(str(ex)))
 
         if self.order == 0:
             if self.id is not None:
-                if RequestPathNormalizer.objects.filter(order=0).exclude(id=self.id).exists():
-                    raise ValidationError("The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None ")
+                if (
+                    RequestPathNormalizer.objects.filter(order=0)
+                    .exclude(id=self.id)
+                    .exists()
+                ):
+                    raise ValidationError(
+                        "The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None "
+                    )
             else:
                 if RequestPathNormalizer.objects.filter(order=0).exists():
-                    raise ValidationError("The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None ")
+                    raise ValidationError(
+                        "The normalizer with order(0) is a special normalizer that act as a filter to exclude the requests by return None "
+                    )
 
         try:
             self.normalize("/test/2/change")
         except Exception as ex:
             raise ValidationError("Invalid normalize code.{}".format(str(ex)))
 
-    def filter(self,webserver,request_path):
+    def filter(self, webserver, request_path):
         """
         Return True if this rule can be applied on the webserver and request_path;otherwise return False
         """
         if not self._f_filter:
             exec("self._f_filter = {}".format(self.filter_code))
 
-        return self._f_filter(webserver,request_path)
+        return self._f_filter(webserver, request_path)
 
-    def normalize(self,request_path):
+    def normalize(self, request_path):
         if not self._f_normalize:
-            module_name = "{}_{}".format(self.__class__.__name__,self.id)
+            module_name = "{}_{}".format(self.__class__.__name__, self.id)
             self._module = types.ModuleType(module_name)
-            exec(self.normalize_code,self._module.__dict__)
-            if not hasattr(self._module,"normalize"):
-                #method 'normalize' not found
-                raise Exception("The method 'normalize' is not found in RequestPathNormalizer({})".format(self.id))
-            self._f_normalize = getattr(self._module,"normalize")
+            exec(self.normalize_code, self._module.__dict__)
+            if not hasattr(self._module, "normalize"):
+                # method 'normalize' not found
+                raise Exception(
+                    f"The method 'normalize' is not found in RequestPathNormalizer({self.id})"
+                )
+            self._f_normalize = getattr(self._module, "normalize")
 
         return self._f_normalize(request_path)
 
-    def save(self,*args,**kwargs):
+    def save(self, *args, **kwargs):
         self.normalize_code = self.normalize_code.strip()
         if self.id:
             existing_obj = RequestPathNormalizer.objects.get(id=self.id)
-            if existing_obj.filter_code == self.filter_code and existing_obj.order == self.order and existing_obj.normalize_code == self.normalize_code:
-                #no change
+            if (
+                existing_obj.filter_code == self.filter_code
+                and existing_obj.order == self.order
+                and existing_obj.normalize_code == self.normalize_code
+            ):
+                # no change
                 return self
-        return super().save(*args,**kwargs)
+        return super().save(*args, **kwargs)
 
     @classmethod
-    def normalize_path(cls,webserver,request_path,path_normalizers = None,path_normalizer_map = None,path_filter=None):
+    def normalize_path(
+        cls,
+        webserver,
+        request_path,
+        path_normalizers=None,
+        path_normalizer_map=None,
+        path_filter=None,
+    ):
         """
         Return tuple(True, normalized request path) if path parameters is normalized ;otherwise return tuple(False,original request path)
         """
         if not request_path:
-            return (False,request_path)
+            return (False, request_path)
 
-        if path_filter and path_filter.filter(webserver,request_path):
+        if path_filter and path_filter.filter(webserver, request_path):
             if path_filter.normalize(request_path) is None:
-                return (True,None)
+                return (True, None)
 
         path_normalizer = None
         if path_normalizer_map is not None:
-            key = (webserver,request_path)
+            key = (webserver, request_path)
             if key in path_normalizer_map:
                 path_normalizer = path_normalizer_map.get(key)
                 if not path_normalizer:
-                    return (False,request_path)
+                    return (False, request_path)
 
         if not path_normalizer:
             path_normalizers = path_normalizers or cls.objects.all().order_by("-order")
             for obj in path_normalizers:
-                if obj.filter(webserver,request_path):
+                if obj.filter(webserver, request_path):
                     path_normalizer = obj
                     break
             if path_normalizer_map is not None:
                 path_normalizer_map[key] = path_normalizer
 
         if not path_normalizer:
-            #can't find an fiter to apply to the webserver and request path
-            return (False,request_path)
+            # can't find an fiter to apply to the webserver and request path
+            return (False, request_path)
 
         normalized_path = path_normalizer.normalize(request_path)
-        return (request_path != normalized_path,normalized_path)
+        return (request_path != normalized_path, normalized_path)
 
 
 class RequestParameterFilter(models.Model):
     _f_filter = None
 
-    filter_code = models.CharField(max_length=512,null=False,unique=True,help_text="A lambda function with two parameters 'webserver' and 'request_path'")
-    included_parameters = ArrayField(models.CharField(max_length=64,null=False,blank=False),null=True,help_text="The list of parameters",blank=True)
-    excluded_parameters= ArrayField(models.CharField(max_length=64,null=False,blank=False),null=True,help_text="The list of parameters excluded from the request parameters",blank=True)
+    filter_code = models.CharField(
+        max_length=512,
+        null=False,
+        unique=True,
+        help_text="A lambda function with two parameters 'webserver' and 'request_path'",
+    )
+    included_parameters = ArrayField(
+        models.CharField(max_length=64, null=False, blank=False),
+        null=True,
+        help_text="The list of parameters",
+        blank=True,
+    )
+    excluded_parameters = ArrayField(
+        models.CharField(max_length=64, null=False, blank=False),
+        null=True,
+        help_text="The list of parameters excluded from the request parameters",
+        blank=True,
+    )
     case_insensitive = models.BooleanField(default=True)
-    order = models.PositiveSmallIntegerField(null=False,default=0,help_text="The order to find the filter rule, high order means hight priority")
-    changed = models.DateTimeField(null=False,auto_now=True,help_text="The last time when the filter was changed")
-    applied = models.DateTimeField(null=True,editable=False,help_text="The last time when the filter was applied to the existed data")
+    order = models.PositiveSmallIntegerField(
+        null=False,
+        default=0,
+        help_text="The order to find the filter rule, high order means hight priority",
+    )
+    changed = models.DateTimeField(
+        null=False, auto_now=True, help_text="The last time when the filter was changed"
+    )
+    applied = models.DateTimeField(
+        null=True,
+        editable=False,
+        help_text="The last time when the filter was applied to the existed data",
+    )
 
     def clean(self):
-        #valdate the filter code
+        # valdate the filter code
         try:
-            self.filter("test.dbca.wa.gov.au","/test")
+            self.filter("test.dbca.wa.gov.au", "/test")
         except Exception as ex:
             raise ValidationError("Invalid filter code.{}".format(str(ex)))
 
@@ -718,48 +808,62 @@ class RequestParameterFilter(models.Model):
         if not self.excluded_parameters:
             self.excluded_parameters = None
 
-    def save(self,*args,**kwargs):
+    def save(self, *args, **kwargs):
         if self.case_insensitive:
             if self.included_parameters:
                 index = 0
                 while index < len(self.included_parameters):
-                    self.included_parameters[index] = self.included_parameters[index].lower()
+                    self.included_parameters[index] = self.included_parameters[
+                        index
+                    ].lower()
                     index += 1
 
             if self.excluded_parameters:
                 index = 0
                 while index < len(self.excluded_parameters):
-                    self.excluded_parameters[index] = self.excluded_parameters[index].lower()
+                    self.excluded_parameters[index] = self.excluded_parameters[
+                        index
+                    ].lower()
                     index += 1
         if self.id:
             existing_obj = RequestParameterFilter.objects.get(id=self.id)
-            if existing_obj.filter_code == self.filter_code and existing_obj.order == self.order and existing_obj.included_parameters == self.included_parameters and existing_obj.excluded_parameters == self.excluded_parameters:
-                #no change
+            if (
+                existing_obj.filter_code == self.filter_code
+                and existing_obj.order == self.order
+                and existing_obj.included_parameters == self.included_parameters
+                and existing_obj.excluded_parameters == self.excluded_parameters
+            ):
+                # no change
                 return self
-        return super().save(*args,**kwargs)
+        return super().save(*args, **kwargs)
 
-    def filter(self,webserver,request_path):
+    def filter(self, webserver, request_path):
         """
         Return True if this rule can be applied on the webserver and request_path;otherwise return False
         """
         if not self._f_filter:
             exec("self._f_filter = {}".format(self.filter_code))
 
-        return self._f_filter(webserver,request_path)
+        return self._f_filter(webserver, request_path)
 
-    def get_parameters(self,path_parameter_list):
+    def get_parameters(self, path_parameter_list):
         """
         Return tuple(True, filtered path parameters) if path parameters is filtered ;otherwise return tuple(False,original path parameter)
         """
         changed = False
         if self.included_parameters:
             if "__none__" in self.included_parameters:
-                return (True,[])
+                return (True, [])
             index = len(path_parameter_list) - 1
             while index >= 0:
                 if self.case_insensitive:
-                    if path_parameter_list[index][0].lower() != path_parameter_list[index][0]:
-                        path_parameter_list[index][0] = path_parameter_list[index][0].lower()
+                    if (
+                        path_parameter_list[index][0].lower()
+                        != path_parameter_list[index][0]
+                    ):
+                        path_parameter_list[index][0] = path_parameter_list[index][
+                            0
+                        ].lower()
                         changed = True
 
                 if path_parameter_list[index][0] not in self.included_parameters:
@@ -769,54 +873,74 @@ class RequestParameterFilter(models.Model):
 
         elif self.exlucded_parameters:
             if "__all__" in self.excluded_parameters:
-                return (True,[])
+                return (True, [])
             index = len(path_parameter_list) - 1
             while index >= 0:
                 if self.case_insensitive:
-                    if path_parameter_list[index][0].lower() != path_parameter_list[index][0]:
-                        path_parameter_list[index][0] = path_parameter_list[index][0].lower()
+                    if (
+                        path_parameter_list[index][0].lower()
+                        != path_parameter_list[index][0]
+                    ):
+                        path_parameter_list[index][0] = path_parameter_list[index][
+                            0
+                        ].lower()
                         changed = True
 
                 if path_parameter_list[index][0] in self.excluded_parameters:
                     changed = True
                     del path_parameter_list[index]
                 index -= 1
-        return (changed,path_parameter_list)
+        return (changed, path_parameter_list)
 
     @classmethod
-    def filter_parameters(cls,webserver,request_path,path_parameters,parameter_filters = None,parameter_filter_map = None):
+    def filter_parameters(
+        cls,
+        webserver,
+        request_path,
+        path_parameters,
+        parameter_filters=None,
+        parameter_filter_map=None,
+    ):
         """
         Return tuple(True, filtered path parameters) if path parameters is filtered ;otherwise return tuple(False,original path parameter)
         """
         if not path_parameters:
-            return (False,path_parameters)
+            return (False, path_parameters)
 
         path_parameter_list = WebAppAccessLog.to_path_parameter_list(path_parameters)
         parameter_filter = None
         if parameter_filter_map is not None:
-            key = (webserver,request_path)
+            key = (webserver, request_path)
             if key in parameter_filter_map:
                 parameter_filter = parameter_filter_map.get(key)
                 if not parameter_filter:
-                    return (False,path_parameters)
-
+                    return (False, path_parameters)
 
         if not parameter_filter:
-            parameter_filters = parameter_filters or cls.objects.all().order_by("-order")
+            parameter_filters = parameter_filters or cls.objects.all().order_by(
+                "-order"
+            )
             for obj in parameter_filters:
-                if obj.filter(webserver,request_path):
+                if obj.filter(webserver, request_path):
                     parameter_filter = obj
                     break
             if parameter_filter_map is not None:
                 parameter_filter_map[key] = parameter_filter
 
         if not parameter_filter:
-            #can't find an fiter to apply to the webserver and request path
-            return (False,path_parameters)
+            # can't find an fiter to apply to the webserver and request path
+            return (False, path_parameters)
 
-        changed,path_parameter_list = parameter_filter.get_parameters(path_parameter_list)
+        changed, path_parameter_list = parameter_filter.get_parameters(
+            path_parameter_list
+        )
 
-        return (changed,WebAppAccessLog.to_path_parameters(path_parameter_list) if changed else path_parameters)
+        return (
+            changed,
+            WebAppAccessLog.to_path_parameters(path_parameter_list)
+            if changed
+            else path_parameters,
+        )
 
 
 def apply_rules(context={}):
@@ -828,17 +952,25 @@ def apply_rules(context={}):
         path_normalizers: the normalizers list
         path_normalizer_map: the map between normalizer and webserver,reques path
     """
-    parameter_filter_changed  =  RequestParameterFilter.objects.filter(models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))).exists()
-    path_normalizer_changed  =  RequestPathNormalizer.objects.filter(models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))).exists()
+    parameter_filter_changed = RequestParameterFilter.objects.filter(
+        models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))
+    ).exists()
+    path_normalizer_changed = RequestPathNormalizer.objects.filter(
+        models.Q(applied__isnull=True) | models.Q(changed__gt=models.F("applied"))
+    ).exists()
     if not parameter_filter_changed and not path_normalizer_changed:
-        #both filters and normalizers are not changed since last applied
+        # both filters and normalizers are not changed since last applied
         return True
 
     if path_normalizer_changed:
         if "path_normalizers" not in context:
-            context["path_normalizers"] = list(RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order"))
+            context["path_normalizers"] = list(
+                RequestPathNormalizer.objects.filter(order__gt=0).order_by("-order")
+            )
         if "path_filter" not in context:
-            context["path_filter"] = RequestPathNormalizer.objects.filter(order=0).first()
+            context["path_filter"] = RequestPathNormalizer.objects.filter(
+                order=0
+            ).first()
         path_normalizers = context["path_normalizers"]
         path_filter = context["path_filter"]
 
@@ -861,10 +993,12 @@ def apply_rules(context={}):
         parameter_filters = None
         parameter_filter_map = None
 
-    def _change_dailyreport(log_day,webserver,excluded_records):
+    def _change_dailyreport(log_day, webserver, excluded_records):
         if not excluded_records:
             return
-        daily_report  = WebAppAccessDailyReport.objects.filter(log_day=log_day,webserver=webserver).first()
+        daily_report = WebAppAccessDailyReport.objects.filter(
+            log_day=log_day, webserver=webserver
+        ).first()
         if not daily_report:
             return
 
@@ -872,7 +1006,7 @@ def apply_rules(context={}):
             daily_report.requests -= record.requests
             if record.http_status > 0 and record.http_status < 400:
                 daily_report.success_requests -= record.requests
-            elif record.http_status in (401,403):
+            elif record.http_status in (401, 403):
                 daily_report.unauthorized_requests -= record.requests
             elif record.http_status == 408:
                 daily_report.timeout_requests -= record.requests
@@ -880,14 +1014,27 @@ def apply_rules(context={}):
                 daily_report.client_closed_requests -= record.requests
             elif record.http_status == 0 or record.http_status >= 400:
                 daily_report.error_requests -= record.requests
-        daily_report.save(update_fields=["requests","success_requests","unauthorized_requests","timeout_requests","error_requests","client_closed_requests"])
-        logger.debug("{0} - {1}: daily access reports have been changed.".format(log_day,webserver))
+        daily_report.save(
+            update_fields=[
+                "requests",
+                "success_requests",
+                "unauthorized_requests",
+                "timeout_requests",
+                "error_requests",
+                "client_closed_requests",
+            ]
+        )
+        logger.debug(
+            "{0} - {1}: daily access reports have been changed.".format(
+                log_day, webserver
+            )
+        )
 
-    #update WebAppAccessLog
+    # update WebAppAccessLog
     log_obj = WebAppAccessLog.objects.order_by("log_starttime").first()
     log_starttime = log_obj.log_starttime if log_obj else None
-    del_records=[]
-    excluded_records=[]
+    del_records = []
+    excluded_records = []
     webserver_records = {}
     while log_starttime:
         del_records.clear()
@@ -895,7 +1042,9 @@ def apply_rules(context={}):
         webserver_records.clear()
         key = None
         webserver = None
-        for record in WebAppAccessLog.objects.filter(log_starttime = log_starttime).order_by("webserver"):
+        for record in WebAppAccessLog.objects.filter(
+            log_starttime=log_starttime
+        ).order_by("webserver"):
             if webserver and webserver != record.webserver:
                 with transaction.atomic():
                     changed_records = 0
@@ -911,7 +1060,15 @@ def apply_rules(context={}):
                         WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
 
                 if changed_records or del_records or excluded_records:
-                    logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+                    logger.debug(
+                        "{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(
+                            log_starttime,
+                            webserver,
+                            len(del_records),
+                            changed_records,
+                            len(excluded_records),
+                        )
+                    )
                 del_records.clear()
                 excluded_records.clear()
                 webserver_records.clear()
@@ -919,12 +1076,12 @@ def apply_rules(context={}):
             webserver = record.webserver
 
             if path_normalizer_changed:
-                path_changed,request_path = RequestPathNormalizer.normalize_path(
+                path_changed, request_path = RequestPathNormalizer.normalize_path(
                     record.webserver,
                     record.request_path,
                     path_normalizers=path_normalizers,
                     path_normalizer_map=path_normalizer_map,
-                    path_filter= path_filter
+                    path_filter=path_filter,
                 )
                 if request_path is None:
                     excluded_records.append(record.id)
@@ -934,12 +1091,15 @@ def apply_rules(context={}):
                 request_path = record.request_path
 
             if parameter_filter_changed:
-                parameters_changed,path_parameters = RequestParameterFilter.filter_parameters(
+                (
+                    parameters_changed,
+                    path_parameters,
+                ) = RequestParameterFilter.filter_parameters(
                     record.webserver,
                     record.request_path,
                     record.path_parameters,
                     parameter_filters=parameter_filters,
-                    parameter_filter_map=parameter_filter_map
+                    parameter_filter_map=parameter_filter_map,
                 )
             else:
                 parameters_changed = False
@@ -952,7 +1112,7 @@ def apply_rules(context={}):
             else:
                 record._changed = False
 
-            key = (record.request_path,record.http_status,record.path_parameters)
+            key = (record.request_path, record.http_status, record.path_parameters)
             if key in webserver_records:
                 accesslog = webserver_records[key]
                 accesslog.requests += int(record.requests)
@@ -963,7 +1123,9 @@ def apply_rules(context={}):
                 if accesslog.min_response_time > record.min_response_time:
                     accesslog.min_response_time = record.min_response_time
 
-                accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
+                accesslog.avg_response_time = (
+                    accesslog.total_response_time / accesslog.requests
+                )
                 del_records.append(record.id)
                 accesslog._changed = True
             else:
@@ -984,18 +1146,30 @@ def apply_rules(context={}):
                     WebAppAccessLog.objects.filter(id__in=excluded_records).delete()
 
             if changed_records or del_records or excluded_records:
-                logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+                logger.debug(
+                    "{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(
+                        log_starttime,
+                        webserver,
+                        len(del_records),
+                        changed_records,
+                        len(excluded_records),
+                    )
+                )
 
             del_records.clear()
             excluded_records.clear()
             webserver_records.clear()
 
-        log_obj = WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime).order_by("log_starttime").first()
+        log_obj = (
+            WebAppAccessLog.objects.filter(log_starttime__gt=log_starttime)
+            .order_by("log_starttime")
+            .first()
+        )
         log_starttime = log_obj.log_starttime if log_obj else None
         if context.get("lock_session"):
             context["lock_session"].renew()
 
-    #update WebAppAccessDaiyLog
+    # update WebAppAccessDaiyLog
     log_obj = WebAppAccessDailyLog.objects.order_by("log_day").first()
     log_day = log_obj.log_day if log_obj else None
     while log_day:
@@ -1005,7 +1179,9 @@ def apply_rules(context={}):
         excluded_records.clear()
         key = None
         webserver = None
-        for record in WebAppAccessDailyLog.objects.filter(log_day = log_day).order_by("webserver"):
+        for record in WebAppAccessDailyLog.objects.filter(log_day=log_day).order_by(
+            "webserver"
+        ):
             if webserver and webserver != record.webserver:
                 with transaction.atomic():
                     changed_records = 0
@@ -1018,11 +1194,21 @@ def apply_rules(context={}):
                         WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
 
                     if excluded_records:
-                        WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
-                        _change_dailyreport(log_day,webserver,excluded_records)
+                        WebAppAccessDailyLog.objects.filter(
+                            id__in=[o.id for o in excluded_records]
+                        ).delete()
+                        _change_dailyreport(log_day, webserver, excluded_records)
 
                 if changed_records or del_records or excluded_records:
-                    logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+                    logger.debug(
+                        "{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(
+                            log_starttime,
+                            webserver,
+                            len(del_records),
+                            changed_records,
+                            len(excluded_records),
+                        )
+                    )
                 del_records.clear()
                 excluded_records.clear()
                 webserver_records.clear()
@@ -1030,12 +1216,12 @@ def apply_rules(context={}):
             webserver = record.webserver
 
             if path_normalizer_changed:
-                path_changed,request_path = RequestPathNormalizer.normalize_path(
+                path_changed, request_path = RequestPathNormalizer.normalize_path(
                     record.webserver,
                     record.request_path,
                     path_normalizers=path_normalizers,
                     path_normalizer_map=path_normalizer_map,
-                    path_filter= path_filter
+                    path_filter=path_filter,
                 )
                 if request_path is None:
                     excluded_records.append(record)
@@ -1045,12 +1231,15 @@ def apply_rules(context={}):
                 request_path = record.request_path
 
             if parameter_filter_changed:
-                parameters_changed,path_parameters = RequestParameterFilter.filter_parameters(
+                (
+                    parameters_changed,
+                    path_parameters,
+                ) = RequestParameterFilter.filter_parameters(
                     record.webserver,
                     record.request_path,
                     record.path_parameters,
                     parameter_filters=parameter_filters,
-                    parameter_filter_map=parameter_filter_map
+                    parameter_filter_map=parameter_filter_map,
                 )
             else:
                 parameters_changed = False
@@ -1063,7 +1252,7 @@ def apply_rules(context={}):
             else:
                 record._changed = False
 
-            key = (record.request_path,record.http_status,record.path_parameters)
+            key = (record.request_path, record.http_status, record.path_parameters)
             if key in webserver_records:
                 accesslog = webserver_records[key]
                 accesslog.requests += int(record.requests)
@@ -1074,7 +1263,9 @@ def apply_rules(context={}):
                 if accesslog.min_response_time > record.min_response_time:
                     accesslog.min_response_time = record.min_response_time
 
-                accesslog.avg_response_time = accesslog.total_response_time / accesslog.requests
+                accesslog.avg_response_time = (
+                    accesslog.total_response_time / accesslog.requests
+                )
                 del_records.append(record.id)
                 accesslog._changed = True
             else:
@@ -1092,34 +1283,58 @@ def apply_rules(context={}):
                     WebAppAccessDailyLog.objects.filter(id__in=del_records).delete()
 
                 if excluded_records:
-                    WebAppAccessDailyLog.objects.filter(id__in=[o.id for o in excluded_records]).delete()
-                    _change_dailyreport(log_day,webserver,excluded_records)
+                    WebAppAccessDailyLog.objects.filter(
+                        id__in=[o.id for o in excluded_records]
+                    ).delete()
+                    _change_dailyreport(log_day, webserver, excluded_records)
 
             if changed_records or del_records or excluded_records:
-                logger.debug("{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(log_starttime,webserver,len(del_records),changed_records,len(excluded_records)))
+                logger.debug(
+                    "{0}-{1}: {2} log records have been merged into {3} log records,{4} log records were removed".format(
+                        log_starttime,
+                        webserver,
+                        len(del_records),
+                        changed_records,
+                        len(excluded_records),
+                    )
+                )
             del_records.clear()
             excluded_records.clear()
             webserver_records.clear()
 
-        log_obj = WebAppAccessDailyLog.objects.filter(log_day__gt=log_day).order_by("log_day").first()
+        log_obj = (
+            WebAppAccessDailyLog.objects.filter(log_day__gt=log_day)
+            .order_by("log_day")
+            .first()
+        )
         log_day = log_obj.log_day if log_obj else None
         if context.get("lock_session"):
             context["lock_session"].renew()
 
-    #already applied the latest filter
+    # already applied the latest filter
     all_applied = True
     now = timezone.now()
 
     if path_normalizer_changed:
         for path_normalizer in path_normalizers:
-            #update the request parameter filter's applied to current time if the filter was not changed during the apply process
-            if RequestPathNormalizer.objects.filter(id=path_normalizer.id,changed=path_normalizer.changed).update(applied=now) == 0:
+            # update the request parameter filter's applied to current time if the filter was not changed during the apply process
+            if (
+                RequestPathNormalizer.objects.filter(
+                    id=path_normalizer.id, changed=path_normalizer.changed
+                ).update(applied=now)
+                == 0
+            ):
                 all_applied = False
 
     if parameter_filter_changed:
         for parameter_filter in parameter_filters:
-            #update the request parameter filter's applied to current time if the filter was not changed during the apply process
-            if RequestParameterFilter.objects.filter(id=parameter_filter.id,changed=parameter_filter.changed).update(applied=now) == 0:
+            # update the request parameter filter's applied to current time if the filter was not changed during the apply process
+            if (
+                RequestParameterFilter.objects.filter(
+                    id=parameter_filter.id, changed=parameter_filter.changed
+                ).update(applied=now)
+                == 0
+            ):
                 all_applied = False
 
     return all_applied
@@ -1131,7 +1346,7 @@ class PathParametersMixin(object):
         return self.to_path_parameter_list(self.path_parameters)
 
     @path_parameter_list.setter
-    def path_parameter_list(self,value):
+    def path_parameter_list(self, value):
         self.path_parameters = self.to_path_parameters(value)
 
     @staticmethod
@@ -1139,7 +1354,7 @@ class PathParametersMixin(object):
         if not path_parameters:
             return []
         else:
-            return [o.split("=",1) for o in path_parameters.split("&")]
+            return [o.split("=", 1) for o in path_parameters.split("&")]
 
     @staticmethod
     def to_path_parameters(path_parameter_list):
@@ -1149,59 +1364,113 @@ class PathParametersMixin(object):
             return "&".join("{}={}".format(*o) for o in path_parameter_list)
 
 
-class WebAppAccessLog(PathParametersMixin,models.Model):
-    log_starttime = models.DateTimeField(editable=False,null=False)
-    log_endtime = models.DateTimeField(editable=False,null=False)
+class WebAppAccessLog(PathParametersMixin, models.Model):
+    log_starttime = models.DateTimeField(editable=False, null=False)
+    log_endtime = models.DateTimeField(editable=False, null=False)
 
-    webserver = models.CharField(max_length=256,editable=False,null=False)
-    webapp = models.ForeignKey(WebApp, on_delete=models.SET_NULL,null=True, related_name='logs',editable=False)
+    webserver = models.CharField(max_length=256, editable=False, null=False)
+    webapp = models.ForeignKey(
+        WebApp,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="logs",
+        editable=False,
+    )
 
-    request_path = models.CharField(max_length=512,editable=False,null=False)
-    webapplocation = models.ForeignKey(WebAppLocation, on_delete=models.SET_NULL,null=True, related_name='logs',editable=False)
+    request_path = models.CharField(max_length=512, editable=False, null=False)
+    webapplocation = models.ForeignKey(
+        WebAppLocation,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="logs",
+        editable=False,
+    )
 
-    path_parameters = models.TextField(editable=False,null=True)
-    all_path_parameters = ArrayField(models.CharField(max_length=64,null=False),editable=False,null=True)
-    http_status = models.PositiveIntegerField(null=False,editable=False)
-    requests = models.PositiveIntegerField(null=False,editable=False)
-    max_response_time = models.FloatField(null=False,editable=False)
-    min_response_time = models.FloatField(null=False,editable=False)
-    avg_response_time = models.FloatField(null=False,editable=False)
-    total_response_time = models.FloatField(null=False,editable=False)
+    path_parameters = models.TextField(editable=False, null=True)
+    all_path_parameters = ArrayField(
+        models.CharField(max_length=64, null=False), editable=False, null=True
+    )
+    http_status = models.PositiveIntegerField(null=False, editable=False)
+    requests = models.PositiveIntegerField(null=False, editable=False)
+    max_response_time = models.FloatField(null=False, editable=False)
+    min_response_time = models.FloatField(null=False, editable=False)
+    avg_response_time = models.FloatField(null=False, editable=False)
+    total_response_time = models.FloatField(null=False, editable=False)
 
     class Meta:
-        unique_together = [["log_starttime","webserver","request_path","http_status","path_parameters"]]
-        index_together = [["log_starttime","webapp","webapplocation"],["webapp","webapplocation"],["webapp","http_status"],["webserver","http_status"]]
+        unique_together = [
+            [
+                "log_starttime",
+                "webserver",
+                "request_path",
+                "http_status",
+                "path_parameters",
+            ]
+        ]
+        index_together = [
+            ["log_starttime", "webapp", "webapplocation"],
+            ["webapp", "webapplocation"],
+            ["webapp", "http_status"],
+            ["webserver", "http_status"],
+        ]
 
 
-class WebAppAccessDailyLog(PathParametersMixin,models.Model):
-    log_day = models.DateField(editable=False,null=False)
+class WebAppAccessDailyLog(PathParametersMixin, models.Model):
+    log_day = models.DateField(editable=False, null=False)
 
-    webserver = models.CharField(max_length=256,editable=False,null=False)
-    webapp = models.ForeignKey(WebApp, on_delete=models.SET_NULL,null=True, related_name='dailylogs',editable=False)
+    webserver = models.CharField(max_length=256, editable=False, null=False)
+    webapp = models.ForeignKey(
+        WebApp,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="dailylogs",
+        editable=False,
+    )
 
-    request_path = models.CharField(max_length=512,editable=False,null=False)
-    webapplocation = models.ForeignKey(WebAppLocation, on_delete=models.SET_NULL,null=True, related_name='dailylogs',editable=False)
+    request_path = models.CharField(max_length=512, editable=False, null=False)
+    webapplocation = models.ForeignKey(
+        WebAppLocation,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="dailylogs",
+        editable=False,
+    )
 
-    path_parameters = models.TextField(editable=False,null=True)
-    all_path_parameters = ArrayField(models.CharField(max_length=64,null=False),editable=False,null=True)
-    http_status = models.PositiveIntegerField(null=False,editable=False)
-    requests = models.PositiveIntegerField(null=False,editable=False)
-    max_response_time = models.FloatField(null=False,editable=False)
-    min_response_time = models.FloatField(null=False,editable=False)
-    avg_response_time = models.FloatField(null=False,editable=False)
-    total_response_time = models.FloatField(null=False,editable=False)
+    path_parameters = models.TextField(editable=False, null=True)
+    all_path_parameters = ArrayField(
+        models.CharField(max_length=64, null=False), editable=False, null=True
+    )
+    http_status = models.PositiveIntegerField(null=False, editable=False)
+    requests = models.PositiveIntegerField(null=False, editable=False)
+    max_response_time = models.FloatField(null=False, editable=False)
+    min_response_time = models.FloatField(null=False, editable=False)
+    avg_response_time = models.FloatField(null=False, editable=False)
+    total_response_time = models.FloatField(null=False, editable=False)
 
     @classmethod
-    def populate_data(cls,lock_session=None):
+    def populate_data(cls, lock_session=None):
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
-            first_populate_log_day = timezone.make_aware(datetime(last_populated_log_day.year,last_populated_log_day.month,last_populated_log_day.day) + timedelta(days=1))
+            first_populate_log_day = timezone.make_aware(
+                datetime(
+                    last_populated_log_day.year,
+                    last_populated_log_day.month,
+                    last_populated_log_day.day,
+                )
+                + timedelta(days=1)
+            )
         else:
             obj = WebAppAccessLog.objects.all().order_by("log_starttime").first()
             if obj:
                 first_log_datetime = timezone.localtime(obj.log_starttime)
-                first_populate_log_day = timezone.make_aware(datetime(first_log_datetime.year,first_log_datetime.month,first_log_datetime.day))
+                first_populate_log_day = timezone.make_aware(
+                    datetime(
+                        first_log_datetime.year,
+                        first_log_datetime.month,
+                        first_log_datetime.day,
+                    )
+                )
             else:
                 first_populate_log_day = None
 
@@ -1213,21 +1482,42 @@ class WebAppAccessDailyLog(PathParametersMixin,models.Model):
         if not last_log_datetime:
             return
         elif last_log_datetime.hour == 23:
-            last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day) + timedelta(days=1))
+            last_populate_log_day = timezone.make_aware(
+                datetime(
+                    last_log_datetime.year,
+                    last_log_datetime.month,
+                    last_log_datetime.day,
+                )
+                + timedelta(days=1)
+            )
         else:
-            last_populate_log_day = timezone.make_aware(datetime(last_log_datetime.year,last_log_datetime.month,last_log_datetime.day))
+            last_populate_log_day = timezone.make_aware(
+                datetime(
+                    last_log_datetime.year,
+                    last_log_datetime.month,
+                    last_log_datetime.day,
+                )
+            )
 
         populate_log_day = first_populate_log_day
 
         while populate_log_day < last_populate_log_day:
             next_populate_log_day = populate_log_day + timedelta(days=1)
-            logger.debug("Populate the daily access log({}) from {} to {}".format(populate_log_day.date(),populate_log_day,next_populate_log_day))
+            logger.debug(
+                "Populate the daily access log({}) from {} to {}".format(
+                    populate_log_day.date(), populate_log_day, next_populate_log_day
+                )
+            )
             sql = """
 INSERT INTO nginx_webappaccessdailylog (log_day,webserver,request_path,http_status,path_parameters,webapp_id,webapplocation_id,requests,min_response_time,max_response_time,total_response_time,avg_response_time)
 SELECT date('{}'),webserver,request_path,http_status,path_parameters,min(webapp_id),min(webapplocation_id),sum(requests),min(min_response_time),max(max_response_time),sum(total_response_time),sum(total_response_time)/sum(requests)
 FROM nginx_webappaccesslog where log_starttime >= '{}' and log_starttime < '{}'
 GROUP BY webserver,request_path,http_status,path_parameters;
-""".format(populate_log_day.strftime("%Y-%m-%d"),populate_log_day.strftime("%Y-%m-%d 00:00:00 +8:00"),next_populate_log_day.strftime("%Y-%m-%d 00:00:00 +8:00"))
+""".format(
+                populate_log_day.strftime("%Y-%m-%d"),
+                populate_log_day.strftime("%Y-%m-%d 00:00:00 +8:00"),
+                next_populate_log_day.strftime("%Y-%m-%d 00:00:00 +8:00"),
+            )
             with connection.cursor() as cursor:
                 logger.info("Populate nginx access daily log.sql = {}".format(sql))
                 cursor.execute(sql)
@@ -1237,25 +1527,45 @@ GROUP BY webserver,request_path,http_status,path_parameters;
             populate_log_day = next_populate_log_day
 
     class Meta:
-        unique_together = [["log_day","webserver","request_path","http_status","path_parameters"]]
-        index_together = [["log_day","webapp","webapplocation"],["webapp","webapplocation"],["webserver","request_path"]]
+        unique_together = [
+            ["log_day", "webserver", "request_path", "http_status", "path_parameters"]
+        ]
+        index_together = [
+            ["log_day", "webapp", "webapplocation"],
+            ["webapp", "webapplocation"],
+            ["webserver", "request_path"],
+        ]
 
 
 class WebAppAccessDailyReport(models.Model):
-    log_day = models.DateField(editable=False,null=False)
+    log_day = models.DateField(editable=False, null=False)
 
-    webserver = models.CharField(max_length=256,editable=False,null=False)
-    webapp = models.ForeignKey(WebApp, on_delete=models.SET_NULL,null=True, related_name='dailyreports',editable=False)
+    webserver = models.CharField(max_length=256, editable=False, null=False)
+    webapp = models.ForeignKey(
+        WebApp,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="dailyreports",
+        editable=False,
+    )
 
-    requests = models.PositiveIntegerField(null=False,editable=False,default=0)
-    success_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
-    client_closed_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
-    error_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
-    unauthorized_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
-    timeout_requests = models.PositiveIntegerField(null=False,editable=False,default=0)
+    requests = models.PositiveIntegerField(null=False, editable=False, default=0)
+    success_requests = models.PositiveIntegerField(
+        null=False, editable=False, default=0
+    )
+    client_closed_requests = models.PositiveIntegerField(
+        null=False, editable=False, default=0
+    )
+    error_requests = models.PositiveIntegerField(null=False, editable=False, default=0)
+    unauthorized_requests = models.PositiveIntegerField(
+        null=False, editable=False, default=0
+    )
+    timeout_requests = models.PositiveIntegerField(
+        null=False, editable=False, default=0
+    )
 
     @classmethod
-    def populate_data(cls,lock_session=None):
+    def populate_data(cls, lock_session=None):
         obj = cls.objects.all().order_by("-log_day").first()
         last_populated_log_day = obj.log_day if obj else None
         if last_populated_log_day:
@@ -1294,7 +1604,9 @@ FROM (SELECT webserver,webapp_id,
 	  CASE WHEN http_status = 0 OR (http_status >= 400 AND http_status not in (401,403,408,499))THEN requests ELSE 0 END AS error_requests
 	  FROM nginx_webappaccessdailylog where log_day = date('{0}')) as a
 GROUP BY webserver
-""".format(populate_log_day.strftime("%Y-%m-%d"))
+""".format(
+                populate_log_day.strftime("%Y-%m-%d")
+            )
             with connection.cursor() as cursor:
                 logger.info("Populate nginx access daily report.sql = {}".format(sql))
                 cursor.execute(sql)
@@ -1304,6 +1616,6 @@ GROUP BY webserver
             populate_log_day += timedelta(days=1)
 
     class Meta:
-        unique_together = [["log_day","webserver"]]
-        index_together = [["log_day","webapp"],["webapp"]]
+        unique_together = [["log_day", "webserver"]]
+        index_together = [["log_day", "webapp"], ["webapp"]]
         get_latest_by = "log_day"
