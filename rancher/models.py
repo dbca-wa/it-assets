@@ -1,11 +1,9 @@
 import subprocess
-import sys
 import imp
 import json
 import logging
 import re
 import itertools
-import traceback
 
 from django.db import models,transaction
 from django.conf import settings
@@ -13,7 +11,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.urls import reverse
 from django.utils import timezone
 from django.core.exceptions import ValidationError,FieldDoesNotExist
-from django.db.models.signals import pre_save,pre_delete,m2m_changed,post_save,post_delete
+from django.db.models.signals import pre_save,pre_delete,m2m_changed,post_save
 from django.dispatch import receiver
 
 from registers.models import ITSystem
@@ -21,6 +19,7 @@ from . import utils
 from .utils import set_field
 
 logger = logging.getLogger(__name__)
+
 
 class DbObjectMixin(object):
     """

@@ -1,5 +1,6 @@
-from django.urls import reverse,resolve
+from django.urls import reverse
 from django.utils.html import mark_safe
+
 
 def _get_change_url(self,obj):
     if not obj:
@@ -7,6 +8,7 @@ def _get_change_url(self,obj):
     if not self.__class__._change_url_name:
         self.__class__._change_url_name = 'admin:{}_{}_change'.format(obj.__class__._meta.app_label,obj.__class__._meta.model_name)
     return  reverse(self.__class__._change_url_name, args=(obj.id,))
+
 
 def add_changelink(field_name):
     def _decorator(cls):
@@ -21,7 +23,7 @@ def add_changelink(field_name):
                     return mark_safe("<A href='{}'>{}</A>".format(self.get_change_url(obj),val))
                 else:
                     return val
-        
+
         def _get_field_display(self,obj,name,link=False):
             if not obj:
                 return ""
@@ -53,7 +55,7 @@ def add_changelink(field_name):
             index = cls.readonly_fields.index(field_name)
         except:
             return cls
-    
+
         name = cls.readonly_fields[index]
         #rename the name to avoid confliction
         new_name = "_{}_".format(name)
@@ -81,7 +83,7 @@ setattr({1},"short_description",'{0}')
                 cls.fields[index1] = new_name
             except:
                 pass
-    
+
         return cls
     return _decorator
 
@@ -102,7 +104,7 @@ def many2manyinline(field_name):
                     return mark_safe("<A href='{}'>{}</A>".format(self.get_change_url(target),val))
                 else:
                     return val
-        
+
         def _get_field_display(self,obj,name,link=False):
             if not obj:
                 return ""
@@ -123,11 +125,11 @@ def many2manyinline(field_name):
                         return val
 
         cls._change_url_name = None
-            
+
         cls.get_field = _get_field
         cls.get_field_display = _get_field_display
         cls.get_change_url = _get_change_url
-    
+
         first = True
         if cls.readonly_fields:
             readonly_fields = list(cls.readonly_fields)
@@ -177,6 +179,6 @@ setattr({1},"short_description",'{0}')
             cls.readonly_fields = readonly_fields
         if fields:
             cls.fields = fields
-    
+
         return cls
     return _decorator

@@ -39,6 +39,8 @@ django-csp = "3.7"
 [tool.poetry.dev-dependencies]
 ipython = "^7.31.1"
 ipdb = "^0.13.3"
+ruff = "^0.0.23"
+black = "^22.8.0"
 
 [build-system]
 requires = ["poetry>=1.1.13"]

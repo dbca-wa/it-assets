@@ -1,6 +1,6 @@
 import json
 from django import forms
-from django.utils.html import format_html, mark_safe
+
 
 class ReadonlyWidget(forms.HiddenInput):
 

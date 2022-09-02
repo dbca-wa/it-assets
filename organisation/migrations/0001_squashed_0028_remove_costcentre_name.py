@@ -7,7 +7,6 @@ import django.contrib.postgres.fields.citext
 import django.contrib.postgres.fields.jsonb
 from django.db import migrations, models
 import django.db.models.deletion
-import organisation.utils
 
 
 class Migration(migrations.Migration):

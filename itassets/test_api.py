@@ -1,9 +1,6 @@
 from django.contrib.auth.models import User
 from django.test import TestCase, Client
 from mixer.backend.django import mixer
-
-from django.urls import reverse
-
 import random
 import string
 from uuid import uuid1

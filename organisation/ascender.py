@@ -320,7 +320,7 @@ def ascender_db_import(employee_iter=None):
                         # We can't generate a unique email with the supplied information; abort and send a note to the admins.
                         # This alert should pick up instances where the function can't match any existing CC, manager or location
                         # and allow manual intervention.
-                        subject = f"ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
+                        subject = "ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
                         text_content = f"Ascender record:\n{job}\n"
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
