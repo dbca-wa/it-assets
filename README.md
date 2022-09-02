@@ -49,4 +49,4 @@ Start with `pip install coverage`. Run unit tests and obtain test coverage as fo
 
 To build a new Docker image from the `Dockerfile`:
 
-    docker image build -t dbcawa/it-assets .
+    docker image build -t ghcr.io/dbca-wa/it-assets .
