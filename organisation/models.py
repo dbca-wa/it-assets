@@ -1249,7 +1249,7 @@ class Location(models.Model):
     This model has largely been deprecated from usage.
     """
     name = models.CharField(max_length=256, unique=True)
-    address = models.TextField(unique=True, blank=True)
+    address = models.TextField(blank=True)
     pobox = models.TextField(blank=True, verbose_name='PO Box')
     phone = models.CharField(max_length=128, null=True, blank=True)
     fax = models.CharField(max_length=128, null=True, blank=True)
