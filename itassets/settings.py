@@ -255,7 +255,7 @@ LOGGING = {
     'loggers': {
         '': {
             'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'DEBUG' if DEBUG else 'WARNING',
         },
         'itassets': {
             'handlers': ['console'],

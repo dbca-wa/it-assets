@@ -1,20 +1,19 @@
-from datetime  import datetime,timedelta
 import re
 import logging
 import traceback
 
 from django.db.models import F,Q
-from django.db import transaction
 from django.conf import settings
 from django.utils import timezone
 
-from data_storage import LockSession,exceptions
+from data_storage import LockSession
 
 from . import models
 from . import utils
 from registers.models import ITSystem
 
 logger = logging.getLogger(__name__)
+
 
 def synchronize_logharvester(func):
     def _wrapper(*args,**kwargs):
@@ -26,6 +25,7 @@ def synchronize_logharvester(func):
                 with LockSession(containerlog_harvester.get_client(),3600 * 3) as lock_session3:
                     func(*args,**kwargs)
     return _wrapper
+
 
 def _reset_workload_latestcontainers(workloads=None):
     """
@@ -246,7 +246,7 @@ def reset_workloads_property():
             ))
             obj.workloads = workloads
             obj.save(update_fields=["workloads"])
-        
+
 def _clean_containers():
     """
     clean all containers and container logs,
@@ -385,7 +385,7 @@ def clean_expired_containers(cluster=None):
 
 def clean_expired_containerlogs():
     expired_time = timezone.now() - settings.RANCHER_CONTAINERLOG_EXPIRED
-    
+
     deleted_rows = models.ContainerLog.objects.filter(logtime__lt=expired_time).delete()
     logger.info("Delete {} objects. {}".format(deleted_rows[0]," , ".join( "{}={}".format(k,v) for k,v in deleted_rows[1].items())))
 
@@ -426,7 +426,7 @@ def delete_cluster(idorname):
 
 def clean_orphan_projects(cluster = None):
     """
-    cluster can be 
+    cluster can be
       1. None: means all clusters
       2. models.Cluster instance
       3. models.Cluster id
@@ -465,7 +465,7 @@ def clean_orphan_projects(cluster = None):
 
 def clean_orphan_namespaces(cluster = None):
     """
-    cluster can be 
+    cluster can be
       1. None: means all clusters
       2. models.Cluster instance
       3. models.Cluster id
@@ -595,13 +595,13 @@ def set_workload_itsystem(refresh=False,qs=None):
 
                 if not  synonyms:
                     continue
-    
+
                 synonyms.sort(reverse=True,key=lambda o:len(o))
                 for synonym in synonyms:
                     system_re = re.compile( "{}(?P<api>api)?(-(?P<version>[a-z0-9]+(-[a-z0-9]+)*))?\.(dbca|dpaw)\.wa\.gov\.au".format(synonym.lower()))
                     m = system_re.search(hostname)
                     if m:
-                        #the host name matchs the synonym. 
+                        #the host name matchs the synonym.
                         if itsystem:
                             if len(m.group("version")) < len(version):
                                 #found another itsystem which version's length is less than the previous found it system. use the current it system as the it system linked to the workload
@@ -629,7 +629,7 @@ def set_workload_itsystem(refresh=False,qs=None):
 
     #update other workloads
     for workload in qs.exclude(id__in=processed_ids):
-        #find the itsysetm of a workload from the web server workload which is belonging to the same image family 
+        #find the itsysetm of a workload from the web server workload which is belonging to the same image family
         wl = models.Workload.objects.filter(containerimage__imagefamily=workload.containerimage.imagefamily,itsystem__isnull=False).first()
         if wl:
             workload.itsystme = wl.itsystem
@@ -740,7 +740,7 @@ def update_resource_dependent_tree(workload,wl_cache={},dependency_cache={},rene
             if dep_wl.id not in dep_ids:
                 dep_wls.append(dep_wl)
                 dep_ids.add(dep_wl.id)
-    
+
     while dep_wls:
         _update_tree(dep_wls.pop(0))
 
@@ -748,7 +748,7 @@ def update_resource_dependent_tree(workload,wl_cache={},dependency_cache={},rene
 def sync_dependent_tree(workload_changetime=None,cluster_lock_sessions = None,rescan=False,rescan_resource=False,rescan_dependency=False):
     """
     Sync the dependent tree if required.
-    This function is synchronized against the rancher configuration storage 
+    This function is synchronized against the rancher configuration storage
     cluster_lock_sessions is a list of tuple(cluster, cluster_lock_session)
     workload_changetime if not none, the workloads which were changed after latest_workload_changetime will be processed
     """
@@ -764,14 +764,14 @@ def sync_dependent_tree(workload_changetime=None,cluster_lock_sessions = None,re
         def _renew_locks():
             for cluster,lock_session in cluster_lock_sessions:
                 lock_session.renew_if_needed()
-    
+
         scan_time = timezone.now()
         scan_modules = list(models.EnvScanModule.objects.filter(active=True).order_by("-priority"))
         qs = models.Workload.objects.filter(cluster__in=[o[0] for o in cluster_lock_sessions])
         if workload_changetime:
             qs = qs.filter(Q(updated__gte=workload_changetime) | Q(deleted__gte=workload_changetime))
         qs = qs.order_by("cluster__name","namespace__name","name")
-    
+
         wl_cache = {}
         dependency_cache = {}
         wls = []
@@ -782,18 +782,18 @@ def sync_dependent_tree(workload_changetime=None,cluster_lock_sessions = None,re
                 wl.scan_resource(rescan = rescan_resource,scan_modules = scan_modules,scan_time=scan_time)
             except:
                 logger.error("Failed to scan the resource of the workload({}).{}".format(wl,traceback.format_exc()))
-            
+
             _renew_locks()
             wl_cache[wl.id] = wl
             wls.append(wl)
-    
+
         #rescan dependency if required
         for wl in wls:
             logger.debug("Scan dependency for workload({}<{}>)".format(wl,wl.id))
             wl.scan_dependency(rescan=rescan_dependency,f_renew_lock=_renew_locks)
 
 
-        # repopulate the dependent tree 
+        # repopulate the dependent tree
         dep_wlids = set()
         dep_wls = []
         now = timezone.now()

@@ -1,4 +1,5 @@
 node_modules/
+.ruff_cache/
 markdown_output/
 virtualenv/
 venv/

@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from django.conf import settings
+from django.core import mail
 from django.core.management.base import BaseCommand
 import logging
 
@@ -21,63 +23,77 @@ class Command(BaseCommand):
         logger.info('Comparing Department Users to Azure AD user accounts')
         for az in azure_users:
             if az['mail'] and az['displayName']:  # Azure object has an email address and a display name; proceed.
-                if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
-                    # No existing DepartmentUser is linked to this Azure AD user.
-                    # NOTE: a department user with matching email may already exist with a different azure_guid.
-                    # If so, return a warning and skip that user.
-                    # We'll need to correct this issue manually.
-                    if DepartmentUser.objects.filter(email=az['mail'], azure_guid__isnull=False).exists():
-                        existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
-                        logger.warning(
-                            f"Skipped {az['mail']}: email exists and already associated with Azure ObjectId {existing_user.azure_guid} (this ObjectId is {az['objectId']})"
-                        )
-                        continue  # Skip to the next Azure user.
+                try:
+                    if not DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
+                        # No existing DepartmentUser is linked to this Azure AD user.
+                        # NOTE: a department user with matching email may already exist with a different azure_guid.
+                        # If so, return a warning and skip that user.
+                        # We'll need to correct this issue manually.
+                        if DepartmentUser.objects.filter(email=az['mail'], azure_guid__isnull=False).exists():
+                            existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
+                            logger.warning(
+                                f"Skipped {az['mail']}: email exists and already associated with Azure ObjectId {existing_user.azure_guid} (this ObjectId is {az['objectId']})"
+                            )
+                            continue  # Skip to the next Azure user.
 
-                    # A department user with matching email may already exist in IT Assets with no azure_guid.
-                    # If so, associate the Azure AD objectId with that user.
-                    if DepartmentUser.objects.filter(email=az['mail'], azure_guid__isnull=True).exists():
-                        existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
-                        existing_user.azure_guid = az['objectId']
+                        # A department user with matching email may already exist in IT Assets with no azure_guid.
+                        # If so, associate the Azure AD objectId with that user.
+                        if DepartmentUser.objects.filter(email=az['mail'], azure_guid__isnull=True).exists():
+                            existing_user = DepartmentUser.objects.filter(email=az['mail']).first()
+                            existing_user.azure_guid = az['objectId']
+                            existing_user.azure_ad_data = az
+                            existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
+                            existing_user.update_from_azure_ad_data()  # This method calls save()
+                            logger.info(f"Linked existing user {az['mail']} with Azure objectId {az['objectId']}")
+                            continue  # Skip to the next Azure user.
+
+                        # Only create a new DepartmentUser instance if the Azure AD account has >0 licences assigned to it.
+                        if az['assignedLicenses']:
+                            if az['companyName'] and CostCentre.objects.filter(code=az['companyName']).exists():
+                                cost_centre = CostCentre.objects.get(code=az['companyName'])
+                            else:
+                                cost_centre = None
+
+                            if az['officeLocation'] and Location.objects.filter(name=az['officeLocation']).exists():
+                                location = Location.objects.get(name=az['officeLocation'])
+                            else:
+                                location = None
+
+                            new_user = DepartmentUser.objects.create(
+                                azure_guid=az['objectId'],
+                                azure_ad_data=az,
+                                azure_ad_data_updated=datetime.now(timezone.utc),
+                                active=az['accountEnabled'],
+                                email=az['mail'],
+                                name=az['displayName'],
+                                given_name=az['givenName'],
+                                surname=az['surname'],
+                                title=az['jobTitle'],
+                                telephone=az['telephoneNumber'],
+                                mobile_phone=az['mobilePhone'],
+                                employee_id=az['employeeId'],
+                                cost_centre=cost_centre,
+                                location=location,
+                                dir_sync_enabled=az['onPremisesSyncEnabled'],
+                            )
+                            logger.info(f'Created new department user {new_user}')
+                    elif DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
+                        # An existing DepartmentUser is linked to this Azure AD user.
+                        # Update the existing DepartmentUser object fields with values from Azure.
+                        existing_user = DepartmentUser.objects.get(azure_guid=az['objectId'])
                         existing_user.azure_ad_data = az
                         existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                         existing_user.update_from_azure_ad_data()  # This method calls save()
-                        logger.info(f"Linked existing user {az['mail']} with Azure objectId {az['objectId']}")
-                        continue  # Skip to the next Azure user.
-
-                    # Only create a new DepartmentUser instance if the Azure AD account has >0 licences assigned to it.
-                    if az['assignedLicenses']:
-                        if az['companyName'] and CostCentre.objects.filter(code=az['companyName']).exists():
-                            cost_centre = CostCentre.objects.get(code=az['companyName'])
-                        else:
-                            cost_centre = None
-
-                        if az['officeLocation'] and Location.objects.filter(name=az['officeLocation']).exists():
-                            location = Location.objects.get(name=az['officeLocation'])
-                        else:
-                            location = None
-
-                        new_user = DepartmentUser.objects.create(
-                            azure_guid=az['objectId'],
-                            azure_ad_data=az,
-                            azure_ad_data_updated=datetime.now(timezone.utc),
-                            active=az['accountEnabled'],
-                            email=az['mail'],
-                            name=az['displayName'],
-                            given_name=az['givenName'],
-                            surname=az['surname'],
-                            title=az['jobTitle'],
-                            telephone=az['telephoneNumber'],
-                            mobile_phone=az['mobilePhone'],
-                            employee_id=az['employeeId'],
-                            cost_centre=cost_centre,
-                            location=location,
-                            dir_sync_enabled=az['onPremisesSyncEnabled'],
-                        )
-                        logger.info(f'Created new department user {new_user}')
-                elif DepartmentUser.objects.filter(azure_guid=az['objectId']).exists():
-                    # An existing DepartmentUser is linked to this Azure AD user.
-                    # Update the existing DepartmentUser object fields with values from Azure.
-                    existing_user = DepartmentUser.objects.get(azure_guid=az['objectId'])
-                    existing_user.azure_ad_data = az
-                    existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                    existing_user.update_from_azure_ad_data()  # This method calls save()
+                except:
+                    # In the event of an exception, fail gracefully and alert the admins.
+                    subject = f"AZURE AD SYNC: exception during sync of Azure AD account (object {az['objectId']})"
+                    logger.error(subject)
+                    message = f"Azure data:\n{az}"
+                    html_message = f"<p>Azure data:</p><p>{az}</p>"
+                    mail.send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=settings.NOREPLY_EMAIL,
+                        recipient_list=settings.ADMIN_EMAILS,
+                        html_message=html_message,
+                    )

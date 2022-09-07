@@ -521,7 +521,7 @@ class DepartmentUser(models.Model):
                             'ascender_field': 'job_end_date',
                             'old_value': account_expiration_date.strftime("%m/%d/%Y") if account_expiration_date else None,
                             'new_value': job_end_date.strftime("%m/%d/%Y"),
-                            'description': f'Set expiry date for onprem AD account',
+                            'description': 'Set expiry date for onprem AD account',
                         },
                     )
 
@@ -563,7 +563,7 @@ class DepartmentUser(models.Model):
                             'ascender_field': 'job_end_date',
                             'old_value': account_expiration_date.strftime("%m/%d/%Y"),
                             'new_value': None,
-                            'description': f'Set expiry date for onprem AD account',
+                            'description': 'Set expiry date for onprem AD account',
                         },
                     )
 
@@ -1249,7 +1249,7 @@ class Location(models.Model):
     This model has largely been deprecated from usage.
     """
     name = models.CharField(max_length=256, unique=True)
-    address = models.TextField(unique=True, blank=True)
+    address = models.TextField(blank=True)
     pobox = models.TextField(blank=True, verbose_name='PO Box')
     phone = models.CharField(max_length=128, null=True, blank=True)
     fax = models.CharField(max_length=128, null=True, blank=True)
