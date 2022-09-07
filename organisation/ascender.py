@@ -264,6 +264,7 @@ def ascender_db_import(employee_iter=None):
                         location = Location.objects.create(
                             name=job['geo_location_desc'],
                             ascender_desc=job['geo_location_desc'],
+                            address=job['geo_location_desc'],
                         )
                         subject = f"ASCENDER SYNC: create new Azure AD user process created new location, description {job['geo_location_desc']}"
                         LOGGER.info(subject)
