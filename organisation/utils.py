@@ -59,6 +59,51 @@ def title_except(
     return ' '.join(words_title)
 
 
+def ms_graph_subscribed_skus(token=None):
+    """Query the Microsoft Graph REST API for a list of commercial licence subscriptions.
+    To map licence names against skuId, reference:
+    https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/licensing-service-plan-reference
+    """
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+    }
+    url = "https://graph.microsoft.com/v1.0/subscribedSkus"
+    skus = []
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    j = resp.json()
+
+    while '@odata.nextLink' in j:
+        skus = skus + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    skus = skus + j['value']  # Final page.
+    return skus
+
+
+def ms_graph_subscribed_sku(sku_id, token=None):
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails.
+        return None
+
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+    }
+    azure_tenant_id = os.environ["AZURE_TENANT_ID"]
+    url = f"https://graph.microsoft.com/v1.0/subscribedSkus/{azure_tenant_id}_{sku_id}"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def ms_graph_users(licensed=False):
     """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
@@ -75,6 +120,7 @@ def ms_graph_users(licensed=False):
     url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true&$expand=manager($levels=1;$select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
     j = resp.json()
 
     while '@odata.nextLink' in j:
