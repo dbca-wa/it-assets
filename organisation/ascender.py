@@ -11,7 +11,7 @@ import string
 
 from itassets.utils import ms_graph_client_token
 from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location
-from organisation.utils import title_except
+from organisation.utils import title_except, ms_graph_subscribed_sku
 
 LOGGER = logging.getLogger('organisation')
 TZ = pytz.timezone(settings.TIME_ZONE)
@@ -235,6 +235,7 @@ def ascender_db_import(employee_iter=None):
                     {job}"""
                     msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                     msg.send(fail_silently=True)
+
                 # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
                     job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
@@ -246,15 +247,36 @@ def ascender_db_import(employee_iter=None):
                     diff = job_start_date - today
                     if diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
                         job_start_date = None  # Start start exceeds our limit, clear this so that we don't create an AD account yet.
-                # Rule: user must have a valid M365 licence type recorded.
+
+                # Rule: user must have a valid M365 licence type recorded, plus we need to have an available M365 licence to allocate.
+                # Short circuit: if we have no available licences of the required type, abort and send a note to the admins.
+                token = ms_graph_client_token()
                 if job['licence_type']:
                     if job['licence_type'] == 'ONPUL':
                         licence_type = 'On-premise'
+                        subscription = ms_graph_subscribed_sku(settings.M365_E5_SKU)
+                        if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
+                            subject = "ASCENDER SYNC: create new Azure AD user aborted, no onprem licences available"
+                            text_content = f"Ascender record:\n{job}\n"
+                            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                            msg.send(fail_silently=True)
+                            LOGGER.info(subject)
+                            continue
                     elif job['licence_type'] == 'CLDUL':
                         licence_type = 'Cloud'
+                        subscription = ms_graph_subscribed_sku(settings.M365_F3_SKU)
+                        if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
+                            subject = "ASCENDER SYNC: create new Azure AD user aborted, no Cloud licences available"
+                            text_content = f"Ascender record:\n{job}\n"
+                            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                            msg.send(fail_silently=True)
+                            LOGGER.info(subject)
+                            continue
+
                 # Rule: user must have a manager recorded, and that manager must exist in our database.
                 if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
                     manager = DepartmentUser.objects.get(employee_id=job['manager_emp_no'])
+
                 # Rule: user must have a physical location recorded, and that location must exist in our database.
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
@@ -281,6 +303,7 @@ def ascender_db_import(employee_iter=None):
                         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
                         msg.send(fail_silently=True)
 
+                # If we have everything we need, embark on setting up the new user account.
                 if cc and job_start_date and licence_type and manager and location:
                     email = None
                     mail_nickname = None
@@ -334,7 +357,6 @@ def ascender_db_import(employee_iter=None):
                     p = list('Pass1234' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12)))
                     random.shuffle(p)
                     password = ''.join(p)
-                    token = ms_graph_client_token()
                     headers = {
                         "Authorization": "Bearer {}".format(token["access_token"]),
                         "Content-Type": "application/json",
@@ -434,14 +456,14 @@ def ascender_db_import(employee_iter=None):
                         if licence_type == "On-premise":
                             data = {
                                 "addLicenses": [
-                                    {"skuId": "06ebc4ee-1bb5-47dd-8120-11324bc54e06", "disabledPlans": []},  # MICROSOFT 365 E5
+                                    {"skuId": settings.M365_E5_SKU, "disabledPlans": []},
                                 ],
                                 "removeLicenses": [],
                             }
                         elif licence_type == "Cloud":
                             data = {
                                 "addLicenses": [
-                                    {"skuId": "66b55226-6b4f-492c-910c-a3b7a3c9d993", "disabledPlans": ['4a82b400-a79f-41a4-b4e2-e94f5787b113']},  # MICROSOFT 365 F3
+                                    {"skuId": settings.M365_F3_SKU, "disabledPlans": ['4a82b400-a79f-41a4-b4e2-e94f5787b113']},
                                     {"skuId": "19ec0d23-8335-4cbd-94ac-6050e30712fa", "disabledPlans": []},  # EXCHANGE ONLINE (PLAN 2)
                                     {"skuId": "2347355b-4e81-41a4-9c22-55057a399791", "disabledPlans": ['176a09a6-7ec5-4039-ac02-b2791c6ba793']},  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
                                 ],
