@@ -256,21 +256,15 @@ def ascender_db_import(employee_iter=None):
                         licence_type = 'On-premise'
                         subscription = ms_graph_subscribed_sku(settings.M365_E5_SKU)
                         if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
-                            subject = "ASCENDER SYNC: create new Azure AD user aborted, no onprem licences available"
-                            text_content = f"Ascender record:\n{job}\n"
-                            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                            msg.send(fail_silently=True)
-                            LOGGER.info(subject)
+                            subject = f"ASCENDER SYNC: create new Azure AD user aborted, no onprem licences available (employee ID {eid})"
+                            LOGGER.warning(subject)
                             continue
                     elif job['licence_type'] == 'CLDUL':
                         licence_type = 'Cloud'
                         subscription = ms_graph_subscribed_sku(settings.M365_F3_SKU)
                         if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
-                            subject = "ASCENDER SYNC: create new Azure AD user aborted, no Cloud licences available"
-                            text_content = f"Ascender record:\n{job}\n"
-                            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                            msg.send(fail_silently=True)
-                            LOGGER.info(subject)
+                            subject = "ASCENDER SYNC: create new Azure AD user aborted, no Cloud licences available (employee ID {eid})"
+                            LOGGER.warning(subject)
                             continue
 
                 # Rule: user must have a manager recorded, and that manager must exist in our database.
@@ -280,7 +274,7 @@ def ascender_db_import(employee_iter=None):
                 # Rule: user must have a physical location recorded, and that location must exist in our database.
                 if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                     location = Location.objects.get(ascender_desc=job['geo_location_desc'])
-                else:
+                elif job['geo_location_desc'] and not Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():  # geo_location_desc must at least have a value.
                     # Attempt to manually create a new location description from Ascender data, and send a note to admins.
                     try:
                         location = Location.objects.create(
