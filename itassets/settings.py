@@ -106,6 +106,7 @@ VERSION_NO = '2.3.61'
 # See also the DepartmentUser.MS_LICENCE_SKUS for other SKU product names.
 M365_E5_SKU = '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
 M365_F3_SKU = '66b55226-6b4f-492c-910c-a3b7a3c9d993'
+LICENCE_NOTIFY_THRESHOLD = env('LICENCE_NOTIFY_THRESHOLD', 5)
 
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
