@@ -257,20 +257,14 @@ def ascender_db_import(employee_iter=None):
                         subscription = ms_graph_subscribed_sku(settings.M365_E5_SKU)
                         if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
                             subject = f"ASCENDER SYNC: create new Azure AD user aborted, no onprem licences available (employee ID {eid})"
-                            text_content = f"Ascender record:\n{job}\n"
-                            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                            msg.send(fail_silently=True)
-                            LOGGER.info(subject)
+                            LOGGER.warning(subject)
                             continue
                     elif job['licence_type'] == 'CLDUL':
                         licence_type = 'Cloud'
                         subscription = ms_graph_subscribed_sku(settings.M365_F3_SKU)
                         if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
                             subject = "ASCENDER SYNC: create new Azure AD user aborted, no Cloud licences available (employee ID {eid})"
-                            text_content = f"Ascender record:\n{job}\n"
-                            msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                            msg.send(fail_silently=True)
-                            LOGGER.info(subject)
+                            LOGGER.warning(subject)
                             continue
 
                 # Rule: user must have a manager recorded, and that manager must exist in our database.
