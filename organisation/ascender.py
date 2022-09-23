@@ -180,6 +180,14 @@ def ascender_db_import(employee_iter=None):
     if not employee_iter:
         employee_iter = ascender_employee_fetch()
 
+    # If we're expecting to create new Azure AD accounts, get Microsoft Graph API token and available licences.
+    if settings.ASCENDER_CREATE_AZURE_AD:
+        token = ms_graph_client_token()
+        e5_sku = ms_graph_subscribed_sku(settings.M365_E5_SKU, token)
+        f3_sku = ms_graph_subscribed_sku(settings.M365_F3_SKU, token)
+        eo_sku = ms_graph_subscribed_sku("19ec0d23-8335-4cbd-94ac-6050e30712fa", token)  # EXCHANGE ONLINE (PLAN 2)
+        sec_sku = ms_graph_subscribed_sku("2347355b-4e81-41a4-9c22-55057a399791", token)  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+
     for eid, jobs in employee_iter:
         # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
         job = jobs[0]
@@ -250,20 +258,25 @@ def ascender_db_import(employee_iter=None):
 
                 # Rule: user must have a valid M365 licence type recorded, plus we need to have an available M365 licence to allocate.
                 # Short circuit: if we have no available licences of the required type, abort and send a note to the admins.
-                token = ms_graph_client_token()
                 if job['licence_type']:
                     if job['licence_type'] == 'ONPUL':
                         licence_type = 'On-premise'
-                        subscription = ms_graph_subscribed_sku(settings.M365_E5_SKU)
-                        if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
-                            subject = f"ASCENDER SYNC: create new Azure AD user aborted, no onprem licences available (employee ID {eid})"
+                        if e5_sku['consumedUnits'] >= e5_sku['prepaidUnits']['enabled']:
+                            subject = f"ASCENDER SYNC: create new Azure AD user aborted, no onprem E5 licences available (employee ID {eid})"
                             LOGGER.warning(subject)
                             continue
                     elif job['licence_type'] == 'CLDUL':
                         licence_type = 'Cloud'
-                        subscription = ms_graph_subscribed_sku(settings.M365_F3_SKU)
-                        if subscription['consumedUnits'] >= subscription['prepaidUnits']['enabled']:
-                            subject = "ASCENDER SYNC: create new Azure AD user aborted, no Cloud licences available (employee ID {eid})"
+                        if f3_sku['consumedUnits'] >= f3_sku['prepaidUnits']['enabled']:
+                            subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud F3 licences available (employee ID {eid})"
+                            LOGGER.warning(subject)
+                            continue
+                        if eo_sku['consumedUnits'] >= eo_sku['prepaidUnits']['enabled']:
+                            subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Exchange Online licences available (employee ID {eid})"
+                            LOGGER.warning(subject)
+                            continue
+                        if sec_sku['consumedUnits'] >= sec_sku['prepaidUnits']['enabled']:
+                            subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Security & Compliance licences available (employee ID {eid})"
                             LOGGER.warning(subject)
                             continue
 
