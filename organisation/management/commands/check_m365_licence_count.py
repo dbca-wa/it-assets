@@ -57,14 +57,32 @@ class Command(BaseCommand):
         if f3_enabled - f3_consumed <= threshold:
             send_notification = True
 
+        eo_sku = ms_graph_subscribed_sku("19ec0d23-8335-4cbd-94ac-6050e30712fa", token)  # EXCHANGE ONLINE (PLAN 2)
+        eo_consumed = eo_sku['consumedUnits']
+        eo_enabled = eo_sku['prepaidUnits']['enabled']
+        if eo_enabled - eo_consumed <= threshold:
+            send_notification = True
+
+        sec_sku = ms_graph_subscribed_sku("2347355b-4e81-41a4-9c22-55057a399791", token)  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+        sec_consumed = sec_sku['consumedUnits']
+        sec_enabled = sec_sku['prepaidUnits']['enabled']
+        if sec_enabled - sec_consumed <= threshold:
+            send_notification = True
+
         subject = f"Notification - Microsoft M365 licence availability has dropped to warning threshold ({threshold})"
         message = f"""This is an automated notification regarding Microsoft 365 licence usage availability. User account licence consumption:\n\n
         Microsoft 365 E5 (On-premise): {e5_consumed} / {e5_enabled}\n\n
-        Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_enabled}\n"""
+        Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_enabled}\n
+        Exchange Online (Plan 2): {eo_consumed} / {eo_enabled}\n
+        Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} / {sec_enabled}\n
+        """
         html_message = f"""<p>This is an automated notification regarding Microsoft 365 licence usage availability. User account licence consumption:</p>
         <ul>
         <li>Microsoft 365 E5 (On-premise): {e5_consumed} / {e5_enabled}</li>
-        <li>Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_enabled}</li></ul>"""
+        <li>Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_enabled}</li>
+        <li>Exchange Online (Plan 2): {eo_consumed} / {eo_enabled}</li>
+        <li>Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} / {sec_enabled}</li>
+        </ul>"""
 
         if send_notification:
             mail.send_mail(
