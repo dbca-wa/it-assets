@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core import mail
 from django.core.management.base import BaseCommand, CommandError
+import logging
 
 from itassets.utils import ms_graph_client_token
 from organisation.utils import ms_graph_subscribed_sku
@@ -85,6 +86,8 @@ class Command(BaseCommand):
         </ul>"""
 
         if send_notification:
+            logger = logging.getLogger('organisation')
+            logger.warning(subject)
             mail.send_mail(
                 subject=subject,
                 message=message,

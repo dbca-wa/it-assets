@@ -357,7 +357,7 @@ def ascender_db_import(employee_iter=None):
                         msg.send(fail_silently=True)
                         continue
 
-                    display_name = f"{job['preferred_name'].title()} {job['surname'].title()}"
+                    display_name = f"{job['preferred_name'].title().strip()} {job['surname'].title().strip()}"
                     title = title_except(job['occup_pos_title'])
 
                     # Ensure that the generated password meets our security complexity requirements.
