@@ -50,7 +50,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
-        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'division', 'unit', 'account_type',
+        'email', 'name', 'title', 'employee_id', 'active', 'cost_centre', 'division', 'unit', 'm365_licence', 'account_type',
     )
     list_filter = (AssignedLicenceFilter, 'active', 'account_type', 'shared_account')
     model_description = DepartmentUser.__doc__
@@ -161,6 +161,9 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
         if instance.get_extended_leave():
             return instance.get_extended_leave().strftime('%d-%B-%Y')
         return ''
+
+    def m365_licence(self, instance):
+        return instance.get_licence()
 
     def get_urls(self):
         urls = super(DepartmentUserAdmin, self).get_urls()
