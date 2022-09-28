@@ -117,7 +117,8 @@ def ms_graph_users(licensed=False):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true&$expand=manager($levels=1;$select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
+    #url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true&$expand=manager($select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
