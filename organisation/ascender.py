@@ -317,28 +317,28 @@ def ascender_db_import(employee_iter=None):
 
                     # Make no assumption about names (presence or absence). Remove any spaces within name text.
                     if job['preferred_name']:
-                        pref = job['preferred_name'].lower().replace(' ', '')
+                        pref_name = job['preferred_name'].lower().replace(' ', '')
                     else:
-                        pref = ''
+                        pref_name = ''
                     if job['first_name']:
-                        first = job['first_name'].lower().replace(' ', '')
+                        first_name = job['first_name'].lower().replace(' ', '')
                     else:
-                        first = ''
+                        first_name = ''
                     if job['second_name']:
                         sec = job['second_name'].lower().replace(' ', '')
                     else:
                         sec = ''
                     if job['surname']:
-                        sur = job['surname'].lower().replace(' ', '')
+                        surname = job['surname'].lower().replace(' ', '')
                     else:
-                        sur = ''
+                        surname = ''
 
                     # Patterns used for new email address generation, in order of preference:
                     email_patterns = [
-                        f"{pref}.{sur}@dbca.wa.gov.au",
-                        f"{first}.{sur}@dbca.wa.gov.au",
-                        f"{pref}{sec}.{sur}@dbca.wa.gov.au",
-                        f"{first}{sec}.{sur}@dbca.wa.gov.au",
+                        f"{pref_name}.{surname}@dbca.wa.gov.au",
+                        f"{first_name}.{surname}@dbca.wa.gov.au",
+                        f"{pref_name}{sec}.{surname}@dbca.wa.gov.au",
+                        f"{first_name}{sec}.{surname}@dbca.wa.gov.au",
                     ]
 
                     for pattern in email_patterns:
@@ -357,7 +357,14 @@ def ascender_db_import(employee_iter=None):
                         msg.send(fail_silently=True)
                         continue
 
-                    display_name = f"{job['preferred_name'].title().strip()} {job['surname'].title().strip()}"
+                    # Make no assumption about names (presence or absence). Set names to title case and strip trailing space.
+                    if job['preferred_name'] and job['surname']:
+                        display_name = f"{job['preferred_name'].title().strip()} {job['surname'].title().strip()}"
+                    elif job['first_name'] and job['surname']:
+                        display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
+                    else:  # No preferred/first name recorded.
+                        LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted, invalid name values (employee ID {eid})")
+                        continue
                     title = title_except(job['occup_pos_title'])
 
                     # Ensure that the generated password meets our security complexity requirements.
