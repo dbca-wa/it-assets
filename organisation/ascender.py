@@ -333,37 +333,45 @@ def ascender_db_import(employee_iter=None):
                     else:
                         surname = ''
 
-                    # Patterns used for new email address generation, in order of preference:
-                    email_patterns = [
-                        f"{pref_name}.{surname}@dbca.wa.gov.au",
-                        f"{first_name}.{surname}@dbca.wa.gov.au",
-                        f"{pref_name}{sec}.{surname}@dbca.wa.gov.au",
-                        f"{first_name}{sec}.{surname}@dbca.wa.gov.au",
-                    ]
-
-                    for pattern in email_patterns:
-                        if not DepartmentUser.objects.filter(email=pattern).exists():
-                            email = pattern
-                            mail_nickname = pattern.split("@")[0]
-                            break
-
-                    if not email and mail_nickname:
-                        # We can't generate a unique email with the supplied information; abort and send a note to the admins.
-                        # This alert should pick up instances where the function can't match any existing CC, manager or location
-                        # and allow manual intervention.
-                        subject = "ASCENDER SYNC: create new Azure AD user failed, unable to generate unique email"
-                        text_content = f"Ascender record:\n{job}\n"
-                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                        msg.send(fail_silently=True)
+                    # New email address generation.
+                    if job['preferred_name'] and job['surname']:
+                        # Patterns used for new email address generation, in order of preference:
+                        email_patterns = [
+                            f"{pref_name}.{surname}@dbca.wa.gov.au",
+                            f"{pref_name}{sec}.{surname}@dbca.wa.gov.au",
+                        ]
+                        for pattern in email_patterns:
+                            if not DepartmentUser.objects.filter(email=pattern).exists():
+                                email = pattern
+                                mail_nickname = pattern.split("@")[0]
+                                break
+                    elif job['first_name'] and job['surname']:
+                        # Patterns used for new email address generation, in order of preference:
+                        email_patterns = [
+                            f"{first_name}.{surname}@dbca.wa.gov.au",
+                            f"{first_name}{sec}.{surname}@dbca.wa.gov.au",
+                        ]
+                        for pattern in email_patterns:
+                            if not DepartmentUser.objects.filter(email=pattern).exists():
+                                email = pattern
+                                mail_nickname = pattern.split("@")[0]
+                                break
+                    else:  # No preferred/first name recorded.
+                        LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted, invalid name values (employee ID {eid})")
                         continue
 
-                    # Make no assumption about names (presence or absence). Set names to title case and strip trailing space.
+                    if not email and mail_nickname:
+                        # We can't generate a unique email with the supplied information; abort.
+                        LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted at email, invalid name values (employee ID {eid})")
+                        continue
+
+                    # Display name generation. Set names to title case and strip trailing space.
                     if job['preferred_name'] and job['surname']:
                         display_name = f"{job['preferred_name'].title().strip()} {job['surname'].title().strip()}"
                     elif job['first_name'] and job['surname']:
                         display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
                     else:  # No preferred/first name recorded.
-                        LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted, invalid name values (employee ID {eid})")
+                        LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted at display name, invalid name values (employee ID {eid})")
                         continue
                     title = title_except(job['occup_pos_title'])
 
