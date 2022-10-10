@@ -315,26 +315,15 @@ def ascender_db_import(employee_iter=None):
                     email = None
                     mail_nickname = None
 
-                    # Make no assumption about names (presence or absence). Remove any spaces within name text.
-                    if job['preferred_name']:
-                        pref_name = job['preferred_name'].lower().replace(' ', '')
-                    else:
-                        pref_name = ''
-                    if job['first_name']:
-                        first_name = job['first_name'].lower().replace(' ', '')
-                    else:
-                        first_name = ''
-                    if job['second_name']:
-                        sec = job['second_name'].lower().replace(' ', '')
-                    else:
-                        sec = ''
-                    if job['surname']:
-                        surname = job['surname'].lower().replace(' ', '')
-                    else:
-                        surname = ''
-
                     # New email address generation.
+                    # Make no assumption about names (presence or absence). Remove any spaces within name text.
                     if job['preferred_name'] and job['surname']:
+                        pref_name = job['preferred_name'].lower().replace(' ', '')
+                        surname = job['surname'].lower().replace(' ', '')
+                        if job['second_name']:
+                            sec = job['second_name'].lower().replace(' ', '')
+                        else:
+                            sec = ''
                         # Patterns used for new email address generation, in order of preference:
                         email_patterns = [
                             f"{pref_name}.{surname}@dbca.wa.gov.au",
@@ -346,6 +335,12 @@ def ascender_db_import(employee_iter=None):
                                 mail_nickname = pattern.split("@")[0]
                                 break
                     elif job['first_name'] and job['surname']:
+                        first_name = job['first_name'].lower().replace(' ', '')
+                        surname = job['surname'].lower().replace(' ', '')
+                        if job['second_name']:
+                            sec = job['second_name'].lower().replace(' ', '')
+                        else:
+                            sec = ''
                         # Patterns used for new email address generation, in order of preference:
                         email_patterns = [
                             f"{first_name}.{surname}@dbca.wa.gov.au",
@@ -423,7 +418,7 @@ def ascender_db_import(employee_iter=None):
                         data = {
                             "mail": email,
                             "employeeId": eid,
-                            "givenName": job['preferred_name'].title(),
+                            "givenName": job['preferred_name'].title().strip() if job['preferred_name'] else job['first_name'].title().strip(),
                             "surname": job['surname'].title(),
                             "jobTitle": title,
                             "companyName": cc.code,
@@ -577,7 +572,7 @@ def ascender_db_import(employee_iter=None):
                         active=False,
                         email=email,
                         name=display_name,
-                        given_name=job['preferred_name'].title(),
+                        given_name=job['preferred_name'].title().strip() if job['preferred_name'] else job['first_name'].title().strip(),
                         surname=job['surname'].title(),
                         title=title,
                         employee_id=eid,
