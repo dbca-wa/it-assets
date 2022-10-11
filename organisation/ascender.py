@@ -222,27 +222,37 @@ def ascender_db_import(employee_iter=None):
                     if job_end_date < date.today():
                         continue
 
-                # Short circuit: if there is no value for licence_type, skip account creation.
-                if not job['licence_type'] or job['licence_type'] == 'NULL':
-                    continue
-
+                # Start parsing required information for new account creation.
                 cc = None
                 job_start_date = None
                 licence_type = None
                 manager = None
                 location = None
 
-                # Rule: user must have a CC recorded, and that CC must exist in our database.
+                # Rule: user must have a Cost Centre recorded (paypoint in Ascender).
                 if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
                     cc = CostCentre.objects.get(ascender_code=job['paypoint'])
-                else:
-                    # Email an alert that a new CC exists.
-                    subject = f"ASCENDER SYNC: create new Azure AD user process encountered new cost centre {job['paypoint']}"
-                    LOGGER.warning(subject)
-                    text_content = f"""Ascender record:\n
-                    {job}"""
-                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
+                elif job['paypoint'] and not CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
+                    # Attempt to automatically create a new CC from Ascender data, and send a notification to admins.
+                    try:
+                        cc = CostCentre.objects.create(
+                            code=job['paypoint'],
+                            ascender_code=job['paypoint'],
+                        )
+                        subject = f"ASCENDER SYNC: create new Azure AD user process generated new cost centre, code {job['paypoint']}"
+                        LOGGER.info(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
+                    except:
+                        # In the event of an error (probably due to a duplicate code), fail gracefully and alert the admins.
+                        subject = f"ASCENDER SYNC: exception during creation of new cost centre in new Azure AD user process, code {job['paypoint']}"
+                        LOGGER.error(subject)
+                        text_content = f"""Ascender record:\n
+                        {job}"""
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
 
                 # Rule: user must have a job start date recorded.
                 if job['job_start_date']:
@@ -279,6 +289,9 @@ def ascender_db_import(employee_iter=None):
                             subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Security & Compliance licences available (employee ID {eid})"
                             LOGGER.warning(subject)
                             continue
+                # Short circuit: if there is no value for licence_type, skip account creation.
+                elif not job['licence_type'] or job['licence_type'] == 'NULL':
+                    continue
 
                 # Rule: user must have a manager recorded, and that manager must exist in our database.
                 if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
@@ -295,7 +308,7 @@ def ascender_db_import(employee_iter=None):
                             ascender_desc=job['geo_location_desc'],
                             address=job['geo_location_desc'],
                         )
-                        subject = f"ASCENDER SYNC: create new Azure AD user process created new location, description {job['geo_location_desc']}"
+                        subject = f"ASCENDER SYNC: create new Azure AD user process generated new location, description {job['geo_location_desc']}"
                         LOGGER.info(subject)
                         text_content = f"""Ascender record:\n
                         {job}"""
@@ -587,6 +600,15 @@ def ascender_db_import(employee_iter=None):
                     # Email the new account's manager the checklist to finish account provision.
                     new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
                     LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
+                else:
+                    if licence_type:  # Everything else can still be False.
+                        # If we had a candidate for a new account creation (they don't currently exist in OIM data, but they have a licence type recorded in Ascender), send a notification to admins.
+                        subject = "ASCENDER SYNC: New account candidate creation skipped"
+                        text_content = f"Employee ID: {eid}, Name: {job['first_name']} {job['surname']},  CC: {cc}, Start date: {job_start_date}, Licence: {licence_type}, Manager: {manager}, Location: {location}"
+                        LOGGER.warning(subject)
+                        LOGGER.info(text_content)
+                        msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+                        msg.send(fail_silently=True)
 
 
 def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date=None):
