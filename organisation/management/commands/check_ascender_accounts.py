@@ -8,5 +8,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
-        logger.info('Querying Ascender database for employee information')
+        logger.info('Running Ascender database import')
         ascender_db_import()
