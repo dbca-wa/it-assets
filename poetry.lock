@@ -868,7 +868,7 @@ test = ["pre-commit", "pytest"]
 
 [[package]]
 name = "types-cryptography"
-version = "3.3.23"
+version = "3.3.23.1"
 description = "Typing stubs for cryptography"
 category = "main"
 optional = false
