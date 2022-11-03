@@ -115,7 +115,7 @@ ASCENDER_DEACTIVATE_EXPIRED = env('ASCENDER_DEACTIVATE_EXPIRED', False)
 ASCENDER_CREATE_AZURE_AD = env('ASCENDER_CREATE_AZURE_AD', False)
 # Flag to set how many days ahead of their start date a new AD account should be created.
 # False == no limit. Value should be an integer value.
-ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env('ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS', False)
+ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env('ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS', -1)
 
 # Settings related to the Ascender SFTP target
 ASCENDER_SFTP_HOST = env('ASCENDER_SFTP_HOST', None)

@@ -232,6 +232,7 @@ def ascender_db_import(employee_iter=None):
             job_start_date = None
             manager = None
             location = None
+            ascender_record = f"{eid} ({job['first_name']} {job['surname']})"
 
             # Rule: user must have a valid M365 licence type recorded, plus we need to have an available M365 licence to allocate.
             # Short circuit: if there is no value for licence_type, skip account creation.
@@ -303,10 +304,11 @@ def ascender_db_import(employee_iter=None):
             # Secondary rule: we might set a limit for the number of days ahead of their starting date which we
             # want to create an Azure AD account. If this value is not set (False/None), assume that there is
             # no limit.
-            if job['job_start_date'] and job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
+            if job['job_start_date'] and job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
                 today = date.today()
                 diff = job_start_date - today
-                if diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
+                if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
+                    LOGGER.info(f"Skipping creation of new Azure AD user for emp ID {ascender_record} (exceeds start date limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days)")
                     continue  # Start start exceeds our limit, abort creating an AD account yet.
 
             # Rule: user must have a physical location recorded, and that location must exist in our database.
@@ -337,7 +339,7 @@ def ascender_db_import(employee_iter=None):
 
             # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
             if settings.DEBUG:
-                LOGGER.info("Skipping creation of new Azure AD user (debug mode)")
+                LOGGER.info(f"Skipping creation of new Azure AD user for emp ID {ascender_record} (debug mode)")
                 continue
 
             # If we have everything we need, embark on setting up the new user account.
