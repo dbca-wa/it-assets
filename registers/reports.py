@@ -88,7 +88,7 @@ def it_system_export(fileobj, it_systems):
         systems = workbook.add_worksheet('IT Systems')
         systems.write_row('A1', (
             'System ID', 'Name', 'Description', 'Status', 'Seasonality',
-            'Availability', 'User groups', 'System type', 'Cost centre', 'Division', 'Owner',
+            'Availability', 'System type', 'Cost centre', 'Division', 'Owner',
             'Technology custodian', 'Information custodian', 'Link', 'Technical documentation',
             'Application server(s)', 'Database server(s)', 'Network storage', 'Backups',
             'BH support', 'AH support', 'User notification', 'Defunct date',
@@ -103,7 +103,6 @@ def it_system_export(fileobj, it_systems):
                 i.get_status_display(),
                 i.get_seasonality_display() if i.seasonality else '',
                 i.get_availability_display() if i.availability else '',
-                ', '.join([str(j) for j in i.user_groups.all()]),
                 i.get_system_type_display() if i.system_type else '',
                 i.cost_centre.code if i.cost_centre else '',
                 i.division_name,
@@ -131,56 +130,13 @@ def it_system_export(fileobj, it_systems):
         systems.set_column('B:B', 45)
         systems.set_column('C:D', 18)
         systems.set_column('E:F', 19)
-        systems.set_column('G:G', 50)
-        systems.set_column('H:H', 30)
-        systems.set_column('I:I', 13)
-        systems.set_column('J:J', 41)
-        systems.set_column('K:M', 21)
-        systems.set_column('N:V', 50)
+        systems.set_column('G:G', 30)
+        systems.set_column('H:H', 13)
+        systems.set_column('I:I', 41)
+        systems.set_column('J:K', 21)
+        systems.set_column('M:V', 50)
         systems.set_column('W:X', 18)
         systems.set_column('Y:AA', 50)
-
-    return fileobj
-
-
-def it_system_hardware_export(fileobj, hardware):
-    with xlsxwriter.Workbook(
-        fileobj,
-        {
-            'in_memory': True,
-            'default_date_format': 'dd-mmm-yyyy HH:MM',
-            'remove_timezone': True,
-        },
-    ) as workbook:
-        hw_sheet = workbook.add_worksheet('IT system hardware')
-        hw_sheet.write_row('A1', (
-            'Hostname', 'Host', 'OS', 'Role', 'Production?', 'EC2 ID', 'Patch group',
-            'IT system ID', 'IT system name', 'IT system CC', 'IT system availability',
-            'IT system custodian', 'IT system owner', 'IT system info custodian'
-        ))
-        row = 1
-        for i in hardware:
-            if i.itsystem_set.all().exclude(status=3).exists():
-                # Write a row for each linked, non-decommissioned ITSystem.
-                for it in i.itsystem_set.all().exclude(status=3):
-                    hw_sheet.write_row(row, 0, [
-                        i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
-                        i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
-                        str(i.patch_group), it.system_id, it.name, str(it.cost_centre),
-                        it.get_availability_display(),
-                        it.technology_custodian.name if it.technology_custodian else '',
-                        it.owner.name if it.owner else '',
-                        it.information_custodian.name if it.information_custodian else ''
-                    ])
-            else:
-                # No IT Systems - just record the hardware details.
-                hw_sheet.write_row(row, 0, [
-                    i.computer.hostname, i.host, i.computer.os_name, i.get_role_display(),
-                    i.production, i.computer.ec2_instance.ec2id if i.computer.ec2_instance else '',
-                    str(i.patch_group)
-                ])
-            row += 1
-        hw_sheet.set_column('A:A', 36)
 
     return fileobj
 
