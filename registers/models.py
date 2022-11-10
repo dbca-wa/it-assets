@@ -1,7 +1,6 @@
 from datetime import date
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-#from django.contrib.postgres.fields import JSONField
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
@@ -131,8 +130,8 @@ class ITSystem(models.Model):
     link = models.CharField(
         max_length=2048, null=True, blank=True, help_text='URL to web application')
     description = models.TextField(blank=True)
-    org_unit = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, null=True, blank=True)
-    cost_centre = models.ForeignKey(CostCentre, on_delete=models.PROTECT, null=True, blank=True)
+    org_unit = models.ForeignKey(OrgUnit, on_delete=models.SET_NULL, null=True, blank=True)
+    cost_centre = models.ForeignKey(CostCentre, on_delete=models.SET_NULL, null=True, blank=True)
     owner = models.ForeignKey(
         DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,
         verbose_name='system owner',
@@ -328,7 +327,7 @@ class StandardChange(models.Model):
         null=True, blank=True, upload_to='uploads/%Y/%m/%d', help_text='Implementation/deployment instructions (attachment)')
     it_systems = models.ManyToManyField(
         ITSystem, blank=True, verbose_name='IT Systems', help_text='IT System(s) affected by the standard change')
-    endorser = models.ForeignKey(DepartmentUser, on_delete=models.PROTECT)
+    endorser = models.ForeignKey(DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True)
     expiry = models.DateField(null=True, blank=True)
 
     def __str__(self):
@@ -375,19 +374,19 @@ class ChangeRequest(models.Model):
         choices=CHANGE_TYPE_CHOICES, default=0, db_index=True, help_text='The change type')
     status = models.SmallIntegerField(choices=STATUS_CHOICES, default=0, db_index=True)
     standard_change = models.ForeignKey(
-        StandardChange, on_delete=models.PROTECT, null=True, blank=True,
+        StandardChange, on_delete=models.SET_NULL, null=True, blank=True,
         help_text='Standard change reference (if applicable)')
     requester = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='requester', null=True, blank=True,
+        DepartmentUser, on_delete=models.SET_NULL, related_name='requester', null=True, blank=True,
         help_text='The person who is requesting this change')
     endorser = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='endorser', null=True, blank=True,
+        DepartmentUser, on_delete=models.SET_NULL, related_name='endorser', null=True, blank=True,
         help_text='The person who will endorse this change prior to CAB')
     implementer = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='implementer', blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, related_name='implementer', blank=True, null=True,
         help_text='The person who will implement this change')
     sme = models.ForeignKey(
-        DepartmentUser, on_delete=models.PROTECT, related_name='sme', blank=True, null=True,
+        DepartmentUser, on_delete=models.SET_NULL, related_name='sme', blank=True, null=True,
         verbose_name='subject matter expert',
         help_text='Optional subject matter expert for this change')
     description = models.TextField(

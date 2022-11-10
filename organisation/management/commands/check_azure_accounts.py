@@ -47,8 +47,9 @@ class Command(BaseCommand):
                             logger.info(f"Linked existing user {az['mail']} with Azure objectId {az['objectId']}")
                             continue  # Skip to the next Azure user.
 
-                        # Only create a new DepartmentUser instance if the Azure AD account has >0 licences assigned to it.
-                        if az['assignedLicenses']:
+                        # Only create a new DepartmentUser instance if the Azure AD account has an E5 or F3 licence assigned.
+                        user_licences = ['MICROSOFT 365 E5', 'MICROSOFT 365 F3']
+                        if az['assignedLicenses'] and any(x in user_licences for x in az['assignedLicenses']):
                             if az['companyName'] and CostCentre.objects.filter(code=az['companyName']).exists():
                                 cost_centre = CostCentre.objects.get(code=az['companyName'])
                             else:
@@ -97,3 +98,12 @@ class Command(BaseCommand):
                         recipient_list=settings.ADMIN_EMAILS,
                         html_message=html_message,
                     )
+
+        logger.info("Checking for invalid Azure GUIDs")
+        azure_guids = [az['objectId'] for az in azure_users]
+        dept_users = DepartmentUser.objects.filter(azure_guid__isnull=False)
+        for user in dept_users:
+            if user.azure_guid not in azure_guids:
+                logger.info(f"Azure GUID {user.azure_guid} invalid, clearing it from {user}")
+                user.azure_guid = None
+                user.save()

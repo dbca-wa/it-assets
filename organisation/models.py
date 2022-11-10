@@ -83,6 +83,7 @@ class DepartmentUser(models.Model):
         '19ec0d23-8335-4cbd-94ac-6050e30712fa': 'EXCHANGE ONLINE (PLAN 2)',
         '2347355b-4e81-41a4-9c22-55057a399791': 'MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW',
         'de376a03-6e5b-42ec-855f-093fb50b8ca5': 'POWER BI PREMIUM PER USER ADD-ON',
+        '295a8eb0-f78d-45c7-8b5b-1eed5ed02dff': 'COMMON AREA PHONE',
     }
     # A map of codes in the EMP_STATUS field to descriptive text.
     EMP_STATUS_MAP = {
