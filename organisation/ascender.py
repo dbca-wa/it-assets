@@ -10,6 +10,7 @@ import requests
 import string
 
 from itassets.utils import ms_graph_client_token
+from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location
 from organisation.utils import title_except, ms_graph_subscribed_sku
 
@@ -125,26 +126,27 @@ def ascender_db_fetch():
 
 def ascender_job_sort_key(record):
     """
-    Sort the job based the score
-    1.the initial score is based on the job's end date
-      if the job is ended, the initial score is populated from the job's end date
-      if the job is not ended , the initial score is populated from tommorrow, that means all not terminated jobs have the same initial score
-    2.secondary score is based on emp_status
+    Returns an integer value to "sort" a job, based on job end date and employment status type.
+    The calculated score will be lower for jobs that have ended, and modified by where the employment
+    status occurs in a ordered list (STATUS_RANKING). Jobs with no end date or with an end date in the
+    future will have the same initial score, and are then modified by the employment status.
+
+    1. The initial score is based on the job's end date (closer date == lower score).
+      - If the job has ended, the initial score is calculated using the job's end date.
+      - If the job is not ended or has no end date recorded, the initial score is calculated from tommorrow's date.
+    2. The score is then modified based on emp_status, with values later in the list scoring higher.
+
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
-    # Initial score from job_end_date
-    score = (
-        (int(record["job_end_date"].replace("-", "")) * 10000)
-        if record["job_end_date"]
-        and record["job_end_date"] <= today.strftime("%Y-%m-%d")
-        else int(tomorrow.strftime("%Y%m%d0000"))
-    )
-    # Second score based emp_status
-    score += (
-        (STATUS_RANKING.index(record["emp_status"]) + 1)
-        if (record["emp_status"] in STATUS_RANKING) else 0
-    ) * 100
+    # Initial score from job_end_date.
+    if record["job_end_date"] and record["job_end_date"] <= today.strftime("%Y-%m-%d"):
+        score = int(record["job_end_date"].replace("-", "")) * 10000
+    else:
+        score = int(tomorrow.strftime("%Y%m%d0000"))
+    # Modify score based on emp_status.
+    if record["emp_status"] and record["emp_status"] in STATUS_RANKING:
+        score += (STATUS_RANKING.index(record["emp_status"]) + 1) * 100
     return score
 
 
@@ -181,10 +183,10 @@ def ascender_db_import(employee_iter=None):
     if settings.ASCENDER_CREATE_AZURE_AD:
         LOGGER.info("Querying Microsoft 365 licence availability")
         token = ms_graph_client_token()
-        e5_sku = ms_graph_subscribed_sku(settings.M365_E5_SKU, token)
-        f3_sku = ms_graph_subscribed_sku(settings.M365_F3_SKU, token)
-        eo_sku = ms_graph_subscribed_sku("19ec0d23-8335-4cbd-94ac-6050e30712fa", token)  # EXCHANGE ONLINE (PLAN 2)
-        sec_sku = ms_graph_subscribed_sku("2347355b-4e81-41a4-9c22-55057a399791", token)  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+        e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
+        f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
+        eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
+        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
 
     LOGGER.info("Querying Ascender database for employee information")
     if not employee_iter:
@@ -505,16 +507,16 @@ def ascender_db_import(employee_iter=None):
                     if licence_type == "On-premise":
                         data = {
                             "addLicenses": [
-                                {"skuId": settings.M365_E5_SKU, "disabledPlans": []},
+                                {"skuId": MS_PRODUCTS['MICROSOFT 365 E5'], "disabledPlans": []},
                             ],
                             "removeLicenses": [],
                         }
                     elif licence_type == "Cloud":
                         data = {
                             "addLicenses": [
-                                {"skuId": settings.M365_F3_SKU, "disabledPlans": ['4a82b400-a79f-41a4-b4e2-e94f5787b113']},
-                                {"skuId": "19ec0d23-8335-4cbd-94ac-6050e30712fa", "disabledPlans": []},  # EXCHANGE ONLINE (PLAN 2)
-                                {"skuId": "2347355b-4e81-41a4-9c22-55057a399791", "disabledPlans": ['176a09a6-7ec5-4039-ac02-b2791c6ba793']},  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+                                {"skuId": MS_PRODUCTS['MICROSOFT 365 F3'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE KIOSK'],]},
+                                {"skuId": MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], "disabledPlans": []},
+                                {"skuId": MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE ARCHIVING'],]},
                             ],
                             "removeLicenses": [],
                         }

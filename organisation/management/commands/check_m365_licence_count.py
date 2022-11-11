@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand, CommandError
 import logging
 
 from itassets.utils import ms_graph_client_token
+from organisation.microsoft_products import MS_PRODUCTS
 from organisation.utils import ms_graph_subscribed_sku
 
 
@@ -46,25 +47,25 @@ class Command(BaseCommand):
 
         token = ms_graph_client_token()
 
-        e5_sku = ms_graph_subscribed_sku(settings.M365_E5_SKU, token)
+        e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
         e5_consumed = e5_sku['consumedUnits']
         e5_enabled = e5_sku['prepaidUnits']['enabled']
         if e5_enabled - e5_consumed <= threshold:
             send_notification = True
 
-        f3_sku = ms_graph_subscribed_sku(settings.M365_F3_SKU, token)
+        f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
         f3_consumed = f3_sku['consumedUnits']
         f3_enabled = f3_sku['prepaidUnits']['enabled']
         if f3_enabled - f3_consumed <= threshold:
             send_notification = True
 
-        eo_sku = ms_graph_subscribed_sku("19ec0d23-8335-4cbd-94ac-6050e30712fa", token)  # EXCHANGE ONLINE (PLAN 2)
+        eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
         eo_consumed = eo_sku['consumedUnits']
         eo_enabled = eo_sku['prepaidUnits']['enabled']
         if eo_enabled - eo_consumed <= threshold:
             send_notification = True
 
-        sec_sku = ms_graph_subscribed_sku("2347355b-4e81-41a4-9c22-55057a399791", token)  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
         sec_consumed = sec_sku['consumedUnits']
         sec_enabled = sec_sku['prepaidUnits']['enabled']
         if sec_enabled - sec_consumed <= threshold:
