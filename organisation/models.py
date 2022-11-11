@@ -11,6 +11,7 @@ from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
 from .utils import compare_values, parse_windows_ts, title_except
+from .microsoft_products import MS_PRODUCTS
 LOGGER = logging.getLogger('organisation')
 
 
@@ -47,44 +48,6 @@ class DepartmentUser(models.Model):
     # The following is a list of user account types where it may be reasonable for there to be
     # an active Azure AD account without the user also having a current Ascender job.
     ACCOUNT_TYPE_NONSTAFF = [8, 6, 7, 1]
-    # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
-    # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
-    MS_LICENCE_SKUS = {
-        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1',
-        '6fd2c87f-b296-42f0-b197-1e91e994b900': 'OFFICE 365 E3',
-        'c7df2760-2c81-4ef7-b578-5b5392b571df': 'OFFICE 365 E5',
-        '05e9a617-0261-4cee-bb44-138d3ef5d965': 'MICROSOFT 365 E3',
-        '66b55226-6b4f-492c-910c-a3b7a3c9d993': 'MICROSOFT 365 F3',
-        '06ebc4ee-1bb5-47dd-8120-11324bc54e06': 'MICROSOFT 365 E5',
-        'c5928f49-12ba-48f7-ada3-0d743a3601d5': 'VISIO ONLINE PLAN 2',
-        '1f2f344a-700d-42c9-9427-5cea1d5d7ba6': 'MICROSOFT STREAM',
-        'b05e124f-c7cc-45a0-a6aa-8cf78c946968': 'ENTERPRISE MOBILITY + SECURITY E5',
-        '87bbbc60-4754-4998-8c88-227dca264858': 'POWERAPPS AND LOGIC FLOWS',
-        '6470687e-a428-4b7a-bef2-8a291ad947c9': 'WINDOWS STORE FOR BUSINESS',
-        'f30db892-07e9-47e9-837c-80727f46fd3d': 'MICROSOFT POWER AUTOMATE FREE',
-        '440eaaa8-b3e0-484b-a8be-62870b9ba70a': 'MICROSOFT 365 PHONE SYSTEM - VIRTUAL USER',
-        'bc946dac-7877-4271-b2f7-99d2db13cd2c': 'DYNAMICS 365 CUSTOMER VOICE TRIAL',
-        'dcb1a3ae-b33f-4487-846a-a640262fadf4': 'MICROSOFT POWER APPS PLAN 2 TRIAL',
-        '338148b6-1b11-4102-afb9-f92b6cdc0f8d': 'DYNAMICS 365 P1 TRIAL FOR INFORMATION WORKERS',
-        '6070a4c8-34c6-4937-8dfb-39bbc6397a60': 'MICROSOFT TEAMS ROOMS STANDARD',
-        'a403ebcc-fae0-4ca2-8c8c-7a907fd6c235': 'POWER BI (FREE)',
-        '111046dd-295b-4d6d-9724-d52ac90bd1f2': 'MICROSOFT DEFENDER ADVANCED THREAT PROTECTION',
-        '710779e8-3d4a-4c88-adb9-386c958d1fdf': 'MICROSOFT TEAMS EXPLORATORY',
-        'efccb6f7-5641-4e0e-bd10-b4976e1bf68e': 'ENTERPRISE MOBILITY + SECURITY E3',
-        '90d8b3f8-712e-4f7b-aa1e-62e7ae6cbe96': 'BUSINESS APPS (FREE)',
-        'fcecd1f9-a91e-488d-a918-a96cdb6ce2b0': 'MICROSOFT DYNAMICS AX7 USER TRIAL',
-        '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RIGHTS MANAGEMENT SERVICE BASIC CONTENT PROTECTION',
-        '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECT ONLINE PROFESSIONAL',
-        'c1ec4a95-1f05-45b3-a911-aa3fa01094f5': 'INTUNE',
-        '3e26ee1f-8a5f-4d52-aee2-b81ce45c8f40': 'AUDIO CONFERENCING',
-        '57ff2da0-773e-42df-b2af-ffb7a2317929': 'MICROSOFT TEAMS',
-        '0feaeb32-d00e-4d66-bd5a-43b5b83db82c': 'SKYPE FOR BUSINESS ONLINE (PLAN 2)',
-        '4828c8ec-dc2e-4779-b502-87ac9ce28ab7': 'SKYPE FOR BUSINESS CLOUD PBX',
-        '19ec0d23-8335-4cbd-94ac-6050e30712fa': 'EXCHANGE ONLINE (PLAN 2)',
-        '2347355b-4e81-41a4-9c22-55057a399791': 'MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW',
-        'de376a03-6e5b-42ec-855f-093fb50b8ca5': 'POWER BI PREMIUM PER USER ADD-ON',
-        '295a8eb0-f78d-45c7-8b5b-1eed5ed02dff': 'COMMON AREA PHONE',
-    }
     # A map of codes in the EMP_STATUS field to descriptive text.
     EMP_STATUS_MAP = {
         "ADV": "ADVERTISED VACANCY",
@@ -1221,9 +1184,12 @@ class DepartmentUser(models.Model):
         self.assigned_licences = []
         if 'assignedLicenses' in self.azure_ad_data:
             for sku in self.azure_ad_data['assignedLicenses']:
-                if sku in self.MS_LICENCE_SKUS:
-                    self.assigned_licences.append(self.MS_LICENCE_SKUS[sku])
-                else:
+                match = False
+                for name, guid in MS_PRODUCTS.items():
+                    if sku == guid:
+                        self.assigned_licences.append(name)
+                        match = True
+                if not match:
                     self.assigned_licences.append(sku)
 
         self.save()
