@@ -707,9 +707,9 @@ def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date
     """
     org_path = new_user.get_ascender_org_path()
     if org_path and len(org_path) > 1:
-        org_unit = org_path[1]
+        unit = org_path[1]
     else:
-        org_unit = ''
+        unit = ''
     subject = f"New user account creation details - {new_user.name}"
     text_content = f"""Hi {new_user.manager.given_name},\n\n
 This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:\n\n
@@ -720,7 +720,7 @@ Title: {new_user.title}\n
 Position number: {new_user.ascender_data['position_no']}\n
 Cost centre: {new_user.cost_centre}\n
 Division: {new_user.cost_centre.get_division_name_display()}\n
-Organisational unit: {org_unit}\n
+Organisational unit: {unit}\n
 Employment status: {new_user.ascender_data['emp_stat_desc']}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
@@ -741,7 +741,7 @@ OIM Service Desk\n"""
 <li>Position number: {new_user.ascender_data['position_no']}</li>
 <li>Cost centre: {new_user.cost_centre}</li>
 <li>Division: {new_user.cost_centre.get_division_name_display()}</li>
-<li>Organisational unit: {org_unit}</li>
+<li>Organisational unit: {unit}</li>
 <li>Employment status: {new_user.ascender_data['emp_stat_desc']}</li>
 <li>M365 licence: {licence_type}</li>
 <li>Manager: {new_user.manager.name}</li>

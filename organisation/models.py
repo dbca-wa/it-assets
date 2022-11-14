@@ -86,11 +86,6 @@ class DepartmentUser(models.Model):
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the Address Book.
-    org_unit = models.ForeignKey(
-        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
-        limit_choices_to={'active': True},
-        verbose_name='organisational unit',
-        help_text="The organisational unit to which the employee belongs.")
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
