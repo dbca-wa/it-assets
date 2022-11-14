@@ -193,22 +193,6 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = ('name', 'ascender_desc')
 
 
-class OrgUnitAdmin(admin.ModelAdmin):
-    list_display = ('name', 'division_unit', 'location', 'users', 'cc', 'active')
-    fields = ('active', 'name', 'location', 'division_unit', 'ascender_clevel')
-    search_fields = ('name', 'location__name', 'ascender_clevel')
-    readonly_fields = ('division_unit', 'ascender_clevel')
-    list_filter = ('active',)
-
-    def users(self, obj):
-        from organisation.models import DepartmentUser
-        dusers = obj.departmentuser_set.filter(**DepartmentUser.ACTIVE_FILTER)
-        return format_html(
-            '<a href="{}?org_unit={}">{}</a>',
-            reverse('admin:organisation_departmentuser_changelist'),
-            obj.pk, dusers.count())
-
-
 @admin.register(CostCentre)
 class CostCentreAdmin(admin.ModelAdmin):
     fields = ('active', 'code', 'chart_acct_name', 'division_name', 'manager', 'ascender_code')
