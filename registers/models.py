@@ -10,7 +10,7 @@ from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
-from organisation.models import DepartmentUser, CostCentre, OrgUnit
+from organisation.models import DepartmentUser, CostCentre
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
