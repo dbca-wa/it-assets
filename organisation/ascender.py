@@ -10,6 +10,7 @@ import requests
 import string
 
 from itassets.utils import ms_graph_client_token
+from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location
 from organisation.utils import title_except, ms_graph_subscribed_sku
 
@@ -80,6 +81,74 @@ STATUS_RANKING = [
     "SEAS",
     "TRAIN",
 ]
+# A map of codes in the `emp_status` field to descriptive text.
+EMP_STATUS_MAP = {
+    "ADV": "ADVERTISED VACANCY",
+    "BD": "Board",
+    "CAS": "CASUAL EMPLOYEES",
+    "CCFA": "COMMITTEE-BOARD MEMBERS FIXED TERM CONTRACT  AUTO",
+    "CD": "CADET",
+    "CEP": "COMMONWEALTH EMPLOYMENT PROGRAM",
+    "CFA": "FIXED TERM CONTRACT FULL-TIME AUTO",
+    "CFAS": "CONTRACT F-TIME AUTO SENIOR EXECUTIVE SERVICE",
+    "CFT": "FIXED TERM CONTRACT FULL-TIME TSHEET",
+    "CJA": "FIXED TERM CONTRACT JOB SHARE AUTO",
+    "CJT": "FIXED TERM CONTRACT JOBSHARE TSHEET",
+    "CO": "COMMITTEE (DO NOT USE- USE CCFA)",
+    "CON": "EXTERNAL CONTRACTOR",
+    "CPA": "FIXED TERM CONTRACT PART-TIME AUTO",
+    "CPAS": "CONTRACT P-TIME AUTO SENIOR EXECUTIVE SERVICE",
+    "CPT": "FIXED TERM CONTRACT PART-TIME TSHEET",
+    "ECAS": "EXTERNAL FUND CASUAL",
+    "ECFA": "FIXED TERM CONTRACT EXT. FUND F/TIME AUTO",
+    "ECFT": "FIXED TERM CONTRACT EXT. FUND F/TIME TSHEET",
+    "ECJA": "FIXED TERM CONTRACT EXT. FUND JOBSHARE AUTO",
+    "ECJT": "FIXED TERM CONTRACT EXT. FUND JOBSHARE TSHEET",
+    "ECPA": "FIXED TERM CONTRACT EXT. FUND P/TIME AUTO",
+    "ECPT": "FIXED TERM CONTRACT EXT. FUND P/TIME TSHEET",
+    "EPFA": "EXTERNAL FUND PERMANENT FULL-TIME AUTO",
+    "EPFT": "EXTERNAL FUND FULL-TIME TSHEET",
+    "EPJA": "EXTERNAL FUND PERMANENT JOBSHARE AUTO",
+    "EPJT": "EXTERNAL FUND PERMANENT JOBSHARE TSHEEET",
+    "EPPA": "EXTERNAL FUND PERMANENT PART-TIME AUTO",
+    "EPPT": "EXTERNAL FUND PERMANENT PART-TIME TSHEET",
+    "EXT": "EXTERNAL PERSON (NON EMPLOYEE)",
+    "GRCA": "GRADUATE RECRUIT FIXED TERM CONTRACT AUTO",
+    "JOB": "JOBSKILLS",
+    "NON": "NON EMPLOYEE",
+    "NOPAY": "NO PAY ALLOWED",
+    "NPAYC": "CASUAL NO PAY ALLOWED",
+    "NPAYF": "FULLTIME NO PAY ALLOWED",
+    "NPAYP": "PARTTIME NO PAY ALLOWED",
+    "NPAYT": "CONTRACT NO PAY ALLOWED (SEAS,CONT)",
+    "PFA": "PERMANENT FULL-TIME AUTO",
+    "PFAE": "PERMANENT FULL-TIME AUTO EXECUTIVE COUNCIL APPOINT",
+    "PFAS": "PERMANENT FULL-TIME AUTO SENIOR EXECUTIVE SERVICE",
+    "PFT": "PERMANENT FULL-TIME TSHEET",
+    "PJA": "PERMANENT JOB SHARE AUTO",
+    "PJT": "PERMANENT JOBSHARE TSHEET",
+    "PPA": "PERMANENT PART-TIME AUTO",
+    "PPAS": "PERMANENT PART-TIME AUTO SENIOR EXECUTIVE SERVICE",
+    "PPRTA": "PERMANENT P-TIME AUTO (RELINQUISH ROR to FT)",
+    "PPT": "PERMANENT PART-TIME TSHEET",
+    "SCFA": "SECONDMENT FULL-TIME AUTO",
+    "SEAP": "SEASONAL EMPLOYMENT (PERMANENT)",
+    "SEAS": "SEASONAL EMPLOYMENT",
+    "SES": "Senior Executive Service",
+    "SFTC": "SPONSORED FIXED TERM CONTRACT AUTO",
+    "SFTT": "SECONDMENT FULL-TIME TSHEET",
+    "SN": "SUPERNUMERY",
+    "SPFA": "PERMANENT FT SPECIAL CONDITIO AUTO",
+    "SPFT": "PERMANENT FT SPECIAL CONDITIONS  TS",
+    "SPTA": "SECONDMENT PART-TIME AUTO",
+    "SPTT": "SECONDMENT PART-TIME TSHEET",
+    "TEMP": "TEMPORARY EMPLOYMENT",
+    "TERM": "TERMINATED",
+    "TRAIN": "TRAINEE",
+    "V": "VOLUNTEER",
+    "WWR": "WEEKEND WEATHER READER",
+    "Z": "Non-Resident",
+}
 
 
 def ascender_db_fetch():
@@ -125,26 +194,27 @@ def ascender_db_fetch():
 
 def ascender_job_sort_key(record):
     """
-    Sort the job based the score
-    1.the initial score is based on the job's end date
-      if the job is ended, the initial score is populated from the job's end date
-      if the job is not ended , the initial score is populated from tommorrow, that means all not terminated jobs have the same initial score
-    2.secondary score is based on emp_status
+    Returns an integer value to "sort" a job, based on job end date and employment status type.
+    The calculated score will be lower for jobs that have ended, and modified by where the employment
+    status occurs in a ordered list (STATUS_RANKING). Jobs with no end date or with an end date in the
+    future will have the same initial score, and are then modified by the employment status.
+
+    1. The initial score is based on the job's end date (closer date == lower score).
+      - If the job has ended, the initial score is calculated using the job's end date.
+      - If the job is not ended or has no end date recorded, the initial score is calculated from tommorrow's date.
+    2. The score is then modified based on emp_status, with values later in the list scoring higher.
+
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
-    # Initial score from job_end_date
-    score = (
-        (int(record["job_end_date"].replace("-", "")) * 10000)
-        if record["job_end_date"]
-        and record["job_end_date"] <= today.strftime("%Y-%m-%d")
-        else int(tomorrow.strftime("%Y%m%d0000"))
-    )
-    # Second score based emp_status
-    score += (
-        (STATUS_RANKING.index(record["emp_status"]) + 1)
-        if (record["emp_status"] in STATUS_RANKING) else 0
-    ) * 100
+    # Initial score from job_end_date.
+    if record["job_end_date"] and record["job_end_date"] <= today.strftime("%Y-%m-%d"):
+        score = int(record["job_end_date"].replace("-", "")) * 10000
+    else:
+        score = int(tomorrow.strftime("%Y%m%d0000"))
+    # Modify score based on emp_status.
+    if record["emp_status"] and record["emp_status"] in STATUS_RANKING:
+        score += (STATUS_RANKING.index(record["emp_status"]) + 1) * 100
     return score
 
 
@@ -181,10 +251,10 @@ def ascender_db_import(employee_iter=None):
     if settings.ASCENDER_CREATE_AZURE_AD:
         LOGGER.info("Querying Microsoft 365 licence availability")
         token = ms_graph_client_token()
-        e5_sku = ms_graph_subscribed_sku(settings.M365_E5_SKU, token)
-        f3_sku = ms_graph_subscribed_sku(settings.M365_F3_SKU, token)
-        eo_sku = ms_graph_subscribed_sku("19ec0d23-8335-4cbd-94ac-6050e30712fa", token)  # EXCHANGE ONLINE (PLAN 2)
-        sec_sku = ms_graph_subscribed_sku("2347355b-4e81-41a4-9c22-55057a399791", token)  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+        e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
+        f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
+        eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
+        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
 
     LOGGER.info("Querying Ascender database for employee information")
     if not employee_iter:
@@ -505,16 +575,16 @@ def ascender_db_import(employee_iter=None):
                     if licence_type == "On-premise":
                         data = {
                             "addLicenses": [
-                                {"skuId": settings.M365_E5_SKU, "disabledPlans": []},
+                                {"skuId": MS_PRODUCTS['MICROSOFT 365 E5'], "disabledPlans": []},
                             ],
                             "removeLicenses": [],
                         }
                     elif licence_type == "Cloud":
                         data = {
                             "addLicenses": [
-                                {"skuId": settings.M365_F3_SKU, "disabledPlans": ['4a82b400-a79f-41a4-b4e2-e94f5787b113']},
-                                {"skuId": "19ec0d23-8335-4cbd-94ac-6050e30712fa", "disabledPlans": []},  # EXCHANGE ONLINE (PLAN 2)
-                                {"skuId": "2347355b-4e81-41a4-9c22-55057a399791", "disabledPlans": ['176a09a6-7ec5-4039-ac02-b2791c6ba793']},  # MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW
+                                {"skuId": MS_PRODUCTS['MICROSOFT 365 F3'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE KIOSK'],]},
+                                {"skuId": MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], "disabledPlans": []},
+                                {"skuId": MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE ARCHIVING'],]},
                             ],
                             "removeLicenses": [],
                         }
@@ -637,9 +707,9 @@ def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date
     """
     org_path = new_user.get_ascender_org_path()
     if org_path and len(org_path) > 1:
-        org_unit = org_path[1]
+        unit = org_path[1]
     else:
-        org_unit = ''
+        unit = ''
     subject = f"New user account creation details - {new_user.name}"
     text_content = f"""Hi {new_user.manager.given_name},\n\n
 This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:\n\n
@@ -650,7 +720,7 @@ Title: {new_user.title}\n
 Position number: {new_user.ascender_data['position_no']}\n
 Cost centre: {new_user.cost_centre}\n
 Division: {new_user.cost_centre.get_division_name_display()}\n
-Organisational unit: {org_unit}\n
+Organisational unit: {unit}\n
 Employment status: {new_user.ascender_data['emp_stat_desc']}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
@@ -671,7 +741,7 @@ OIM Service Desk\n"""
 <li>Position number: {new_user.ascender_data['position_no']}</li>
 <li>Cost centre: {new_user.cost_centre}</li>
 <li>Division: {new_user.cost_centre.get_division_name_display()}</li>
-<li>Organisational unit: {org_unit}</li>
+<li>Organisational unit: {unit}</li>
 <li>Employment status: {new_user.ascender_data['emp_stat_desc']}</li>
 <li>M365 licence: {licence_type}</li>
 <li>Manager: {new_user.manager.name}</li>

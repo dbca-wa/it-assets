@@ -11,6 +11,7 @@ from tempfile import NamedTemporaryFile
 
 from itassets.utils import ms_graph_client_token
 from .utils import compare_values, parse_windows_ts, title_except
+from .microsoft_products import MS_PRODUCTS
 LOGGER = logging.getLogger('organisation')
 
 
@@ -47,112 +48,6 @@ class DepartmentUser(models.Model):
     # The following is a list of user account types where it may be reasonable for there to be
     # an active Azure AD account without the user also having a current Ascender job.
     ACCOUNT_TYPE_NONSTAFF = [8, 6, 7, 1]
-    # This dict maps the Microsoft SKU ID for user account licences to a human-readable name.
-    # https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference
-    MS_LICENCE_SKUS = {
-        '18181a46-0d4e-45cd-891e-60aabd171b4e': 'OFFICE 365 E1',
-        '6fd2c87f-b296-42f0-b197-1e91e994b900': 'OFFICE 365 E3',
-        'c7df2760-2c81-4ef7-b578-5b5392b571df': 'OFFICE 365 E5',
-        '05e9a617-0261-4cee-bb44-138d3ef5d965': 'MICROSOFT 365 E3',
-        '66b55226-6b4f-492c-910c-a3b7a3c9d993': 'MICROSOFT 365 F3',
-        '06ebc4ee-1bb5-47dd-8120-11324bc54e06': 'MICROSOFT 365 E5',
-        'c5928f49-12ba-48f7-ada3-0d743a3601d5': 'VISIO ONLINE PLAN 2',
-        '1f2f344a-700d-42c9-9427-5cea1d5d7ba6': 'MICROSOFT STREAM',
-        'b05e124f-c7cc-45a0-a6aa-8cf78c946968': 'ENTERPRISE MOBILITY + SECURITY E5',
-        '87bbbc60-4754-4998-8c88-227dca264858': 'POWERAPPS AND LOGIC FLOWS',
-        '6470687e-a428-4b7a-bef2-8a291ad947c9': 'WINDOWS STORE FOR BUSINESS',
-        'f30db892-07e9-47e9-837c-80727f46fd3d': 'MICROSOFT POWER AUTOMATE FREE',
-        '440eaaa8-b3e0-484b-a8be-62870b9ba70a': 'MICROSOFT 365 PHONE SYSTEM - VIRTUAL USER',
-        'bc946dac-7877-4271-b2f7-99d2db13cd2c': 'DYNAMICS 365 CUSTOMER VOICE TRIAL',
-        'dcb1a3ae-b33f-4487-846a-a640262fadf4': 'MICROSOFT POWER APPS PLAN 2 TRIAL',
-        '338148b6-1b11-4102-afb9-f92b6cdc0f8d': 'DYNAMICS 365 P1 TRIAL FOR INFORMATION WORKERS',
-        '6070a4c8-34c6-4937-8dfb-39bbc6397a60': 'MICROSOFT TEAMS ROOMS STANDARD',
-        'a403ebcc-fae0-4ca2-8c8c-7a907fd6c235': 'POWER BI (FREE)',
-        '111046dd-295b-4d6d-9724-d52ac90bd1f2': 'MICROSOFT DEFENDER ADVANCED THREAT PROTECTION',
-        '710779e8-3d4a-4c88-adb9-386c958d1fdf': 'MICROSOFT TEAMS EXPLORATORY',
-        'efccb6f7-5641-4e0e-bd10-b4976e1bf68e': 'ENTERPRISE MOBILITY + SECURITY E3',
-        '90d8b3f8-712e-4f7b-aa1e-62e7ae6cbe96': 'BUSINESS APPS (FREE)',
-        'fcecd1f9-a91e-488d-a918-a96cdb6ce2b0': 'MICROSOFT DYNAMICS AX7 USER TRIAL',
-        '093e8d14-a334-43d9-93e3-30589a8b47d0': 'RIGHTS MANAGEMENT SERVICE BASIC CONTENT PROTECTION',
-        '53818b1b-4a27-454b-8896-0dba576410e6': 'PROJECT ONLINE PROFESSIONAL',
-        'c1ec4a95-1f05-45b3-a911-aa3fa01094f5': 'INTUNE',
-        '3e26ee1f-8a5f-4d52-aee2-b81ce45c8f40': 'AUDIO CONFERENCING',
-        '57ff2da0-773e-42df-b2af-ffb7a2317929': 'MICROSOFT TEAMS',
-        '0feaeb32-d00e-4d66-bd5a-43b5b83db82c': 'SKYPE FOR BUSINESS ONLINE (PLAN 2)',
-        '4828c8ec-dc2e-4779-b502-87ac9ce28ab7': 'SKYPE FOR BUSINESS CLOUD PBX',
-        '19ec0d23-8335-4cbd-94ac-6050e30712fa': 'EXCHANGE ONLINE (PLAN 2)',
-        '2347355b-4e81-41a4-9c22-55057a399791': 'MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW',
-        'de376a03-6e5b-42ec-855f-093fb50b8ca5': 'POWER BI PREMIUM PER USER ADD-ON',
-        '295a8eb0-f78d-45c7-8b5b-1eed5ed02dff': 'COMMON AREA PHONE',
-    }
-    # A map of codes in the EMP_STATUS field to descriptive text.
-    EMP_STATUS_MAP = {
-        "ADV": "ADVERTISED VACANCY",
-        "BD": "Board",
-        "CAS": "CASUAL EMPLOYEES",
-        "CCFA": "COMMITTEE-BOARD MEMBERS FIXED TERM CONTRACT  AUTO",
-        "CD": "CADET",
-        "CEP": "COMMONWEALTH EMPLOYMENT PROGRAM",
-        "CFA": "FIXED TERM CONTRACT FULL-TIME AUTO",
-        "CFAS": "CONTRACT F-TIME AUTO SENIOR EXECUTIVE SERVICE",
-        "CFT": "FIXED TERM CONTRACT FULL-TIME TSHEET",
-        "CJA": "FIXED TERM CONTRACT JOB SHARE AUTO",
-        "CJT": "FIXED TERM CONTRACT JOBSHARE TSHEET",
-        "CO": "COMMITTEE (DO NOT USE- USE CCFA)",
-        "CON": "EXTERNAL CONTRACTOR",
-        "CPA": "FIXED TERM CONTRACT PART-TIME AUTO",
-        "CPAS": "CONTRACT P-TIME AUTO SENIOR EXECUTIVE SERVICE",
-        "CPT": "FIXED TERM CONTRACT PART-TIME TSHEET",
-        "ECAS": "EXTERNAL FUND CASUAL",
-        "ECFA": "FIXED TERM CONTRACT EXT. FUND F/TIME AUTO",
-        "ECFT": "FIXED TERM CONTRACT EXT. FUND F/TIME TSHEET",
-        "ECJA": "FIXED TERM CONTRACT EXT. FUND JOBSHARE AUTO",
-        "ECJT": "FIXED TERM CONTRACT EXT. FUND JOBSHARE TSHEET",
-        "ECPA": "FIXED TERM CONTRACT EXT. FUND P/TIME AUTO",
-        "ECPT": "FIXED TERM CONTRACT EXT. FUND P/TIME TSHEET",
-        "EPFA": "EXTERNAL FUND PERMANENT FULL-TIME AUTO",
-        "EPFT": "EXTERNAL FUND FULL-TIME TSHEET",
-        "EPJA": "EXTERNAL FUND PERMANENT JOBSHARE AUTO",
-        "EPJT": "EXTERNAL FUND PERMANENT JOBSHARE TSHEEET",
-        "EPPA": "EXTERNAL FUND PERMANENT PART-TIME AUTO",
-        "EPPT": "EXTERNAL FUND PERMANENT PART-TIME TSHEET",
-        "EXT": "EXTERNAL PERSON (NON EMPLOYEE)",
-        "GRCA": "GRADUATE RECRUIT FIXED TERM CONTRACT AUTO",
-        "JOB": "JOBSKILLS",
-        "NON": "NON EMPLOYEE",
-        "NOPAY": "NO PAY ALLOWED",
-        "NPAYC": "CASUAL NO PAY ALLOWED",
-        "NPAYF": "FULLTIME NO PAY ALLOWED",
-        "NPAYP": "PARTTIME NO PAY ALLOWED",
-        "NPAYT": "CONTRACT NO PAY ALLOWED (SEAS,CONT)",
-        "PFA": "PERMANENT FULL-TIME AUTO",
-        "PFAE": "PERMANENT FULL-TIME AUTO EXECUTIVE COUNCIL APPOINT",
-        "PFAS": "PERMANENT FULL-TIME AUTO SENIOR EXECUTIVE SERVICE",
-        "PFT": "PERMANENT FULL-TIME TSHEET",
-        "PJA": "PERMANENT JOB SHARE AUTO",
-        "PJT": "PERMANENT JOBSHARE TSHEET",
-        "PPA": "PERMANENT PART-TIME AUTO",
-        "PPAS": "PERMANENT PART-TIME AUTO SENIOR EXECUTIVE SERVICE",
-        "PPRTA": "PERMANENT P-TIME AUTO (RELINQUISH ROR to FT)",
-        "PPT": "PERMANENT PART-TIME TSHEET",
-        "SCFA": "SECONDMENT FULL-TIME AUTO",
-        "SEAP": "SEASONAL EMPLOYMENT (PERMANENT)",
-        "SEAS": "SEASONAL EMPLOYMENT",
-        "SES": "Senior Executive Service",
-        "SFTC": "SPONSORED FIXED TERM CONTRACT AUTO",
-        "SFTT": "SECONDMENT FULL-TIME TSHEET",
-        "SN": "SUPERNUMERY",
-        "SPFA": "PERMANENT FT SPECIAL CONDITIO AUTO",
-        "SPFT": "PERMANENT FT SPECIAL CONDITIONS  TS",
-        "SPTA": "SECONDMENT PART-TIME AUTO",
-        "SPTT": "SECONDMENT PART-TIME TSHEET",
-        "TEMP": "TEMPORARY EMPLOYMENT",
-        "TERM": "TERMINATED",
-        "TRAIN": "TRAINEE",
-        "V": "VOLUNTEER",
-        "WWR": "WEEKEND WEATHER READER",
-        "Z": "Non-Resident",
-    }
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -191,11 +86,6 @@ class DepartmentUser(models.Model):
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the Address Book.
-    org_unit = models.ForeignKey(
-        'organisation.OrgUnit', on_delete=models.PROTECT, null=True, blank=True,
-        limit_choices_to={'active': True},
-        verbose_name='organisational unit',
-        help_text="The organisational unit to which the employee belongs.")
     extension = models.CharField(
         max_length=128, null=True, blank=True, verbose_name='VoIP extension')
     home_phone = models.CharField(max_length=128, null=True, blank=True)
@@ -264,15 +154,6 @@ class DepartmentUser(models.Model):
                 self.account_type = 14  # Unknown - AD disabled
         super(DepartmentUser, self).save(*args, **kwargs)
 
-    @property
-    def group_unit(self):
-        """Return the group-level org unit, as seen in the primary address book view.
-        In most cases, this should return the user's division.
-        """
-        if self.org_unit and self.org_unit.division_unit:
-            return self.org_unit.division_unit
-        return self.org_unit
-
     def get_division(self):
         """Returns the name of the division this user belongs to, based upon their cost centre.
         """
@@ -300,8 +181,9 @@ class DepartmentUser(models.Model):
         """From Ascender data, return a description of a user's employment status.
         """
         if self.ascender_data and 'emp_status' in self.ascender_data and self.ascender_data['emp_status']:
-            if self.ascender_data['emp_status'] in self.EMP_STATUS_MAP:
-                return self.EMP_STATUS_MAP[self.ascender_data['emp_status']]
+            from .ascender import EMP_STATUS_MAP
+            if self.ascender_data['emp_status'] in EMP_STATUS_MAP:
+                return EMP_STATUS_MAP[self.ascender_data['emp_status']]
         return ''
 
     def get_ascender_full_name(self):
@@ -1221,9 +1103,12 @@ class DepartmentUser(models.Model):
         self.assigned_licences = []
         if 'assignedLicenses' in self.azure_ad_data:
             for sku in self.azure_ad_data['assignedLicenses']:
-                if sku in self.MS_LICENCE_SKUS:
-                    self.assigned_licences.append(self.MS_LICENCE_SKUS[sku])
-                else:
+                match = False
+                for name, guid in MS_PRODUCTS.items():
+                    if sku == guid:
+                        self.assigned_licences.append(name)
+                        match = True
+                if not match:
                     self.assigned_licences.append(sku)
 
         self.save()

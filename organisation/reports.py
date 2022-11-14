@@ -1,4 +1,5 @@
 import xlsxwriter
+from .utils import title_except
 
 
 def department_user_export(fileobj, users):
@@ -17,7 +18,7 @@ def department_user_export(fileobj, users):
         users_sheet.write_row('A1', (
             'NAME', 'EMAIL', 'TITLE', 'ACCOUNT TYPE', 'EMPLOYEE ID', 'EMPLOYMENT STATUS', 'COST CENTRE',
             'CC MANAGER', 'CC MANAGER EMAIL', 'ACTIVE', 'M365 LICENCE',
-            'TELEPHONE', 'MOBILE PHONE', 'LOCATION', 'ORGANISATION UNIT', 'GROUP UNIT',
+            'TELEPHONE', 'MOBILE PHONE', 'LOCATION', 'DIVISION', 'UNIT',
         ))
         row = 1
         for i in users:
@@ -36,8 +37,8 @@ def department_user_export(fileobj, users):
                 i.telephone,
                 i.mobile_phone,
                 i.location.name if i.location else '',
-                i.org_unit.name if i.org_unit else '',
-                i.group_unit.name if i.group_unit else '',
+                i.cost_centre.get_division_name_display() if i.cost_centre else '',
+                title_except(i.get_ascender_org_path()[-1]) if i.get_ascender_org_path() else '',
             ])
             row += 1
         users_sheet.set_column('A:A', 35)

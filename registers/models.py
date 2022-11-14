@@ -10,7 +10,7 @@ from markdownx.utils import markdownify
 from os import path
 from pytz import timezone
 
-from organisation.models import DepartmentUser, CostCentre, OrgUnit
+from organisation.models import DepartmentUser, CostCentre
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
 from .utils import smart_truncate
 
@@ -130,7 +130,6 @@ class ITSystem(models.Model):
     link = models.CharField(
         max_length=2048, null=True, blank=True, help_text='URL to web application')
     description = models.TextField(blank=True)
-    org_unit = models.ForeignKey(OrgUnit, on_delete=models.SET_NULL, null=True, blank=True)
     cost_centre = models.ForeignKey(CostCentre, on_delete=models.SET_NULL, null=True, blank=True)
     owner = models.ForeignKey(
         DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True,

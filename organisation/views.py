@@ -7,7 +7,7 @@ from django.views.generic import View, ListView, TemplateView
 from django.views.decorators.clickjacking import xframe_options_exempt
 from csp.decorators import csp_exempt
 
-from .models import DepartmentUser, Location, OrgUnit, DepartmentUserLog
+from .models import DepartmentUser, Location, DepartmentUserLog
 from .reports import department_user_export, user_account_export
 from .utils import title_except
 
@@ -112,7 +112,6 @@ class DepartmentUserAPIResource(View):
             'manager',
             'cost_centre',
             'location',
-            'org_unit',
         ).order_by('name')
 
         # Queryset filtering.
@@ -138,8 +137,6 @@ class DepartmentUserAPIResource(View):
                     'extension': user.extension if user.extension else None,
                     'mobile_phone': user.mobile_phone if user.mobile_phone else None,
                     'location': {'id': user.location.pk, 'name': user.location.name} if user.location else {},
-                    'org_unit': {'id': user.org_unit.pk, 'name': user.org_unit.name, 'acronym': user.org_unit.acronym} if user.org_unit else {},
-                    'group_unit': {'id': user.group_unit.pk, 'name': user.group_unit.name, 'acronym': user.group_unit.acronym} if user.group_unit else {},
                     'cost_centre': user.cost_centre.code if user.cost_centre else None,
                     'employee_id': user.employee_id if user.employee_id else None,  # NOTE: employee ID is used in the Moodle employee sync process.
                     'manager': {'id': user.manager.pk, 'name': user.manager.name, 'email': user.manager.email} if user.manager else {},
@@ -180,37 +177,6 @@ class LocationAPIResource(View):
             ]
 
         return JsonResponse(locations, safe=False)
-
-
-class OrgUnitAPIResource(View):
-    """An API view that returns JSON of active organisation units.
-    """
-    def get(self, request, *args, **kwargs):
-        queryset = OrgUnit.objects.filter(active=True).order_by('name')
-
-        # Queryset filtering.
-        if 'pk' in kwargs and kwargs['pk']:  # Allow filtering by object PK.
-            queryset = queryset.filter(pk=kwargs['pk'])
-        if 'q' in self.request.GET:  # Allow basic filtering on name.
-            queryset = queryset.filter(name__icontains=self.request.GET['q'])
-        if 'division' in self.request.GET:  # Allow filtering to divisions only.
-            queryset = queryset.filter(unit_type=1)
-        if 'division_id' in self.request.GET and self.request.GET['division_id']:  # Allow filtering to org units belonging to a division.
-            queryset = queryset.filter(division_unit__pk=self.request.GET['division_id'])
-
-        # Tailor the API response.
-        if 'selectlist' in request.GET:  # Smaller response, for use in HTML select lists.
-            org_units = [{'id': ou.pk, 'text': ou.name} for ou in queryset]
-        else:
-            org_units = [
-                {
-                    'id': ou.pk,
-                    'name': ou.name,
-                    'division_id': ou.division_unit.pk if ou.division_unit else None,
-                } for ou in queryset
-            ]
-
-        return JsonResponse(org_units, safe=False)
 
 
 class LicenseAPIResource(View):
