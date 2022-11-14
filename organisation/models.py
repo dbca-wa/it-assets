@@ -159,15 +159,6 @@ class DepartmentUser(models.Model):
                 self.account_type = 14  # Unknown - AD disabled
         super(DepartmentUser, self).save(*args, **kwargs)
 
-    @property
-    def group_unit(self):
-        """Return the group-level org unit, as seen in the primary address book view.
-        In most cases, this should return the user's division.
-        """
-        if self.org_unit and self.org_unit.division_unit:
-            return self.org_unit.division_unit
-        return self.org_unit
-
     def get_division(self):
         """Returns the name of the division this user belongs to, based upon their cost centre.
         """

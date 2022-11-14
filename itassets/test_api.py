@@ -5,7 +5,7 @@ import random
 import string
 from uuid import uuid1
 
-from organisation.models import DepartmentUser, Location, OrgUnit, CostCentre
+from organisation.models import DepartmentUser, Location, CostCentre
 from registers.models import ITSystem
 
 
@@ -25,46 +25,37 @@ class ApiTestCase(TestCase):
         self.loc2 = mixer.blend(Location, manager=None)
 
         # Generate a basic org structure.
-        self.dept = OrgUnit.objects.create(name='Department 1', unit_type=0, acronym='DEPT', active=True)
-        self.div1 = OrgUnit.objects.create(
-            name='Divison 1', unit_type=1, division_unit=self.dept, location=self.loc1, acronym='DIV1', active=True)
-        self.branch1 = OrgUnit.objects.create(
-            name='Branch 1', unit_type=2, division_unit=self.div1, location=self.loc1, acronym='BRANCH1', active=True)
-        self.cc1 = CostCentre.objects.create(code='001', division_name=self.div1.name)
-        self.div2 = OrgUnit.objects.create(
-            name='Divison 2', unit_type=1, division_unit=self.dept, location=self.loc2, acronym='DIV2', active=True)
-        self.branch2 = OrgUnit.objects.create(
-            name='Branch 2', unit_type=2, division_unit=self.div2, location=self.loc2, acronym='BRANCH2', active=True)
-        self.cc2 = CostCentre.objects.create(code='002', division_name=self.div2.name)
+        self.cc1 = CostCentre.objects.create(code='001', division_name='Division A')
+        self.cc2 = CostCentre.objects.create(code='002', division_name='Division B')
 
         # Generate some other DepartmentUser objects.
         self.user1 = mixer.blend(
             DepartmentUser, active=True,
-            email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
+            email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             account_type=2,  # Permanent
             cost_centre=self.cc1,
         )
         self.user2 = mixer.blend(
             DepartmentUser, active=True,
-            email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
+            email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             account_type=3,  # Agency contract
             cost_centre=self.cc1,
         )
         self.inactive_user = mixer.blend(
             DepartmentUser, active=False,
-            email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
+            email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             account_type=2,
             cost_centre=self.cc1,
         )
         self.shared_acct = mixer.blend(
             DepartmentUser, active=True,
-            email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
+            email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             account_type=5,  # Shared account
             cost_centre=self.cc1,
         )
         self.contractor = mixer.blend(
             DepartmentUser, active=True,
-            email=random_dbca_email, org_unit=None, ad_guid=uuid1, in_sync=False,
+            email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             contractor=True,
             account_type=0,  # Fixed term contract
             cost_centre=self.cc1,
@@ -76,7 +67,7 @@ class ApiTestCase(TestCase):
         # Create a DepartmentUser object for testuser.
         mixer.blend(
             DepartmentUser, active=True, email=self.testuser.email,
-            org_unit=None, cost_centre=None, ad_guid=uuid1)
+            cost_centre=None, ad_guid=uuid1)
         # Log in testuser by default.
         self.client.login(username='testuser', password='pass')
 

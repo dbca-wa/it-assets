@@ -2,7 +2,7 @@ from django.urls import reverse
 from mixer.backend.django import mixer
 
 from itassets.test_api import ApiTestCase
-from organisation.models import Location, OrgUnit
+from organisation.models import Location
 
 
 class DepartmentUserAPIResourceTestCase(ApiTestCase):
@@ -75,55 +75,6 @@ class LocationAPIResourceTestCase(ApiTestCase):
         """
         # Test the "selectlist" response.
         url = '{}?selectlist='.format(reverse('location_api_resource'))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-
-
-class OrgUnitAPIResourceTestCase(ApiTestCase):
-
-    def test_list(self):
-        """Test the OrgUnitAPIResource list response
-        """
-        ou_inactive = mixer.blend(Location, manager=None, active=False)
-        ou_inactive = OrgUnit.objects.create(
-            name='Divison 3', unit_type=1, division_unit=self.dept, location=self.loc1, acronym='DIV3', active=False)
-        url = reverse('orgunit_api_resource')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.div1.name)
-        self.assertContains(response, self.branch1.name)
-        # Response should not contain the inactive OrgUnit.
-        self.assertNotContains(response, ou_inactive.name)
-
-    def test_list_filtering(self):
-        """Test the OrgUnitAPIResource filtered response
-        """
-        url = reverse('orgunit_api_resource', kwargs={'pk': self.div1.pk})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.div1.name)
-        self.assertNotContains(response, self.div2.name)
-        url = '{}?q={}'.format(reverse('orgunit_api_resource'), self.div2.name)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, self.div1.name)
-        self.assertContains(response, self.div2.name)
-        url = '{}?division'.format(reverse('orgunit_api_resource'))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.div1.name)
-        self.assertNotContains(response, self.branch1.name)
-        url = '{}?division_id={}'.format(reverse('orgunit_api_resource'), self.div1.pk)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.branch1.name)
-        self.assertNotContains(response, self.branch2.name)
-
-    def test_list_tailored(self):
-        """Test the OrgUnitAPIResource tailored list responses
-        """
-        # Test the "selectlist" response.
-        url = '{}?selectlist='.format(reverse('orgunit_api_resource'))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
