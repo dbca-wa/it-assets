@@ -25,6 +25,9 @@ INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'itassets.urls'
 WSGI_APPLICATION = 'itassets.wsgi.application'
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+# Allow overriding the Django default for FILE_UPLOAD_PERMISSIONS (0o644).
+# Required for non-local Azure storage volumes in Kubernetes environment.
+FILE_UPLOAD_PERMISSIONS = env('FILE_UPLOAD_PERMISSIONS', None)
 
 INSTALLED_APPS = (
     'whitenoise.runserver_nostatic',
