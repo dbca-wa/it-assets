@@ -247,14 +247,9 @@ def ascender_db_import(employee_iter=None):
     In addition, this function will create a new Azure AD account based on Ascender records
     that match a set of rules.
     """
-    # If we're expecting to create new Azure AD accounts, get Microsoft Graph API token and available licences.
+    # If we're expecting to create new Azure AD accounts, get a Microsoft Graph API token.
     if settings.ASCENDER_CREATE_AZURE_AD:
-        LOGGER.info("Querying Microsoft 365 licence availability")
         token = ms_graph_client_token()
-        e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
-        f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
-        eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
-        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
 
     LOGGER.info("Querying Ascender database for employee information")
     if not employee_iter:
@@ -308,7 +303,12 @@ def ascender_db_import(employee_iter=None):
             # Short circuit: if there is no value for licence_type, skip account creation.
             if not job['licence_type'] or job['licence_type'] == 'NULL':
                 continue
-            elif job['licence_type']:
+            elif job['licence_type'] and job['licence_type'] in ['ONPUL', 'CLDUL']:  # The valid licence type values stored in Ascender are ONPUL and CLDUL.
+                LOGGER.info("Querying Microsoft 365 licence availability")
+                e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
+                f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
+                eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
+                sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
                 if job['licence_type'] == 'ONPUL':
                     licence_type = 'On-premise'
                     # Short circuit: no available licences, abort.
@@ -331,8 +331,6 @@ def ascender_db_import(employee_iter=None):
                         subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Security & Compliance licences available (employee ID {eid})"
                         LOGGER.warning(subject)
                         continue
-                else:  # The only valid licence type values stored in Ascender are currentl ONPUL and CLDUL.
-                    continue
 
             # Rule: user must have a manager recorded, and that manager must exist in our database.
             if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
