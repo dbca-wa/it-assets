@@ -297,7 +297,7 @@ def ascender_db_import(employee_iter=None):
             job_start_date = None
             manager = None
             location = None
-            ascender_record = f"{eid} ({job['first_name']} {job['surname']})"
+            ascender_record = f"{eid}, {job['first_name']} {job['surname']}"
 
             # Rule: user must have a valid M365 licence type recorded, plus we need to have an available M365 licence to allocate.
             # Short circuit: if there is no value for licence_type, skip account creation.
@@ -313,22 +313,22 @@ def ascender_db_import(employee_iter=None):
                     licence_type = 'On-premise'
                     # Short circuit: no available licences, abort.
                     if e5_sku['consumedUnits'] >= e5_sku['prepaidUnits']['enabled']:
-                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no onprem E5 licences available (employee ID {eid})"
+                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no onprem E5 licences available ({ascender_record})"
                         LOGGER.warning(subject)
                         continue
                 elif job['licence_type'] == 'CLDUL':
                     licence_type = 'Cloud'
                     # Short circuit: no available licences, abort.
                     if f3_sku['consumedUnits'] >= f3_sku['prepaidUnits']['enabled']:
-                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud F3 licences available (employee ID {eid})"
+                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud F3 licences available ({ascender_record})"
                         LOGGER.warning(subject)
                         continue
                     if eo_sku['consumedUnits'] >= eo_sku['prepaidUnits']['enabled']:
-                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Exchange Online licences available (employee ID {eid})"
+                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Exchange Online licences available ({ascender_record})"
                         LOGGER.warning(subject)
                         continue
                     if sec_sku['consumedUnits'] >= sec_sku['prepaidUnits']['enabled']:
-                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Security & Compliance licences available (employee ID {eid})"
+                        subject = f"ASCENDER SYNC: create new Azure AD user aborted, no Cloud Security & Compliance licences available ({ascender_record})"
                         LOGGER.warning(subject)
                         continue
 
@@ -452,12 +452,12 @@ def ascender_db_import(employee_iter=None):
                             mail_nickname = pattern.split("@")[0]
                             break
                 else:  # No preferred/first name recorded.
-                    LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted, invalid name values (employee ID {eid})")
+                    LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted, invalid name values ({ascender_record})")
                     continue
 
                 if not email and mail_nickname:
                     # We can't generate a unique email with the supplied information; abort.
-                    LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted at email, invalid name values (employee ID {eid})")
+                    LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted at email, invalid name values ({ascender_record})")
                     continue
 
                 # Display name generation. Set names to title case and strip trailing space.
@@ -466,7 +466,7 @@ def ascender_db_import(employee_iter=None):
                 elif job['first_name'] and job['surname']:
                     display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
                 else:  # No preferred/first name recorded.
-                    LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted at display name, invalid name values (employee ID {eid})")
+                    LOGGER.warning(f"ASCENDER SYNC: create new Azure AD user aborted at display name, invalid name values ({ascender_record})")
                     continue
                 title = title_except(job['occup_pos_title'])
 
