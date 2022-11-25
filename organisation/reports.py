@@ -69,7 +69,7 @@ def user_account_export(fileobj, users):
     ) as workbook:
         users_sheet = workbook.add_worksheet('Department users')
         users_sheet.write_row('A1', (
-            'NAME', 'COST CENTRE', 'MICROSOFT 365 LICENCE', 'ACCOUNT ACTIVE?', 'SHARED/ROLE-BASED ACCOUNT?'
+            'NAME', 'COST CENTRE', 'MICROSOFT 365 LICENCE', 'AD ACCOUNT ACTIVE?',
         ))
         row = 1
         for i in users:
@@ -78,13 +78,11 @@ def user_account_export(fileobj, users):
                 i.cost_centre.code if i.cost_centre else '',
                 i.get_licence(),
                 i.active,
-                i.shared_account,
             ])
             row += 1
         users_sheet.set_column('A:A', 30)
         users_sheet.set_column('B:B', 15)
         users_sheet.set_column('C:C', 22)
-        users_sheet.set_column('D:D', 17)
-        users_sheet.set_column('E:E', 29)
+        users_sheet.set_column('D:D', 20)
 
     return fileobj

@@ -32,8 +32,7 @@
                         <th>Name</th>
                         <th>Cost centre</th>
                         <th>Microsoft 365 licence</th>
-                        <th>Active?</th>
-                        <th>Shared/role-based?</th>
+                        <th>Active Directory account active?</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -43,7 +42,6 @@
                         <td>{{ obj.cost_centre.code }}</td>
                         <td>{{ obj.get_licence }}</td>
                         <td>{{ obj.active|yesno|capfirst }}</td>
-                        <td>{{ obj.shared_account|yesno|capfirst }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>

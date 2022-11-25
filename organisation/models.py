@@ -1151,48 +1151,6 @@ class Location(models.Model):
         return self.name
 
 
-class OrgUnit(models.Model):
-    """Represents an element within the Department organisational hierarchy.
-    This model has largely been deprecated from usage.
-    """
-    TYPE_CHOICES = (
-        (0, 'Department (Tier one)'),
-        (1, 'Division (Tier two)'),
-        (11, 'Division'),
-        (9, 'Group'),
-        (2, 'Branch'),
-        (7, 'Section'),
-        (3, 'Region'),
-        (6, 'District'),
-        (8, 'Unit'),
-        (5, 'Office'),
-        (10, 'Work centre'),
-    )
-    active = models.BooleanField(default=True)
-    unit_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES)
-    name = models.CharField(max_length=256)
-    acronym = models.CharField(max_length=16, null=True, blank=True)
-    manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True)
-    location = models.ForeignKey(
-        Location, on_delete=models.PROTECT, null=True, blank=True)
-    division_unit = models.ForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='division_orgunits',
-        help_text='Division-level unit to which this unit belongs',
-    )
-    ascender_clevel = models.CharField(max_length=128, null=True, blank=True, unique=True)
-
-    class Meta:
-        ordering = ('name',)
-
-    def cc(self):
-        return ', '.join([str(x) for x in self.costcentre_set.all()])
-
-    def __str__(self):
-        return self.name
-
-
 DIVISION_CHOICES = (
     ("BCS", "DBCA Biodiversity and Conservation Science"),
     ("BGPA", "Botanic Gardens and Parks Authority"),
