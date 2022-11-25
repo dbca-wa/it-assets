@@ -2,9 +2,6 @@ from django.urls import path, re_path
 from registers import views
 
 urlpatterns = [
-    path('itsystem/export/', views.ITSystemExport.as_view(), name='itsystem_export'),
-    path('itsystem/platform/export/', views.ITSystemPlatformExport.as_view(), name='itsystem_platform_export'),
-    path('itsystem/discrepancy-report/', views.ITSystemDiscrepancyReport.as_view(), name='itsystem_discrepancy_report'),
     path('changerequest/', views.ChangeRequestList.as_view(), name='change_request_list'),
     path('changerequest/<int:pk>/', views.ChangeRequestDetail.as_view(), name='change_request_detail'),
     path('changerequest/<int:pk>/change/', views.ChangeRequestChange.as_view(), name='change_request_change'),
@@ -28,6 +25,4 @@ urlpatterns = [
     path('riskassessment/itsystem/export/', views.RiskAssessmentExport.as_view(), name='riskassessment_export'),
     path('riskassessment/itsystem/signalsciencetags/', views.SignalScienceTags.as_view(), name='signal_science_tags'),
     path('riskassessment/itsystem/<int:pk>/', views.RiskAssessmentITSystemDetail.as_view(), name='riskassessment_itsystem_detail'),
-    path('dependency/itsystem/', views.DependencyITSystemList.as_view(), name='dependency_itsystem_list'),
-    path('dependency/itsystem/export/', views.DependencyExport.as_view(), name='dependency_export'),
 ]

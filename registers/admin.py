@@ -9,7 +9,7 @@ from pytz import timezone
 
 from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
-from .views import ITSystemExport, ITSystemDiscrepancyReport, ChangeRequestExport
+from .views import ChangeRequestExport
 
 
 class ITSystemForm(forms.ModelForm):
@@ -113,18 +113,10 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
             ),
         }),
     ]
-    # Override the default change_list.html template to add export links:
+    # Override the default change_list.html template:
     change_list_template = 'admin/registers/itsystem/change_list.html'
     form = ITSystemForm  # Use the custom ModelForm.
     save_on_top = True
-
-    def get_urls(self):
-        urls = super(ITSystemAdmin, self).get_urls()
-        urls = [
-            path('export/', self.admin_site.admin_view(ITSystemExport.as_view()), name='itsystem_export'),
-            path('discrepancies/', self.admin_site.admin_view(ITSystemDiscrepancyReport.as_view()), name='itsystem_discrepancies'),
-        ] + urls
-        return urls
 
     def has_add_permission(self, request):
         # The point of truth for IT Systems is now Sharepoint, therefore adding new objects here is disallowed.

@@ -4,7 +4,6 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
-from django.template.loader import render_to_string
 from django.urls import reverse
 from markdownx.utils import markdownify
 from os import path
@@ -254,28 +253,6 @@ class ITSystem(models.Model):
             return map[self.custody]
         else:
             return ''
-
-    def get_detail_markdown(self, template=None):
-        if not template:
-            template = 'registers/itsystem.md'
-        d = self.__dict__
-        d['status'] = self.get_status_display()
-        d['owner'] = self.owner.name if self.owner else ''
-        d['technology_custodian'] = self.technology_custodian.name if self.technology_custodian else ''
-        d['information_custodian'] = self.information_custodian.name if self.information_custodian else ''
-        if not d['system_reqs']:
-            d['system_reqs'] = 'Not specified'
-        if not d['documentation']:
-            d['documentation'] = 'Not specified'
-        if not self.bh_support:
-            d['bh_support_name'] = 'Not specified'
-            d['bh_support_telephone'] = ''
-            d['bh_support_email'] = ''
-        else:
-            d['bh_support_name'] = self.bh_support.name
-            d['bh_support_telephone'] = self.bh_support.telephone
-            d['bh_support_email'] = self.bh_support.email
-        return render_to_string(template, d)
 
     def get_risks(self, category=None):
         # Return a set of unique risks associated with the IT System.
