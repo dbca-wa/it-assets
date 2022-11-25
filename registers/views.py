@@ -15,7 +15,7 @@ from django.views.generic import View, ListView, DetailView, CreateView, UpdateV
 from pytz import timezone
 import re
 
-from bigpicture.models import Platform, RISK_CATEGORY_CHOICES
+from bigpicture.models import RISK_CATEGORY_CHOICES
 from itassets.utils import breadcrumbs_list
 from organisation.models import DepartmentUser
 from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
@@ -24,10 +24,7 @@ from .forms import (
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm, ChangeRequestApprovalForm, ChangeRequestSMEReviewForm,
 )
-from .reports import (
-    it_system_export, itsr_staff_discrepancies, change_request_export,
-    it_system_platform_export, riskassessment_export, dependency_export,
-)
+from .reports import change_request_export, riskassessment_export
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -77,56 +74,6 @@ class ITSystemAPIResource(View):
             ]
 
         return JsonResponse(systems, safe=False)
-
-
-class ITSystemExport(LoginRequiredMixin, View):
-    """A custom view to export all IT Systems to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_systems_{}_{}.xlsx'.format(
-            date.today().isoformat(), datetime.now().strftime('%H%M')
-        )
-
-        if 'all' in request.GET:  # Return all IT systems.
-            it_systems = ITSystem.objects.all().order_by('system_id')
-        else:  # Default to prod/prod-legacy IT systems only.
-            it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
-
-        response = it_system_export(response, it_systems)
-        return response
-
-
-class ITSystemDiscrepancyReport(LoginRequiredMixin, View):
-    """A custom view to return a spreadsheet containing discrepancies related to IT Systems.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_system_discrepancies_{}_{}.xlsx'.format(
-            date.today().isoformat(), datetime.now().strftime('%H%M')
-        )
-        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER)
-        response = itsr_staff_discrepancies(response, it_systems)
-        return response
-
-
-class ITSystemPlatformExport(LoginRequiredMixin, View):
-    """A custom view to export IT System & their platform to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=it_systems_platforms_{}_{}.xlsx'.format(
-            date.today().isoformat(), datetime.now().strftime('%H%M')
-        )
-
-        if 'all' in request.GET:  # Return all IT systems.
-            it_systems = ITSystem.objects.all().order_by('system_id')
-        else:  # Default to prod/prod-legacy IT systems only.
-            it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
-
-        platforms = Platform.objects.all()
-        response = it_system_platform_export(response, it_systems, platforms)
-        return response
 
 
 class ChangeRequestList(LoginRequiredMixin, ListView):
@@ -992,50 +939,6 @@ class RiskAssessmentExport(LoginRequiredMixin, View):
         )
         it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
         response = riskassessment_export(response, it_systems)
-        return response
-
-
-class DependencyITSystemList(LoginRequiredMixin, ListView):
-    """A list view to display a summary of hardware dependencies for all IT Systems.
-    """
-    model = ITSystem
-    paginate_by = 20
-    template_name = 'registers/dependency_list.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Dependencies - IT Systems'
-        if 'q' in self.request.GET:
-            context['query_string'] = self.request.GET['q']
-        # Breadcrumb links:
-        links = [(None, 'Dependencies')]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        return context
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        # Default to prod/prod-legacy IT systems only.
-        qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
-        # Did we pass in a search string? If so, filter the queryset and return it.
-        if 'q' in self.request.GET and self.request.GET['q']:
-            from .admin import ITSystemAdmin
-            q = search_filter(ITSystemAdmin.search_fields, self.request.GET['q'])
-            qs = qs.filter(q).distinct()
-        return qs
-
-
-class DependencyExport(LoginRequiredMixin, View):
-    """A custom view to export IT System dependencies to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=dependencies_it_systems_{}_{}.xlsx'.format(
-            date.today().isoformat(), datetime.now().strftime('%H%M')
-        )
-        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
-        response = dependency_export(response, it_systems)
         return response
 
 
