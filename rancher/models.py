@@ -584,7 +584,7 @@ class ContainerImageFamily(DeletedMixin,models.Model):
 
     @property
     def filter_function(self):
-        if self._filter_func == False:
+        if self._filter_func is False:
             if self.family_module and hasattr(self.family_module,"filter"):
                 self._filter_func = self.family_module.filter
             else:
@@ -594,7 +594,7 @@ class ContainerImageFamily(DeletedMixin,models.Model):
 
     @property
     def loglevel_function(self):
-        if self._loglevel_func == False:
+        if self._loglevel_func is False:
             if self.family_module and hasattr(self.family_module,"loglevel"):
                 self._loglevel_func = self.family_module.loglevel
             else:
