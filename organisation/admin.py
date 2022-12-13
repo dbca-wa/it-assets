@@ -1,7 +1,6 @@
 from django import forms
 from django.contrib import admin
-from django.urls import path, reverse
-from django.utils.html import format_html
+from django.urls import path
 
 from itassets.utils import ModelDescMixin
 from .models import DepartmentUser, Location, CostCentre
