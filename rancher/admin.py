@@ -919,7 +919,8 @@ class OperatingSystemInline(RequestMixin,ImagesMixin,VulnerabilitiesMixin,admin.
     fields = readonly_fields
     ordering = ('operatingsystem__name','operatingsystem__version')
 
-    get_os = lambda self,o:o.operatingsystem
+    def get_os(self, o):
+        return o.operatingsystem
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -979,7 +980,8 @@ class ContainerImageInline(RequestMixin,ScanSummaryMixin,WorkloadsLinkMixin,admi
     model = models.ContainerImage.vulnerabilities.through
     readonly_fields = ('imageid','os','workloads', 'get_scan_status_display', '_scan_summary' )
     fields = readonly_fields
-    get_image = lambda self,o:o.containerimage
+    def get_image(self, o):
+        return o.containerimage
 
     def get_queryset(self, request):
         qs =  super().get_queryset(request)
