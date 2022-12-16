@@ -18,7 +18,7 @@
                         <input id="search_field" type="text" class="form-control" name="q" placeholder="Search name or CC..." value="{{ query_string }}">
                     </div>
                     <div class="col-xs-12 col-sm-5 col-md-4">
-                        <a href="{% url 'user_accounts_export' %}?q={{ query_string }}" class="btn btn-info"><i class="fas fa-file-export"></i> Export</a>
+                        <a href="{% url 'user_accounts' %}?q={{ query_string }}&export=true" class="btn btn-info"><i class="fas fa-file-export"></i> Export</a>
                     </div>
                 </div>
             </form>

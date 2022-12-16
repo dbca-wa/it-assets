@@ -18,7 +18,7 @@ def title_except(
     exceptions=('the', 'of', 'for', 'and', 'or'),
     acronyms=(
         'OIM', 'IT', 'PVS', 'SFM', 'OT', 'NP', 'FMDP', 'VRM', 'TEC', 'GIS', 'ODG', 'RIA', 'ICT',
-        'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO',
+        'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO', 'EHP',
     ),
 ):
     """Utility function to title-case words in a job title, except for all the exceptions and edge cases.
