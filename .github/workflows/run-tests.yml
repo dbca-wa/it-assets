@@ -82,6 +82,5 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          python manage.py migrate
           python manage.py collectstatic
           python manage.py test
