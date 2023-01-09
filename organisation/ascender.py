@@ -1,7 +1,6 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from fuzzywuzzy import fuzz
 import logging
 import psycopg2
 import pytz
@@ -760,35 +759,6 @@ OIM Service Desk\n"""
     )
     msg.attach_alternative(html_content, "text/html")
     msg.send(fail_silently=False)
-
-
-def get_ascender_matches():
-    """For users with no employee ID, return a list of lists of possible Ascender matches in the format:
-    [IT ASSETS PK, IT ASSETS NAME, ASCENDER NAME, EMPLOYEE ID]
-    """
-    dept_users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER, employee_id__isnull=True, given_name__isnull=False, surname__isnull=False)
-    ascender_data = ascender_employee_fetch()
-    possible_matches = []
-    ascender_jobs = []
-
-    for eid, jobs in ascender_data:
-        ascender_jobs.append(jobs[0])
-
-    for user in dept_users:
-        for data in ascender_jobs:
-            if data['first_name'] and data['surname'] and not DepartmentUser.objects.filter(employee_id=data['employee_id']).exists():
-                sn_ratio = fuzz.ratio(user.surname.upper(), data['surname'].upper())
-                fn_ratio = fuzz.ratio(user.given_name.upper(), data['first_name'].upper())
-                if sn_ratio > 80 and fn_ratio > 65:
-                    possible_matches.append([
-                        user.pk,
-                        user.name,
-                        '{} {}'.format(data['first_name'], data['surname']),
-                        data['employee_id'],
-                    ])
-                    continue
-
-    return possible_matches
 
 
 def ascender_cc_manager_fetch():

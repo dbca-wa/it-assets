@@ -212,6 +212,13 @@ class DepartmentUser(models.Model):
             return self.ascender_data['occup_pos_title']
         return ''
 
+    def get_position_number(self):
+        """From Ascender data, return the user's position number.
+        """
+        if self.ascender_data and 'position_no' in self.ascender_data and self.ascender_data['position_no']:
+            return self.ascender_data['position_no']
+        return ''
+
     def get_paypoint(self):
         """From Ascender data, return the user's paypoint value.
         """
