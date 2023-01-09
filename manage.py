@@ -5,8 +5,8 @@ import sys
 # These lines are required for interoperability between local and container environments.
 dot_env = os.path.join(os.getcwd(), '.env')
 if os.path.exists(dot_env):
-    from dotenv import read_dotenv
-    read_dotenv()
+    from dotenv import load_dotenv
+    load_dotenv()
 
 
 def main():
