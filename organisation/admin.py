@@ -58,7 +58,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     readonly_fields = (
         'active', 'email', 'name', 'given_name', 'surname', 'azure_guid', 'ad_guid', 'ascender_full_name', 'ascender_preferred_name',
         'assigned_licences', 'proxy_addresses', 'dir_sync_enabled', 'ascender_org_path', 'geo_location_desc',
-        'paypoint', 'employment_status', 'position_title', 'job_start_date', 'job_end_date', 'ascender_data_updated',
+        'paypoint', 'employment_status', 'position_title', 'position_number', 'job_start_date', 'job_end_date', 'ascender_data_updated',
         'manager_name', 'extended_leave', 'employee_id',
     )
     fieldsets = (
@@ -70,6 +70,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'ascender_preferred_name',
                 'ascender_org_path',
                 'position_title',
+                'position_number',
                 'geo_location_desc',
                 'paypoint',
                 'employment_status',
@@ -142,6 +143,9 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
 
     def position_title(self, instance):
         return instance.get_position_title()
+
+    def position_number(self, instance):
+        return instance.get_position_number()
 
     def job_start_date(self, instance):
         if instance.get_job_start_date():
