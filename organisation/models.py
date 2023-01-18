@@ -316,7 +316,7 @@ class DepartmentUser(models.Model):
             and self.ascender_data
             and 'job_end_date' in self.ascender_data
             and self.ascender_data['job_end_date']
-            and settings.ASCENDER_DEACTIVATE_EXPIRED
+            and settings.ASCENDER_DEACTIVATE_EXPIRED  # Defaults as False, must be explicitly set True.
         ):
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
 
