@@ -697,6 +697,25 @@ def ascender_db_import(employee_iter=None):
                     msg.send(fail_silently=True)
 
 
+def employee_ids_audit(employee_ids=None):
+    """A utility function to check the set of current Ascender employee ID values and prune/remove
+    any outdated ones.
+    """
+    LOGGER.info("Querying Ascender database for employee information")
+    if not employee_ids:
+        employee_ids = []
+        ascender_iter = ascender_db_fetch()
+        for record in ascender_iter:
+            employee_ids.append(record["employee_id"])
+
+    LOGGER.info(f"Auditing {len(employee_ids)} employee ID values recorded on department users")
+    for user in DepartmentUser.objects.filter(employee_id__isnull=False):
+        if user.employee_id not in employee_ids:
+            LOGGER.info(f"{user.employee_id} not found in current employee IDs, clearing it from {user}")
+            user.employee_id = None
+            user.save()
+
+
 def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date=None):
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
