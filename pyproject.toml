@@ -7,7 +7,7 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-Django = "3.2.16"
+Django = "3.2.17"
 psycopg2 = "2.9.4"
 dbca-utils = "1.1.6"
 django-extensions = "3.2.1"
