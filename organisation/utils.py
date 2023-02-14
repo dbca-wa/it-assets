@@ -104,12 +104,13 @@ def ms_graph_subscribed_sku(sku_id, token=None):
     return resp.json()
 
 
-def ms_graph_users(licensed=False):
+def ms_graph_users(licensed=False, token=None):
     """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
     """
-    token = ms_graph_client_token()
+    if not token:
+        token = ms_graph_client_token()
     if not token:  # The call to the MS API occassionally fails.
         return None
 
