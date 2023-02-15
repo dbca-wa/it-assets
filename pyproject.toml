@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "it-assets"
-version = "2.3.80"
+version = "2.3.81"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
