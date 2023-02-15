@@ -9,7 +9,7 @@ import os
 import requests
 from tempfile import NamedTemporaryFile
 
-from itassets.utils import ms_graph_client_token
+from itassets.utils import ms_graph_client_token, smart_truncate
 from .utils import compare_values, parse_windows_ts, title_except
 from .microsoft_products import MS_PRODUCTS
 LOGGER = logging.getLogger('organisation')
@@ -1135,6 +1135,26 @@ class DepartmentUserLog(models.Model):
             self.department_user,
             self.log,
         )
+
+
+class AscenderActionLog(models.Model):
+    """Represents a log of an action carried out (or not carried out) based on data from Ascender.
+    Mainly used to report actions carried out by automated account creation scripts.
+    """
+    LOG_LEVELS = (
+        ('INFO', 'INFO'),
+        ('WARNING', 'WARNING'),
+        ('ERROR', 'ERROR'),
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    level = models.CharField(max_length=64, choices=LOG_LEVELS)
+    log = models.CharField(max_length=512)
+
+    class Meta:
+        ordering = ('-created',)
+
+    def __str__(self):
+        return f"{self.created.strftime('%Y-%m-%dT%H:%M:%SZ')}: {smart_truncate(self.log)}"
 
 
 class Location(models.Model):

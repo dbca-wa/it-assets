@@ -1,12 +1,12 @@
-import threading
-
 from django.db.models import Q
 from django.contrib.auth.models import User
+from django.utils.encoding import smart_text
 import json
 from msal import ConfidentialClientApplication
 import os
 import re
 import requests
+import threading
 
 
 def ms_graph_client_token():
@@ -290,3 +290,14 @@ def humanise_bytes(bytes: int) -> str:
         if bytes < 1024.0:
             return "{:3.1f} {}".format(bytes, x)
         bytes /= 1024.0
+
+
+def smart_truncate(content, length=100, suffix='....(more)'):
+    """Small function to truncate a string in a sensible way, sourced from:
+    http://stackoverflow.com/questions/250357/smart-truncate-in-python
+    """
+    content = smart_text(content)
+    if len(content) <= length:
+        return content
+    else:
+        return ' '.join(content[:length + 1].split(' ')[0:-1]) + suffix
