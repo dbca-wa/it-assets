@@ -32,7 +32,7 @@ pysftp = "0.2.9"
 django-csp = "3.7"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^7.31.1"
+ipython = "^8.10.0"
 ipdb = "^0.13.3"
 ruff = "^0.0.177"
 black = "^22.8.0"
