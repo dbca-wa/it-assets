@@ -1,5 +1,6 @@
 from data_storage import AzureBlobStorage
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from dateutil.parser import parse
 from django.conf import settings
 from io import BytesIO
 import json
@@ -9,6 +10,8 @@ import re
 import requests
 import unicodecsv as csv
 from itassets.utils import ms_graph_client_token
+
+from .microsoft_products import MS_PRODUCTS
 
 TZ = pytz.timezone(settings.TIME_ZONE)
 
@@ -104,12 +107,14 @@ def ms_graph_subscribed_sku(sku_id, token=None):
     return resp.json()
 
 
-def ms_graph_users(licensed=False):
+def ms_graph_users(licensed=False, token=None):
     """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
+    Returns a list of Azure AD user objects (dicts).
     """
-    token = ms_graph_client_token()
+    if not token:
+        token = ms_graph_client_token()
     if not token:  # The call to the MS API occassionally fails.
         return None
 
@@ -164,11 +169,15 @@ def ms_graph_users(licensed=False):
         return aad_users
 
 
-def ms_graph_users_signinactivity(licensed=False):
+def ms_graph_users_signinactivity(licensed=False, token=None):
     """Query the MS Graph (Beta) API for a list of Azure AD account with sign-in activity.
+    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
+    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
+    Returns a list of Azure AD user objects (dicts).
     """
-    token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails.
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails and returns None.
         return None
 
     headers = {
@@ -176,7 +185,7 @@ def ms_graph_users_signinactivity(licensed=False):
         'Content-Type': 'application/json',
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/beta/users?$select=id,mail,userPrincipalName,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
+    url = "https://graph.microsoft.com/beta/users?$select=id,mail,userPrincipalName,accountEnabled,assignedLicenses,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
@@ -188,46 +197,66 @@ def ms_graph_users_signinactivity(licensed=False):
         j = resp.json()
 
     users = users + j['value']  # Final page
-    user_signins = {}
+    user_signins = []
 
     for user in users:
-        if 'signInActivity' in user and user['signInActivity']:
-            user_signins[user['mail']] = user
+        if licensed:
+            if 'signInActivity' in user and user['signInActivity'] and user['assignedLicenses']:
+                user_signins.append(user)
+        else:
+            if 'signInActivity' in user and user['signInActivity']:
+                user_signins.append(user)
 
     return user_signins
 
 
-def ms_graph_inactive_users(days=45):
+def ms_graph_inactive_users(days=90, licensed=False, token=None):
     """Query the MS Graph (Beta) API for a list of Azure AD accounts which haven't had a login event within a defined number of days.
-    Returns a list of DepartmentUser objects.
+    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
+    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
+    Returns a list of Azure AD user objects (dicts).
     """
-    from organisation.models import DepartmentUser  # Prevent circular imports.
-    now = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    then = now - timedelta(days=days)
-    token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails.
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails and returns None.
         return None
 
-    headers = {"Authorization": "Bearer {}".format(token["access_token"]), "Content-Type": "application/json"}
-    url = "https://graph.microsoft.com/beta/users?filter=signInActivity/lastSignInDateTime le {}".format(then.strftime('%Y-%m-%dT%H:%M:%SZ'))
-    resp = requests.get(url, headers=headers)
-    j = resp.json()
-    accounts = j['value']  # At present the API doesn't return a paginated response.
-    users = []
+    user_signins = ms_graph_users_signinactivity(licensed, token)
+    if not user_signins:
+        return None
 
-    for i in accounts:
-        if i['accountEnabled'] and "#EXT#" not in i['userPrincipalName'] and i['userPrincipalName'].lower().endswith('dbca.wa.gov.au'):
-            if DepartmentUser.objects.filter(active=True, email=i['userPrincipalName']).exists():
-                user = DepartmentUser.objects.get(active=True, email=i['userPrincipalName'])
-                if user.get_licence():
-                    users.append(user)
+    then = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
+    accounts = []
+    for user in user_signins:
+        accounts.append({
+            'mail': user['mail'],
+            'userPrincipalName': user['userPrincipalName'],
+            'id': user['id'],
+            'accountEnabled': user['accountEnabled'],
+            'assignedLicenses': user['assignedLicenses'],
+            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']),
+        })
+    # Determine the list of AD accounts not having been signed into for the last number of `days`.
+    inactive_accounts = [i for i in accounts if i['lastSignInDateTime'] <= then]
 
-    return users
+    if licensed:  # Filter the list to accounts having an E5/F3 license assigned.
+        inactive_licensed = []
+        for i in inactive_accounts:
+            for license in i['assignedLicenses']:
+                if license['skuId'] in [MS_PRODUCTS['MICROSOFT 365 E5'], MS_PRODUCTS['MICROSOFT 365 F3']]:
+                    inactive_licensed.append(i)
+        return inactive_licensed
+    else:
+        return inactive_accounts
 
 
-def ms_graph_user(token, azure_guid):
+def ms_graph_user(azure_guid, token=None):
     """Query the Microsoft Graph REST API details of a signle Azure AD user account in our tenancy.
     """
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occassionally fails and returns None.
+        return None
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",

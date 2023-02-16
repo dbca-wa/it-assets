@@ -11,7 +11,7 @@ from pytz import timezone
 
 from organisation.models import DepartmentUser, CostCentre
 from bigpicture.models import RiskAssessment, Dependency, Platform, RISK_CATEGORY_CHOICES
-from .utils import smart_truncate
+from itassets.utils import smart_truncate
 
 TZ = timezone(settings.TIME_ZONE)
 

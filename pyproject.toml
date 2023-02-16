@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "it-assets"
-version = "2.3.80"
+version = "2.3.81"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-Django = "3.2.16"
+django = "3.2.17"
 psycopg2 = "2.9.4"
 dbca-utils = "1.1.6"
 django-extensions = "3.2.1"

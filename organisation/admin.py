@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import path
 
 from itassets.utils import ModelDescMixin
-from .models import DepartmentUser, Location, CostCentre
+from .models import DepartmentUser, Location, CostCentre, AscenderActionLog
 from .views import DepartmentUserExport
 from .utils import title_except
 
@@ -203,3 +203,21 @@ class CostCentreAdmin(admin.ModelAdmin):
     search_fields = ('code', 'chart_acct_name', 'division_name', 'ascender_code')
     list_filter = ('active', 'chart_acct_name', 'division_name')
     readonly_fields = ('manager', 'ascender_code')
+
+
+@admin.register(AscenderActionLog)
+class AscenderActionLogAdmin(admin.ModelAdmin):
+    date_hierarchy = 'created'
+    list_display = ('created', 'level', 'log')
+    list_filter = ('level',)
+    readonly_fields = ('created', 'level', 'log')
+    search_fields = ('log',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
