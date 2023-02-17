@@ -707,14 +707,12 @@ def ascender_db_import(employee_iter=None):
                 new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
                 LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
             else:
-                if licence_type:  # Everything else can still be False.
-                    # If we had a candidate for a new account creation (they don't currently exist in OIM data, but they have a licence type recorded in Ascender), send a notification to admins.
-                    subject = "ASCENDER SYNC: New account candidate creation skipped"
-                    text_content = f"Employee ID: {eid}, Name: {job['first_name']} {job['surname']},  CC: {cc}, Start date: {job_start_date}, Licence: {licence_type}, Manager: {manager}, Location: {location}"
-                    LOGGER.warning(subject)
-                    LOGGER.info(text_content)
-                    msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
+                # If licence_type has a value but any of the other fields don't (i.e. the candidate doesn't currently exist in OIM data
+                # but they have a licence type recorded in Ascender), log the fact that creation was skipped to assist any troubleshooting.
+                if licence_type:
+                    log = f"New Azure AD user creation skipped. Employee ID: {eid}, name: {job['first_name']} {job['surname']},  CC: {cc}, start date: {job_start_date}, licence: {licence_type}, manager: {manager}, location: {location}"
+                    AscenderActionLog.objects.create(level="INFO", log=log)
+                    LOGGER.info(log)
 
 
 def employee_ids_audit(employee_ids=None):
