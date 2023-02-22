@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib import admin
 from django.urls import path
+from django.utils.html import mark_safe
+import json
 
 from itassets.utils import ModelDescMixin
 from .models import DepartmentUser, Location, CostCentre, AscenderActionLog
@@ -208,10 +210,19 @@ class CostCentreAdmin(admin.ModelAdmin):
 @admin.register(AscenderActionLog)
 class AscenderActionLogAdmin(admin.ModelAdmin):
     date_hierarchy = 'created'
+    fields = ('created', 'level', 'log', 'ascender_data_pprint')
     list_display = ('created', 'level', 'log')
     list_filter = ('level',)
-    readonly_fields = ('created', 'level', 'log')
     search_fields = ('log',)
+
+    def ascender_data_pprint(self, obj=None):
+        result = ''
+        if obj and obj.ascender_data:
+            result = json.dumps(obj.ascender_data, indent=4, sort_keys=True)
+            result_str = f'<pre>{result}</pre>'
+            result = mark_safe(result_str)
+        return result
+    ascender_data_pprint.short_description = 'ascender data'
 
     def has_add_permission(self, request):
         return False

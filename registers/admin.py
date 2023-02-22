@@ -1,5 +1,4 @@
 from datetime import datetime
-from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin import register, ModelAdmin, StackedInline, SimpleListFilter
@@ -10,16 +9,6 @@ from pytz import timezone
 from itassets.utils import ModelDescMixin
 from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
 from .views import ChangeRequestExport
-
-
-class ITSystemForm(forms.ModelForm):
-
-    def clean_biller_code(self):
-        # Validation on the biller_code field - must be unique (ignore null values).
-        data = self.cleaned_data['biller_code']
-        if data and ITSystem.objects.filter(biller_code=data).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError('An IT System with this biller code already exists.')
-        return data
 
 
 @register(ITSystem)
@@ -115,8 +104,11 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
     ]
     # Override the default change_list.html template:
     change_list_template = 'admin/registers/itsystem/change_list.html'
-    form = ITSystemForm  # Use the custom ModelForm.
     save_on_top = True
+
+    def has_change_permission(self, request, obj=None):
+        # The point of truth for IT Systems is now Sharepoint, therefore adding new objects here is disallowed.
+        return False
 
     def has_add_permission(self, request):
         # The point of truth for IT Systems is now Sharepoint, therefore adding new objects here is disallowed.
@@ -134,6 +126,18 @@ class StandardChangeAdmin(ModelAdmin):
     list_display = ('id', 'name', 'endorser', 'expiry')
     raw_id_fields = ('endorser',)
     search_fields = ('id', 'name', 'endorser__email')
+
+    def has_change_permission(self, request, obj=None):
+        # The point of truth for RFCs is now Freshservice, therefore adding new objects here is disallowed.
+        return False
+
+    def has_add_permission(self, request):
+        # The point of truth for RFCs is now Freshservice, therefore adding new objects here is disallowed.
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # The point of truth for RFCs is now Freshservice, therefore adding new objects here is disallowed.
+        return False
 
 
 class ChangeLogInline(StackedInline):
@@ -312,3 +316,15 @@ class ChangeRequestAdmin(ModelAdmin):
         urls = super(ChangeRequestAdmin, self).get_urls()
         urls = [path('export/', self.admin_site.admin_view(ChangeRequestExport.as_view()), name='changerequest_export')] + urls
         return urls
+
+    def has_change_permission(self, request, obj=None):
+        # The point of truth for RFCs is now Freshservice, therefore adding new objects here is disallowed.
+        return False
+
+    def has_add_permission(self, request):
+        # The point of truth for RFCs is now Freshservice, therefore adding new objects here is disallowed.
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # The point of truth for RFCs is now Freshservice, therefore adding new objects here is disallowed.
+        return False
