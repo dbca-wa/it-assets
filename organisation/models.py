@@ -1146,9 +1146,10 @@ class AscenderActionLog(models.Model):
         ('WARNING', 'WARNING'),
         ('ERROR', 'ERROR'),
     )
-    created = models.DateTimeField(auto_now_add=True)
-    level = models.CharField(max_length=64, choices=LOG_LEVELS)
-    log = models.CharField(max_length=512)
+    created = models.DateTimeField(auto_now_add=True, editable=False)
+    level = models.CharField(max_length=64, choices=LOG_LEVELS, editable=False)
+    log = models.CharField(max_length=512, editable=False)
+    ascender_data = models.JSONField(default=dict, null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ('-created',)
