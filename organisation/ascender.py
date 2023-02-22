@@ -313,7 +313,7 @@ def ascender_db_import(employee_iter=None):
                     # Short circuit: no available licences, abort.
                     if e5_sku['consumedUnits'] >= e5_sku['prepaidUnits']['enabled']:
                         log = f"Creation of new Azure AD user started then aborted, no onprem E5 licences available ({ascender_record})"
-                        AscenderActionLog.objects.create(level="WARNING", log=log)
+                        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
                 elif job['licence_type'] == 'CLDUL':
@@ -321,17 +321,17 @@ def ascender_db_import(employee_iter=None):
                     # Short circuit: no available licences, abort.
                     if f3_sku['consumedUnits'] >= f3_sku['prepaidUnits']['enabled']:
                         log = f"Creation of new Azure AD user started then aborted, no Cloud F3 licences available ({ascender_record})"
-                        AscenderActionLog.objects.create(level="WARNING", log=log)
+                        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
                     if eo_sku['consumedUnits'] >= eo_sku['prepaidUnits']['enabled']:
                         log = f"Creation of new Azure AD user started then aborted, no Cloud Exchange Online licences available ({ascender_record})"
-                        AscenderActionLog.objects.create(level="WARNING", log=log)
+                        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
                     if sec_sku['consumedUnits'] >= sec_sku['prepaidUnits']['enabled']:
                         log = f"Creation of new Azure AD user started then aborted, no Cloud Security & Compliance licences available ({ascender_record})"
-                        AscenderActionLog.objects.create(level="WARNING", log=log)
+                        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
 
@@ -345,27 +345,20 @@ def ascender_db_import(employee_iter=None):
             if job['paypoint'] and CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
                 cc = CostCentre.objects.get(ascender_code=job['paypoint'])
             elif job['paypoint'] and not CostCentre.objects.filter(ascender_code=job['paypoint']).exists():
-                # Attempt to automatically create a new CC from Ascender data, and send a notification to admins.
+                # Attempt to automatically create a new CC from Ascender data.
                 try:
                     cc = CostCentre.objects.create(
                         code=job['paypoint'],
                         ascender_code=job['paypoint'],
                     )
                     log = f"Creation of new Azure AD user process generated new cost centre, code {job['paypoint']}"
-                    AscenderActionLog.objects.create(level="INFO", log=log)
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                     LOGGER.info(log)
-                    text_content = f"""Ascender record:\n
-                    {job}"""
-                    msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
                 except:
-                    # In the event of an error (probably due to a duplicate code), fail gracefully and alert the admins.
+                    # In the event of an error (probably due to a duplicate code), fail gracefully and log the error.
                     log = f"Exception during creation of new cost centre in new Azure AD user process, code {job['paypoint']}"
+                    AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.error(log)
-                    text_content = f"""Ascender record:\n
-                    {job}"""
-                    msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
 
             # Rule: user must have a job start date recorded.
             if job['job_start_date']:
@@ -381,7 +374,7 @@ def ascender_db_import(employee_iter=None):
                 diff = job_start_date - today
                 if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
                     log = f"Skipped creation of new Azure AD user for emp ID {ascender_record} (exceeds start date limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days)"
-                    AscenderActionLog.objects.create(level="INFO", log=log)
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                     LOGGER.info(log)
                     continue  # Start start exceeds our limit, abort creating an AD account yet.
 
@@ -389,7 +382,7 @@ def ascender_db_import(employee_iter=None):
             if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                 location = Location.objects.get(ascender_desc=job['geo_location_desc'])
             elif job['geo_location_desc'] and not Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():  # geo_location_desc must at least have a value.
-                # Attempt to manually create a new location description from Ascender data, and send a note to admins.
+                # Attempt to manually create a new location description from Ascender data.
                 try:
                     location = Location.objects.create(
                         name=job['geo_location_desc'],
@@ -397,20 +390,12 @@ def ascender_db_import(employee_iter=None):
                         address=job['geo_location_desc'],
                     )
                     log = f"Creation of new Azure AD user process generated new location, description {job['geo_location_desc']}"
-                    AscenderActionLog.objects.create(level="INFO", log=log)
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                     LOGGER.info(log)
-                    text_content = f"""Ascender record:\n
-                    {job}"""
-                    msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
                 except:
-                    # In the event of an error (probably due to a duplicate name), fail gracefully and alert the admins.
+                    # In the event of an error (probably due to a duplicate name), fail gracefully and log the error.
                     log = f"ASCENDER SYNC: exception during creation of new location in new Azure AD user process, description {job['geo_location_desc']}"
                     LOGGER.error(log)
-                    text_content = f"""Ascender record:\n
-                    {job}"""
-                    msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                    msg.send(fail_silently=True)
 
             # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
             if settings.DEBUG:
@@ -460,14 +445,14 @@ def ascender_db_import(employee_iter=None):
                             break
                 else:  # No preferred/first name recorded.
                     log = f"Creation of new Azure AD user aborted, first/preferred name absent ({ascender_record})"
-                    AscenderActionLog.objects.create(level="WARNING", log=log)
+                    AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                     LOGGER.warning(log)
                     continue
 
                 if not email and mail_nickname:
                     # We can't generate a unique email with the supplied information; abort.
                     log = f"ASCENDER SYNC: create new Azure AD user aborted at email step, unable to generate unique email ({ascender_record})"
-                    AscenderActionLog.objects.create(level="WARNING", log=log)
+                    AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                     LOGGER.warning(log)
                     continue
 
@@ -478,7 +463,7 @@ def ascender_db_import(employee_iter=None):
                     display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
                 else:  # No preferred/first name recorded.
                     log = f"Creation of new Azure AD user aborted, first/preferred name absent ({ascender_record})"
-                    AscenderActionLog.objects.create(level="WARNING", log=log)
+                    AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                     LOGGER.warning(log)
                     continue
                 title = title_except(job['occup_pos_title'])
@@ -512,7 +497,7 @@ def ascender_db_import(employee_iter=None):
                     guid = resp_json['id']
                 except:
                     log = f"Create new Azure AD user failed at account creation step for {email}, most likely duplicate email account exists ({ascender_record})"
-                    AscenderActionLog.objects.create(level="ERROR", log=log)
+                    AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.exception(log)
                     text_content = f"""Ascender record:\n
                     {job}\n
@@ -547,7 +532,7 @@ def ascender_db_import(employee_iter=None):
                     resp.raise_for_status()
                 except:
                     log = f"Create new Azure AD user failed at account update step for {email}, ask administrator to investigate ({ascender_record})"
-                    AscenderActionLog.objects.create(level="ERROR", log=log)
+                    AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.exception(log)
                     text_content = f"""Ascender record:\n
                     {job}\n
@@ -569,7 +554,7 @@ def ascender_db_import(employee_iter=None):
                     resp.raise_for_status()
                 except:
                     log = f"Create new Azure AD user failed at assign manager update step for {email}, manager may not have AD account ({ascender_record})"
-                    AscenderActionLog.objects.create(level="ERROR", log=log)
+                    AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.exception(log)
                     text_content = f"""Ascender record:\n
                     {job}\n
@@ -606,7 +591,7 @@ def ascender_db_import(employee_iter=None):
                     resp.raise_for_status()
                 except:
                     log = f"Create new Azure AD user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
-                    AscenderActionLog.objects.create(level="ERROR", log=log)
+                    AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.exception(log)
                     text_content = f"""Ascender record:\n
                     {job}\n
@@ -665,23 +650,7 @@ def ascender_db_import(employee_iter=None):
                     continue
                 '''
 
-                subject = f"ASCENDER_SYNC: New Azure AD account created from Ascender data ({email})"
-                text_content = f"""New account record:\n
-                {job}\n
-                Azure GUID: {guid}\n
-                Employee ID: {eid}\n
-                Email: {email}\n
-                Mail nickname: {mail_nickname}\n
-                Display name: {display_name}\n
-                Title: {title}\n
-                Cost centre: {cc}\n
-                Division: {cc.get_division_name_display()}\n
-                Licence: {licence_type}\n
-                Manager: {manager}\n
-                Location: {location}\n
-                Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n"""
-                msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
-                msg.send(fail_silently=True)
+                LOGGER.info(f"New Azure AD account created from Ascender data ({email})")
 
                 # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.
                 new_user = DepartmentUser.objects.create(
@@ -700,7 +669,7 @@ def ascender_db_import(employee_iter=None):
                     ascender_data_updated=TZ.localize(datetime.now()),
                 )
                 log = f"Created new department user {new_user} ({ascender_record})"
-                AscenderActionLog.objects.create(level="INFO", log=log)
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                 LOGGER.info(log)
 
                 # Email the new account's manager the checklist to finish account provision.
@@ -711,7 +680,7 @@ def ascender_db_import(employee_iter=None):
                 # but they have a licence type recorded in Ascender), log the fact that creation was skipped to assist any troubleshooting.
                 if licence_type:
                     log = f"New Azure AD user creation skipped. Employee ID: {eid}, name: {job['first_name']} {job['surname']},  CC: {cc}, start date: {job_start_date}, licence: {licence_type}, manager: {manager}, location: {location}"
-                    AscenderActionLog.objects.create(level="INFO", log=log)
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                     LOGGER.info(log)
 
 
