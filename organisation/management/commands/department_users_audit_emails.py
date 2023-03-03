@@ -12,7 +12,7 @@ class Command(BaseCommand):
         logger.info('Checking currently-recorded emails for department users against Azure AD')
         aad_users = ms_graph_users()
         aad_emails = [i['mail'].lower() for i in aad_users]
-        du_emails = [i.lower() for i in DepartmentUser.objects.filter(email__isnull=False, employee_id__isnull=True).values_list('email', flat=True)]
+        du_emails = [i.lower() for i in DepartmentUser.objects.filter(email__iendswith='@dbca.wa.gov.au', active=False).values_list('email', flat=True)]
 
         for email in du_emails:
             if email not in aad_emails:
