@@ -322,19 +322,9 @@ class DepartmentUser(models.Model):
 
             # Where a user has a job which in which the job end date is in the past, deactivate the user's AD account.
             if job_end_date < today:
-                LOGGER.info(f'ASCENDER SYNC: {self} job is past end date of {job_end_date.date()}; deactivating their {acct} AD account')
-
-                # Create a DepartmentUserLog object to record this update.
-                if not log_only:
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'job_end_date',
-                            'old_value': self.ascender_data['job_end_date'],
-                            'new_value': None,
-                            'description': f'Deactivate {acct} AD account',
-                        },
-                    )
+                log = f'{self} job is past end date of {job_end_date.date()}; deactivating their {acct} AD account'
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
 
                 # Onprem AD users.
                 if self.dir_sync_enabled and self.ad_guid and self.ad_data:
@@ -903,16 +893,9 @@ class DepartmentUser(models.Model):
                 given_name = self.given_name
             if self.ascender_data['preferred_name'].upper() != given_name.upper():
                 first_name = self.ascender_data['preferred_name'].title()
-                LOGGER.info(f"ASCENDER SYNC: {self} first name {self.given_name} differs from Ascender preferred name name {first_name}, updating it")
-                DepartmentUserLog.objects.create(
-                    department_user=self,
-                    log={
-                        'ascender_field': 'first_name',
-                        'old_value': self.given_name,
-                        'new_value': first_name,
-                        'description': 'Update given_name value from Ascender',
-                    },
-                )
+                log = f"{self} first name {self.given_name} differs from Ascender preferred name name {first_name}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
                 self.given_name = first_name
                 self.name = f'{first_name} {self.surname}'  # Also update display name
 
@@ -924,16 +907,9 @@ class DepartmentUser(models.Model):
                 surname = self.surname
             if self.ascender_data['surname'].upper() != surname.upper():
                 new_surname = self.ascender_data['surname'].title()
-                LOGGER.info(f"ASCENDER SYNC: {self} surname {self.surname} differs from Ascender surname {new_surname}, updating it")
-                DepartmentUserLog.objects.create(
-                    department_user=self,
-                    log={
-                        'ascender_field': 'surname',
-                        'old_value': self.surname,
-                        'new_value': new_surname,
-                        'description': 'Update surname value from Ascender',
-                    },
-                )
+                log = f"{self} surname {self.surname} differs from Ascender surname {new_surname}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
                 self.surname = new_surname
                 self.name = f'{self.given_name} {new_surname}'  # Also update display name
 
@@ -945,16 +921,9 @@ class DepartmentUser(models.Model):
                 preferred_name = self.preferred_name
             if self.ascender_data['preferred_name'].upper() != preferred_name.upper():
                 new_preferred_name = self.ascender_data['preferred_name'].title()
-                LOGGER.info(f"ASCENDER SYNC: {self} preferred name {self.preferred_name} differs from Ascender preferred name {new_preferred_name}, updating it")
-                DepartmentUserLog.objects.create(
-                    department_user=self,
-                    log={
-                        'ascender_field': 'preferred_name',
-                        'old_value': self.preferred_name,
-                        'new_value': new_preferred_name,
-                        'description': 'Update preferred_name value from Ascender',
-                    },
-                )
+                log = f"{self} preferred name {self.preferred_name} differs from Ascender preferred name {new_preferred_name}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
                 self.preferred_name = new_preferred_name
                 self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
 
@@ -966,42 +935,22 @@ class DepartmentUser(models.Model):
             # The user's current CC differs from that in Ascender (it might be None).
             if self.cost_centre != cc:
                 if self.cost_centre:
-                    LOGGER.info(f"ASCENDER SYNC: {self} cost centre {self.cost_centre.ascender_code} differs from Ascender paypoint {paypoint}, updating it")
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'paypoint',
-                            'old_value': self.cost_centre.ascender_code,
-                            'new_value': paypoint,
-                            'description': 'Update CC value from Ascender',
-                        },
-                    )
+                    log = f"{self} cost centre {self.cost_centre.ascender_code} differs from Ascender paypoint {paypoint}, updating it"
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                    LOGGER.info(log)
                 else:
-                    LOGGER.info(f"ASCENDER SYNC: {self} cost centre set from Ascender paypoint {paypoint}")
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'paypoint',
-                            'old_value': None,
-                            'new_value': paypoint,
-                            'description': 'Set CC value from Ascender',
-                        },
-                    )
+                    log = f"{self} cost centre set from Ascender paypoint {paypoint}"
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                    LOGGER.info(log)
                 self.cost_centre = cc  # Change the department user's cost centre.
         elif 'paypoint' in self.ascender_data and not CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
-            LOGGER.warning('ASCENDER SYNC: Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
+            LOGGER.warning('Cost centre {} is not present in the IT Assets database, creating it'.format(self.ascender_data['paypoint']))
+            paypoint = self.ascender_data['paypoint']
             new_cc = CostCentre.objects.create(code=paypoint, ascender_code=paypoint)
             self.cost_centre = new_cc
-            LOGGER.info(f"ASCENDER SYNC: {self} cost centre set from Ascender paypoint {paypoint}")
-            DepartmentUserLog.objects.create(
-                department_user=self,
-                log={
-                    'ascender_field': 'paypoint',
-                    'old_value': None,
-                    'new_value': paypoint,
-                    'description': 'Set CC value from Ascender',
-                },
-            )
+            log = f"{self} cost centre set from Ascender paypoint {paypoint}"
+            AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+            LOGGER.info(log)
 
         # Manager
         if 'manager_emp_no' in self.ascender_data and self.ascender_data['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=self.ascender_data['manager_emp_no']).exists():
@@ -1009,27 +958,13 @@ class DepartmentUser(models.Model):
             # The user's current manager differs from that in Ascender (it might be set to None).
             if self.manager != manager:
                 if self.manager:
-                    LOGGER.info(f"ASCENDER SYNC: {self} manager {self.manager} differs from Ascender, updating it to {manager}")
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'manager',
-                            'old_value': self.manager.email,
-                            'new_value': manager.email,
-                            'description': 'Update manager value from Ascender',
-                        },
-                    )
+                    log = f"{self} manager {self.manager} differs from Ascender, updating it to {manager}"
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                    LOGGER.info(log)
                 else:
-                    LOGGER.info(f"ASCENDER SYNC: {self} manager set from Ascender to {manager}")
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'manager',
-                            'old_value': None,
-                            'new_value': manager.email,
-                            'description': 'Set manager value from Ascender',
-                        },
-                    )
+                    log = f"{self} manager set from Ascender to {manager}"
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                    LOGGER.info(log)
                 self.manager = manager  # Change the department user's manager.
 
         # Location
@@ -1042,27 +977,13 @@ class DepartmentUser(models.Model):
             # The user's current location differs from that in Ascender.
             if self.location != location:
                 if self.location:
-                    LOGGER.info(f"ASCENDER SYNC: {self} location {self.location} differs from Ascender location {location}, updating it")
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'geo_location_desc',
-                            'old_value': self.location.name,
-                            'new_value': location.name,
-                            'description': 'Update location value from Ascender',
-                        },
-                    )
+                    log = f"{self} location {self.location} differs from Ascender location {location}, updating it"
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                    LOGGER.info(log)
                 else:
-                    LOGGER.info(f"ASCENDER SYNC: {self} location set from Ascender location {location}")
-                    DepartmentUserLog.objects.create(
-                        department_user=self,
-                        log={
-                            'ascender_field': 'location',
-                            'old_value': None,
-                            'new_value': location.name,
-                            'description': 'Set location value from Ascender',
-                        },
-                    )
+                    log = f"{self} location set from Ascender location {location}"
+                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                    LOGGER.info(log)
                 self.location = location
 
         # Title
@@ -1070,16 +991,9 @@ class DepartmentUser(models.Model):
             ascender_title = title_except(self.ascender_data['occup_pos_title'])
             current_title = self.title if self.title else ''
             if ascender_title.upper() != current_title.upper():
-                LOGGER.info(f"ASCENDER SYNC: {self} title {self.title} differs from Ascender title {ascender_title}, updating it")
-                DepartmentUserLog.objects.create(
-                    department_user=self,
-                    log={
-                        'ascender_field': 'occup_pos_title',
-                        'old_value': self.title,
-                        'new_value': ascender_title,
-                        'description': 'Update title value from Ascender',
-                    },
-                )
+                log = f"{self} title {self.title} differs from Ascender title {ascender_title}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
                 self.title = ascender_title
 
         self.save()
