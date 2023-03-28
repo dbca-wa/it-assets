@@ -261,6 +261,25 @@ def ascender_db_import(employee_iter=None):
         if job['clevel1_id'] == 'FPC':
             continue
 
+        # Physical locations: if the Ascender physical location doesn't exist in our database, create it.
+        # This is out of band to checks whether the user is new or otherwise, because sometimes new locations
+        # are added to existing users.
+        if job['geo_location_desc'] and not Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():  # geo_location_desc must at least have a value.
+            # Attempt to manually create a new location description from Ascender data.
+            try:
+                Location.objects.create(
+                    name=job['geo_location_desc'],
+                    ascender_desc=job['geo_location_desc'],
+                    address=job['geo_location_desc'],
+                )
+                log = f"Creation of new Azure AD user process generated new location, description {job['geo_location_desc']}"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
+                LOGGER.info(log)
+            except:
+                # In the event of an error (probably due to a duplicate name), fail gracefully and log the error.
+                log = f"ASCENDER SYNC: exception during creation of new location in new Azure AD user process, description {job['geo_location_desc']}"
+                LOGGER.error(log)
+
         if DepartmentUser.objects.filter(employee_id=eid).exists():
             user = DepartmentUser.objects.get(employee_id=eid)
 
@@ -381,21 +400,6 @@ def ascender_db_import(employee_iter=None):
             # Rule: user must have a physical location recorded, and that location must exist in our database.
             if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                 location = Location.objects.get(ascender_desc=job['geo_location_desc'])
-            elif job['geo_location_desc'] and not Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():  # geo_location_desc must at least have a value.
-                # Attempt to manually create a new location description from Ascender data.
-                try:
-                    location = Location.objects.create(
-                        name=job['geo_location_desc'],
-                        ascender_desc=job['geo_location_desc'],
-                        address=job['geo_location_desc'],
-                    )
-                    log = f"Creation of new Azure AD user process generated new location, description {job['geo_location_desc']}"
-                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
-                    LOGGER.info(log)
-                except:
-                    # In the event of an error (probably due to a duplicate name), fail gracefully and log the error.
-                    log = f"ASCENDER SYNC: exception during creation of new location in new Azure AD user process, description {job['geo_location_desc']}"
-                    LOGGER.error(log)
 
             # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
             if settings.DEBUG:

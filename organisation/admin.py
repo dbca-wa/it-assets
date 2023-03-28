@@ -197,6 +197,13 @@ class LocationAdmin(admin.ModelAdmin):
     readonly_fields = ('ascender_desc',)
     search_fields = ('name', 'ascender_desc')
 
+    # Disallow creation/deletion of Locations (source of truth if Ascender).
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(CostCentre)
 class CostCentreAdmin(admin.ModelAdmin):
