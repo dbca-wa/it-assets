@@ -38,8 +38,8 @@ ruff = "^0.0.177"
 black = "^22.8.0"
 
 [build-system]
-requires = ["poetry>=1.2.2"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 # Enable Pyflakes `E` and `F` codes.
