@@ -1,9 +1,9 @@
+from datetime import timedelta
 from dbca_utils.utils import env
 import dj_database_url
 import os
-import sys
 from pathlib import Path
-from datetime import timedelta
+import sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
