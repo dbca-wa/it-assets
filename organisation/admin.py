@@ -47,7 +47,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 else:
                     return queryset.filter(assigned_licences__contains=[self.value()])
 
-    #actions = ('clear_ad_guid', 'clear_azure_guid')
     change_list_template = 'admin/organisation/departmentuser/change_list.html'
     form = DepartmentUserForm
     list_display = (
@@ -176,18 +175,6 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
         ] + urls
         return urls
-
-    def clear_ad_guid(self, request, queryset):
-        # Action: allow a user's onprem AD GUID value to be cleared.
-        queryset.update(ad_guid=None)
-        self.message_user(request, "On-prem AD GUID has been cleared for the selected user(s)")
-    clear_ad_guid.short_description = "Clear a user's on-prem AD GUID following migration between AD instances"
-
-    def clear_azure_guid(self, request, queryset):
-        # Action: allow a user's Azure GUID value to be cleared.
-        queryset.update(azure_guid=None)
-        self.message_user(request, "Azure AD GUID has been cleared for the selected user(s)")
-    clear_azure_guid.short_description = "Clear a user's Azure AD GUID"
 
 
 @admin.register(Location)
