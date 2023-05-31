@@ -895,11 +895,11 @@ class ContainerImage(DeletedMixin,models.Model):
                     self.scan_status = status
                 setattr(self,field_name,summary.get(severity))
 
-
     def scan(self,rescan=False,reparse=False):
         """Runs trivy locally and saves the scan result.
-
         """
+        return  # No-op
+
         with transaction.atomic():
             if rescan or not self.scan_result:
                 try:
