@@ -6,9 +6,9 @@ authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-django = "3.2.18"
-psycopg2 = "2.9.4"
+python = "^3.10"
+django = "3.2.19"
+psycopg2 = "2.9.5"
 dbca-utils = "1.1.6"
 django-extensions = "3.2.1"
 python-dotenv = "1.0.0"
@@ -32,14 +32,14 @@ pysftp = "0.2.9"
 django-csp = "3.7"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.10.0"
-ipdb = "^0.13.3"
-ruff = "^0.0.177"
-black = "^22.8.0"
+ipython = "^8.13.0"
+ipdb = "^0.13.13"
+ruff = "^0.0.270"
+black = "^23.3.0"
 
 [build-system]
-requires = ["poetry>=1.2.2"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 # Enable Pyflakes `E` and `F` codes.
