@@ -1,3 +1,4 @@
+from data_storage import AzureBlobStorage
 from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.encoding import smart_text
@@ -45,6 +46,14 @@ def ms_security_api_client_token():
     url = "https://login.windows.net/{}/oauth2/token".format(azure_tenant_id)
     resp = requests.post(url, data=data)
     return resp.json()['access_token']
+
+
+def upload_blob(in_file, container, blob_name):
+    """For the passed-in file, upload to blob storage.
+    """
+    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+    store = AzureBlobStorage(connect_string, container)
+    store.upload_file(blob_name, in_file.name)
 
 
 class ModelDescMixin(object):
