@@ -7,7 +7,7 @@ from django.urls import path
 from pytz import timezone
 
 from itassets.utils import ModelDescMixin
-from .models import ITSystem, StandardChange, ChangeRequest, ChangeLog
+from .models import ITSystem, ChangeLog
 from .views import ChangeRequestExport
 
 
@@ -119,7 +119,6 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
         return False
 
 
-@register(StandardChange)
 class StandardChangeAdmin(ModelAdmin):
     date_hierarchy = 'created'
     filter_horizontal = ('it_systems',)
@@ -270,7 +269,6 @@ def cab_reject(modeladmin, request, queryset):
 cab_reject.short_description = 'Mark selected change requests as rejected at CAB (set to draft status)'
 
 
-@register(ChangeRequest)
 class ChangeRequestAdmin(ModelAdmin):
     actions = [cab_approve, cab_reject, email_endorser, email_requester]
     change_list_template = 'admin/registers/changerequest/change_list.html'

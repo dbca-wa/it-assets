@@ -8,8 +8,9 @@ import os
 import pytz
 import re
 import requests
+from tempfile import NamedTemporaryFile
 import unicodecsv as csv
-from itassets.utils import ms_graph_client_token
+from itassets.utils import ms_graph_client_token, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
 
@@ -69,7 +70,7 @@ def ms_graph_subscribed_skus(token=None):
     """
     if not token:
         token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails.
+    if not token:  # The call to the MS API occasionally fails.
         return None
 
     headers = {
@@ -94,7 +95,7 @@ def ms_graph_subscribed_skus(token=None):
 def ms_graph_subscribed_sku(sku_id, token=None):
     if not token:
         token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails.
+    if not token:  # The call to the MS API occasionally fails.
         return None
 
     headers = {
@@ -115,7 +116,7 @@ def ms_graph_users(licensed=False, token=None):
     """
     if not token:
         token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails.
+    if not token:  # The call to the MS API occasionally fails.
         return None
 
     headers = {
@@ -177,7 +178,7 @@ def ms_graph_users_signinactivity(licensed=False, token=None):
     """
     if not token:
         token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails and returns None.
+    if not token:  # The call to the MS API occasionally fails and returns None.
         return None
 
     headers = {
@@ -218,7 +219,7 @@ def ms_graph_inactive_users(days=90, licensed=False, token=None):
     """
     if not token:
         token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails and returns None.
+    if not token:  # The call to the MS API occasionally fails and returns None.
         return None
 
     user_signins = ms_graph_users_signinactivity(licensed, token)
@@ -255,7 +256,7 @@ def ms_graph_user(azure_guid, token=None):
     """
     if not token:
         token = ms_graph_client_token()
-    if not token:  # The call to the MS API occassionally fails and returns None.
+    if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
@@ -264,6 +265,82 @@ def ms_graph_user(azure_guid, token=None):
     url = f"https://graph.microsoft.com/v1.0/user/{azure_guid}"
     resp = requests.get(url, headers=headers)
     return resp
+
+
+def ms_graph_sites(team_sites=True, token=None):
+    """Query the Microsoft Graph REST API for details about SharePoint Sites.
+    Reference: https://learn.microsoft.com/en-us/graph/api/site-list
+    """
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
+    }
+    url = f"https://graph.microsoft.com/v1.0/sites"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    j = resp.json()
+
+    sites = []
+    while '@odata.nextLink' in j:
+        sites = sites + j['value']
+        resp = requests.get(j['@odata.nextLink'], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    sites = sites + j['value']  # Final page.
+    if team_sites:
+        sites = [site for site in sites if 'teams' in site['webUrl']]
+
+    return sites
+
+
+def ms_graph_site_storage_usage(period_value="D7", token=None):
+    """Query the MS Graph API to get the storage allocated and consumed by SharePoint sites.
+    `period_value` is one of D7 (default), D30, D90 or D180. Returns the endpoint response content,
+    which is a CSV report of all sites.
+
+    Reference: https://learn.microsoft.com/en-us/graph/api/reportroot-getsharepointsiteusagestorage
+    """
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+        "ConsistencyLevel": "eventual",
+    }
+    url = f"https://graph.microsoft.com/v1.0/reports/getSharePointSiteUsageDetail(period='{period_value}')"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+
+    return resp.content
+
+
+def ms_graph_site_storage_summary():
+    """Parses the current SharePoint site usage report, and returns a subset of storage usage data.
+    """
+    storage_usage = ms_graph_site_storage_usage()
+    storage_csv = storage_usage.splitlines()
+    headers = storage_csv[0].split(b",")
+    headers = [h.decode() for h in headers]
+    ds = datetime.today().strftime("%Y-%m-%d")
+    tempfile = NamedTemporaryFile()
+    writer = csv.writer(tempfile)
+    writer.writerow([headers[0], headers[2], headers[5], headers[6], headers[10]])
+    for row in storage_csv[1:]:
+        row = row.split(b",")
+        row = [i.decode() for i in row]
+        if int(row[10]) >= 1024 * 1024 * 1024:  # Only return rows >= 1 GB.
+            # We're only interested in some of the report output.
+            writer.writerow([row[0], row[2].replace("https://dpaw.sharepoint.com/", ""), row[5], int(row[6]), int(row[10])])
+
+    tempfile.seek(0)
+    blob_name = f"storage/site_storage_usage_{ds}.csv"
+    upload_blob(in_file=tempfile, container="analytics", blob_name=blob_name)
 
 
 def get_ad_users_json(container, azure_json_path):
