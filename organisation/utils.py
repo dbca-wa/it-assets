@@ -320,14 +320,15 @@ def ms_graph_site_storage_usage(period_value="D7", token=None):
     return resp.content
 
 
-def ms_graph_site_storage_summary():
+def ms_graph_site_storage_summary(ds=None):
     """Parses the current SharePoint site usage report, and returns a subset of storage usage data.
     """
     storage_usage = ms_graph_site_storage_usage()
     storage_csv = storage_usage.splitlines()
     headers = storage_csv[0].split(b",")
     headers = [h.decode() for h in headers]
-    ds = datetime.today().strftime("%Y-%m-%d")
+    if not ds:  # Default to today's date.
+        ds = datetime.today().strftime("%Y-%m-%d")
     tempfile = NamedTemporaryFile()
     writer = csv.writer(tempfile)
     writer.writerow([headers[0], headers[2], headers[5], headers[6], headers[10]])
