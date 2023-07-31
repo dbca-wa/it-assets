@@ -22,12 +22,9 @@ def ms_graph_client_token():
         client_credential=client_secret,
         authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
     )
-    scope = "https://graph.microsoft.com/.default"
-    try:
-        token = context.acquire_token_for_client(scope)
-        return token
-    except:
-        return None
+    token = context.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+
+    return token
 
 
 def ms_security_api_client_token():
