@@ -90,6 +90,8 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'name',
                 'assigned_licences',
                 'dir_sync_enabled',
+                'azure_guid',
+                'ad_guid',
             ),
         }),
         ('User information fields', {
