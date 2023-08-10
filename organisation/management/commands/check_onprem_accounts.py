@@ -54,3 +54,5 @@ class Command(BaseCommand):
                     du.ad_data = ad
                     du.ad_data_updated = datetime.now(timezone.utc)
                     du.save()
+
+        logger.info('Completed')
