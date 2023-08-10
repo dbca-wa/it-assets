@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.10.11-slim-bullseye as builder_base_itassets
+FROM python:3.10.12-slim-bookworm as builder_base_itassets
 MAINTAINER asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
