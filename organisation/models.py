@@ -40,14 +40,38 @@ class DepartmentUser(models.Model):
     )
     # The following is a list of account types to normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
-    ACCOUNT_TYPE_EXCLUDE = [1, 4, 5, 7, 9, 10, 11, 12, 14, 16]
+    ACCOUNT_TYPE_EXCLUDE = [
+        4,  # Terminated
+        5,  # Shared
+        7,  # Volunteer
+        1,  # Other/alumni
+        9,  # Role-based
+        10,  # System
+        11,  # Room
+        12,  # Equipment
+        14,  # Unknown, disabled
+        16,  # Unknown, active
+    ]
     # The following is a list of user account types for individual staff/vendors,
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
-    ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
+    ACCOUNT_TYPE_USER = [
+        2,  # Permanent
+        3,  # Agency contract
+        0,  # Department contract
+        8,  # Seasonal
+        6,  # Vendor
+        7,  # Volunteer
+        1,  # Other/alumni
+    ]
     # The following is a list of user account types where it may be reasonable for there to be
     # an active Azure AD account without the user also having a current Ascender job.
-    ACCOUNT_TYPE_NONSTAFF = [8, 6, 7, 1]
+    ACCOUNT_TYPE_NONSTAFF = [
+        8,  # Seasonal
+        6,  # Vendor
+        7,  # Volunteer
+        1,  # Other/alumni
+    ]
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -60,6 +84,9 @@ class DepartmentUser(models.Model):
     given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
     surname = models.CharField(max_length=128, null=True, blank=True, help_text='Last name')
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
+    maiden_name = models.CharField(
+        max_length=128, null=True, blank=True,
+        help_text='Optional maiden name value, for the purposes of setting Display Name within Azure AD')
     title = models.CharField(
         max_length=128, null=True, blank=True,
         help_text='Occupation position title (should match Ascender position title)')
@@ -926,6 +953,12 @@ class DepartmentUser(models.Model):
                 LOGGER.info(log)
                 self.preferred_name = new_preferred_name
                 self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
+
+        # Optional maiden name suffix for display name, only append if maiden_name has a value.
+        # NOTE: this value is managed by OIM, and does not come from Ascender.
+        # This is a small exception to our normal order of operations relating to the source of truth for names.
+        if self.maiden_name:
+            self.name += f" née {self.maiden_name}"
 
         # Cost centre (Ascender records cost centre as 'paypoint').
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
