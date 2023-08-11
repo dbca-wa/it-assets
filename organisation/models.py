@@ -80,13 +80,14 @@ class DepartmentUser(models.Model):
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled within Active Directory.')
     email = CIEmailField(unique=True, editable=False, help_text='Account email address')
-    name = models.CharField(max_length=128, verbose_name='display name')
+    name = models.CharField(
+        max_length=128, verbose_name='display name', help_text='Display name within AD / Outlook')
     given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
     surname = models.CharField(max_length=128, null=True, blank=True, help_text='Last name')
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
     maiden_name = models.CharField(
         max_length=128, null=True, blank=True,
-        help_text='Optional maiden name value, for the purposes of setting Display Name within Azure AD')
+        help_text='Optional maiden name value, for the purposes of setting display name')
     title = models.CharField(
         max_length=128, null=True, blank=True,
         help_text='Occupation position title (should match Ascender position title)')
@@ -912,19 +913,18 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # First name - note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
-        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
+        # First name
+        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
             if not self.given_name:
                 given_name = ''
             else:
                 given_name = self.given_name
-            if self.ascender_data['preferred_name'].upper() != given_name.upper():
-                first_name = self.ascender_data['preferred_name'].title()
-                log = f"{self} first name {self.given_name} differs from Ascender preferred name name {first_name}, updating it"
+            if self.ascender_data['first_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['first_name'].title()
+                log = f"{self} first name {self.given_name} differs from Ascender first name {first_name}, updating it"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.given_name = first_name
-                self.name = f'{first_name} {self.surname}'  # Also update display name
 
         # Surname
         if 'surname' in self.ascender_data and self.ascender_data['surname']:
@@ -938,7 +938,6 @@ class DepartmentUser(models.Model):
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.surname = new_surname
-                self.name = f'{self.given_name} {new_surname}'  # Also update display name
 
         # Preferred name
         if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
@@ -952,13 +951,21 @@ class DepartmentUser(models.Model):
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.preferred_name = new_preferred_name
-                self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
 
-        # Optional maiden name suffix for display name, only append if maiden_name has a value.
+        # Display name (Active Directory / Outlook)
+        # Optional maiden name used for display name (only if the maiden_name field has a value).
         # NOTE: this value is managed by OIM, and does not come from Ascender.
-        # This is a small exception to our normal order of operations relating to the source of truth for names.
-        if self.maiden_name:
-            self.name += f" née {self.maiden_name}"
+        # This is an exception to our normal rules relating to the source of truth for names.
+        if self.preferred_name:
+            if self.maiden_name:
+                self.name = f"{self.preferred_name} {self.maiden_name}"
+            else:
+                self.name = f"{self.preferred_name} {self.surname}"
+        else:
+            if self.maiden_name:
+                self.name = f"{self.given_name} {self.maiden_name}"
+            else:
+                self.name = f"{self.given_name} {self.surname}"
 
         # Cost centre (Ascender records cost centre as 'paypoint').
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():
