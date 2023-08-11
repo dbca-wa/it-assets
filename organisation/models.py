@@ -40,14 +40,38 @@ class DepartmentUser(models.Model):
     )
     # The following is a list of account types to normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
-    ACCOUNT_TYPE_EXCLUDE = [1, 4, 5, 7, 9, 10, 11, 12, 14, 16]
+    ACCOUNT_TYPE_EXCLUDE = [
+        4,  # Terminated
+        5,  # Shared
+        7,  # Volunteer
+        1,  # Other/alumni
+        9,  # Role-based
+        10,  # System
+        11,  # Room
+        12,  # Equipment
+        14,  # Unknown, disabled
+        16,  # Unknown, active
+    ]
     # The following is a list of user account types for individual staff/vendors,
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
-    ACCOUNT_TYPE_USER = [2, 3, 0, 8, 6, 7, 1]
+    ACCOUNT_TYPE_USER = [
+        2,  # Permanent
+        3,  # Agency contract
+        0,  # Department contract
+        8,  # Seasonal
+        6,  # Vendor
+        7,  # Volunteer
+        1,  # Other/alumni
+    ]
     # The following is a list of user account types where it may be reasonable for there to be
     # an active Azure AD account without the user also having a current Ascender job.
-    ACCOUNT_TYPE_NONSTAFF = [8, 6, 7, 1]
+    ACCOUNT_TYPE_NONSTAFF = [
+        8,  # Seasonal
+        6,  # Vendor
+        7,  # Volunteer
+        1,  # Other/alumni
+    ]
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -56,10 +80,14 @@ class DepartmentUser(models.Model):
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled within Active Directory.')
     email = CIEmailField(unique=True, editable=False, help_text='Account email address')
-    name = models.CharField(max_length=128, verbose_name='display name')
+    name = models.CharField(
+        max_length=128, verbose_name='display name', help_text='Display name within AD / Outlook')
     given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
     surname = models.CharField(max_length=128, null=True, blank=True, help_text='Last name')
     preferred_name = models.CharField(max_length=256, null=True, blank=True)
+    maiden_name = models.CharField(
+        max_length=128, null=True, blank=True,
+        help_text='Optional maiden name value, for the purposes of setting display name')
     title = models.CharField(
         max_length=128, null=True, blank=True,
         help_text='Occupation position title (should match Ascender position title)')
@@ -885,19 +913,18 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # First name - note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
-        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
+        # First name
+        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
             if not self.given_name:
                 given_name = ''
             else:
                 given_name = self.given_name
-            if self.ascender_data['preferred_name'].upper() != given_name.upper():
-                first_name = self.ascender_data['preferred_name'].title()
-                log = f"{self} first name {self.given_name} differs from Ascender preferred name name {first_name}, updating it"
+            if self.ascender_data['first_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['first_name'].title()
+                log = f"{self} first name {self.given_name} differs from Ascender first name {first_name}, updating it"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.given_name = first_name
-                self.name = f'{first_name} {self.surname}'  # Also update display name
 
         # Surname
         if 'surname' in self.ascender_data and self.ascender_data['surname']:
@@ -911,7 +938,6 @@ class DepartmentUser(models.Model):
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.surname = new_surname
-                self.name = f'{self.given_name} {new_surname}'  # Also update display name
 
         # Preferred name
         if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
@@ -925,7 +951,21 @@ class DepartmentUser(models.Model):
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.preferred_name = new_preferred_name
-                self.name = f'{new_preferred_name} {self.surname}'  # Also update display name
+
+        # Display name (Active Directory / Outlook)
+        # Optional maiden name used for display name (only if the maiden_name field has a value).
+        # NOTE: this value is managed by OIM, and does not come from Ascender.
+        # This is an exception to our normal rules relating to the source of truth for names.
+        if self.preferred_name:
+            if self.maiden_name:
+                self.name = f"{self.preferred_name} {self.maiden_name}"
+            else:
+                self.name = f"{self.preferred_name} {self.surname}"
+        else:
+            if self.maiden_name:
+                self.name = f"{self.given_name} {self.maiden_name}"
+            else:
+                self.name = f"{self.given_name} {self.surname}"
 
         # Cost centre (Ascender records cost centre as 'paypoint').
         if 'paypoint' in self.ascender_data and CostCentre.objects.filter(ascender_code=self.ascender_data['paypoint']).exists():

@@ -249,6 +249,9 @@ def ascender_db_import(employee_iter=None):
     # If we're expecting to create new Azure AD accounts, get a Microsoft Graph API token.
     if settings.ASCENDER_CREATE_AZURE_AD:
         token = ms_graph_client_token()
+        LOGGER.info("Generating new Azure AD accounts for new employees")
+    else:
+        LOGGER.info("Not generating new Azure AD accounts")
 
     LOGGER.info("Querying Ascender database for employee information")
     if not employee_iter:
