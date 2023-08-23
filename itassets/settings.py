@@ -247,7 +247,7 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'console': {'format': '%(asctime)s %(levelname)-12s %(name)-12s %(message)s'},
+        'console': {'format': '%(asctime)s %(levelname)-10s %(name)-10s %(message)s'},
     },
     'handlers': {
         'console': {

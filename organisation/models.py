@@ -503,6 +503,8 @@ class DepartmentUser(models.Model):
                 LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account displayName set to {self.name}')
 
         # given_name (source of truth: Ascender)
+        # Note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
+        # given_name is set by the `update_from_ascender_data` method.
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and 'GivenName' in self.ad_data and self.ad_data['GivenName'] != self.given_name:
             prop = 'GivenName'
@@ -913,15 +915,15 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # First name
-        if 'first_name' in self.ascender_data and self.ascender_data['first_name']:
+        # First name - note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
+        if 'preferred_name' in self.ascender_data and self.ascender_data['preferred_name']:
             if not self.given_name:
                 given_name = ''
             else:
                 given_name = self.given_name
-            if self.ascender_data['first_name'].upper() != given_name.upper():
-                first_name = self.ascender_data['first_name'].title()
-                log = f"{self} first name {self.given_name} differs from Ascender first name {first_name}, updating it"
+            if self.ascender_data['preferred_name'].upper() != given_name.upper():
+                first_name = self.ascender_data['preferred_name'].title()
+                log = f"{self} first name {self.given_name} differs from Ascender preferred name {first_name}, updating it"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.given_name = first_name
