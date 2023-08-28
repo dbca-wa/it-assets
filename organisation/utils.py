@@ -1,4 +1,3 @@
-from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta, timezone
 from dateutil.parser import parse
 from django.conf import settings
@@ -10,7 +9,7 @@ import re
 import requests
 from tempfile import NamedTemporaryFile
 import unicodecsv as csv
-from itassets.utils import ms_graph_client_token, upload_blob
+from itassets.utils import ms_graph_client_token, upload_blob, download_blob
 
 from .microsoft_products import MS_PRODUCTS
 
@@ -344,14 +343,14 @@ def ms_graph_site_storage_summary(ds=None):
     upload_blob(in_file=tempfile, container="analytics", blob=blob_name)
 
 
-def get_ad_users_json(container, azure_json_path):
-    """Pass in the container name and path to a JSON dump of AD users, return parsed JSON.
+def get_ad_users_json(container, blob):
+    """Pass in the container name and blob to a JSON dump of AD users, return parsed JSON.
     """
-    connect_string = os.environ.get("AZURE_CONNECTION_STRING", None)
-    if not connect_string:
-        return None
-    store = AzureBlobStorage(connect_string, container)
-    return json.loads(store.get_content(azure_json_path))
+    tf = BytesIO()
+    download_blob(tf, container, blob)
+    tf.flush()
+
+    return json.loads(tf.read())
 
 
 def compare_values(a, b):

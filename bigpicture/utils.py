@@ -1,17 +1,17 @@
 import calendar
 import csv
-from data_storage import AzureBlobStorage
 from datetime import timedelta
 from dbca_utils.utils import env
 from django.contrib.contenttypes.models import ContentType
 import gzip
+from io import BytesIO
 import json
 import requests
 from urllib.parse import urlparse
 
+from itassets.utils import download_blob, upload_blob
 from rancher.models import Workload, ContainerImage
 from registers.models import ITSystem
-from status.models import Host
 from .models import Dependency, RiskAssessment
 
 
@@ -27,12 +27,11 @@ def audit_dependencies():
             dep.delete()
 
 
-def host_dependencies():
+def host_dependencies(container='analytics', blob='nginx_host_proxy_targets.json'):
     # Download the list of Nginx host proxy targets.
-    connect_string = env('AZURE_CONNECTION_STRING')
-    store = AzureBlobStorage(connect_string, 'analytics')
-    store.download('nginx_host_proxy_targets.json', '/tmp/nginx_host_proxy_targets.json')
-    f = open('/tmp/nginx_host_proxy_targets.json')
+    f = BytesIO()
+    download_blob(f, container, blob)
+    f.seek(0)
     targets = json.loads(f.read())
     host_ct = ContentType.objects.get(app_label='status', model='host')
 
@@ -52,6 +51,7 @@ def host_dependencies():
             continue
 
         # Create/update Host dependencies for IT systems as 'proxy targets'.
+        from status.models import Host
         target = None
         for syn in it.extra_data['url_synonyms']:
             for t in targets:
@@ -96,6 +96,7 @@ def workload_dependencies():
 
 def host_risks_vulns():
     # Set automatic risk assessment for Host objects that have a Nessus vulnerability scan result.
+    from status.models import Host
     host_ct = ContentType.objects.get(app_label='status', model='host')
 
     for host in Host.objects.all():
@@ -155,8 +156,10 @@ OS_EOL_PAIRS = [
     ('alpine', '3.10.9'),
 ]
 
+
 def host_os_risks():
     # Set auto risk assessment for Host risk based on the host OS.
+    from status.models import Host
     host_ct = ContentType.objects.get(app_label='status', model='host')
 
     for host in Host.objects.all():
@@ -365,17 +368,16 @@ def itsystem_risks_support(it_systems=None):
             support_risk.save()
 
 
-def itsystem_risks_access(it_systems=None):
+def itsystem_risks_access(it_systems=None, container='analytics', blob='nginx_host_proxy_targets.json'):
     """Set automatic risk assessment for IT system web apps based on whether they require SSO on the root location.
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
 
     # Download the list of Nginx host proxy targets.
-    connect_string = env('AZURE_CONNECTION_STRING')
-    store = AzureBlobStorage(connect_string, 'analytics')
-    store.download('nginx_host_proxy_targets.json', '/tmp/nginx_host_proxy_targets.json')
-    f = open('/tmp/nginx_host_proxy_targets.json')
+    f = BytesIO()
+    download_blob(f, container, blob)
+    f.seek(0)
     targets = json.loads(f.read())
     itsystem_ct = ContentType.objects.get(app_label='registers', model='itsystem')
 
@@ -426,18 +428,19 @@ def itsystem_risks_access(it_systems=None):
                         risk.delete()
 
 
-def itsystem_risks_traffic(it_systems=None):
+def itsystem_risks_traffic(it_systems=None, container='analytics', blob='host_requests_7_day_count.csv'):
     """Set automatic risk assessment for IT system web apps based on the mean of daily HTTP requests.
     """
     if not it_systems:
         it_systems = ITSystem.objects.all()
     # Download the report of HTTP requests.
-    connect_string = env('AZURE_CONNECTION_STRING')
-    store = AzureBlobStorage(connect_string, 'analytics')
-    store.download('host_requests_7_day_count.csv', '/tmp/host_requests_7_day_count.csv')
-    counts = csv.reader(open('/tmp/host_requests_7_day_count.csv'))
+    f = BytesIO()
+    download_blob(f, container, blob)
+    f.seek(0)
+    counts = csv.reader(f)
     next(counts)  # Skip the header.
     report = {}
+
     for row in counts:
         try:
             report[row[0]] = int(row[1])
@@ -549,6 +552,7 @@ def signal_sciences_upload_feed(from_datetime=None, minutes=None, compress=False
         return False
     feed_str = signal_sciences_extract_feed(from_datetime, minutes)
     corp_name = env('SIGSCI_CORP_NAME', 'dbca')
+    tf = BytesIO()
 
     if upload and csv:
         signal_sciences_feed_csv(feed_str, corp_name, from_datetime.isoformat())
@@ -556,19 +560,17 @@ def signal_sciences_upload_feed(from_datetime=None, minutes=None, compress=False
     if compress:
         # Conditionally gzip the file.
         filename = 'sigsci_feed_{}_{}.json.gz'.format(corp_name, from_datetime.strftime('%Y-%m-%dT%H%M%S'))
-        tf = gzip.open('/tmp/{}'.format(filename), 'wb')
+        tf = gzip.open(tf)
         tf.write(feed_str.encode('utf-8'))
     else:
         filename = 'sigsci_feed_{}_{}.json'.format(corp_name, from_datetime.strftime('%Y-%m-%dT%H%M%S'))
-        tf = open('/tmp/{}'.format(filename), 'w')
         tf.write(feed_str)
-    tf.close()
+
+    tf.flush()
 
     if upload:
         # Upload the returned feed data to blob storage.
-        connect_string = env('AZURE_CONNECTION_STRING')
-        store = AzureBlobStorage(connect_string, 'signalsciences')
-        store.upload_file(filename, tf.name)
+        upload_blob(tf, 'signalsciences', filename)
 
     return filename
 
@@ -578,7 +580,7 @@ def signal_sciences_feed_csv(feed_str, corp_name, timestamp, upload=True):
     Upload the CSV to Azure blob storage.
     """
     filename = 'sigsci_request_tags_{}_{}.csv'.format(corp_name, timestamp)
-    tf = open('/tmp/{}'.format(filename), 'w')
+    tf = BytesIO()
     writer = csv.writer(tf)
     feed_json = json.loads(feed_str)
 
@@ -586,11 +588,9 @@ def signal_sciences_feed_csv(feed_str, corp_name, timestamp, upload=True):
         for tag in entry['tags']:
             writer.writerow([entry['timestamp'], entry['serverName'], tag['type']])
 
-    tf.close()
+    tf.flush()
 
     if upload:
-        connect_string = env('AZURE_CONNECTION_STRING')
-        store = AzureBlobStorage(connect_string, 'http-requests-tagged')
-        store.upload_file(filename, tf.name)
+        upload_blob(tf, 'http-requests-tagged', filename)
 
-    return
+    return filename

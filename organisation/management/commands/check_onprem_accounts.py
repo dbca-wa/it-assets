@@ -27,7 +27,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Downloading on-prem AD user account data')
-        ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['path'])
+        ad_users = get_ad_users_json(container=options['container'], blob=options['path'])
 
         if not ad_users:
             logger.error('No on-prem AD user account data could be downloaded')
