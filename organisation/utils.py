@@ -341,7 +341,7 @@ def ms_graph_site_storage_summary(ds=None):
 
     tempfile.seek(0)
     blob_name = f"storage/site_storage_usage_{ds}.csv"
-    upload_blob(in_file=tempfile, container="analytics", blob_name=blob_name)
+    upload_blob(in_file=tempfile, container="analytics", blob=blob_name)
 
 
 def get_ad_users_json(container, azure_json_path):
