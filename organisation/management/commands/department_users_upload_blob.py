@@ -1,11 +1,9 @@
-from data_storage import AzureBlobStorage
 from django.core.management.base import BaseCommand
 import logging
-import os
-from tempfile import NamedTemporaryFile
+from io import BytesIO
 
 from organisation.models import DepartmentUser
-from organisation.utils import department_user_ascender_sync
+from organisation.utils import department_user_ascender_sync, upload_blob
 
 
 class Command(BaseCommand):
@@ -32,10 +30,10 @@ class Command(BaseCommand):
         logger.info('Generating CSV of department user data')
         users = DepartmentUser.objects.filter(employee_id__isnull=False).order_by('employee_id')
         data = department_user_ascender_sync(users)
-        f = NamedTemporaryFile()
+        f = BytesIO()
         f.write(data.getbuffer())
+        f.flush()
+        f.seek(0)
 
         logger.info('Uploading CSV to Azure blob storage')
-        connect_string = os.environ.get('AZURE_CONNECTION_STRING')
-        store = AzureBlobStorage(connect_string, options['container'])
-        store.upload_file(options['path'], f.name)
+        upload_blob(f, options['container'], options['path'])
