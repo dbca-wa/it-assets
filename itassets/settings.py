@@ -270,10 +270,6 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO'
         },
-        'data_storage': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO'
-        },
         'nginx': {
             'handlers': ['console'],
             'level': 'DEBUG' if DEBUG else 'INFO'
@@ -282,7 +278,7 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'DEBUG' if DEBUG else 'INFO'
         },
-        'azure.core.pipeline.policies.http_logging_policy': {
+        'azure': {
             'handlers': ['console'],
             'level': 'ERROR',
             'propagate': False,

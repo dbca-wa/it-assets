@@ -12,7 +12,7 @@ class Command(BaseCommand):
     help = 'Emails requesters a reminder to record completion of any outstanding change requests.'
 
     def handle(self, *args, **options):
-        logger = logging.getLogger('registers')
+        logger = logging.getLogger('itassets')
         # All changes of status "Ready", where the planned_end datetime has passed and completed datetime is null:
         rfcs = ChangeRequest.objects.filter(
             status=3, planned_end__lte=datetime.now().astimezone(timezone(settings.TIME_ZONE)), completed__isnull=True)
