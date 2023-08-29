@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "it-assets"
-version = "2.4.0"
+version = "2.4.2"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -19,7 +19,6 @@ python-dateutil = "2.8.1"
 XlsxWriter = "3.1.2"
 django-crispy-forms = "1.14.0"
 texttable = "1.6.7"
-data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.18"}
 django-bootstrap-pagination = "1.7.1"
 django-markdownx = "3.0.1"
 webtemplate-dbca = "1.5.2"
@@ -30,6 +29,7 @@ django-json-widget = "^1.1.1"
 whitenoise = {version = "6.5.0", extras = ["brotli"]}
 pysftp = "0.2.9"
 django-csp = "3.7"
+azure-storage-blob = "12.17.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.0"
