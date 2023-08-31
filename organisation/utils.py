@@ -185,7 +185,7 @@ def ms_graph_users_signinactivity(licensed=False, token=None):
         'Content-Type': 'application/json',
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/beta/users?$select=id,mail,userPrincipalName,accountEnabled,assignedLicenses,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,accountEnabled,assignedLicenses,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
     users = []
     resp = requests.get(url, headers=headers)
     j = resp.json()
