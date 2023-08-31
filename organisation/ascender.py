@@ -705,8 +705,10 @@ def employee_ids_audit(employee_ids=None):
     LOGGER.info(f"Auditing {len(employee_ids)} employee ID values recorded on department users")
     for user in DepartmentUser.objects.filter(employee_id__isnull=False):
         if user.employee_id not in employee_ids:
-            LOGGER.info(f"{user.employee_id} not found in current employee IDs, clearing it from {user}")
+            LOGGER.info(f"{user.employee_id} not found in current Ascender employee IDs, clearing it from {user}")
             user.employee_id = None
+            user.ascender_data = {}
+            user.ascender_data_updated = None
             user.save()
 
 

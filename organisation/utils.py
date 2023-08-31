@@ -210,11 +210,14 @@ def ms_graph_users_signinactivity(licensed=False, token=None):
     return user_signins
 
 
-def ms_graph_inactive_users(days=90, licensed=False, token=None):
-    """Query the MS Graph (Beta) API for a list of Azure AD accounts which haven't had a login event within a defined number of days.
+def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
+    """Query the MS Graph (Beta) API for a list of Azure AD accounts which haven't had a login event
+    within the defined number of days.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
-    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
-    Returns a list of Azure AD user objects (dicts).
+    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au, and that
+    we classify 'dormant' accounts as though having no logins for 90+ days.
+
+    Returns a list of Azure AD account objects (dicts).
     """
     if not token:
         token = ms_graph_client_token()
@@ -234,10 +237,13 @@ def ms_graph_inactive_users(days=90, licensed=False, token=None):
             'id': user['id'],
             'accountEnabled': user['accountEnabled'],
             'assignedLicenses': user['assignedLicenses'],
-            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']),
+            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']) if user['signInActivity']['lastSignInDateTime'] else None,
         })
+
+    # Excludes accounts with no 'last signed in' value.
+    inactive_accounts = [i for i in accounts if i['lastSignInDateTime']]
     # Determine the list of AD accounts not having been signed into for the last number of `days`.
-    inactive_accounts = [i for i in accounts if i['lastSignInDateTime'] <= then]
+    inactive_accounts = [i for i in inactive_accounts if i['lastSignInDateTime'] <= then]
 
     if licensed:  # Filter the list to accounts having an E5/F3 license assigned.
         inactive_licensed = []
@@ -278,7 +284,7 @@ def ms_graph_sites(team_sites=True, token=None):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = f"https://graph.microsoft.com/v1.0/sites"
+    url = "https://graph.microsoft.com/v1.0/sites"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     j = resp.json()
