@@ -181,7 +181,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
     def m365_licence(self, instance):
         return instance.get_licence()
 
-    def admin_change_view(self, request, object_id, form_url=None, extra_context={}):
+    def admin_change_view(self, request, object_id, form_url="", extra_context={}):
         """A special change form for superusers only to edit employee_id/maiden_name.
 
         https://github.com/django/django/blob/6c6606aa014862f1a5c112d688d5e91c0cd9a8d8/django/contrib/admin/options.py#L1773
