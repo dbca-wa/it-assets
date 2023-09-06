@@ -1,5 +1,7 @@
 from django import forms
-from django.contrib import admin
+from django.contrib.admin import helpers, register, ModelAdmin, SimpleListFilter
+from django.contrib.admin.utils import unquote
+from django.core.exceptions import PermissionDenied
 from django.urls import path
 from django.utils.html import mark_safe
 import json
@@ -26,10 +28,17 @@ class DepartmentUserForm(forms.ModelForm):
             return self.cleaned_data['employee_id']
 
 
-@admin.register(DepartmentUser)
-class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
+class DepartmentUserAdminForm(forms.ModelForm):
 
-    class AssignedLicenceFilter(admin.SimpleListFilter):
+    class Meta:
+        model = DepartmentUser
+        fields = ('employee_id', 'maiden_name')
+
+
+@register(DepartmentUser)
+class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
+
+    class AssignedLicenceFilter(SimpleListFilter):
         title = 'assigned licences'
         parameter_name = 'assigned_licences'
 
@@ -88,6 +97,7 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
                 'active',
                 'email',
                 'name',
+                'maiden_name',
                 'assigned_licences',
                 'dir_sync_enabled',
                 'azure_guid',
@@ -171,16 +181,83 @@ class DepartmentUserAdmin(ModelDescMixin, admin.ModelAdmin):
     def m365_licence(self, instance):
         return instance.get_licence()
 
+    def admin_change_view(self, request, object_id, form_url=None, extra_context={}):
+        """A special change form for superusers only to edit employee_id/maiden_name.
+
+        https://github.com/django/django/blob/6c6606aa014862f1a5c112d688d5e91c0cd9a8d8/django/contrib/admin/options.py#L1773
+        """
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+        obj = self.get_object(request, unquote(object_id))
+        add = False
+        change = True
+        fieldsets = (
+            ('Employee information', {
+                'fields': (
+                    'employee_id',
+                    'maiden_name',
+                ),
+            }),
+        )
+
+        if request.method == "POST":
+            form = DepartmentUserAdminForm(request.POST, instance=obj)
+            formsets = []
+            form_validated = form.is_valid()
+            if form_validated:
+                new_object = self.save_form(request, form, change=True)
+                self.save_model(request, new_object, form, True)
+                change_message = self.construct_change_message(request, form, formsets, add)
+                self.log_change(request, new_object, change_message)
+                return self.response_change(request, new_object)
+        else:
+            form = DepartmentUserAdminForm(instance=obj)
+            formsets = []
+
+        admin_form = helpers.AdminForm(
+            form,
+            list(fieldsets),
+            self.get_prepopulated_fields(request, obj) if add or self.has_change_permission(request, obj) else {},
+            model_admin=self,
+        )
+        media = self.media + admin_form.media
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Change {self.opts.verbose_name}",
+            "subtitle": str(obj) if obj else None,
+            "adminform": admin_form,
+            "object_id": object_id,
+            "original": obj,
+            "is_popup": False,
+            "media": media,
+            "inline_admin_formsets": [],
+            "errors": helpers.AdminErrorList(form, formsets),
+            "preserved_filters": self.get_preserved_filters(request),
+        }
+        context.update(extra_context or {})
+
+        return self.render_change_form(
+            request, context, add=add, change=change, obj=obj, form_url=form_url
+        )
+
     def get_urls(self):
-        urls = super(DepartmentUserAdmin, self).get_urls()
+        urls = super().get_urls()
+        info = self.opts.app_label, self.opts.model_name
         urls = [
+            path(
+                "<path:object_id>/admin-change/",
+                self.admin_site.admin_view(self.admin_change_view),
+                name="%s_%s_admin_change" % info,
+            ),
             path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
         ] + urls
         return urls
 
 
-@admin.register(Location)
-class LocationAdmin(admin.ModelAdmin):
+@register(Location)
+class LocationAdmin(ModelAdmin):
     fields = ('name', 'ascender_desc')
     list_display = ('name', 'ascender_desc')
     readonly_fields = ('ascender_desc',)
@@ -194,8 +271,8 @@ class LocationAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(CostCentre)
-class CostCentreAdmin(admin.ModelAdmin):
+@register(CostCentre)
+class CostCentreAdmin(ModelAdmin):
     fields = ('active', 'code', 'chart_acct_name', 'division_name', 'manager', 'ascender_code')
     list_display = ('code', 'ascender_code', 'chart_acct_name', 'division_name', 'manager', 'active')
     search_fields = ('code', 'chart_acct_name', 'division_name', 'ascender_code')
@@ -203,8 +280,8 @@ class CostCentreAdmin(admin.ModelAdmin):
     readonly_fields = ('manager', 'ascender_code')
 
 
-@admin.register(AscenderActionLog)
-class AscenderActionLogAdmin(admin.ModelAdmin):
+@register(AscenderActionLog)
+class AscenderActionLogAdmin(ModelAdmin):
     date_hierarchy = 'created'
     fields = ('created', 'level', 'log', 'ascender_data_pprint')
     list_display = ('created', 'level', 'log')
