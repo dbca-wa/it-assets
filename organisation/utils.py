@@ -123,7 +123,6 @@ def ms_graph_users(licensed=False, token=None):
         "ConsistencyLevel": "eventual",
     }
     url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
-    #url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true&$expand=manager($select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -160,7 +159,6 @@ def ms_graph_users(licensed=False, token=None):
             'onPremisesSamAccountName': user['onPremisesSamAccountName'],
             'lastPasswordChangeDateTime': user['lastPasswordChangeDateTime'],
             'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
-            'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
         })
 
     if licensed:
@@ -170,7 +168,7 @@ def ms_graph_users(licensed=False, token=None):
 
 
 def ms_graph_users_signinactivity(licensed=False, token=None):
-    """Query the MS Graph (Beta) API for a list of Azure AD account with sign-in activity.
+    """Query the MS Graph API for a list of Azure AD account with sign-in activity.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
     Returns a list of Azure AD user objects (dicts).
@@ -211,11 +209,11 @@ def ms_graph_users_signinactivity(licensed=False, token=None):
 
 
 def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
-    """Query the MS Graph (Beta) API for a list of Azure AD accounts which haven't had a login event
-    within the defined number of days.
+    """Query the MS Graph API for a list of Azure AD accounts which haven't had a login event
+    within the defined number of ``days``.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au, and that
-    we classify 'dormant' accounts as though having no logins for 90+ days.
+    we classify 'dormant' accounts as though having no logins for ``days``.
 
     Returns a list of Azure AD account objects (dicts).
     """
@@ -237,23 +235,23 @@ def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
             'id': user['id'],
             'accountEnabled': user['accountEnabled'],
             'assignedLicenses': user['assignedLicenses'],
-            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']) if user['signInActivity']['lastSignInDateTime'] else None,
+            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']).astimezone(TZ) if user['signInActivity']['lastSignInDateTime'] else None,
         })
 
     # Excludes accounts with no 'last signed in' value.
-    inactive_accounts = [i for i in accounts if i['lastSignInDateTime']]
+    dormant_accounts = [i for i in accounts if i['lastSignInDateTime']]
     # Determine the list of AD accounts not having been signed into for the last number of `days`.
-    inactive_accounts = [i for i in inactive_accounts if i['lastSignInDateTime'] <= then]
+    dormant_accounts = [i for i in dormant_accounts if i['lastSignInDateTime'] <= then]
 
     if licensed:  # Filter the list to accounts having an E5/F3 license assigned.
         inactive_licensed = []
-        for i in inactive_accounts:
+        for i in dormant_accounts:
             for license in i['assignedLicenses']:
                 if license['skuId'] in [MS_PRODUCTS['MICROSOFT 365 E5'], MS_PRODUCTS['MICROSOFT 365 F3']]:
                     inactive_licensed.append(i)
         return inactive_licensed
     else:
-        return inactive_accounts
+        return dormant_accounts
 
 
 def ms_graph_user(azure_guid, token=None):
