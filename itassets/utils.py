@@ -1,4 +1,4 @@
-from data_storage import AzureBlobStorage
+from azure.storage.blob import BlobServiceClient
 from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.encoding import smart_text
@@ -45,12 +45,26 @@ def ms_security_api_client_token():
     return resp.json()['access_token']
 
 
-def upload_blob(in_file, container, blob_name):
+def upload_blob(in_file, container, blob, overwrite=True):
     """For the passed-in file, upload to blob storage.
     """
     connect_string = os.environ.get('AZURE_CONNECTION_STRING')
-    store = AzureBlobStorage(connect_string, container)
-    store.upload_file(blob_name, in_file.name)
+    service_client = BlobServiceClient.from_connection_string(connect_string)
+    blob_client = service_client.get_blob_client(container=container, blob=blob)
+    blob_client.upload_blob(in_file, overwrite=overwrite)
+
+
+def download_blob(out_file, container, blob):
+    """For the passed-in file, download the nominated blob into it.
+    """
+    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+    service_client = BlobServiceClient.from_connection_string(connect_string)
+    container_client = service_client.get_container_client(container=container)
+    out_file.write(container_client.download_blob(blob).readall())
+    out_file.flush()
+    out_file.seek(0)
+
+    return out_file
 
 
 class ModelDescMixin(object):

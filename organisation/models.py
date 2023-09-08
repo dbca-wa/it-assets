@@ -1,15 +1,13 @@
-from data_storage import AzureBlobStorage
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, CIEmailField
 from django.contrib.gis.db import models
+from io import BytesIO
 import json
 import logging
-import os
 import requests
-from tempfile import NamedTemporaryFile
 
-from itassets.utils import ms_graph_client_token, smart_truncate
+from itassets.utils import ms_graph_client_token, smart_truncate, upload_blob
 from .utils import compare_values, parse_windows_ts, title_except
 from .microsoft_products import MS_PRODUCTS
 LOGGER = logging.getLogger('organisation')
@@ -327,8 +325,6 @@ class DepartmentUser(models.Model):
         to the required databases.
         If `log_only` is True, do not schedule changes to AD databases (output logs only).
         """
-        connect_string = os.environ.get('AZURE_CONNECTION_STRING')
-        store = AzureBlobStorage(connect_string, container)
         if not token:
             token = ms_graph_client_token()
         url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
@@ -362,11 +358,13 @@ class DepartmentUser(models.Model):
                         'property': prop,
                         'value': False,
                     }
-                    f = NamedTemporaryFile()
+                    f = BytesIO()
                     f.write(json.dumps(change, indent=2).encode('utf-8'))
                     f.flush()
+                    f.seek(0)
                     if not log_only:
-                        store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                        blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                        upload_blob(f, container, blob)
                     LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
                 # Azure (cloud only) AD users.
@@ -414,11 +412,13 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': job_end_date.strftime("%m/%d/%Y"),
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
                 # Create a DepartmentUserLog object to record this update.
@@ -456,11 +456,13 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': None,
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
 
                 # Create a DepartmentUserLog object to record this update.
@@ -484,11 +486,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.name,
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
@@ -513,11 +517,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.given_name,
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
@@ -540,11 +546,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.surname,
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
@@ -574,11 +582,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.cost_centre.code,
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
         elif (
@@ -616,11 +626,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.get_division(),
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
         elif (
@@ -650,11 +662,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.title,
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'jobTitle' in self.azure_ad_data and self.azure_ad_data['jobTitle'] != self.title:
@@ -684,11 +698,13 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': self.telephone,
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'telephoneNumber' in self.azure_ad_data:
@@ -725,11 +741,13 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': self.mobile_phone,
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'mobilePhone' in self.azure_ad_data:
@@ -765,11 +783,13 @@ class DepartmentUser(models.Model):
                 'property': prop,
                 'value': self.employee_id,
             }
-            f = NamedTemporaryFile()
+            f = BytesIO()
             f.write(json.dumps(change, indent=2).encode('utf-8'))
             f.flush()
+            f.seek(0)
             if not log_only:
-                store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                upload_blob(f, container, blob)
             LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif (
@@ -804,11 +824,14 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': self.manager.ad_guid if self.manager else None,
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploading to blob storage ({prop})')
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'manager' in self.azure_ad_data:
@@ -856,11 +879,13 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': ascender_location.name,
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
                 prop = 'StreetAddress'
                 change = {
@@ -868,11 +893,13 @@ class DepartmentUser(models.Model):
                     'property': prop,
                     'value': ascender_location.address,
                 }
-                f = NamedTemporaryFile()
+                f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode('utf-8'))
                 f.flush()
+                f.seek(0)
                 if not log_only:
-                    store.upload_file('onprem_changes/{}_{}.json'.format(self.ad_guid, prop), f.name)
+                    blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
+                    upload_blob(f, container, blob)
                 LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
         # Azure (cloud only) AD users
         elif (

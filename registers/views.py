@@ -5,17 +5,15 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import Q
 from django.urls import reverse
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, TemplateView
+from django.views.generic import View, ListView, DetailView, CreateView, UpdateView
 from pytz import timezone
 import re
 
-from bigpicture.models import RISK_CATEGORY_CHOICES
 from itassets.utils import breadcrumbs_list
 from organisation.models import DepartmentUser
 from .models import ITSystem, ChangeRequest, ChangeLog, StandardChange
@@ -24,7 +22,7 @@ from .forms import (
     StandardChangeRequestChangeForm, ChangeRequestEndorseForm, ChangeRequestCompleteForm,
     EmergencyChangeRequestForm, ChangeRequestApprovalForm, ChangeRequestSMEReviewForm,
 )
-from .reports import change_request_export, riskassessment_export
+from .reports import change_request_export
 from .utils import search_filter
 
 TZ = timezone(settings.TIME_ZONE)
@@ -853,119 +851,3 @@ class ChangeRequestComplete(LoginRequiredMixin, UpdateView):
         log.save()
 
         return super().form_valid(form)
-
-
-class RiskAssessmentITSystemList(LoginRequiredMixin, ListView):
-    """A list view to display a summary of risk assessments for all IT Systems.
-    """
-    model = ITSystem
-    paginate_by = 20
-    template_name = 'registers/riskassessment_list.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Risk Assessment - IT Systems'
-        if 'q' in self.request.GET:
-            context['query_string'] = self.request.GET['q']
-        context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
-        # Breadcrumb links:
-        links = [(None, 'Risk assessments')]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        return context
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        # Default to prod/prod-legacy IT systems only.
-        qs = qs.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
-        # Did we pass in a search string? If so, filter the queryset and return it.
-        if 'q' in self.request.GET and self.request.GET['q']:
-            from .admin import ITSystemAdmin
-            q = search_filter(ITSystemAdmin.search_fields, self.request.GET['q'])
-            qs = qs.filter(q).distinct()
-        return qs
-
-
-class RiskAssessmentITSystemDetail(LoginRequiredMixin, DetailView):
-    """A detail view to display a risk assessments and dependencies for a single IT System.
-    """
-    model = ITSystem
-    template_name = 'registers/riskassessment_detail.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        obj = self.get_object()
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context['page_title'] = 'Risk Assessment - {}'.format(obj)
-        context['obj_dependencies'] = obj.dependencies.order_by('category')
-        context['itsystem_ct'] = ContentType.objects.get_for_model(obj)
-        context['dependency_ct'] = ContentType.objects.get(app_label='bigpicture', model='dependency')
-        context['risk_categories'] = [i[0] for i in RISK_CATEGORY_CHOICES]
-        if obj.extra_data and 'signal_science_tags' in obj.extra_data:
-            context['sig_sci_tags'] = obj.extra_data['signal_science_tags']
-        else:
-            context['sig_sci_tags'] = None
-        # Breadcrumb links:
-        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, obj.system_id)]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        return context
-
-
-class RiskAssessmentGlossary(LoginRequiredMixin, TemplateView):
-    """A static template to display a glossary of what each risk assessment means, per category.
-    """
-    template_name = 'registers/riskassessment_glossary.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context["page_title"] = "Glossary"
-        # Breadcrumb links:
-        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Glossary")]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        return context
-
-
-class RiskAssessmentExport(LoginRequiredMixin, View):
-    """A custom view to export IT System risk assessments to an Excel spreadsheet.
-    """
-    def get(self, request, *args, **kwargs):
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=risk_assessments_it_systems_{}_{}.xlsx'.format(
-            date.today().isoformat(), datetime.now().strftime('%H%M')
-        )
-        it_systems = ITSystem.objects.filter(**ITSystem.ACTIVE_FILTER).order_by('system_id')
-        response = riskassessment_export(response, it_systems)
-        return response
-
-
-class SignalScienceTags(LoginRequiredMixin, TemplateView):
-    """A static template to display a glossary of what each risk assessment means, per category.
-    """
-    template_name = 'registers/signal_science_tags.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['site_title'] = 'DBCA Office of Information Management'
-        context['site_acronym'] = 'OIM'
-        context["page_title"] = "Signal Science system tags"
-        # Breadcrumb links:
-        links = [(reverse("riskassessment_itsystem_list"), "Risk assessments"), (None, "Signal Science tags")]
-        context["breadcrumb_trail"] = breadcrumbs_list(links)
-        tags = {}
-        for it in ITSystem.objects.all():
-            if it.extra_data and 'signal_science_tags' in it.extra_data:
-                for tag_type, count in it.extra_data['signal_science_tags'].items():
-                    if tag_type not in tags:
-                        tags[tag_type] = []
-                    tags[tag_type].append((count, it.name, reverse("riskassessment_itsystem_detail", args=(it.pk,))))
-        for val in tags.values():
-            val.sort(reverse=True)
-        tags_top5 = {}
-        for k, v in tags.items():
-            tags_top5[k] = v[0:5]
-        context['tags'] = tags_top5
-        return context

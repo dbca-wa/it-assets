@@ -88,7 +88,6 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
                 'emergency_operations',
                 'online_bookings',
                 'visitor_safety',
-                #'platform',
             ),
         }),
         ('Retention and disposal', {

@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = 'Queries Sharepoint for the IT System Register and syncs it locally'
 
     def handle(self, *args, **options):
-        logger = logging.getLogger('registers')
+        logger = logging.getLogger('itassets')
         logger.info('Querying Microsoft Graph API for Sharepoint user information')
         sharepoint_users = ms_graph_sharepoint_users()
 

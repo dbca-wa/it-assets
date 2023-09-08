@@ -51,7 +51,7 @@ class Command(BaseCommand):
                 du.save()
 
         logger.info('Downloading on-prem AD user account data')
-        ad_users = get_ad_users_json(container=options['container'], azure_json_path=options['path'])
+        ad_users = get_ad_users_json(container=options['container'], blob=options['path'])
         ad_users = {i['ObjectGUID']: i for i in ad_users}
 
         # Iterate through department users and clear any nonexistent onprem GUID values.

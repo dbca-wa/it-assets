@@ -11,7 +11,7 @@ class Command(BaseCommand):
     help = 'Syncs the IT System Register information to Freshservice'
 
     def handle(self, *args, **options):
-        logger = logging.getLogger('registers')
+        logger = logging.getLogger('itassets')
         logger.info('Querying Freshservice for IT Systems')
         it_systems_fs = get_freshservice_objects_curl(
             obj_type='assets',
