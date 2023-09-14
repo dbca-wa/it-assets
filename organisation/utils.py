@@ -2,14 +2,12 @@ from datetime import datetime, timedelta, timezone
 from dateutil.parser import parse
 from django.conf import settings
 from io import BytesIO
-import json
 import os
 import pytz
 import re
 import requests
-from tempfile import NamedTemporaryFile
 import unicodecsv as csv
-from itassets.utils import ms_graph_client_token, upload_blob, download_blob
+from itassets.utils import ms_graph_client_token, upload_blob, get_blob_json
 
 from .microsoft_products import MS_PRODUCTS
 
@@ -332,8 +330,9 @@ def ms_graph_site_storage_summary(ds=None):
     headers = [h.decode() for h in headers]
     if not ds:  # Default to today's date.
         ds = datetime.today().strftime("%Y-%m-%d")
-    tempfile = NamedTemporaryFile()
-    writer = csv.writer(tempfile)
+
+    f = BytesIO()
+    writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
     writer.writerow([headers[0], headers[2], headers[5], headers[6], headers[10]])
     for row in storage_csv[1:]:
         row = row.split(b",")
@@ -342,19 +341,9 @@ def ms_graph_site_storage_summary(ds=None):
             # We're only interested in some of the report output.
             writer.writerow([row[0], row[2].replace("https://dpaw.sharepoint.com/", ""), row[5], int(row[6]), int(row[10])])
 
-    tempfile.seek(0)
+    f.seek(0)
     blob_name = f"storage/site_storage_usage_{ds}.csv"
-    upload_blob(in_file=tempfile, container="analytics", blob=blob_name)
-
-
-def get_ad_users_json(container, blob):
-    """Pass in the container name and blob to a JSON dump of AD users, return parsed JSON.
-    """
-    tf = BytesIO()
-    download_blob(tf, container, blob)
-    tf.flush()
-
-    return json.loads(tf.read())
+    upload_blob(in_file=f, container="analytics", blob=blob_name)
 
 
 def compare_values(a, b):
@@ -395,3 +384,49 @@ def department_user_ascender_sync(users):
             user.get_licence(),
         ])
     return f
+
+
+def nginx_hosts_upload(container="analytics", source_blob="nginx_host_proxy_targets.json", dest_blob="nginx_hosts.csv"):
+    print("Downloading source data")
+    hosts = get_blob_json(container, source_blob)
+    f = BytesIO()
+    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding="utf-8")
+    writer.writerow(["HOST", "SSO", "HTTPS RESPONSE"])
+
+    for rule in hosts:
+        host = rule["host"]
+        if "sso_locations" in rule and rule["sso_locations"]:
+            sso_locations = [i for i in rule["sso_locations"] if i]
+        else:
+            sso_locations = []
+        if "/" in sso_locations or "^~ /" in sso_locations:
+            sso = True
+        else:
+            sso = False
+
+        # We can only check non-SSO sites.
+        status_code = "Unknown"
+        if not sso:
+            print(f"Querying https://{host}")
+            try:
+                resp = requests.get(f"https://{host}", timeout=(3.05, 10))
+                status_code = resp.status_code
+            except requests.exceptions.SSLError:
+                print("SSL error")
+                status_code = "SSL Error"
+            except requests.exceptions.Timeout:
+                print("Timeout")
+                status_code = "Timeout"
+            except requests.exceptions.TooManyRedirects:
+                print("Redirect loop")
+                status_code = "Redirect loop"
+            except:
+                print("Error")
+                status_code = "Error"
+        else:
+            print(f"Skipped {host} (SSO)")
+        writer.writerow([host, sso, status_code])
+
+    f.seek(0)
+    print("Uploaded data to Azure")
+    upload_blob(in_file=f, container="analytics", blob=dest_blob)
