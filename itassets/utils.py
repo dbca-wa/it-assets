@@ -1,4 +1,5 @@
 from azure.storage.blob import BlobServiceClient
+from io import BytesIO
 from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.encoding import smart_text
@@ -321,3 +322,14 @@ def smart_truncate(content, length=100, suffix='....(more)'):
         return content
     else:
         return ' '.join(content[:length + 1].split(' ')[0:-1]) + suffix
+
+
+def get_blob_json(container, blob):
+    """Convenience function to download an Azure blob which contains JSON data,
+    parse it, and return the data. Pass in the container and blob names.
+    """
+    tf = BytesIO()
+    download_blob(tf, container, blob)
+    tf.flush()
+
+    return json.loads(tf.read())

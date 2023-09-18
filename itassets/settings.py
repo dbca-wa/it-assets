@@ -24,9 +24,20 @@ INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'itassets.urls'
 WSGI_APPLICATION = 'itassets.wsgi.application'
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
-# Allow overriding the Django default for FILE_UPLOAD_PERMISSIONS (0o644).
-# Required for non-local Azure storage volumes in Kubernetes environment.
-FILE_UPLOAD_PERMISSIONS = env('FILE_UPLOAD_PERMISSIONS', None)
+
+# Assume Azure blob storage is used for media uploads, unless explicitly set as local storage.
+LOCAL_MEDIA_STORAGE = env('LOCAL_MEDIA_STORAGE', False)
+if LOCAL_MEDIA_STORAGE:
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    if not os.path.exists(os.path.join(BASE_DIR, 'media')):
+        os.mkdir(os.path.join(BASE_DIR, 'media'))
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+else:
+    DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME', 'name')
+    AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY', 'key')
+    AZURE_CONTAINER = env('AZURE_CONTAINER', 'container')
+    AZURE_URL_EXPIRATION_SECS = env('AZURE_URL_EXPIRATION_SECS', 3600)  # Default one hour.
 
 INSTALLED_APPS = (
     'whitenoise.runserver_nostatic',
@@ -38,7 +49,6 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'django_json_widget',
     # Third-party applications:
     'django_extensions',
     'crispy_forms',
@@ -60,7 +70,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'csp.middleware.CSPMiddleware',
     'dbca_utils.middleware.SSOLoginMiddleware',
 ]
 
@@ -100,7 +109,7 @@ MERAKI_API_KEY = env('MERAKI_API_KEY', None)
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.4.3'
+VERSION_NO = '2.4.4'
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
 LICENCE_NOTIFY_THRESHOLD = env('LICENCE_NOTIFY_THRESHOLD', 5)
 
@@ -143,10 +152,8 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = (os.path.join(BASE_DIR, 'itassets', 'static'),)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 WHITENOISE_ROOT = STATIC_ROOT
-# Ensure that the media directory exists:
-if not os.path.exists(os.path.join(BASE_DIR, 'media')):
-    os.mkdir(os.path.join(BASE_DIR, 'media'))
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Media uploads
 MEDIA_URL = '/media/'
 
 
@@ -213,15 +220,3 @@ LOGGING = {
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
-# django-csp config
-# Reference: https://django-csp.readthedocs.io/en/latest/configuration.html
-# NOTE: add any CDN domains here where they are used to load external resources.
-CSP_DEFAULT_SRC = (
-    "'self'",
-    "'unsafe-inline'",  # Required to allow inline styles/scripts.
-    "static.dbca.wa.gov.au",
-    "cdnjs.cloudflare.com",
-    "cdn.jsdelivr.net",
-    "code.jquery.com",
-)
