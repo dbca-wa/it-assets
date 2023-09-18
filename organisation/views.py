@@ -5,13 +5,12 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View, ListView, TemplateView
 from django.views.decorators.clickjacking import xframe_options_exempt
-from csp.decorators import csp_exempt
 
 from .models import DepartmentUser, Location, DepartmentUserLog
 from .reports import department_user_export, user_account_export
 from .utils import title_except
 
-decorators = [xframe_options_exempt, csp_exempt]
+decorators = [xframe_options_exempt]
 
 
 @method_decorator(decorators, name='dispatch')
