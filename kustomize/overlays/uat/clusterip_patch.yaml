@@ -4,5 +4,5 @@ metadata:
   name: itassets-clusterip
 spec:
   selector:
-    app: itassets-uat
+    app: itassets
     variant: uat

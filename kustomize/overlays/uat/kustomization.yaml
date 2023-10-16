@@ -12,8 +12,8 @@ resources:
 labels:
 - includeSelectors: true
   pairs:
+    app: itassets
     variant: uat
-    app: itassets-uat
 images:
 - name: ghcr.io/dbca-wa/it-assets
   newTag: latest

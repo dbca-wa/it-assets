@@ -2,12 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: itassets-deployment
-  labels:
-    app: itassets-uat
 spec:
   selector:
     matchLabels:
-      app: itassets-uat
+      app: itassets
       variant: uat
   template:
     metadata:
@@ -38,81 +36,6 @@ spec:
             secretKeyRef:
               name: itassets-env-uat
               key: EMAIL_HOST
-        - name: AZURE_CONNECTION_STRING
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_CONNECTION_STRING
-        - name: AZURE_TENANT_ID
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_TENANT_ID
-        - name: MS_GRAPH_API_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: MS_GRAPH_API_CLIENT_ID
-        - name: MS_GRAPH_API_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: MS_GRAPH_API_CLIENT_SECRET
-        - name: FOREIGN_DB_HOST
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_HOST
-        - name: FOREIGN_DB_PORT
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_PORT
-        - name: FOREIGN_DB_NAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_NAME
-        - name: FOREIGN_DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_USERNAME
-        - name: FOREIGN_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_PASSWORD
-        - name: FOREIGN_SCHEMA
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_SCHEMA
-        - name: FOREIGN_SERVER
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_SERVER
-        - name: FOREIGN_TABLE
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_TABLE
-        - name: FOREIGN_TABLE_CC_MANAGER
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_TABLE_CC_MANAGER
-        - name: FRESHSERVICE_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FRESHSERVICE_ENDPOINT
-        - name: FRESHSERVICE_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FRESHSERVICE_API_KEY
         - name: AZURE_ACCOUNT_NAME
           valueFrom:
             secretKeyRef:
