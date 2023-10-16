@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: itassets-clusterip
 spec:
-  type: ClusterIP
   selector:
     app: itassets-uat
     variant: uat
