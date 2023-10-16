@@ -16,7 +16,6 @@ spec:
     spec:
       containers:
       - name: itassets
-        image: ghcr.io/dbca-wa/it-assets
         imagePullPolicy: Always
         env:
         - name: DATABASE_URL

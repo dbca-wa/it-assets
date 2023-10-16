@@ -14,6 +14,9 @@ labels:
   pairs:
     variant: uat
     app: itassets-uat
+images:
+- name: ghcr.io/dbca-wa/it-assets
+  newTag: latest
 patches:
 - path: clusterip_patch.yaml
 - path: deployment_patch.yaml

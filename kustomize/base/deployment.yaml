@@ -10,6 +10,7 @@ spec:
     spec:
       containers:
       - name: itassets
+        image: ghcr.io/dbca-wa/it-assets
         env:
         - name: ALLOWED_DOMAINS
           value: ".dbca.wa.gov.au"
