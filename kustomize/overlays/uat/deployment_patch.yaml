@@ -8,6 +8,7 @@ spec:
   selector:
     matchLabels:
       app: itassets-uat
+      variant: uat
   template:
     metadata:
       labels:
