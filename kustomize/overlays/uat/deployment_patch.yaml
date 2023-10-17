@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: itassets-deployment
+spec:
+  selector:
+    matchLabels:
+      app: itassets
+      variant: uat
+  template:
+    metadata:
+      labels:
+        app: itassets-uat
+    spec:
+      containers:
+      - name: itassets
+        imagePullPolicy: Always
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: DATABASE_URL
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: SECRET_KEY
+        - name: ADMIN_EMAILS
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: ADMIN_EMAILS
+        - name: EMAIL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: EMAIL_HOST
+        - name: AZURE_ACCOUNT_NAME
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: AZURE_ACCOUNT_NAME
+        - name: AZURE_ACCOUNT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: AZURE_ACCOUNT_KEY
+        - name: AZURE_CONTAINER
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: AZURE_CONTAINER

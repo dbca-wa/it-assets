@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: itassets-clusterip
+spec:
+  type: ClusterIP
+  selector:
+    app: itassets
+    variant: prod

@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: itassets-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: itassets.dbca.wa.gov.au
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: itassets-clusterip-prod
+            port:
+              number: 8080

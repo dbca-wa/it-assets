@@ -1,0 +1,6 @@
+- op: replace
+  path: /spec/schedule
+  value: "55 11 * * 1,4"
+- op: replace
+  path: /spec/jobTemplate/spec/template/spec/containers/0/args
+  value: ["manage.py", "check_m365_licence_count", "--help"]

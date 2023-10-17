@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: itassets-deployment
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+      - name: itassets
+        image: ghcr.io/dbca-wa/it-assets
+        env:
+        - name: ALLOWED_DOMAINS
+          value: ".dbca.wa.gov.au"
+        - name: CSRF_COOKIE_SECURE
+          value: "True"
+        - name: SESSION_COOKIE_SECURE
+          value: "True"
+        - name: TZ
+          value: "Australia/Perth"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "25m"
+          limits:
+            memory: "4096Mi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          failureThreshold: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          failureThreshold: 3
+          timeoutSeconds: 2
+        securityContext:
+          runAsNonRoot: true
+          privileged: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: false
+      restartPolicy: Always

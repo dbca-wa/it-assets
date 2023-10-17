@@ -1,0 +1,6 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: itassets-pdb
+spec:
+  minAvailable: 1
