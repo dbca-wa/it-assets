@@ -19,35 +19,35 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: DATABASE_URL
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: SECRET_KEY
         - name: ADMIN_EMAILS
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: ADMIN_EMAILS
         - name: EMAIL_HOST
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: EMAIL_HOST
         - name: AZURE_ACCOUNT_NAME
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: AZURE_ACCOUNT_NAME
         - name: AZURE_ACCOUNT_KEY
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: AZURE_ACCOUNT_KEY
         - name: AZURE_CONTAINER
           valueFrom:
             secretKeyRef:
-              name: itassets-env-uat
+              name: itassets-env-prod
               key: AZURE_CONTAINER
