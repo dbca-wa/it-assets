@@ -1,6 +1,6 @@
 - op: replace
   path: /spec/schedule
-  value: "* * * * *"
+  value: "7 19 * * 1-5"
 - op: replace
   path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "--help"]
+  value: ["manage.py", "department_users_audit_emails", "--help"]

@@ -1,6 +1,6 @@
 - op: replace
   path: /spec/schedule
-  value: "22 18 * * 1-5"
+  value: "1 2 * * 3,6"
 - op: replace
   path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "department_users_upload_ascender_sftp", "--help"]
+  value: ["manage.py", "site_storage_upload", "--help"]
