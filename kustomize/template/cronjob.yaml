@@ -1,0 +1,138 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  schedule: ""
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      parallelism: 1
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: itassets-cronjob
+            image: ghcr.io/dbca-wa/it-assets
+            command: ["python"]
+            args: ["--version"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DATABASE_URL
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: EMAIL_HOST
+            - name: ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ADMIN_EMAILS
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: AZURE_CONNECTION_STRING
+            - name: MS_GRAPH_API_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_ID
+            - name: MS_GRAPH_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_SECRET
+            - name: FOREIGN_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_HOST
+            - name: FOREIGN_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_PORT
+            - name: FOREIGN_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_NAME
+            - name: FOREIGN_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_USERNAME
+            - name: FOREIGN_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_PASSWORD
+            - name: FOREIGN_SCHEMA
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_SCHEMA
+            - name: FOREIGN_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_SERVER
+            - name: FOREIGN_TABLE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_TABLE
+            - name: FOREIGN_TABLE_CC_MANAGER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_TABLE_CC_MANAGER
+            - name: FRESHSERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FRESHSERVICE_ENDPOINT
+            - name: FRESHSERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FRESHSERVICE_API_KEY
+            - name: ASCENDER_SFTP_HOSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ASCENDER_SFTP_HOSTNAME
+            - name: ASCENDER_SFTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ASCENDER_SFTP_PORT
+            - name: ASCENDER_SFTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ASCENDER_SFTP_USERNAME
+            - name: ASCENDER_SFTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ASCENDER_SFTP_PASSWORD
+            - name: ASCENDER_SFTP_DIRECTORY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ASCENDER_SFTP_DIRECTORY
+            securityContext:
+              runAsNonRoot: true
+              privileged: false
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false

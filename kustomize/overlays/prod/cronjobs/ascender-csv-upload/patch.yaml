@@ -1,0 +1,6 @@
+- op: replace
+  path: /spec/schedule
+  value: "* * * * *"
+- op: replace
+  path: /spec/jobTemplate/spec/template/spec/containers/0/args
+  value: ["manage.py", "department_users_upload_ascender_sftp", "--help"]
