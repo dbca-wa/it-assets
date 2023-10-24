@@ -4,7 +4,7 @@ from organisation.ascender import ascender_db_import
 
 
 class Command(BaseCommand):
-    help = 'Caches data from Ascender on matching DepartmentUser objects'
+    help = 'Caches data from Ascender on DepartmentUser objects, optionally create new M365 accounts'
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')

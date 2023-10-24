@@ -109,7 +109,7 @@ MERAKI_API_KEY = env('MERAKI_API_KEY', None)
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.4.4'
+VERSION_NO = '2.4.5'
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
 LICENCE_NOTIFY_THRESHOLD = env('LICENCE_NOTIFY_THRESHOLD', 5)
 
@@ -119,7 +119,7 @@ ASCENDER_DEACTIVATE_EXPIRED = env('ASCENDER_DEACTIVATE_EXPIRED', False)
 # Flag to control whether new Azure AD accounts should be created during sync.
 ASCENDER_CREATE_AZURE_AD = env('ASCENDER_CREATE_AZURE_AD', False)
 # Flag to set how many days ahead of their start date a new AD account should be created.
-# False == no limit. Value should be an integer value.
+# False == no limit. Value should be a positive integer value.
 ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env('ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS', -1)
 
 # Settings related to the Ascender SFTP target
