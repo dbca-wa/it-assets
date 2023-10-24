@@ -381,6 +381,7 @@ def ascender_db_import(employee_iter=None):
                     log = f"Exception during creation of new cost centre in new Azure AD user process, code {job['paypoint']}"
                     AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.error(log)
+                    continue
 
             # Rule: user must have a job start date recorded.
             if job['job_start_date']:
@@ -388,11 +389,17 @@ def ascender_db_import(employee_iter=None):
             else:  # Short circuit.
                 continue
 
+            # Rule: if job_start_date is in the past, skip account creation.
+            # This should avoid the circumstance where Ascender records have changed (position, CLEVEL, etc.)
+            # which results in a changed value for job_start_date.
+            today = date.today()
+            if job_start_date < today:
+                continue
+
             # Secondary rule: we might set a limit for the number of days ahead of their starting date which we
             # want to create an Azure AD account. If this value is not set (False/None), assume that there is
             # no limit.
             if job['job_start_date'] and job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
-                today = date.today()
                 diff = job_start_date - today
                 if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
                     log = f"Skipped creation of new Azure AD user for emp ID {ascender_record} (exceeds start date limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days)"
