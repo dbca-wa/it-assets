@@ -252,6 +252,7 @@ def ascender_db_import(employee_iter=None):
         LOGGER.info("Generating new Azure AD accounts for new employees")
     else:
         LOGGER.info("Not generating new Azure AD accounts")
+        token = None
 
     LOGGER.info("Querying Ascender database for employee information")
     if not employee_iter:
@@ -275,12 +276,12 @@ def ascender_db_import(employee_iter=None):
                     ascender_desc=job['geo_location_desc'],
                     address=job['geo_location_desc'],
                 )
-                log = f"Creation of new Azure AD user process generated new location, description {job['geo_location_desc']}"
+                log = f"Creation of new Azure AD account process generated new location, description {job['geo_location_desc']}"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                 LOGGER.info(log)
             except:
                 # In the event of an error (probably due to a duplicate name), fail gracefully and log the error.
-                log = f"ASCENDER SYNC: exception during creation of new location in new Azure AD user process, description {job['geo_location_desc']}"
+                log = f"ASCENDER SYNC: exception during creation of new location in new Azure AD account process, description {job['geo_location_desc']}"
                 LOGGER.error(log)
 
         if DepartmentUser.objects.filter(employee_id=eid).exists():
@@ -302,7 +303,7 @@ def ascender_db_import(employee_iter=None):
             user.ascender_data = job
             user.ascender_data_updated = TZ.localize(datetime.now())
             user.update_from_ascender_data()  # This method calls save()
-        elif not DepartmentUser.objects.filter(employee_id=eid).exists() and settings.ASCENDER_CREATE_AZURE_AD:
+        elif not DepartmentUser.objects.filter(employee_id=eid).exists():
             # ENTRY POINT FOR NEW AZURE AD USER ACCOUNT CREATION.
             # Parse job end date (if present). Ascender records "no end date" using a date far in the future (DATE_MAX).
             job_end_date = None
@@ -321,10 +322,11 @@ def ascender_db_import(employee_iter=None):
             ascender_record = f"{eid}, {job['first_name']} {job['surname']}"
 
             # Rule: user must have a valid M365 licence type recorded, plus we need to have an available M365 licence to allocate.
+            # The valid licence type values stored in Ascender are ONPUL and CLDUL.
             # Short circuit: if there is no value for licence_type, skip account creation.
             if not job['licence_type'] or job['licence_type'] == 'NULL':
                 continue
-            elif job['licence_type'] and job['licence_type'] in ['ONPUL', 'CLDUL']:  # The valid licence type values stored in Ascender are ONPUL and CLDUL.
+            elif job['licence_type'] and job['licence_type'] in ['ONPUL', 'CLDUL'] and token:
                 LOGGER.info("Querying Microsoft 365 licence availability")
                 e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
                 f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
@@ -334,7 +336,7 @@ def ascender_db_import(employee_iter=None):
                     licence_type = 'On-premise'
                     # Short circuit: no available licences, abort.
                     if e5_sku['consumedUnits'] >= e5_sku['prepaidUnits']['enabled']:
-                        log = f"Creation of new Azure AD user started then aborted, no onprem E5 licences available ({ascender_record})"
+                        log = f"Creation of new Azure AD account started then aborted, no onprem E5 licences available ({ascender_record})"
                         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
@@ -342,17 +344,17 @@ def ascender_db_import(employee_iter=None):
                     licence_type = 'Cloud'
                     # Short circuit: no available licences, abort.
                     if f3_sku['consumedUnits'] >= f3_sku['prepaidUnits']['enabled']:
-                        log = f"Creation of new Azure AD user started then aborted, no Cloud F3 licences available ({ascender_record})"
+                        log = f"Creation of new Azure AD account started then aborted, no Cloud F3 licences available ({ascender_record})"
                         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
                     if eo_sku['consumedUnits'] >= eo_sku['prepaidUnits']['enabled']:
-                        log = f"Creation of new Azure AD user started then aborted, no Cloud Exchange Online licences available ({ascender_record})"
+                        log = f"Creation of new Azure AD account started then aborted, no Cloud Exchange Online licences available ({ascender_record})"
                         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
                     if sec_sku['consumedUnits'] >= sec_sku['prepaidUnits']['enabled']:
-                        log = f"Creation of new Azure AD user started then aborted, no Cloud Security & Compliance licences available ({ascender_record})"
+                        log = f"Creation of new Azure AD account started then aborted, no Cloud Security & Compliance licences available ({ascender_record})"
                         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                         LOGGER.warning(log)
                         continue
@@ -373,12 +375,12 @@ def ascender_db_import(employee_iter=None):
                         code=job['paypoint'],
                         ascender_code=job['paypoint'],
                     )
-                    log = f"Creation of new Azure AD user process generated new cost centre, code {job['paypoint']}"
+                    log = f"Creation of new Azure AD account process generated new cost centre, code {job['paypoint']}"
                     AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                     LOGGER.info(log)
                 except:
                     # In the event of an error (probably due to a duplicate code), fail gracefully and log the error.
-                    log = f"Exception during creation of new cost centre in new Azure AD user process, code {job['paypoint']}"
+                    log = f"Exception during creation of new cost centre in new Azure AD account process, code {job['paypoint']}"
                     AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
                     LOGGER.error(log)
                     continue
@@ -402,19 +404,13 @@ def ascender_db_import(employee_iter=None):
             if job['job_start_date'] and job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
                 diff = job_start_date - today
                 if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
-                    log = f"Skipped creation of new Azure AD user for emp ID {ascender_record} (exceeds start date limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days)"
-                    AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
+                    log = f"Skipped creation of new Azure AD account for emp ID {ascender_record} (exceeds start date limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days)"
                     LOGGER.info(log)
                     continue  # Start start exceeds our limit, abort creating an AD account yet.
 
             # Rule: user must have a physical location recorded, and that location must exist in our database.
             if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
                 location = Location.objects.get(ascender_desc=job['geo_location_desc'])
-
-            # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
-            if settings.DEBUG:
-                LOGGER.info(f"Skipping creation of new Azure AD user for emp ID {ascender_record} (debug mode)")
-                continue
 
             # If we have everything we need, embark on setting up the new user account.
             if cc and job_start_date and licence_type and manager and location:
@@ -458,14 +454,14 @@ def ascender_db_import(employee_iter=None):
                             mail_nickname = pattern.split("@")[0]
                             break
                 else:  # No preferred/first name recorded.
-                    log = f"Creation of new Azure AD user aborted, first/preferred name absent ({ascender_record})"
+                    log = f"Creation of new Azure AD account aborted, first/preferred name absent ({ascender_record})"
                     AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                     LOGGER.warning(log)
                     continue
 
                 if not email and mail_nickname:
                     # We can't generate a unique email with the supplied information; abort.
-                    log = f"ASCENDER SYNC: create new Azure AD user aborted at email step, unable to generate unique email ({ascender_record})"
+                    log = f"ASCENDER SYNC: create new Azure AD account aborted at email step, unable to generate unique email ({ascender_record})"
                     AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                     LOGGER.warning(log)
                     continue
@@ -476,11 +472,23 @@ def ascender_db_import(employee_iter=None):
                 elif job['first_name'] and job['surname']:
                     display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
                 else:  # No preferred/first name recorded.
-                    log = f"Creation of new Azure AD user aborted, first/preferred name absent ({ascender_record})"
+                    log = f"Creation of new Azure AD account aborted, first/preferred name absent ({ascender_record})"
                     AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
                     LOGGER.warning(log)
                     continue
                 title = title_except(job['occup_pos_title'])
+
+                if settings.ASCENDER_CREATE_AZURE_AD:
+                    LOGGER.info(f"ASCENDER SYNC: Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
+                else:
+                    LOGGER.info("Skipping creation of new Azure AD account: {display_name}")
+                    continue
+
+                # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
+                # After this point, we begin making changes to Azure AD.
+                if settings.DEBUG:
+                    LOGGER.info(f"Skipping creation of new Azure AD account for emp ID {ascender_record} (DEBUG)")
+                    continue
 
                 # Ensure that the generated password meets our security complexity requirements.
                 p = list('Pass1234' + ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12)))
@@ -490,7 +498,6 @@ def ascender_db_import(employee_iter=None):
                     "Authorization": "Bearer {}".format(token["access_token"]),
                     "Content-Type": "application/json",
                 }
-                LOGGER.info(f"ASCENDER SYNC: Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
 
                 # Initially create the Azure AD user with the MS Graph API.
                 try:
