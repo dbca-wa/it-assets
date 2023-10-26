@@ -51,7 +51,7 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
     search_fields = (
         'system_id', 'owner__email', 'name', 'acronym', 'description',
         'technology_custodian__email', 'link', 'documentation',
-        'cost_centre__code', 'dependencies__name',
+        'cost_centre__code',
     )
     readonly_fields = (
         'system_id', 'name', 'link', 'status', 'owner', 'technology_custodian', 'information_custodian',
