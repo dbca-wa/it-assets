@@ -1,6 +1,69 @@
-- op: replace
-  path: /spec/schedule
-  value: "0 21 * * 1-5"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "check_cost_centre_managers", "--help"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  schedule: "0 21 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: itassets-cronjob
+            args: ["manage.py", "check_cost_centre_managers"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DATABASE_URL
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: EMAIL_HOST
+            - name: ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ADMIN_EMAILS
+            - name: FOREIGN_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_HOST
+            - name: FOREIGN_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_PORT
+            - name: FOREIGN_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_NAME
+            - name: FOREIGN_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_USERNAME
+            - name: FOREIGN_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_DB_PASSWORD
+            - name: FOREIGN_SCHEMA
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_SCHEMA
+            - name: FOREIGN_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_SERVER
+            - name: FOREIGN_TABLE_CC_MANAGER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FOREIGN_TABLE_CC_MANAGER

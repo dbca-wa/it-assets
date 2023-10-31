@@ -1,6 +1,39 @@
-- op: replace
-  path: /spec/schedule
-  value: "55 11 * * 1,4"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "check_m365_licence_count", "--help"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  schedule: "55 11 * * 1,4"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: itassets-cronjob
+            args: ["manage.py", "check_m365_licence_count"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DATABASE_URL
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: EMAIL_HOST
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: AZURE_TENANT_ID
+            - name: MS_GRAPH_API_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_ID
+            - name: MS_GRAPH_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_SECRET

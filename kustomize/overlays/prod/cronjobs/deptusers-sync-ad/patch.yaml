@@ -1,6 +1,39 @@
-- op: replace
-  path: /spec/schedule
-  value: "5,35 8-18 * * 1-5"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "department_users_check_link_fields", "--help"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  schedule: "25 8,10,12,14,16,18 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: itassets-cronjob
+            args: ["manage.py", "department_users_sync_ad_data"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DATABASE_URL
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: AZURE_TENANT_ID
+            - name: MS_GRAPH_API_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_ID
+            - name: MS_GRAPH_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_SECRET
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: AZURE_CONNECTION_STRING

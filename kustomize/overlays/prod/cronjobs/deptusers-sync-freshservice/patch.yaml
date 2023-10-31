@@ -1,6 +1,29 @@
-- op: replace
-  path: /spec/schedule
-  value: "5 19 * * 1-5"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "it_system_register_sync_freshservice", "--help"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  schedule: "5 19 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: itassets-cronjob
+            args: ["manage.py", "department_users_sync_freshservice"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DATABASE_URL
+            - name: FRESHSERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FRESHSERVICE_ENDPOINT
+            - name: FRESHSERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: FRESHSERVICE_API_KEY

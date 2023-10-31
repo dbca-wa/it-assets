@@ -3,40 +3,20 @@ kind: CronJob
 metadata:
   name: itassets-cronjob
 spec:
-  schedule: "10,40 8-18 * * 1-5"
+  schedule: "33 18 * * 1-5"
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: itassets-cronjob
-            args: ["manage.py", "check_ascender_accounts"]
+            args: ["manage.py", "department_users_audit_employee_ids"]
             env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: DATABASE_URL
-            - name: EMAIL_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: EMAIL_HOST
-            - name: ADMIN_EMAILS
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: ADMIN_EMAILS
-            - name: ASCENDER_CREATE_AZURE_AD
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: ASCENDER_CREATE_AZURE_AD
-            - name: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
             - name: FOREIGN_DB_HOST
               valueFrom:
                 secretKeyRef:
@@ -77,18 +57,3 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: FOREIGN_TABLE
-            - name: AZURE_TENANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: AZURE_TENANT_ID
-            - name: MS_GRAPH_API_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: MS_GRAPH_API_CLIENT_ID
-            - name: MS_GRAPH_API_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: MS_GRAPH_API_CLIENT_SECRET
