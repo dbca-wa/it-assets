@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "it-assets"
-version = "2.4.6"
+version = "2.4.7"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -29,6 +29,8 @@ whitenoise = {version = "6.5.0", extras = ["brotli"]}
 pysftp = "0.2.9"
 azure-storage-blob = "12.17.0"
 django-storages = {version = "1.13.2", extras = ["azure"]}
+sentry-sdk = {version = "1.32.0", extras = ["django"]}
+tomli = "2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.0"

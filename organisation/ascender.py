@@ -415,10 +415,12 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
 
     # Only process non-FPC users.
     if job['clevel1_id'] == 'FPC':
+        LOGGER.warning("FPC Ascender record, aborting")
         return
 
     # If a matching DepartmentUser already exists, skip.
     if DepartmentUser.objects.filter(employee_id=eid).exists():
+        LOGGER.warning("Matching DepartmentUser object exists, aborting")
         return
 
     # Parse job end date (if present). Ascender records "no end date" using a date far in the future (DATE_MAX).
@@ -427,6 +429,7 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
         job_end_date = datetime.strptime(job['job_end_date'], '%Y-%m-%d').date()
         # Short circuit: if job_end_date is in the past, skip account creation.
         if job_end_date < date.today():
+            LOGGER.warning("Job end date is in the past, aborting")
             return
 
     # Start parsing required information for new account creation.
@@ -441,6 +444,7 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     # The valid licence type values stored in Ascender are ONPUL and CLDUL.
     # Short circuit: if there is no value for licence_type, skip account creation.
     if not job['licence_type'] or job['licence_type'] == 'NULL':
+        LOGGER.warning("No M365 licence type recorded in Ascender, aborting")
         return
     elif job['licence_type'] and job['licence_type'] in ['ONPUL', 'CLDUL']:
         if job['licence_type'] == 'ONPUL':
@@ -452,6 +456,7 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     if job['manager_emp_no'] and DepartmentUser.objects.filter(employee_id=job['manager_emp_no']).exists():
         manager = DepartmentUser.objects.get(employee_id=job['manager_emp_no'])
     elif not job['manager_emp_no']:  # Short circuit: if there is no manager recorded, skip account creation.
+        LOGGER.warning("No manager employee ID recorded in Ascender, aborting")
         return
 
     # Rule: user must have a Cost Centre recorded (paypoint in Ascender).
@@ -476,14 +481,14 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     if job['job_start_date']:
         job_start_date = datetime.strptime(job['job_start_date'], '%Y-%m-%d').date()
     else:  # Short circuit.
+        LOGGER.warning("No job starting date recorded, aborting")
         return
 
     # Skippable rule: if job_start_date is in the past, skip account creation.
     today = date.today()
     if job_start_date < today:
         if not ignore_job_start_date:
-            log = f"Skipped creation of new Azure AD account for emp ID {ascender_record} (job start date is in the past)"
-            LOGGER.info(log)
+            LOGGER.warning(f"Skipped creation of new Azure account for emp ID {ascender_record} (job start date is in the past)")
             return
         else:
             LOGGER.warning(f"Job start date of {job_start_date.strftime('%d/%b/%Y')} is in the past, but I'm ignoring this rule")
@@ -494,9 +499,10 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     if job['job_start_date'] and job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
         diff = job_start_date - today
         if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
+            # Start start exceeds our limit, abort creating an AD account yet.
             log = f"Skipped creation of new Azure AD account for emp ID {ascender_record} (exceeds start date limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days)"
-            LOGGER.info(log)
-            return  # Start start exceeds our limit, abort creating an AD account yet.
+            LOGGER.warning(log)
+            return
 
     # Rule: user must have a physical location recorded, and that location must exist in our database.
     if job['geo_location_desc'] and Location.objects.filter(ascender_desc=job['geo_location_desc']).exists():
@@ -504,7 +510,9 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
 
     # If we have everything we need, embark on setting up the new user account.
     if cc and job_start_date and licence_type and manager and location:
-        create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token)
+        user = create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token)
+
+    return user
 
 
 def create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token=None):

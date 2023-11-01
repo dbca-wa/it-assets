@@ -11,13 +11,12 @@ resources:
   - ingress.yaml
   - cronjobs/ascender-csv-upload
   - cronjobs/deptusers-audit-email
+  - cronjobs/deptusers-audit-employeeid
   - cronjobs/deptusers-check-ascender
   - cronjobs/deptusers-check-azure
   - cronjobs/deptusers-check-onprem
-  - cronjobs/deptusers-clean
   - cronjobs/deptusers-sync-ad
   - cronjobs/deptusers-sync-freshservice
-  - cronjobs/deptusers-sync-onprem
   - cronjobs/m365-licence-check
   - cronjobs/storage-usage
   - cronjobs/update-ccm
@@ -28,7 +27,7 @@ labels:
       variant: prod
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.6
+    newTag: 2.4.7
 patches:
   - path: clusterip_patch.yaml
   - path: deployment_patch.yaml
