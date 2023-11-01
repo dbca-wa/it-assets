@@ -3,6 +3,7 @@ import dj_database_url
 import os
 from pathlib import Path
 import sys
+import tomli
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
@@ -109,7 +110,10 @@ MERAKI_API_KEY = env('MERAKI_API_KEY', None)
 SITE_ID = 1
 ENVIRONMENT_NAME = env('ENVIRONMENT_NAME', '')
 ENVIRONMENT_COLOUR = env('ENVIRONMENT_COLOUR', '')
-VERSION_NO = '2.4.6'
+
+project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+VERSION_NO = project["tool"]["poetry"]["version"]
+
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
 LICENCE_NOTIFY_THRESHOLD = env('LICENCE_NOTIFY_THRESHOLD', 5)
 
@@ -220,3 +224,17 @@ LOGGING = {
 
 # crispy_forms settings
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+# Sentry settings
+SENTRY_DSN = env('SENTRY_DSN', None)
+SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 0.0)  # 0.0 - 1.0
+SENTRY_ENVIRONMENT = env('SENTRY_ENVIRONMENT', None)
+if SENTRY_DSN and SENTRY_ENVIRONMENT:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=SENTRY_SAMPLE_RATE,
+        environment=SENTRY_ENVIRONMENT,
+        release=VERSION_NO,
+    )
