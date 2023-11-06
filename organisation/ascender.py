@@ -780,6 +780,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         name=display_name,
         given_name=job['preferred_name'].title().strip() if job['preferred_name'] else job['first_name'].title().strip(),
         surname=job['surname'].title(),
+        preferred_name=job['preferred_name'].title().strip() if job['preferred_name'] else None,
         title=title,
         employee_id=job['employee_id'],
         cost_centre=cc,
