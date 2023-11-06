@@ -369,8 +369,8 @@ def parse_windows_ts(s):
 
 
 def department_user_ascender_sync(users):
-    """For a passed-in queryset of Department Users and a file-like object, return a CSV containing
-    data that should be synced to Ascender.
+    """For a passed-in queryset of Department Users and a file-like object, returns a file-like
+    object of CSV data that should be synced to Ascender.
     """
     f = BytesIO()
     writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding='utf-8')
@@ -383,6 +383,7 @@ def department_user_ascender_sync(users):
             user.telephone,
             user.get_licence(),
         ])
+    f.seek(0)
     return f
 
 

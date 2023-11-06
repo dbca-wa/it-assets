@@ -2,7 +2,6 @@ from django.core.management.base import BaseCommand
 import logging
 import os
 import pysftp
-from tempfile import NamedTemporaryFile
 
 from organisation.models import DepartmentUser
 from organisation.utils import department_user_ascender_sync
@@ -16,8 +15,6 @@ class Command(BaseCommand):
         logger.info('Generating CSV of department user data')
         users = DepartmentUser.objects.filter(employee_id__isnull=False).order_by('employee_id')
         data = department_user_ascender_sync(users)
-        f = NamedTemporaryFile()
-        f.write(data.getbuffer())
 
         host = os.environ.get('ASCENDER_SFTP_HOSTNAME')
         port = int(os.environ.get('ASCENDER_SFTP_PORT'))
@@ -30,5 +27,5 @@ class Command(BaseCommand):
         dir = os.environ.get('ASCENDER_SFTP_DIRECTORY')
         sftp.chdir(dir)
         logger.info('Uploading CSV to Ascender SFTP')
-        sftp.put(localpath=f.name, remotepath='department_users_details.csv')
+        sftp.putfo(data, remotepath='department_users_details.csv')
         sftp.close()
