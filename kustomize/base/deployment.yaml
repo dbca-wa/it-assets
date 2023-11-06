@@ -52,5 +52,12 @@ spec:
           capabilities:
             drop:
               - ALL
-          readOnlyRootFilesystem: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - mountPath: /tmp
+            name: tmpfs-ram
+      volumes:
+        - name: tmpfs-ram
+          emptyDir:
+            medium: "Memory"
       restartPolicy: Always

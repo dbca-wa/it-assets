@@ -116,6 +116,9 @@ VERSION_NO = project["tool"]["poetry"]["version"]
 
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
 LICENCE_NOTIFY_THRESHOLD = env('LICENCE_NOTIFY_THRESHOLD', 5)
+# Flag to enable checking for available M365 licence availability before creating users (default True).
+# We may need to override this if MS Graph results are incorrect.
+CHECK_AVAILABLE_LICENCES = env('CHECK_AVAILABLE_LICENCES', True)
 
 # Flag to control whether Azure AD accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
