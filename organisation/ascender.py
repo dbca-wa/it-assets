@@ -398,7 +398,8 @@ def ascender_db_import(employee_iter=None):
 
             # If we have everything we need, embark on setting up the new user account.
             if cc and job_start_date and licence_type and manager and location:
-                create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token)
+                check_available_licences = settings.CHECK_AVAILABLE_LICENCES
+                create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token, check_available_licences)
 
 
 def ascender_user_import(employee_id, ignore_job_start_date=False):
@@ -510,12 +511,13 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
 
     # If we have everything we need, embark on setting up the new user account.
     if cc and job_start_date and licence_type and manager and location:
-        user = create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token)
+        check_available_licences = settings.CHECK_AVAILABLE_LICENCES
+        user = create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token, check_available_licences)
 
     return user
 
 
-def create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token=None):
+def create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, ascender_record, job_end_date, token=None, check_available_licences=True):
     """Function to create new Azure/onprem AD user accounts, based on passed-in user info.
     Returns the associated DepartmentUser object, or None.
 
@@ -588,35 +590,36 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         return
     title = title_except(job['occup_pos_title'])
 
-    # We need to have an available M365 licence to allocate.
-    LOGGER.info("Querying Microsoft 365 licence availability")
-    e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
-    f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
-    eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
-    sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
-    if job['licence_type'] == 'ONPUL':
-        licence_type = 'On-premise'
-        # Short circuit: no available licences, abort.
-        if e5_sku['consumedUnits'] >= e5_sku['prepaidUnits']['enabled']:
-            log = f"Creation of new Azure AD account aborted, no E5 licences available ({ascender_record})"
-            LOGGER.warning(log)
-            return
-    elif job['licence_type'] == 'CLDUL':
-        licence_type = 'Cloud'
-        # Short circuit: no available licences, abort.
-        if f3_sku['consumedUnits'] >= f3_sku['prepaidUnits']['enabled']:
-            log = f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})"
-            LOGGER.warning(log)
-            return
-        if eo_sku['consumedUnits'] >= eo_sku['prepaidUnits']['enabled']:
-            log = f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})"
-            LOGGER.warning(log)
-            return
-        if sec_sku['consumedUnits'] >= sec_sku['prepaidUnits']['enabled']:
-            log = f"Creation of new Azure AD account aborted, no Cloud Security & Compliance licences available ({ascender_record})"
-            LOGGER.warning(log)
-            return
-    LOGGER.info("Sufficient licences are available")
+    # We may check if there is available M365 licence(s) to allocate. We might also skip this check.
+    if check_available_licences:
+        LOGGER.info("Querying Microsoft 365 licence availability")
+        e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
+        f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
+        eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
+        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW"], token)
+        if job["licence_type"] == "ONPUL":
+            licence_type = "On-premise"
+            # Short circuit: no available licences, abort.
+            if e5_sku["consumedUnits"] >= e5_sku["prepaidUnits"]["enabled"]:
+                log = f"Creation of new Azure AD account aborted, no E5 licences available ({ascender_record})"
+                LOGGER.warning(log)
+                return
+        elif job["licence_type"] == "CLDUL":
+            licence_type = "Cloud"
+            # Short circuit: no available licences, abort.
+            if f3_sku["consumedUnits"] >= f3_sku["prepaidUnits"]["enabled"]:
+                log = f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})"
+                LOGGER.warning(log)
+                return
+            if eo_sku["consumedUnits"] >= eo_sku["prepaidUnits"]["enabled"]:
+                log = f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})"
+                LOGGER.warning(log)
+                return
+            if sec_sku["consumedUnits"] >= sec_sku["prepaidUnits"]["enabled"]:
+                log = f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
+                LOGGER.warning(log)
+                return
+        LOGGER.info("Sufficient licences are available")
 
     # Configuration setting to explicitly allow creation of new AD users.
     if settings.ASCENDER_CREATE_AZURE_AD:
