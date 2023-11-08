@@ -30,7 +30,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        send_notification = False
+        logger = logging.getLogger('organisation')
 
         if options['emails']:
             try:
@@ -45,50 +45,51 @@ class Command(BaseCommand):
         else:
             threshold = settings.LICENCE_NOTIFY_THRESHOLD
 
+        send_notification = False
+        logger.info("Checking Microsoft 365 license availability")
         token = ms_graph_client_token()
 
         e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 E5'], token)
+        e5_total = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["suspended"] + e5_sku["prepaidUnits"]["warning"]
         e5_consumed = e5_sku['consumedUnits']
-        e5_enabled = e5_sku['prepaidUnits']['enabled']
-        if e5_enabled - e5_consumed <= threshold:
+        if e5_total - e5_consumed <= threshold:
             send_notification = True
 
         f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 F3'], token)
+        f3_total = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["suspended"] + f3_sku["prepaidUnits"]["warning"]
         f3_consumed = f3_sku['consumedUnits']
-        f3_enabled = f3_sku['prepaidUnits']['enabled']
-        if f3_enabled - f3_consumed <= threshold:
+        if f3_total - f3_consumed <= threshold:
             send_notification = True
 
         eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], token)
+        eo_total = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["suspended"] + eo_sku["prepaidUnits"]["warning"]
         eo_consumed = eo_sku['consumedUnits']
-        eo_enabled = eo_sku['prepaidUnits']['enabled']
-        if eo_enabled - eo_consumed <= threshold:
+        if eo_total - eo_consumed <= threshold:
             send_notification = True
 
         sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], token)
+        sec_total = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["suspended"] + sec_sku["prepaidUnits"]["warning"]
         sec_consumed = sec_sku['consumedUnits']
-        sec_enabled = sec_sku['prepaidUnits']['enabled']
-        if sec_enabled - sec_consumed <= threshold:
+        if sec_total - sec_consumed <= threshold:
             send_notification = True
 
         subject = f"Notification - Microsoft M365 licence availability has dropped to warning threshold ({threshold})"
         message = f"""This is an automated notification regarding Microsoft 365 licence usage availability. User account licence consumption:\n\n
-        Microsoft 365 E5 (On-premise): {e5_consumed} / {e5_enabled}\n\n
-        Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_enabled}\n
-        Exchange Online (Plan 2): {eo_consumed} / {eo_enabled}\n
-        Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} / {sec_enabled}\n
+        Microsoft 365 E5 (On-premise): {e5_consumed} / {e5_total}\n\n
+        Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_total}\n
+        Exchange Online (Plan 2): {eo_consumed} / {eo_total}\n
+        Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} / {sec_total}\n
         """
         html_message = f"""<p>This is an automated notification regarding Microsoft 365 licence usage availability. User account licence consumption:</p>
         <ul>
-        <li>Microsoft 365 E5 (On-premise): {e5_consumed} / {e5_enabled}</li>
-        <li>Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_enabled}</li>
-        <li>Exchange Online (Plan 2): {eo_consumed} / {eo_enabled}</li>
-        <li>Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} / {sec_enabled}</li>
+        <li>Microsoft 365 E5 (On-premise): {e5_consumed} / {e5_total}</li>
+        <li>Microsoft 365 F3 (Cloud): {f3_consumed} / {f3_total}</li>
+        <li>Exchange Online (Plan 2): {eo_consumed} / {eo_total}</li>
+        <li>Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} / {sec_total}</li>
         </ul>"""
 
         if send_notification:
-            logger = logging.getLogger('organisation')
-            logger.warning(subject)
+            logger.info(subject)
             mail.send_mail(
                 subject=subject,
                 message=message,
@@ -96,3 +97,5 @@ class Command(BaseCommand):
                 recipient_list=recipients,
                 html_message=html_message,
             )
+        else:
+            logger.info("No warning notification required")

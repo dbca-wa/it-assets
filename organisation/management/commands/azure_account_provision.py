@@ -25,14 +25,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger("organisation")
 
-        logger.info(f"Provisioning Azure user account for Ascender ID {options['employee_id']}")
+        logger.info(f"Provisioning Azure user account for Ascender employee ID {options['employee_id']}")
         if "ignore_job_start_date" in options and options["ignore_job_start_date"]:
             logger.info("Ignoring job start date restriction")
-            user = ascender_user_import(options["employee_id"], True)
+            user = ascender_user_import(options["employee_id"], ignore_job_start_date=True)
         else:
             user = ascender_user_import(options["employee_id"])
 
         if user:
             logger.info(f"Azure user account for {user.email} provisioned")
         else:
-            logger.warning("Azure user account not provisioned")
+            logger.info("Azure user account not provisioned")
