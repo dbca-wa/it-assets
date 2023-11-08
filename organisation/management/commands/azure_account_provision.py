@@ -28,7 +28,7 @@ class Command(BaseCommand):
         logger.info(f"Provisioning Azure user account for Ascender employee ID {options['employee_id']}")
         if "ignore_job_start_date" in options and options["ignore_job_start_date"]:
             logger.info("Ignoring job start date restriction")
-            user = ascender_user_import(options["employee_id"], True)
+            user = ascender_user_import(options["employee_id"], ignore_job_start_date=True)
         else:
             user = ascender_user_import(options["employee_id"])
 
