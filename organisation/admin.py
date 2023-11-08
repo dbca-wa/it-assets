@@ -97,7 +97,6 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 'active',
                 'email',
                 'name',
-                'maiden_name',
                 'assigned_licences',
                 'dir_sync_enabled',
                 'azure_guid',
@@ -116,6 +115,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 'executive',
                 'contractor',
                 'security_clearance',
+                'maiden_name',
             ),
         }),
     )
@@ -193,10 +193,10 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         add = False
         change = True
         fieldsets = (
-            ('Employee information', {
-                'fields': (
-                    'employee_id',
-                    'maiden_name',
+            ("Employee information", {
+                "fields": (
+                    "employee_id",
+                    "maiden_name",
                 ),
             }),
         )
@@ -225,7 +225,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
 
         context = {
             **self.admin_site.each_context(request),
-            "title": f"Change {self.opts.verbose_name}",
+            "title": f"Change {self.opts.verbose_name} (superuser-only fields)",
             "subtitle": str(obj) if obj else None,
             "adminform": admin_form,
             "object_id": object_id,
@@ -235,6 +235,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             "inline_admin_formsets": [],
             "errors": helpers.AdminErrorList(form, formsets),
             "preserved_filters": self.get_preserved_filters(request),
+            "superuser_only_form": True,
         }
         context.update(extra_context or {})
 
@@ -249,19 +250,23 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             path(
                 "<path:object_id>/admin-change/",
                 self.admin_site.admin_view(self.admin_change_view),
-                name="%s_%s_admin_change" % info,
+                name=f"{info[0]}_{info[1]}_admin_change",
             ),
-            path('export/', DepartmentUserExport.as_view(), name='departmentuser_export'),
+            path(
+                "export/",
+                DepartmentUserExport.as_view(),
+                name=f"{info[0]}_{info[1]}_export",
+            ),
         ] + urls
         return urls
 
 
 @register(Location)
 class LocationAdmin(ModelAdmin):
-    fields = ('name', 'ascender_desc')
-    list_display = ('name', 'ascender_desc')
-    readonly_fields = ('ascender_desc',)
-    search_fields = ('name', 'ascender_desc')
+    fields = ("name", "ascender_desc")
+    list_display = ("name", "ascender_desc")
+    readonly_fields = ("ascender_desc",)
+    search_fields = ("name", "ascender_desc")
 
     # Disallow creation/deletion of Locations (source of truth is Ascender).
     def has_add_permission(self, request):
