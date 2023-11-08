@@ -348,23 +348,23 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=
         return False
 
     # Skippable rule: if job_start_date is in the past, skip account creation.
+    today = date.today()
     if ignore_job_start_date and logging:
-        LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')}")
+        LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
     else:
-        today = date.today()
         if job_start_date < today:
             if logging:
                 LOGGER.warning(f"Job start date {job_start_date.strftime('%d/%b/%Y')} is in the past, aborting")
             return False
 
-    # Secondary rule: we might set a limit for the number of days ahead of their starting date which we
-    # want to create an Azure AD account. If this value is not set (False/None), assume that there is
+    # Rule: we set a limit for the number of days ahead of their starting date which we
+    # allow to create an Azure AD account. If this value is not set (False/None), assume that there is
     # no limit.
     if job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
         diff = job_start_date - today
         if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
             # Start start exceeds our limit, abort creating an AD account yet.
-            log = f"Job start date {job_start_date.strftime('%d/%b/%Y')} exceeds limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days, aborting"
+            log = f"Job future start date {job_start_date.strftime('%d/%b/%Y')} exceeds limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days, aborting"
             if logging:
                 LOGGER.warning(log)
             return False
@@ -474,7 +474,7 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
 
     rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, logging=True)
     if not rules_passed:
-        LOGGER.warning(f"Import of Ascender employee ID {employee_id} did not pass all rules, aborting")
+        LOGGER.warning(f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
 
     # Unpack the required values.
