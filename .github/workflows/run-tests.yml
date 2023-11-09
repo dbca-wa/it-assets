@@ -28,13 +28,13 @@ jobs:
       # Checkout repo and set up Python
       #----------------------------------------------
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         id: checkout-repo
       - name: Set up Python
         uses: actions/setup-python@v4
         id: setup-python
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       #----------------------------------------------
       # Install GDAL into the environment
       #----------------------------------------------
@@ -50,6 +50,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
+          version: 1.6.1
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
