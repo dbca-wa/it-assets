@@ -16,6 +16,10 @@ spec:
       - name: itassets
         imagePullPolicy: Always
         env:
+        - name: ENVIRONMENT_COLOUR
+          value: "darkorange"
+        - name: ENVIRONMENT_NAME
+          value: "UAT"
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
