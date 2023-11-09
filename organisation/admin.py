@@ -181,6 +181,24 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
     def m365_licence(self, instance):
         return instance.get_licence()
 
+    def ad_data_pprint(self, obj=None):
+        result = ''
+        if obj and obj.ad_data:
+            result = json.dumps(obj.ad_data, indent=4, sort_keys=True)
+            result_str = f'<pre>{result}</pre>'
+            result = mark_safe(result_str)
+        return result
+    ad_data_pprint.short_description = "AD data"
+
+    def azure_ad_data_pprint(self, obj=None):
+        result = ''
+        if obj and obj.azure_ad_data:
+            result = json.dumps(obj.azure_ad_data, indent=4, sort_keys=True)
+            result_str = f'<pre>{result}</pre>'
+            result = mark_safe(result_str)
+        return result
+    azure_ad_data_pprint.short_description = "Azure AD data"
+
     def admin_change_view(self, request, object_id, form_url="", extra_context={}):
         """A special change form for superusers only to edit employee_id/maiden_name.
 
@@ -192,11 +210,14 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         obj = self.get_object(request, unquote(object_id))
         add = False
         change = True
+        readonly_fields = ("ad_data_pprint", "azure_ad_data_pprint")
         fieldsets = (
             ("Employee information", {
                 "fields": (
                     "employee_id",
                     "maiden_name",
+                    "ad_data_pprint",
+                    "azure_ad_data_pprint",
                 ),
             }),
         )
@@ -216,9 +237,10 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             formsets = []
 
         admin_form = helpers.AdminForm(
-            form,
-            list(fieldsets),
-            self.get_prepopulated_fields(request, obj) if add or self.has_change_permission(request, obj) else {},
+            form=form,
+            fieldsets=list(fieldsets),
+            prepopulated_fields=self.get_prepopulated_fields(request, obj) if add or self.has_change_permission(request, obj) else {},
+            readonly_fields=readonly_fields,
             model_admin=self,
         )
         media = self.media + admin_form.media
