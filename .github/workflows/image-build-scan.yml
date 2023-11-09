@@ -26,12 +26,12 @@ jobs:
       # Checkout repo
       #----------------------------------------------
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       #----------------------------------------------
-      # Set up Docker build environment
+      # Set up Docker BuildX environment
       #----------------------------------------------
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       #----------------------------------------------
       # Log Docker into the GitHub Container Repository
       #----------------------------------------------
@@ -42,9 +42,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      #----------------------------------------------
+      # Extract Docker image metadata from GitHub events
+      #----------------------------------------------
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           flavor: |
@@ -59,19 +62,29 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+  scan:
+    name: Image vulnerability scan
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
       #----------------------------------------------
       # Run vulnerability scan on built image
       #----------------------------------------------
-      - name: Run Trivy vuln scanner on Docker image
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}'
-          ignore-unfixed: true
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          format: template
+          template: '@/contrib/sarif.tpl'
+          output: trivy-results.sarif
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: trivy-results.sarif
