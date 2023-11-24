@@ -22,8 +22,16 @@ class DepartmentUserAdminTestCase(TestCase):
     def test_departmentuser_export(self):
         """Test the DepartmentUserExport admin view
         """
-        url = reverse('admin:departmentuser_export')
+        url = reverse('admin:organisation_departmentuser_export')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.has_header("Content-Disposition"))
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_departmentuser_superuser_fields(self):
+        """Test the DepartmentUserAdmin change view for superusers only
+        """
+        user = DepartmentUser.objects.first()
+        url = reverse('admin:organisation_departmentuser_admin_change', kwargs={'object_id': user.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

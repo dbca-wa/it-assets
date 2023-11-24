@@ -50,3 +50,16 @@ Start with `pip install coverage`. Run unit tests and obtain test coverage as fo
 To build a new Docker image from the `Dockerfile`:
 
     docker image build -t ghcr.io/dbca-wa/it-assets .
+
+# Pre-commit hooks
+
+This project includes the following pre-commit hooks:
+
+- TruffleHog (credential scanning): https://github.com/marketplace/actions/trufflehog-oss
+
+Pre-commit hooks may have additional system dependencies to run. Optionally
+install pre-commit hooks locally like so:
+
+    poetry run pre-commit install --allow-missing-config
+
+Reference: https://pre-commit.com/
