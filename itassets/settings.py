@@ -227,14 +227,16 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # Sentry settings
 SENTRY_DSN = env('SENTRY_DSN', None)
-SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 0.0)  # 0.0 - 1.0
+SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 1.0)  # Error sampling rate
+SENTRY_TRANSACTION_SAMPLE_RATE = env('SENTRY_TRANSACTION_SAMPLE_RATE', 0.0)  # Transaction sampling
 SENTRY_ENVIRONMENT = env('SENTRY_ENVIRONMENT', None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        traces_sample_rate=SENTRY_SAMPLE_RATE,
+        sample_rate=SENTRY_SAMPLE_RATE,
+        traces_sample_rate=SENTRY_TRANSACTION_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
-        release=VERSION_NO,
+        release=APPLICATION_VERSION_NO,
     )

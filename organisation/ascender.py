@@ -211,20 +211,28 @@ def ascender_job_sort_key(record):
 
     1. The initial score is based on the job's end date (closer date == lower score).
       - If the job has ended, the initial score is calculated using the job's end date.
-      - If the job is not ended or has no end date recorded, the initial score is calculated from tommorrow's date.
+      - If the job is not ended or has no end date recorded, the initial score is calculated from tomorrow's date.
     2. The score is then modified based on emp_status, with values later in the list scoring higher.
-
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
+
+    #if record["job_end_date"]:
+    #    score = int(record["job_end_date"].replace("-", "")) * 10000
+    #elif not record["job_end_date"]:
+    #    score = int(tomorrow.strftime("%Y%m%d")) * 10000
+    #return score
+
     # Initial score from job_end_date.
     if record["job_end_date"] and record["job_end_date"] <= today.strftime("%Y-%m-%d"):
         score = int(record["job_end_date"].replace("-", "")) * 10000
-    else:
+    else:  # No job end date.
         score = int(tomorrow.strftime("%Y%m%d0000"))
+
     # Modify score based on emp_status.
     if record["emp_status"] and record["emp_status"] in STATUS_RANKING:
         score += (STATUS_RANKING.index(record["emp_status"]) + 1) * 100
+
     return score
 
 
