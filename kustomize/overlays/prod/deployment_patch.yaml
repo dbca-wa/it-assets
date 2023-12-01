@@ -71,6 +71,21 @@ spec:
             secretKeyRef:
               name: itassets-env-prod
               key: MS_GRAPH_API_CLIENT_SECRET
+        - name: ASCENDER_DEACTIVATE_EXPIRED
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-prod
+              key: ASCENDER_DEACTIVATE_EXPIRED
+        - name: ASCENDER_CREATE_AZURE_AD
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-prod
+              key: ASCENDER_CREATE_AZURE_AD
+        - name: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-prod
+              key: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
         - name: FOREIGN_DB_HOST
           valueFrom:
             secretKeyRef:
@@ -151,3 +166,15 @@ spec:
             secretKeyRef:
               name: itassets-env-prod
               key: ASCENDER_SFTP_DIRECTORY
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: prs-env-uat
+              key: SENTRY_DSN
+        - name: SENTRY_TRANSACTION_SAMPLE_RATE
+          valueFrom:
+            secretKeyRef:
+              name: prs-env-uat
+              key: SENTRY_TRANSACTION_SAMPLE_RATE
+        - name: SENTRY_ENVIRONMENT
+          value: "prod"
