@@ -169,12 +169,12 @@ spec:
         - name: SENTRY_DSN
           valueFrom:
             secretKeyRef:
-              name: prs-env-uat
+              name: itassets-env-prod
               key: SENTRY_DSN
         - name: SENTRY_TRANSACTION_SAMPLE_RATE
           valueFrom:
             secretKeyRef:
-              name: prs-env-uat
+              name: itassets-env-prod
               key: SENTRY_TRANSACTION_SAMPLE_RATE
         - name: SENTRY_ENVIRONMENT
           value: "prod"
