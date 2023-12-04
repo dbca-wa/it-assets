@@ -238,5 +238,5 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         sample_rate=SENTRY_SAMPLE_RATE,
         traces_sample_rate=SENTRY_TRANSACTION_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
-        release=APPLICATION_VERSION_NO,
+        release=VERSION_NO,
     )
