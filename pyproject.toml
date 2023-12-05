@@ -24,11 +24,11 @@ django-markdownx = "4.0.2"
 webtemplate-dbca = "1.5.2"
 pyyaml = "6.0.1"
 mixer = "7.2.2"
-msal = "1.24.1"
+msal = "1.25.0"
 whitenoise = {version = "6.5.0", extras = ["brotli"]}
 pysftp = "0.2.9"
-azure-storage-blob = "12.17.0"
-django-storages = {version = "1.13.2", extras = ["azure"]}
+azure-storage-blob = "12.19.0"
+django-storages = {version = "1.14.2", extras = ["azure"]}
 sentry-sdk = {version = "1.38.0", extras = ["django"]}
 tomli = "2.0.1"
 
