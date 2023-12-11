@@ -27,7 +27,7 @@ labels:
       variant: prod
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.9
+    newTag: 2.4.11
 patches:
   - path: clusterip_patch.yaml
   - path: deployment_patch.yaml
