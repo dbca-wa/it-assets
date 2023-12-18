@@ -15,7 +15,7 @@ python-dotenv = "1.0.0"
 dj-database-url = "2.1.0"
 gunicorn = "21.2.0"
 unicodecsv = "0.14.1"
-python-dateutil = "2.8.1"
+python-dateutil = "2.8.2"
 XlsxWriter = "3.1.2"
 django-crispy-forms = "1.14.0"
 texttable = "1.6.7"
@@ -24,8 +24,8 @@ django-markdownx = "4.0.2"
 webtemplate-dbca = "1.5.2"
 pyyaml = "6.0.1"
 mixer = "7.2.2"
-msal = "1.25.0"
-whitenoise = {version = "6.5.0", extras = ["brotli"]}
+msal = "1.26.0"
+whitenoise = {version = "6.6.0", extras = ["brotli"]}
 pysftp = "0.2.9"
 azure-storage-blob = "12.19.0"
 django-storages = {version = "1.14.2", extras = ["azure"]}
@@ -35,9 +35,9 @@ tomli = "2.0.1"
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.0"
 ipdb = "^0.13.13"
-ruff = "^0.0.270"
 black = "^23.3.0"
 pre-commit = "^3.5.0"
+ruff = "^0.1.8"
 
 [build-system]
 requires = ["poetry-core"]
