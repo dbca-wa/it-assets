@@ -1,11 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 nameSuffix: -prod
-secretGenerator:
-  - name: itassets-env
-    type: Opaque
-    envs:
-    - .env
 resources:
   - ../../base
   - ingress.yaml
@@ -20,15 +15,20 @@ resources:
   - cronjobs/m365-licence-check
   - cronjobs/storage-usage
   - cronjobs/update-ccm
+secretGenerator:
+  - name: itassets-env
+    type: Opaque
+    envs:
+      - .env
 labels:
   - includeSelectors: true
     pairs:
       app: itassets
       variant: prod
-images:
-  - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.11
 patches:
   - path: clusterip_patch.yaml
   - path: deployment_patch.yaml
   - path: pdb_patch.yaml
+images:
+  - name: ghcr.io/dbca-wa/it-assets
+    newTag: 2.4.11
