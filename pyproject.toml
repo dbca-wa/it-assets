@@ -16,11 +16,10 @@ dj-database-url = "2.1.0"
 gunicorn = "21.2.0"
 unicodecsv = "0.14.1"
 python-dateutil = "2.8.2"
-XlsxWriter = "3.1.2"
 django-crispy-forms = "1.14.0"
-texttable = "1.6.7"
+texttable = "1.7.0"
 django-bootstrap-pagination = "1.7.1"
-django-markdownx = "4.0.2"
+django-markdownx = "4.0.7"
 webtemplate-dbca = "1.5.2"
 pyyaml = "6.0.1"
 mixer = "7.2.2"
@@ -29,8 +28,9 @@ whitenoise = {version = "6.6.0", extras = ["brotli"]}
 pysftp = "0.2.9"
 azure-storage-blob = "12.19.0"
 django-storages = {version = "1.14.2", extras = ["azure"]}
-sentry-sdk = {version = "1.38.0", extras = ["django"]}
+sentry-sdk = "1.39.1"
 tomli = "2.0.1"
+xlsxwriter = "3.1.9"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.0"
