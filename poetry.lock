@@ -1440,6 +1440,7 @@ files = [
 
 [package.dependencies]
 certifi = "*"
+django = {version = ">=1.8", optional = true, markers = "extra == \"django\""}
 urllib3 = {version = ">=1.26.11", markers = "python_version >= \"3.6\""}
 
 [package.extras]
@@ -1694,4 +1695,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "43f0ef76e8a6112282c6db092eac225df7a0e865abf7c311286d06a8da0d1242"
+content-hash = "90e8185ae9089bfea69d4ba8128ea91c40b5bbac0e564ff912834ce81ca043c8"
