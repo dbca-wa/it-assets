@@ -6,7 +6,7 @@ spec:
   selector:
     matchLabels:
       app: itassets-prod
-      variant: uat
+      variant: prod
   template:
     metadata:
       labels:
@@ -56,11 +56,11 @@ spec:
             secretKeyRef:
               name: itassets-env-prod
               key: AZURE_CONNECTION_STRING
-        - name: AZURE_CONNECTION_STRING
+        - name: AZURE_TENANT_ID
           valueFrom:
             secretKeyRef:
               name: itassets-env-prod
-              key: AZURE_CONNECTION_STRING
+              key: AZURE_TENANT_ID
         - name: MS_GRAPH_API_CLIENT_ID
           valueFrom:
             secretKeyRef:
@@ -171,6 +171,11 @@ spec:
             secretKeyRef:
               name: itassets-env-prod
               key: SENTRY_DSN
+        - name: SENTRY_SAMPLE_RATE
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-prod
+              key: SENTRY_SAMPLE_RATE
         - name: SENTRY_TRANSACTION_SAMPLE_RATE
           valueFrom:
             secretKeyRef:
