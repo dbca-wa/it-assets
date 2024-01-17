@@ -1,22 +1,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 nameSuffix: -uat
+resources:
+- ../../base
+- ingress.yaml
 secretGenerator:
 - name: itassets-env
   type: Opaque
   envs:
-  - .env
-resources:
-- ../../base
-- ingress.yaml
+    - .env
 labels:
 - includeSelectors: true
   pairs:
     app: itassets
     variant: uat
-images:
-- name: ghcr.io/dbca-wa/it-assets
-  newTag: latest
 patches:
 - path: clusterip_patch.yaml
 - path: deployment_patch.yaml

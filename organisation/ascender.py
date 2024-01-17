@@ -211,49 +211,63 @@ def ascender_job_sort_key(record):
 
     1. The initial score is based on the job's end date (closer date == lower score).
       - If the job has ended, the initial score is calculated using the job's end date.
-      - If the job is not ended or has no end date recorded, the initial score is calculated from tommorrow's date.
+      - If the job is not ended or has no end date recorded, the initial score is calculated from tomorrow's date.
     2. The score is then modified based on emp_status, with values later in the list scoring higher.
-
     """
     today = datetime.now().date()
     tomorrow = today + timedelta(days=1)
+
+    #if record["job_end_date"]:
+    #    score = int(record["job_end_date"].replace("-", "")) * 10000
+    #elif not record["job_end_date"]:
+    #    score = int(tomorrow.strftime("%Y%m%d")) * 10000
+    #return score
+
     # Initial score from job_end_date.
     if record["job_end_date"] and record["job_end_date"] <= today.strftime("%Y-%m-%d"):
         score = int(record["job_end_date"].replace("-", "")) * 10000
-    else:
+    else:  # No job end date.
         score = int(tomorrow.strftime("%Y%m%d0000"))
+
     # Modify score based on emp_status.
     if record["emp_status"] and record["emp_status"] in STATUS_RANKING:
         score += (STATUS_RANKING.index(record["emp_status"]) + 1) * 100
+
     return score
 
 
-def ascender_employee_fetch(employee_id=None):
-    """Returns an iterator of tuples (employee_id, [sorted employee jobs])
+def ascender_employee_fetch(employee_id):
+    """Returns a tuple: (employee_id, [sorted employee jobs])
     """
-    if employee_id:
-        ascender_iter = ascender_db_fetch(employee_id)
-    else:
-        ascender_iter = ascender_db_fetch()
-    employee_id = None
-    records = None
+    ascender_records = ascender_db_fetch(employee_id)
+    jobs = []
 
-    for record in ascender_iter:
-        if employee_id is None:
-            employee_id = record["employee_id"]
-            records = [record]
-        elif employee_id == record["employee_id"]:
-            records.append(record)
+    for row in ascender_records:
+        jobs.append(row)
+
+    # Sort the list of jobs in descending order of "score" from ascender_job_sort_key.
+    jobs.sort(key=ascender_job_sort_key, reverse=True)
+    return (employee_id, jobs)
+
+
+def ascender_employees_fetch_all():
+    """Returns a dict: {'<employee_id>': [sorted employee jobs], ...}
+    """
+    ascender_records = ascender_db_fetch()
+    records = {}
+
+    for row in ascender_records:
+        employee_id = row["employee_id"]
+        if employee_id in records:
+            # Append the next job to the list of jobs, sort and replace the dict value.
+            jobs = records[employee_id]
+            jobs.append(row)
+            jobs.sort(key=ascender_job_sort_key, reverse=True)
+            records[employee_id] = jobs
         else:
-            if len(records) > 1:
-                records.sort(key=ascender_job_sort_key, reverse=True)
-            yield (employee_id, records)
-            employee_id = record["employee_id"]
-            records = [record]
-    if employee_id and records:
-        if len(records) > 1:
-            records.sort(key=ascender_job_sort_key, reverse=True)
-        yield (employee_id, records)
+            records[employee_id] = [row]
+
+    return records
 
 
 def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=False):
@@ -381,19 +395,18 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=
         return (job, cc, job_start_date, licence_type, manager, location)
 
 
-def ascender_db_import(employee_iter=None):
+def ascender_db_import():
     """A utility function to cache data from Ascender to matching DepartmentUser objects.
     On no match, create a new Azure AD account based on Ascender data if it also meets all
     rules for new account provisioning.
     """
     LOGGER.info("Querying Ascender database for employee information")
     token = ms_graph_client_token()
+    employee_records = ascender_employees_fetch_all()
 
-    if not employee_iter:
-        employee_iter = ascender_employee_fetch()
-
-    for employee_id, jobs in employee_iter:
-        # ASSUMPTION: the "first" object in the list of Ascender jobs for each user is the current one.
+    for employee_id, jobs in employee_records.items():
+        # BUSINESS RULE: the "first" object in the list of Ascender jobs for each user is the current one.
+        # Jobs are sorted via the `ascender_job_sort_key` function.
         job = jobs[0]
         # Only look at non-FPC users.
         if job['clevel1_id'] == 'FPC':
@@ -464,13 +477,8 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     Returns a DepartmentUser instance, or None.
     """
     LOGGER.info("Querying Ascender database for employee information")
-    employee_iter = ascender_employee_fetch(employee_id)
-    try:
-        _, jobs = next(employee_iter)
-        job = jobs[0]
-    except:  # Database query returned no records, abort.
-        LOGGER.warning(f"Ascender returned no records for employee ID {employee_id}, aborting")
-        return None
+    employee_id, jobs = ascender_employee_fetch(employee_id)
+    job = jobs[0]
 
     rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, logging=True)
     if not rules_passed:

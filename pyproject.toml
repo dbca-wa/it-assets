@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "it-assets"
-version = "2.4.10"
+name = "itassets"
+version = "2.4.11"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -12,32 +12,32 @@ psycopg2 = "2.9.9"
 dbca-utils = "1.1.6"
 django-extensions = "3.2.3"
 python-dotenv = "1.0.0"
-dj-database-url = "1.0.0"
+dj-database-url = "2.1.0"
 gunicorn = "21.2.0"
 unicodecsv = "0.14.1"
-python-dateutil = "2.8.1"
-XlsxWriter = "3.1.2"
+python-dateutil = "2.8.2"
 django-crispy-forms = "1.14.0"
-texttable = "1.6.7"
+texttable = "1.7.0"
 django-bootstrap-pagination = "1.7.1"
-django-markdownx = "4.0.2"
+django-markdownx = "4.0.7"
 webtemplate-dbca = "1.5.2"
 pyyaml = "6.0.1"
 mixer = "7.2.2"
-msal = "1.24.1"
-whitenoise = {version = "6.5.0", extras = ["brotli"]}
+msal = "1.26.0"
+whitenoise = {version = "6.6.0", extras = ["brotli"]}
 pysftp = "0.2.9"
-azure-storage-blob = "12.17.0"
-django-storages = {version = "1.13.2", extras = ["azure"]}
-sentry-sdk = {version = "1.32.0", extras = ["django"]}
+azure-storage-blob = "12.19.0"
+django-storages = {version = "1.14.2", extras = ["azure"]}
 tomli = "2.0.1"
+xlsxwriter = "3.1.9"
+sentry-sdk = {version = "1.39.2", extras = ["django"]}
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.13.0"
+ipython = "^8.20.0"
 ipdb = "^0.13.13"
-ruff = "^0.0.270"
 black = "^23.3.0"
 pre-commit = "^3.5.0"
+ruff = "^0.1.13"
 
 [build-system]
 requires = ["poetry-core"]
