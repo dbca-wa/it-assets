@@ -1103,6 +1103,16 @@ class DepartmentUser(models.Model):
 
         self.save()
 
+    def get_ascender_jobs(self):
+        """Return the associated Ascender jobs records for this DepartmentUser, sorted.
+        """
+        if not self.employee_id:
+            return None
+
+        from organisation.ascender import ascender_employee_fetch
+        jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
+        return jobs_data[1]
+
 
 class DepartmentUserLog(models.Model):
     """Represents an event carried out on a DepartmentUser object that may need to be reported
