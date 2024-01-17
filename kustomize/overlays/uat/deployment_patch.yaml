@@ -175,5 +175,15 @@ spec:
             secretKeyRef:
               name: itassets-env-uat
               key: SENTRY_DSN
+        - name: SENTRY_SAMPLE_RATE
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: SENTRY_SAMPLE_RATE
+        - name: SENTRY_TRANSACTION_SAMPLE_RATE
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: SENTRY_TRANSACTION_SAMPLE_RATE
         - name: SENTRY_ENVIRONMENT
           value: "uat"
