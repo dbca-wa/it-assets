@@ -395,10 +395,10 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=
         return (job, cc, job_start_date, licence_type, manager, location)
 
 
-def ascender_db_import():
+def ascender_user_import_all():
     """A utility function to cache data from Ascender to matching DepartmentUser objects.
-    On no match, create a new Azure AD account based on Ascender data if it also meets all
-    rules for new account provisioning.
+    On no match, create a new Azure AD account and DepartmentUser based on Ascender data,
+    assuming it meets all the business rules for new account provisioning.
     """
     LOGGER.info("Querying Ascender database for employee information")
     token = ms_graph_client_token()
