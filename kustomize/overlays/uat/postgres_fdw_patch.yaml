@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: itassets-postgres-fdw
+  labels:
+    app: itassets-postgres-fdw-uat
+spec:
+  selector:
+    matchLabels:
+      app: itassets-postgres-fdw-uat
+  template:
+    metadata:
+      labels:
+        app: itassets-postgres-fdw-uat
+    spec:
+      initContainers:
+      - name: data-vol-chown
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command:
+          - chown
+          - -R
+          - "999:999"
+          - /var/lib/postgresql/data
+        volumeMounts:
+          - name: itassets-postgres-fdw-data
+            mountPath: /var/lib/postgresql/data
+      containers:
+      - name: itassets-postgres-fdw
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+          - name: itassets-postgres-fdw-data
+            mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: itassets-postgres-fdw-data
+          persistentVolumeClaim:
+            claimName: itassets-postgres-fdw-data-uat
