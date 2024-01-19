@@ -273,6 +273,7 @@ def ascender_employees_fetch_all():
 def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=False):
     """Given a passed-in Ascender record and any qualifiers, determine
     whether a new Azure AD account can be provisioned for that user.
+    The 'job start date' rule can be optionally bypassed.
     Returns either a tuple of values required to provision the new account, or False.
     """
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
