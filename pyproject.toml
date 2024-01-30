@@ -11,7 +11,7 @@ django = "3.2.23"
 psycopg2 = "2.9.9"
 dbca-utils = "1.1.6"
 django-extensions = "3.2.3"
-python-dotenv = "1.0.0"
+python-dotenv = "1.0.1"
 dj-database-url = "2.1.0"
 gunicorn = "21.2.0"
 unicodecsv = "0.14.1"
@@ -35,9 +35,9 @@ sentry-sdk = {version = "1.39.2", extras = ["django"]}
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.20.0"
 ipdb = "^0.13.13"
-black = "^23.3.0"
+black = "^24.1.1"
 pre-commit = "^3.5.0"
-ruff = "^0.1.13"
+ruff = "^0.1.15"
 
 [build-system]
 requires = ["poetry-core"]
