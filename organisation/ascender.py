@@ -571,38 +571,50 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         return
     title = title_except(job['occup_pos_title'])
 
-    # M365 license availability is obtained from the prepaidUnits value of a subscribedSku resource type.
-    # Total number of licenses is (status enabled + suspended + warning).
-    # Refs:
+    # M365 license availability is obtained from the subscribedSku resource type.
+    # Total license number is returned in the prepaidUnits object (enabled + warning + suspended + lockedOut).
+    # License consumption is returned in the value for consumedUnits, but this includes suspended
+    # and locked-out licenses.
+    # License availabilty (to assign to a user) is not especially intuitive; only licenses having
+    # status `enabled` or `warning` are available to be assigned. Therefore if the value of consumedUnits
+    # is greater than the value of prepaidUnits (enabled + warning), no licenses are currently
+    # available to be assigned.
+    # References:
     # - https://learn.microsoft.com/en-us/graph/api/resources/subscribedsku?view=graph-rest-1.0
     # - https://github.com/microsoftgraph/microsoft-graph-docs-contrib/issues/2337
+
     e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
-    e5_total = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["suspended"] + e5_sku["prepaidUnits"]["warning"]
+    e5_consumed = e5_sku["consumedUnits"]
+    e5_assignable = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["warning"]
     f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
-    f3_total = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["suspended"] + f3_sku["prepaidUnits"]["warning"]
+    f3_consumed = f3_sku["consumedUnits"]
+    f3_assignable = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["warning"]
     eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
-    eo_total = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["suspended"] + eo_sku["prepaidUnits"]["warning"]
+    eo_consumed = eo_sku["consumedUnits"]
+    eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
     sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW"], token)
-    sec_total = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["suspended"] + sec_sku["prepaidUnits"]["warning"]
+    sec_consumed = sec_sku["consumedUnits"]
+    sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
+
     if job["licence_type"] == "ONPUL":
         licence_type = "On-premise"
         # Short circuit: no available licences, abort.
-        if e5_sku["consumedUnits"] >= e5_total:
+        if e5_assignable - e5_consumed >= 0:
             log = f"Creation of new Azure AD account aborted, no E5 licences available ({ascender_record})"
             LOGGER.warning(log)
             return
     elif job["licence_type"] == "CLDUL":
         licence_type = "Cloud"
         # Short circuit: no available licences, abort.
-        if f3_sku["consumedUnits"] >= f3_total:
+        if f3_assignable - f3_consumed >= 0:
             log = f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})"
             LOGGER.warning(log)
             return
-        if eo_sku["consumedUnits"] >= eo_total:
+        if eo_assignable - eo_consumed >= 0:
             log = f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})"
             LOGGER.warning(log)
             return
-        if sec_sku["consumedUnits"] >= sec_total:
+        if sec_assignable - sec_consumed >= 0:
             log = f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
             LOGGER.warning(log)
             return
