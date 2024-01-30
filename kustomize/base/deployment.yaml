@@ -23,28 +23,40 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "25m"
+            cpu: "10m"
           limits:
             memory: "4096Mi"
             cpu: "1000m"
-        livenessProbe:
+        startupProbe:
           httpGet:
             path: /liveness
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 3
           periodSeconds: 3
+          timeoutSeconds: 3
+          successThreshold: 1
           failureThreshold: 3
-          timeoutSeconds: 2
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /readiness
             port: 8080
             scheme: HTTP
-          initialDelaySeconds: 3
-          periodSeconds: 3
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
           failureThreshold: 3
-          timeoutSeconds: 2
         securityContext:
           runAsNonRoot: true
           privileged: false

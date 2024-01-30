@@ -4,3 +4,5 @@ resources:
   - deployment.yaml
   - clusterip.yaml
   - pdb.yaml
+  - postgres_fdw.yaml
+  - postgres_fdw_service.yaml

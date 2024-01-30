@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 import logging
-from organisation.ascender import ascender_db_import
+from organisation.ascender import ascender_user_import_all
 
 
 class Command(BaseCommand):
@@ -9,4 +9,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Running Ascender database import')
-        ascender_db_import()
+        ascender_user_import_all()

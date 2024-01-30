@@ -28,3 +28,18 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: FRESHSERVICE_API_KEY
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: AZURE_TENANT_ID
+            - name: MS_GRAPH_API_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_ID
+            - name: MS_GRAPH_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: MS_GRAPH_API_CLIENT_SECRET
