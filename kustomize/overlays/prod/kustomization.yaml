@@ -31,4 +31,4 @@ patches:
   - path: pdb_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.11
+    newTag: 2.4.12
