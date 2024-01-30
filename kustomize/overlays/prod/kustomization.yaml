@@ -15,6 +15,7 @@ resources:
   - cronjobs/m365-licence-check
   - cronjobs/storage-usage
   - cronjobs/update-ccm
+  - postgres_fdw_pvc.yaml
 secretGenerator:
   - name: itassets-env
     type: Opaque
@@ -29,6 +30,8 @@ patches:
   - path: clusterip_patch.yaml
   - path: deployment_patch.yaml
   - path: pdb_patch.yaml
+  - path: postgres_fdw_patch.yaml
+  - path: postgres_fdw_service_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
     newTag: 2.4.12
