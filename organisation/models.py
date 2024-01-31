@@ -1221,6 +1221,7 @@ DIVISION_CHOICES = (
     ("CPC", "Conservation and Parks Commission"),
     ("ODG", "Office of the Director General"),
     ("PWS", "Parks and Wildlife Service"),
+    ("SG", "Strategy and Governance"),
     ("RIA", "Rottnest Island Authority"),
     ("ZPA", "Zoological Parks Authority"),
 )
