@@ -581,6 +581,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     # available to be assigned.
     # References:
     # - https://learn.microsoft.com/en-us/graph/api/resources/subscribedsku?view=graph-rest-1.0
+    # - https://learn.microsoft.com/en-us/graph/api/resources/licenseunitsdetail?view=graph-rest-1.0
     # - https://github.com/microsoftgraph/microsoft-graph-docs-contrib/issues/2337
 
     e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)

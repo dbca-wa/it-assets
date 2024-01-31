@@ -55,6 +55,7 @@ class Command(BaseCommand):
         # available to be assigned.
         # References:
         # - https://learn.microsoft.com/en-us/graph/api/resources/subscribedsku?view=graph-rest-1.0
+        # - https://learn.microsoft.com/en-us/graph/api/resources/licenseunitsdetail?view=graph-rest-1.0
         # - https://github.com/microsoftgraph/microsoft-graph-docs-contrib/issues/2337
 
         send_notification = False
