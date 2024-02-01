@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.10.13-slim as builder_base_itassets
+FROM python:3.13.0a3-slim as builder_base_itassets
 MAINTAINER asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
