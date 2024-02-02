@@ -600,24 +600,20 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     if job["licence_type"] == "ONPUL":
         licence_type = "On-premise"
         # Short circuit: no available licences, abort.
-        if e5_assignable - e5_consumed >= 0:
-            log = f"Creation of new Azure AD account aborted, no E5 licences available ({ascender_record})"
-            LOGGER.warning(log)
+        if e5_assignable - e5_consumed <= 0:
+            LOGGER.warning(f"Creation of new Azure AD account aborted, no E5 licences available ({ascender_record})")
             return
     elif job["licence_type"] == "CLDUL":
         licence_type = "Cloud"
         # Short circuit: no available licences, abort.
-        if f3_assignable - f3_consumed >= 0:
-            log = f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})"
-            LOGGER.warning(log)
+        if f3_assignable - f3_consumed <= 0:
+            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})")
             return
-        if eo_assignable - eo_consumed >= 0:
-            log = f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})"
-            LOGGER.warning(log)
+        if eo_assignable - eo_consumed <= 0:
+            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})")
             return
-        if sec_assignable - sec_consumed >= 0:
-            log = f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
-            LOGGER.warning(log)
+        if sec_assignable - sec_consumed <= 0:
+            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})")
             return
 
     # Configuration setting to explicitly allow creation of new AD users.
