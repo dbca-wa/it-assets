@@ -3,15 +3,15 @@ kind: Deployment
 metadata:
   name: itassets-deployment
   labels:
-    app: itassets-uat
+    app: itassets-deployment
 spec:
   selector:
     matchLabels:
-      app: itassets-uat
+      app: itassets-deployment
   template:
     metadata:
       labels:
-        app: itassets-uat
+        app: itassets-deployment
     spec:
       containers:
       - name: itassets
