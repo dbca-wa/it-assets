@@ -24,7 +24,6 @@ secretGenerator:
 labels:
   - includeSelectors: true
     pairs:
-      app: itassets
       variant: prod
 patches:
   - path: clusterip_patch.yaml

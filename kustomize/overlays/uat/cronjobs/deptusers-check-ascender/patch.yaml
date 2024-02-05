@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  # AWST: 17 min past the hour, 08:00-17:00, Mon-Fri
+  schedule: "17 0-8 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: itassets-cronjob
+            args: ["manage.py", "check_ascender_accounts"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: DATABASE_URL
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: EMAIL_HOST
+            - name: ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ADMIN_EMAILS
+            - name: ASCENDER_CREATE_AZURE_AD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_CREATE_AZURE_AD
+            - name: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+            - name: FOREIGN_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_HOST
+            - name: FOREIGN_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_PORT
+            - name: FOREIGN_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_NAME
+            - name: FOREIGN_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_USERNAME
+            - name: FOREIGN_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_PASSWORD
+            - name: FOREIGN_SCHEMA
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_SCHEMA
+            - name: FOREIGN_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_SERVER
+            - name: FOREIGN_TABLE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_TABLE
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: AZURE_TENANT_ID
+            - name: MS_GRAPH_API_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: MS_GRAPH_API_CLIENT_ID
+            - name: MS_GRAPH_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: MS_GRAPH_API_CLIENT_SECRET

@@ -3,6 +3,7 @@ kind: Kustomization
 nameSuffix: -uat
 resources:
   - ../../base
+  - cronjobs/deptusers-check-ascender
   - ingress.yaml
   - postgres_fdw_pvc.yaml
 secretGenerator:
@@ -13,7 +14,6 @@ secretGenerator:
 labels:
   - includeSelectors: true
     pairs:
-      app: itassets
       variant: uat
 patches:
   - path: clusterip_patch.yaml

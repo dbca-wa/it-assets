@@ -2,11 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: itassets-deployment
+  labels:
+    app: itassets-uat
 spec:
   selector:
     matchLabels:
-      app: itassets
-      variant: uat
+      app: itassets-uat
   template:
     metadata:
       labels:
