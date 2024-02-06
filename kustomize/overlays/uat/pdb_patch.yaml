@@ -5,5 +5,5 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: itassets
+      app: itassets-deployment
       variant: uat

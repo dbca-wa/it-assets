@@ -2,6 +2,8 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: itassets-cronjob
+  labels:
+    app: itassets-cronjob
 spec:
   schedule: ""
   concurrencyPolicy: Forbid

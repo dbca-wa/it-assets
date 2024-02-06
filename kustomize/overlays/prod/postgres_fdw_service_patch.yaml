@@ -4,5 +4,5 @@ metadata:
   name: itassets-postgres-fdw
 spec:
   selector:
-    app: itassets-postgres-fdw-prod
+    app: itassets-postgres-fdw
     variant: prod

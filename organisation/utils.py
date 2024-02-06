@@ -70,9 +70,7 @@ def ms_graph_subscribed_skus(token=None):
     if not token:  # The call to the MS API occasionally fails.
         return None
 
-    headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
-    }
+    headers = {"Authorization": f"Bearer {token['access_token']}"}
     url = "https://graph.microsoft.com/v1.0/subscribedSkus"
     skus = []
     resp = requests.get(url, headers=headers)
@@ -95,9 +93,7 @@ def ms_graph_subscribed_sku(sku_id, token=None):
     if not token:  # The call to the MS API occasionally fails.
         return None
 
-    headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
-    }
+    headers = {"Authorization": f"Bearer {token['access_token']}"}
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
     url = f"https://graph.microsoft.com/v1.0/subscribedSkus/{azure_tenant_id}_{sku_id}"
     resp = requests.get(url, headers=headers)
@@ -117,10 +113,10 @@ def ms_graph_users(licensed=False, token=None):
         return None
 
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$expand=manager($select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -136,6 +132,8 @@ def ms_graph_users(licensed=False, token=None):
     aad_users = []
 
     for user in users:
+        if not user['mail'] or not user['mail'].lower().endswith('@dbca.wa.gov.au'):
+            continue
         aad_users.append({
             'objectId': user['id'],
             'mail': user['mail'].lower(),
@@ -157,6 +155,7 @@ def ms_graph_users(licensed=False, token=None):
             'onPremisesSamAccountName': user['onPremisesSamAccountName'],
             'lastPasswordChangeDateTime': user['lastPasswordChangeDateTime'],
             'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
+            'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
         })
 
     if licensed:
@@ -177,8 +176,8 @@ def ms_graph_users_signinactivity(licensed=False, token=None):
         return None
 
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
-        'Content-Type': 'application/json',
+        "Authorization": f"Bearer {token['access_token']}",
+        "Content-Type": "application/json",
         "ConsistencyLevel": "eventual",
     }
     url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,accountEnabled,assignedLicenses,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"

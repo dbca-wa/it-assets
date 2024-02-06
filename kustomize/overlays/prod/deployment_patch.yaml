@@ -5,12 +5,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: itassets-prod
-      variant: prod
+      app: itassets-deployment
   template:
     metadata:
       labels:
-        app: itassets-prod
+        app: itassets-deployment
     spec:
       containers:
       - name: itassets
