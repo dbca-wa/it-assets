@@ -116,7 +116,7 @@ def ms_graph_users(licensed=False, token=None):
         "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$expand=manager($select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -132,6 +132,8 @@ def ms_graph_users(licensed=False, token=None):
     aad_users = []
 
     for user in users:
+        if not user['mail'] or not user['mail'].lower().endswith('@dbca.wa.gov.au'):
+            continue
         aad_users.append({
             'objectId': user['id'],
             'mail': user['mail'].lower(),
@@ -153,6 +155,7 @@ def ms_graph_users(licensed=False, token=None):
             'onPremisesSamAccountName': user['onPremisesSamAccountName'],
             'lastPasswordChangeDateTime': user['lastPasswordChangeDateTime'],
             'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
+            'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
         })
 
     if licensed:
