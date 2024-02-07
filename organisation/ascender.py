@@ -593,7 +593,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
     eo_consumed = eo_sku["consumedUnits"]
     eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
-    sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW"], token)
+    sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
     sec_consumed = sec_sku["consumedUnits"]
     sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
 
@@ -743,7 +743,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
                 "addLicenses": [
                     {"skuId": MS_PRODUCTS['MICROSOFT 365 F3'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE KIOSK'],]},
                     {"skuId": MS_PRODUCTS['EXCHANGE ONLINE (PLAN 2)'], "disabledPlans": []},
-                    {"skuId": MS_PRODUCTS['MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE ARCHIVING'],]},
+                    {"skuId": MS_PRODUCTS['MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON'], "disabledPlans": [MS_PRODUCTS['EXCHANGE ONLINE ARCHIVING'],]},
                 ],
                 "removeLicenses": [],
             }

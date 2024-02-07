@@ -89,7 +89,7 @@ class Command(BaseCommand):
         if eo_available < 0:
             eo_available = 0
 
-        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 SECURITY AND COMPLIANCE FOR FLW"], token)
+        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
         sec_consumed = sec_sku["consumedUnits"]
         sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
         sec_available = sec_assignable - sec_consumed
