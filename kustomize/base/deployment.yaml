@@ -33,8 +33,8 @@ spec:
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 3
-          periodSeconds: 3
-          timeoutSeconds: 3
+          periodSeconds: 15
+          timeoutSeconds: 10
           successThreshold: 1
           failureThreshold: 3
         livenessProbe:
@@ -43,20 +43,20 @@ spec:
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 0
-          periodSeconds: 10
-          timeoutSeconds: 3
+          periodSeconds: 15
           successThreshold: 1
           failureThreshold: 3
+          timeoutSeconds: 10
         readinessProbe:
           httpGet:
             path: /readiness
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 0
-          periodSeconds: 10
-          timeoutSeconds: 3
+          periodSeconds: 15
           successThreshold: 1
           failureThreshold: 3
+          timeoutSeconds: 10
         securityContext:
           runAsNonRoot: true
           privileged: false
