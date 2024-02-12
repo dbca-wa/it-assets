@@ -36,7 +36,7 @@ sentry-sdk = {version = "1.40.0", extras = ["django"]}
 ipython = "^8.21.0"
 ipdb = "^0.13.13"
 black = "^24.1.1"
-pre-commit = "^3.5.0"
+pre-commit = "^3.6.1"
 ruff = "^0.2.0"
 
 [build-system]
