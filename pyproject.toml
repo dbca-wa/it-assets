@@ -30,7 +30,7 @@ azure-storage-blob = "12.19.0"
 django-storages = {version = "1.14.2", extras = ["azure"]}
 tomli = "2.0.1"
 xlsxwriter = "3.1.9"
-sentry-sdk = {version = "1.40.0", extras = ["django"]}
+sentry-sdk = {version = "1.40.3", extras = ["django"]}
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.21.0"
