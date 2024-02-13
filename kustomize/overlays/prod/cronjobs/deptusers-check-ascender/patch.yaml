@@ -93,3 +93,8 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: MS_GRAPH_API_CLIENT_SECRET
+            - name: SENTRY_CRON_CHECK_ASCENDER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: SENTRY_CRON_CHECK_ASCENDER

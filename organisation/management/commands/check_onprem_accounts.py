@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+from django.conf import settings
 from django.core.management.base import BaseCommand
 import logging
 from organisation.models import DepartmentUser
 from organisation.utils import get_blob_json
+from sentry_sdk.crons import monitor
 
 
 class Command(BaseCommand):
@@ -27,7 +29,20 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Downloading on-prem AD user account data')
-        ad_users = get_blob_json(container=options['container'], blob=options['path'])
+        container = options['container']
+        blob = options['path']
+        # Optionally run this management command in the context of a Sentry cron monitor.
+        if settings.SENTRY_CRON_CHECK_ONPREM:
+            with monitor(monitor_slug=settings.SENTRY_CRON_CHECK_ONPREM):
+                self.check_onprem_accounts(logger, container, blob)
+        else:
+            self.check_onprem_accounts(logger, container, blob)
+
+    def check_onprem_accounts(self, logger, container, blob):
+        """Separate the body of this management command to allow running it in context with
+        the Sentry monitor process.
+        """
+        ad_users = get_blob_json(container=container, blob=blob)
 
         if not ad_users:
             logger.error('No on-prem AD user account data could be downloaded')

@@ -23,3 +23,8 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: AZURE_CONNECTION_STRING
+            - name: SENTRY_CRON_CHECK_ONPREM
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: SENTRY_CRON_CHECK_ONPREM

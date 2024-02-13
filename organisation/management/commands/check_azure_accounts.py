@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core import mail
 from django.core.management.base import BaseCommand
 import logging
+from sentry_sdk.crons import monitor
 
 from organisation.models import DepartmentUser, CostCentre, Location
 from organisation.utils import ms_graph_users
@@ -14,6 +15,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')
         logger.info('Querying Microsoft Graph API for Azure AD user accounts')
+        # Optionally run this management command in the context of a Sentry cron monitor.
+        if settings.SENTRY_CRON_CHECK_AZURE:
+            with monitor(monitor_slug=settings.SENTRY_CRON_CHECK_AZURE):
+                self.check_azure_accounts(logger)
+        else:
+            self.check_azure_accounts(logger)
+
+    def check_azure_accounts(self, logger):
+        """Separate the body of this management command to allow running it in context with
+        the Sentry monitor process.
+        """
         azure_users = ms_graph_users()
 
         if not azure_users:
