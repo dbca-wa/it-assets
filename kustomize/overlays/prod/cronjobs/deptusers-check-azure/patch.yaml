@@ -38,6 +38,13 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: AZURE_CONNECTION_STRING
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: SENTRY_DSN
+            - name: SENTRY_ENVIRONMENT
+              value: "prod"
             - name: SENTRY_CRON_CHECK_AZURE
               valueFrom:
                 secretKeyRef:
