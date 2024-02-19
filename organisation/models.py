@@ -340,7 +340,6 @@ class DepartmentUser(models.Model):
             and self.ascender_data
             and 'job_end_date' in self.ascender_data
             and self.ascender_data['job_end_date']
-            and settings.ASCENDER_DEACTIVATE_EXPIRED  # Defaults as False, must be explicitly set True.
         ):
             job_end_date = datetime.strptime(self.ascender_data['job_end_date'], '%Y-%m-%d')
 
@@ -362,10 +361,12 @@ class DepartmentUser(models.Model):
                     f.write(json.dumps(change, indent=2).encode('utf-8'))
                     f.flush()
                     f.seek(0)
-                    if not log_only:
+                    if not log_only and settings.ASCENDER_DEACTIVATE_EXPIRED:  # Defaults as False, must be explicitly set True.
                         blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                         upload_blob(f, container, blob)
-                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                        LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    else:
+                        LOGGER.info('NO ACTION (log only)')
 
                 # Azure (cloud only) AD users.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
@@ -377,7 +378,9 @@ class DepartmentUser(models.Model):
                         data = {"accountEnabled": False}
                         if not log_only:
                             requests.patch(url, headers=headers, json=data)
-                        LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
+                            LOGGER.info(f'AZURE SYNC: {self} Azure AD account accountEnabled set to False')
+                        else:
+                            LOGGER.info('NO ACTION (log only)')
 
         # Future scenarios:
         # SCENARIO 2: Ascender record indicates that a user is on extended leave.
@@ -419,7 +422,9 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
                 # Create a DepartmentUserLog object to record this update.
                 if not log_only:
@@ -463,7 +468,9 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
                 # Create a DepartmentUserLog object to record this update.
                 if not log_only:
@@ -493,7 +500,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'displayName' in self.azure_ad_data and self.azure_ad_data['displayName'] != self.name:
             if token:
@@ -504,7 +513,9 @@ class DepartmentUser(models.Model):
                 data = {"displayName": self.name}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account displayName set to {self.name}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account displayName set to {self.name}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # given_name (source of truth: Ascender)
         # Note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
@@ -524,7 +535,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'givenName' in self.azure_ad_data and self.azure_ad_data['givenName'] != self.given_name:
             if token:
@@ -535,7 +548,9 @@ class DepartmentUser(models.Model):
                 data = {"givenName": self.given_name}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account givenName set to {self.given_name}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account givenName set to {self.given_name}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # surname (source of truth: Ascender)
         # Onprem AD users
@@ -553,7 +568,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'surname' in self.azure_ad_data and self.azure_ad_data['surname'] != self.surname:
             if token:
@@ -564,7 +581,9 @@ class DepartmentUser(models.Model):
                 data = {"surname": self.surname}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account surname set to {self.surname}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account surname set to {self.surname}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
         if (
@@ -589,7 +608,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users. Update the user account directly using the MS Graph API.
         elif (
             self.employee_id
@@ -608,7 +629,9 @@ class DepartmentUser(models.Model):
                 data = {"companyName": self.cost_centre.code}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
+                    LOGGER.info(f'AZURE SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # division (source of truth: Ascender, recorded in AD to the Department field).
         # Onprem AD users
@@ -633,7 +656,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users.
         elif (
             not self.dir_sync_enabled
@@ -651,7 +676,9 @@ class DepartmentUser(models.Model):
                 data = {"department": self.get_division()}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE SYNC: {self} Azure AD account department set to {self.get_division()}')
+                    LOGGER.info(f'AZURE SYNC: {self} Azure AD account department set to {self.get_division()}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # title (source of truth: Ascender)
         # Onprem AD users
@@ -669,7 +696,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users.
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'jobTitle' in self.azure_ad_data and self.azure_ad_data['jobTitle'] != self.title:
             if token:
@@ -680,7 +709,9 @@ class DepartmentUser(models.Model):
                 data = {"jobTitle": self.title}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account jobTitle set to {self.title}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account jobTitle set to {self.title}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # telephone (source of truth: IT Assets)
         # Onprem AD users
@@ -705,7 +736,9 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'telephoneNumber' in self.azure_ad_data:
             if (
@@ -723,7 +756,9 @@ class DepartmentUser(models.Model):
                     data = {"businessPhones": [self.telephone if self.telephone else " "]}
                     if not log_only:
                         requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
+                        LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}')
+                    else:
+                        LOGGER.info('NO ACTION (log only)')
 
         # mobile (source of truth: IT Assets)
         # Onprem AD users
@@ -748,7 +783,9 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'mobilePhone' in self.azure_ad_data:
             if (
@@ -766,7 +803,9 @@ class DepartmentUser(models.Model):
                     data = {"mobilePhone": self.mobile_phone}
                     if not log_only:
                         requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
+                        LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}')
+                    else:
+                        LOGGER.info('NO ACTION (log only)')
 
         # employee_id (source of truth: Ascender)
         # Onprem AD users
@@ -790,7 +829,9 @@ class DepartmentUser(models.Model):
             if not log_only:
                 blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                 upload_blob(f, container, blob)
-            LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+            else:
+                LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users
         elif (
             not self.dir_sync_enabled
@@ -807,7 +848,9 @@ class DepartmentUser(models.Model):
                 data = {"employeeId": self.employee_id}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
+                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account employeeId set to {self.employee_id}')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
 
         # manager (source of truth: Ascender)
         # Onprem AD users
@@ -829,10 +872,11 @@ class DepartmentUser(models.Model):
                 f.flush()
                 f.seek(0)
                 if not log_only:
-                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploading to blob storage ({prop})')
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and 'manager' in self.azure_ad_data:
             if self.azure_ad_data['manager'] and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data['manager']['id']).exists():
@@ -850,7 +894,9 @@ class DepartmentUser(models.Model):
                     data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{self.manager.azure_guid}"}
                     if not log_only:
                         requests.put(manager_url, headers=headers, json=data)
-                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
+                        LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}')
+                    else:
+                        LOGGER.info('NO ACTION (log only)')
 
         # location (source of truth: Ascender)
         # Onprem AD users
@@ -886,7 +932,9 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
                 prop = 'StreetAddress'
                 change = {
                     'identity': self.ad_guid,
@@ -900,7 +948,9 @@ class DepartmentUser(models.Model):
                 if not log_only:
                     blob = f'onprem_changes/{self.ad_guid}_{prop}.json'
                     upload_blob(f, container, blob)
-                LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                    LOGGER.info(f'AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})')
+                else:
+                    LOGGER.info('NO ACTION (log only)')
         # Azure (cloud only) AD users
         elif (
             not self.dir_sync_enabled
@@ -932,8 +982,10 @@ class DepartmentUser(models.Model):
                     }
                     if not log_only:
                         requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
-                    LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
+                        LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}')
+                        LOGGER.info(f'AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}')
+                    else:
+                        LOGGER.info('NO ACTION (log only)')
 
     def update_from_ascender_data(self):
         """For this DepartmentUser object, update the field values from cached Ascender data
