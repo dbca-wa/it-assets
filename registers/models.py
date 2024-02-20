@@ -4,14 +4,10 @@ from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
-from markdownx.utils import markdownify
 from os import path
-from pytz import timezone
 
 from organisation.models import DepartmentUser, CostCentre
 from itassets.utils import smart_truncate
-
-TZ = timezone(settings.TIME_ZONE)
 
 CRITICALITY_CHOICES = (
     (1, 'Critical'),
@@ -274,12 +270,6 @@ class StandardChange(models.Model):
             return ', '.join([i.name for i in self.it_systems.all()])
         return 'Not specified'
 
-    def formatted_markdown(self, field):
-        """From the passed-in field, return the object field value rendered as HTML (assumes that
-        the field value is Markdown-formatted text).
-        """
-        return markdownify(getattr(self, field))
-
 
 class ChangeRequest(models.Model):
     """A model for change requests. Will be linked to API to allow application of a change request.
@@ -411,12 +401,6 @@ class ChangeRequest(models.Model):
     def broadcast_filename(self):
         return path.basename(self.broadcast.name)
 
-    def formatted_markdown(self, field):
-        """From the passed-in field, return the object field value rendered as HTML (assumes that
-        the field value is Markdown-formatted text).
-        """
-        return markdownify(getattr(self, field))
-
     def get_absolute_url(self):
         return reverse('change_request_detail', kwargs={'pk': self.pk})
 
@@ -470,12 +454,12 @@ class ChangeRequest(models.Model):
             requester for change request {}, scheduled to be undertaken on {}.\n
             Please visit the following URL and record the outcome of the change in order to finalise it:\n
             {}\n
-            """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
+            """.format(self, self.planned_start.astimezone(settings.TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
         html_content = """<p>This is an automated message to let you know that you are recorded as the
             requester for change request {0}, scheduled to be undertaken on {1}.</p>
             <p>Please visit the following URL and record the outcome of the change in order to finalise it:</p>
             <ul><li><a href="{2}">{2}</a></li></ul>
-            """.format(self, self.planned_start.astimezone(TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
+            """.format(self, self.planned_start.astimezone(settings.TZ).strftime('%d/%b/%Y at %H:%M'), complete_url)
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.requester.email])
         msg.attach_alternative(html_content, 'text/html')
         msg.send()

@@ -1,14 +1,12 @@
 from azure.storage.blob import BlobServiceClient
 from io import BytesIO
 from django.db.models import Q
-from django.contrib.auth.models import User
 from django.utils.encoding import smart_text
 import json
 from msal import ConfidentialClientApplication
 import os
 import re
 import requests
-import threading
 
 
 def ms_graph_client_token():
@@ -125,163 +123,6 @@ def get_query(query_string, search_fields):
     return query
 
 
-class LogRecordIterator(object):
-    """
-    for azlog dump file
-    """
-    block_size = 1024 * 512  # Read 512k
-
-    def __init__(self, input_file):
-        self._input_file = input_file
-        self._f = None
-        self._index = None
-        self._data_block = None
-        self._read = True
-
-    def _close(self):
-        try:
-            if self._f:
-                self._f.close()
-        except:
-            pass
-        finally:
-            self._f = None
-
-    first_record_start_re = re.compile("^\s*\[\s*\{\s*\n")
-    record_sep_re = re.compile("\n\s*}\s*,\s*{\s*\n")
-    last_record_end_re = re.compile("\n\s*}\s*\,?\s*\]\s*$")
-
-    def _next_record(self):
-        if not self._f:
-            raise StopIteration("No more records")
-
-        while (self._f):
-            if self._read:
-                data = self._f.read(self.block_size)
-                self._read = False
-                if data:
-                    if self._data_block:
-                        self._data_block += data
-                    else:
-                        self._data_block = data
-                else:
-                    #end of file
-                    self._close()
-                    if self._data_block:
-                        m = self.last_record_end_re.search(self._data_block)
-                        if m:
-                            self._index += 1
-                            json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
-                            self._data_block = None
-                            return json.loads(json_str)
-                        else:
-                            raise Exception("The last record is incomplete in file({}).".format(self._input_file))
-                    else:
-                        raise StopIteration("No more records")
-
-            if self._index is None:
-                m = self.first_record_start_re.search(self._data_block)
-                if m:
-                    self._data_block = self._data_block[m.end():]
-                    self._index = -1
-                elif self._data_block.strip():
-                    raise Exception("The file({}) is an invalid json file".format(self._input_file))
-                else:
-                    self._data_block = None
-                    self._read = True
-            else:
-                m = self.record_sep_re.search(self._data_block)
-                if m:
-                    self._index += 1
-                    json_str = "{{\n{}\n}}".format(self._data_block[:m.start()])
-                    self._data_block = self._data_block[m.end():]
-                    return json.loads(json_str)
-                else:
-                    self._read = True
-
-    def __iter__(self):
-        self._close()
-
-        self._index = None
-        self._data_block = None
-        self._read = True
-
-        self._f = open(self._input_file, 'r')
-        return self
-
-    def __next__(self):
-        return self._next_record()
-
-
-class RequestMixin(object):
-    """
-    Set property 'request' to model admin instance
-    """
-    request = None
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        self.request = request
-        return qs
-
-
-userdata = threading.local()
-
-
-class GetRequestUserMixin(object):
-    """
-    Get the request user from request property or threading local storage
-    """
-    request = None
-
-    @property
-    def user(self):
-        if self.request:
-            return self.request.user
-        else:
-            try:
-                return userdata.user
-            except:
-                return None
-
-
-class RequestUserMixin(GetRequestUserMixin, RequestMixin):
-    """
-    Set property 'request' to model admin instance and request's user to threading localstorage
-    """
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        userdata.user = self.request.user
-        return qs
-
-
-setattr(User, "_security_team", None)
-setattr(User, "_secretpermission_granted", None)
-
-
-class SecretPermissionMixin(object):
-    is_developer = None
-    request = None
-
-    def secretpermission_granted(self, obj=None, user=None):
-        if not user:
-            if not self.request:
-                return False
-            else:
-                user = self.request.user
-
-        if user._security_team is None:
-            user._security_team = user.groups.filter(name="SECURITY").exists()
-
-        if user._security_team or not obj:
-            return user._security_team
-
-        if user._secretpermission_granted is None:
-            user._secretpermission_granted = self.is_developer(user, obj) if self.is_developer else False
-
-        return user._secretpermission_granted
-
-
 TIME_DURATION_UNITS = (
     ('week', 60 * 60 * 24 * 7),
     ('day', 60 * 60 * 24),
@@ -333,3 +174,32 @@ def get_blob_json(container, blob):
     tf.flush()
 
     return json.loads(tf.read())
+
+
+def get_previous_pages(page_num, count=5):
+    """Convenience function to take a Paginator page object and return the previous `count`
+    page numbers, to a minimum of 1.
+    """
+    prev_page_numbers = []
+
+    if page_num.has_previous():
+        for i in range(page_num.previous_page_number(), page_num.previous_page_number() - count, -1):
+            if i >= 1:
+                prev_page_numbers.append(i)
+
+    prev_page_numbers.reverse()
+    return prev_page_numbers
+
+
+def get_next_pages(page_num, count=5):
+    """Convenience function to take a Paginator page object and return the next `count`
+    page numbers, to a maximum of the paginator page count.
+    """
+    next_page_numbers = []
+
+    if page_num.has_next():
+        for i in range(page_num.next_page_number(), page_num.next_page_number() + count):
+            if i <= page_num.paginator.num_pages:
+                next_page_numbers.append(i)
+
+    return next_page_numbers

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import sys
 import tomli
+from zoneinfo import ZoneInfo
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
@@ -50,13 +51,8 @@ INSTALLED_APPS = (
     "django.contrib.sites",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    # Third-party applications:
     "django_extensions",
-    "crispy_forms",
     "webtemplate_dbca",
-    "bootstrap_pagination",
-    "markdownx",
-    # Project applications:
     "organisation",
     "registers",
 )
@@ -165,6 +161,7 @@ MEDIA_URL = "/media/"
 USE_I18N = False
 USE_TZ = True
 TIME_ZONE = "Australia/Perth"
+TZ = ZoneInfo(TIME_ZONE)
 LANGUAGE_CODE = "en-us"
 DATE_INPUT_FORMATS = (
     "%d/%m/%Y",
@@ -222,8 +219,6 @@ LOGGING = {
     }
 }
 
-# crispy_forms settings
-CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # Sentry settings
 SENTRY_DSN = env("SENTRY_DSN", None)

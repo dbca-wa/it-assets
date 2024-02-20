@@ -1,9 +1,9 @@
 from datetime import date, datetime, timedelta
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.utils import timezone
 import logging
 import psycopg2
-import pytz
 import random
 import requests
 import string
@@ -14,7 +14,6 @@ from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, L
 from organisation.utils import title_except, ms_graph_subscribed_sku
 
 LOGGER = logging.getLogger('organisation')
-TZ = pytz.timezone(settings.TIME_ZONE)
 DATE_MAX = date(2049, 12, 31)
 # The list below defines which columns to SELECT from the Ascender view, what to name the object
 # dict key after querying, plus how to parse the returned value of each column (if required).
@@ -452,7 +451,7 @@ def ascender_user_import_all():
 
             # Cache the job record.
             user.ascender_data = job
-            user.ascender_data_updated = TZ.localize(datetime.now())
+            user.ascender_data_updated = timezone.localtime()
             user.update_from_ascender_data()  # This method calls save()
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
@@ -782,7 +781,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         location=location,
         manager=manager,
         ascender_data=job,
-        ascender_data_updated=TZ.localize(datetime.now()),
+        ascender_data_updated=timezone.localtime(),
     )
     log = f"Created new department user {new_user} ({ascender_record})"
     AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
