@@ -182,7 +182,7 @@ def get_previous_pages(page_num, count=5):
     """
     prev_page_numbers = []
 
-    if page_num.has_previous():
+    if page_num and page_num.has_previous():
         for i in range(page_num.previous_page_number(), page_num.previous_page_number() - count, -1):
             if i >= 1:
                 prev_page_numbers.append(i)
@@ -197,7 +197,7 @@ def get_next_pages(page_num, count=5):
     """
     next_page_numbers = []
 
-    if page_num.has_next():
+    if page_num and page_num.has_next():
         for i in range(page_num.next_page_number(), page_num.next_page_number() + count):
             if i <= page_num.paginator.num_pages:
                 next_page_numbers.append(i)

@@ -3,7 +3,7 @@
     {# 'First page' link #}
     {% if page_obj.has_previous %}
     <li class="page-item">
-        <a class="page-link" href="?page=1" aria-label="First page">
+        <a class="page-link" href="?page=1{% if query_string %}&q={{ query_string }}{% endif %}" aria-label="First page">
             <span aria-hidden="true">«</span>
         </a>
     </li>
@@ -16,7 +16,7 @@
     {# 'Previous page' link #}
     {% if page_obj.has_previous %}
     <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous page">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query_string %}&q={{ query_string }}{% endif %}" aria-label="Previous page">
             <span aria-hidden="true">←</span>
         </a>
     </li>
@@ -29,7 +29,7 @@
     {# Previous n pages #}
     {% for n in previous_pages %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ n }}" aria-label="Page {{ n }}">{{ n }}</a>
+            <a class="page-link" href="?page={{ n }}{% if query_string %}&q={{ query_string }}{% endif %}" aria-label="Page {{ n }}">{{ n }}</a>
         </li>
     {% endfor %}
 
@@ -41,14 +41,14 @@
     {# Next n pages #}
     {% for n in next_pages %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ n }}" aria-label="Page {{ n }}">{{ n }}</a>
+            <a class="page-link" href="?page={{ n }}{% if query_string %}&q={{ query_string }}{% endif %}" aria-label="Page {{ n }}">{{ n }}</a>
         </li>
     {% endfor %}
 
     {# 'Next page' link #}
     {% if page_obj.has_next %}
     <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next page">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query_string %}&q={{ query_string }}{% endif %}" aria-label="Next page">
             <span aria-hidden="true">→</span>
         </a>
     </li>
@@ -61,7 +61,7 @@
     {# 'Last page' link #}
     {% if page_obj.has_next %}
     <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last page">
+        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if query_string %}&q={{ query_string }}{% endif %}" aria-label="Last page">
             <span aria-hidden="true">»</span>
         </a>
     </li>
