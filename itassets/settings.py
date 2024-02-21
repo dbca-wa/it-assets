@@ -224,6 +224,7 @@ LOGGING = {
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
 SENTRY_TRANSACTION_SAMPLE_RATE = env("SENTRY_TRANSACTION_SAMPLE_RATE", 0.0)  # Transaction sampling
+SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE", 0.0)  # Proportion of sampled transactions to profile.
 SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
@@ -232,6 +233,7 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         dsn=SENTRY_DSN,
         sample_rate=SENTRY_SAMPLE_RATE,
         traces_sample_rate=SENTRY_TRANSACTION_SAMPLE_RATE,
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
         release=VERSION_NO,
     )
