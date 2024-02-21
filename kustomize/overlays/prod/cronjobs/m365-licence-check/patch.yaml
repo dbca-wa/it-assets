@@ -3,15 +3,15 @@ kind: CronJob
 metadata:
   name: itassets-cronjob
 spec:
-  # AWST: 11:55, Mon & Thur
-  schedule: "55 3 * * 1,4"
+  # AWST: 11:55, Mon-Fri
+  schedule: "55 3 * * 1-5"
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: itassets-cronjob
-            args: ["manage.py", "check_m365_licence_count"]
+            args: ["manage.py", "check_m365_licence_count", "--emails", "oim.servicedesk@dbca.wa.gov.au,cyber@dbca.wa.gov.au,oiminfrastructure@dbca.wa.gov.au"]
             env:
             - name: DATABASE_URL
               valueFrom:
