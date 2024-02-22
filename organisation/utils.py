@@ -20,7 +20,7 @@ def title_except(s, exceptions=None, acronyms=None):
     if not acronyms:
         acronyms = (
             'OIM', 'IT', 'PVS', 'SFM', 'OT', 'NP', 'FMDP', 'VRM', 'TEC', 'GIS', 'ODG', 'RIA', 'ICT',
-            'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO', 'EHP', 'FSB', 'FMP', 'DBCA', 'ZPA',
+            'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO', 'EHP', 'FSB', 'FMP', 'DBCA', 'ZPA', 'FOI',
         )
     words = s.split()
 
