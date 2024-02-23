@@ -3,7 +3,7 @@ import dj_database_url
 import os
 from pathlib import Path
 import sys
-import tomli
+import tomllib
 from zoneinfo import ZoneInfo
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -107,7 +107,7 @@ SITE_ID = 1
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", "")
 ENVIRONMENT_COLOUR = env("ENVIRONMENT_COLOUR", "")
 
-project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
 VERSION_NO = project["tool"]["poetry"]["version"]
 
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
