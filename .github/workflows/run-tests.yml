@@ -52,7 +52,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 1.6.1
+          version: 1.7.1
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
@@ -74,9 +74,6 @@ jobs:
       #----------------------------------------------
       # Run unit tests
       #----------------------------------------------
-      - name: Create DB extensions
-        run: |
-          psql postgresql://postgres:postgres@localhost:5432/template1 -c 'CREATE EXTENSION citext'
       - name: Run tests
         run: |
           source .venv/bin/activate
