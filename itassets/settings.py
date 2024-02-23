@@ -22,10 +22,12 @@ if not DEBUG:
     ALLOWED_HOSTS = env("ALLOWED_DOMAINS", "").split(",")
 else:
     ALLOWED_HOSTS = ["*"]
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", "").split(",")
 INTERNAL_IPS = ["127.0.0.1", "::1"]
 ROOT_URLCONF = "itassets.urls"
 WSGI_APPLICATION = "itassets.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+MAPPROXY_URL = env("MAPPROXY_URL", "")
 
 # Assume Azure blob storage is used for media uploads, unless explicitly set as local storage.
 LOCAL_MEDIA_STORAGE = env("LOCAL_MEDIA_STORAGE", False)
@@ -92,6 +94,9 @@ TEMPLATES = [
         },
     }
 ]
+SERIALIZATION_MODULES = {
+    "geojson": "django.contrib.gis.serializers.geojson",
+}
 
 ADMIN_EMAILS = env("ADMIN_EMAILS", "asi@dbca.wa.gov.au").split(",")
 SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "oim.servicedesk@dbca.wa.gov.au")
