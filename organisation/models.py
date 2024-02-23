@@ -187,6 +187,13 @@ class DepartmentUser(models.Model):
             return self.cost_centre.get_division_name_display()
         return None
 
+    def get_business_unit(self):
+        """Returns the business unit this users belongs to, based upon their Ascender org path.
+        """
+        if self.get_ascender_org_path():
+            return title_except(self.get_ascender_org_path()[-1])
+        return None
+
     def get_licence(self):
         """Return Microsoft 365 licence description consistent with other OIM communications.
         """
