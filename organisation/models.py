@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from django.conf import settings
-from django.contrib.postgres.fields import ArrayField, CIEmailField
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.gis.db import models
 from io import BytesIO
 import json
@@ -77,7 +77,7 @@ class DepartmentUser(models.Model):
     # Fields directly related to the employee, which map to a field in Active Directory.
     active = models.BooleanField(
         default=True, editable=False, help_text='Account is enabled within Active Directory.')
-    email = CIEmailField(unique=True, editable=False, help_text='Account email address')
+    email = models.EmailField(unique=True, editable=False, help_text='Account email address')
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Display name within AD / Outlook')
     given_name = models.CharField(max_length=128, null=True, blank=True, help_text='First name')
@@ -1219,48 +1219,6 @@ class Location(models.Model):
 
     class Meta:
         ordering = ('name',)
-
-    def __str__(self):
-        return self.name
-
-
-class OrgUnit(models.Model):
-    """Represents an element within the Department organisational hierarchy.
-    This model has largely been deprecated from usage.
-    """
-    TYPE_CHOICES = (
-        (0, 'Department (Tier one)'),
-        (1, 'Division (Tier two)'),
-        (11, 'Division'),
-        (9, 'Group'),
-        (2, 'Branch'),
-        (7, 'Section'),
-        (3, 'Region'),
-        (6, 'District'),
-        (8, 'Unit'),
-        (5, 'Office'),
-        (10, 'Work centre'),
-    )
-    active = models.BooleanField(default=True)
-    unit_type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES)
-    name = models.CharField(max_length=256)
-    acronym = models.CharField(max_length=16, null=True, blank=True)
-    manager = models.ForeignKey(
-        DepartmentUser, on_delete=models.SET_NULL, null=True, blank=True)
-    location = models.ForeignKey(
-        Location, on_delete=models.PROTECT, null=True, blank=True)
-    division_unit = models.ForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='division_orgunits',
-        help_text='Division-level unit to which this unit belongs',
-    )
-    ascender_clevel = models.CharField(max_length=128, null=True, blank=True, unique=True)
-
-    class Meta:
-        ordering = ('name',)
-
-    def cc(self):
-        return ', '.join([str(x) for x in self.costcentre_set.all()])
 
     def __str__(self):
         return self.name
