@@ -193,3 +193,8 @@ spec:
               key: SENTRY_PROFILES_SAMPLE_RATE
         - name: SENTRY_ENVIRONMENT
           value: "uat"
+        - name: MAPPROXY_URL
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: MAPPROXY_URL
