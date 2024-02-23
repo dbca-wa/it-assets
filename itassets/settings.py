@@ -22,7 +22,7 @@ if not DEBUG:
     ALLOWED_HOSTS = env("ALLOWED_DOMAINS", "").split(",")
 else:
     ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", "").split(",")
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", "http://127.0.0.1").split(",")
 INTERNAL_IPS = ["127.0.0.1", "::1"]
 ROOT_URLCONF = "itassets.urls"
 WSGI_APPLICATION = "itassets.wsgi.application"
