@@ -12,7 +12,7 @@ spec:
       - name: itassets
         image: ghcr.io/dbca-wa/it-assets
         env:
-        - name: ALLOWED_DOMAINS
+        - name: ALLOWED_HOSTS
           value: ".dbca.wa.gov.au"
         - name: CSRF_TRUSTED_ORIGINS
           value: "https://*.dbca.wa.gov.au"
