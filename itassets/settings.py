@@ -100,7 +100,6 @@ SERIALIZATION_MODULES = {
 
 # Caching config
 REDIS_CACHE_HOST = env("REDIS_CACHE_HOST", "")
-REDIS_CACHE_PASSWORD = env("REDIS_CACHE_PASSWORD", "")
 if REDIS_CACHE_HOST:
     CACHES = {
         "default": {
@@ -114,7 +113,7 @@ ADMIN_EMAILS = env("ADMIN_EMAILS", "asi@dbca.wa.gov.au").split(",")
 SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "oim.servicedesk@dbca.wa.gov.au")
 FRESHSERVICE_ENDPOINT = env("FRESHSERVICE_ENDPOINT", None)
 FRESHSERVICE_API_KEY = env("FRESHSERVICE_API_KEY", None)
-# The FreshService hardcoded values below shouldn"t ever change, but allow them to be overridden.
+# The FreshService hardcoded values below shouldn't ever change, but allow them to be overridden.
 FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env("FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID", 75000295285)
 FRESHSERVICE_NETWORK_CLIENT_ASSET_TYPE_ID = env("FRESHSERVICE_NETWORK_CLIENT_ASSET_TYPE_ID", 75000346887)
 FRESHSERVICE_DEVICE_ASSET_TYPE_ID = env("FRESHSERVICE_DEVICE_ASSET_TYPE_ID", 75000295286)
