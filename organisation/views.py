@@ -30,22 +30,29 @@ class AddressBook(LoginRequiredMixin, ListView):
         context["mapproxy_url"] = settings.MAPPROXY_URL
         context["locations_geojson"] = serialize(
             "geojson",
-            Location.objects.filter(active=True, point__isnull=False),
+            Location.objects.filter(active=True, point__isnull=False, ascender_desc__isnull=False),
             geometry_field="point",
             srid=4283,
-            fields=["name"],
+            fields=["ascender_desc"],
         )
         return context
 
     def get_queryset(self):
-        queryset = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
+        queryset = DepartmentUser.objects.filter(
+            **DepartmentUser.ACTIVE_FILTER
+        ).exclude(
+            account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+        ).prefetch_related(
+            "cost_centre",
+        )
 
         # Filter the queryset, if required.
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             queryset = queryset.filter(
                 Q(name__icontains=query_str) |
-                Q(title__icontains=query_str)
+                Q(title__icontains=query_str) |
+                Q(ascender_data__geo_location_desc__icontains=query_str)
             )
 
         queryset = queryset.order_by("email")
