@@ -98,9 +98,20 @@ SERIALIZATION_MODULES = {
     "geojson": "django.contrib.gis.serializers.geojson",
 }
 
+# Caching config
+REDIS_CACHE_HOST = env("REDIS_CACHE_HOST", "")
+REDIS_CACHE_PASSWORD = env("REDIS_CACHE_PASSWORD", "")
+if REDIS_CACHE_HOST:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_CACHE_HOST,
+        }
+    }
+API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
+
 ADMIN_EMAILS = env("ADMIN_EMAILS", "asi@dbca.wa.gov.au").split(",")
 SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "oim.servicedesk@dbca.wa.gov.au")
-API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
 FRESHSERVICE_ENDPOINT = env("FRESHSERVICE_ENDPOINT", None)
 FRESHSERVICE_API_KEY = env("FRESHSERVICE_API_KEY", None)
 # The FreshService hardcoded values below shouldn"t ever change, but allow them to be overridden.
