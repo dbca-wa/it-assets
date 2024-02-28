@@ -27,6 +27,8 @@ ROOT_URLCONF = "itassets.urls"
 WSGI_APPLICATION = "itassets.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 MAPPROXY_URL = env("MAPPROXY_URL", "")
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/"
 
 # Assume Azure blob storage is used for media uploads, unless explicitly set as local storage.
 LOCAL_MEDIA_STORAGE = env("LOCAL_MEDIA_STORAGE", False)
