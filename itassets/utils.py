@@ -176,7 +176,7 @@ def get_blob_json(container, blob):
     return json.loads(tf.read())
 
 
-def get_previous_pages(page_num, count=5):
+def get_previous_pages(page_num, count=3):
     """Convenience function to take a Paginator page object and return the previous `count`
     page numbers, to a minimum of 1.
     """
@@ -191,7 +191,7 @@ def get_previous_pages(page_num, count=5):
     return prev_page_numbers
 
 
-def get_next_pages(page_num, count=5):
+def get_next_pages(page_num, count=3):
     """Convenience function to take a Paginator page object and return the next `count`
     page numbers, to a maximum of the paginator page count.
     """

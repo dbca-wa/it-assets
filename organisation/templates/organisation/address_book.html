@@ -47,59 +47,85 @@
 
             <div class="tab-content" id="tab_content">
                 <div class="tab-pane fade show active" id="users-tab-pane" role="tabpanel" aria-labelledby="users-tab" tabindex="0">
-                    <!-- Search bar -->
-                    <form class="py-3" action="" method="get">
-                        <div class="row">
-                            <div class="hidden-xs col-sm-2 col-md-1">
-                                <label for="search_field">Search:</label>
-                            </div>
-                            <div class="col-xs-12 col-sm-6 col-md-5">
-                                <input id="search_field" type="text" class="form-control" name="q" placeholder="Search name or title or location..." value="{{ query_string }}">
-                            </div>
-                            {% if query_string %}
-                            <div class="col-xs-12 col-sm-4 col-md-6">
-                                {{ object_count }} results
-                            </div>
-                            {% endif %}
+                    <div class="row pt-3">
+
+                        <div class="col">
+                            <!-- Search bar -->
+                            <form action="" method="get">
+                                <div class="row">
+                                    <div class="d-none d-md-block col-md-2">
+                                        <label for="search_field">Search:</label>
+                                    </div>
+                                    <div class="col-sm-12 col-md-10 col-lg-7">
+                                        <input id="search_field" type="text" class="form-control" name="q" placeholder="Search name, title or location" value="{{ query_string }}">
+                                    </div>
+                                    {% if query_string %}
+                                    <div class="d-none d-lg-block col-lg-3">
+                                        {{ object_count }} results
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </form>
                         </div>
-                    </form>
+
+                        {% if object_list %}
+                        <!-- Pagination -->
+                        <div class="col">
+                            <div class="d-flex justify-content-end">
+                            {% include "pagination.html" %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div><!-- .row -->
+
                     {% if object_list %}
-                    {% include "pagination.html" %}
-
-                    <table class="table table-striped table-sm table-hover">
-                        <tbody>
-                        {% for obj in object_list %}
-                            <tr>
-                                <td>
-                                    <span class="fs-4">{{ obj.name }}</span><br>
-                                    {{ obj.title|default_if_none:"" }}
-                                </td>
-                                <td>
-                                    <a href="mailto:{{ obj.email }}">{{ obj.email }}</a><br>
-                                    {% if obj.telephone %}
-                                    Phone: <a href="tel:{{ obj.telephone}}">{{ obj.telephone }}</a><br>
-                                    {% endif %}
-                                    {% if obj.mobile_phone %}
-                                    Mobile: <a href="tel:{{ obj.mobile_phone}}">{{ obj.mobile_phone }}</a>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    Location: {{ obj.get_geo_location_desc|default_if_none:"" }}<br>
-                                    Unit: {{ obj.get_business_unit|default_if_none:"" }}<br>
-                                    Division: {{ obj.get_division|default_if_none:"" }}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-
-                    {% include "pagination.html" %}
+                    <div class="row">
+                        <div class="col">
+                            <table class="table table-striped table-sm table-hover">
+                                <tbody>
+                                {% for obj in object_list %}
+                                    <tr>
+                                        <td>
+                                            <span class="fs-4">{{ obj.name }}</span><br>
+                                            {{ obj.title|default_if_none:"" }}
+                                        </td>
+                                        <td>
+                                            <a href="mailto:{{ obj.email }}">{{ obj.email }}</a><br>
+                                            {% if obj.telephone %}
+                                            Phone: <a href="tel:{{ obj.telephone}}">{{ obj.telephone }}</a><br>
+                                            {% endif %}
+                                            {% if obj.mobile_phone %}
+                                            Mobile: <a href="tel:{{ obj.mobile_phone}}">{{ obj.mobile_phone }}</a>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            Location: {{ obj.get_geo_location_desc|default_if_none:"" }}<br>
+                                            Unit: {{ obj.get_business_unit|default_if_none:"" }}<br>
+                                            Division: {{ obj.get_division|default_if_none:"" }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                     {% endif %}
-                </div>
 
-                <div class="tab-pane fade" id="locations-tab-pane" role="tabpanel" aria-labelledby="locations-tab" tabindex="0">
-                </div>
-            </div>
+                    {% if object_list %}
+                    <div class="row justify-content-md-center">
+                        <div class="col-md-auto">
+                        {% include "pagination.html" %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div><!-- .tab-pane -->
+
+                <div class="tab-pane fade" id="locations-tab-pane" role="tabpanel" aria-labelledby="locations-tab" tabindex="0"></div>
+            </div><!-- .tab-content -->
+
+            <!-- .map element is initially placed outside the tab-pane due to Leaflet rendering weirdness. -->
             <div id="map"></div>
         </div>
     </div>
@@ -178,6 +204,7 @@
     map.addLayer(locations);
     map.fitBounds(locations.getBounds());
 
+    // Move the map div inside the #locations-tab-pane div.
     document.getElementById("locations-tab-pane").appendChild(document.getElementById("map"));
 </script>
 {% endblock extra_js %}
