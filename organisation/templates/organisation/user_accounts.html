@@ -1,5 +1,4 @@
-{% extends "base_b4.html" %}
-{% load bootstrap_pagination %}
+{% extends "base_itassets.html" %}
 
 {% block page_content %}
 <br>
@@ -23,16 +22,18 @@
                 </div>
             </form>
             <hr>
-
             {% if object_list %}
-            {% if page_obj.has_other_pages %}{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}{% endif %}
+            <h3>Search results: {{ object_count }}</h3>
+
+            {% include "pagination.html" %}
+
             <table class="table table-striped table-bordered table-condensed">
                 <thead>
                     <tr>
                         <th>Name</th>
                         <th>Cost centre</th>
                         <th>Microsoft 365 licence</th>
-                        <th>Active Directory account active?</th>
+                        <th>Account active?</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,7 +47,9 @@
                 {% endfor %}
                 </tbody>
             </table>
-            {% if page_obj.has_other_pages %}{% bootstrap_paginate page_obj range=10 show_prev_next="true" show_first_last="true" %}{% endif %}
+
+            {% include "pagination.html" %}
+
             {% endif %}
         </div>
     </div>

@@ -1,17 +1,15 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from dateutil.parser import parse
 from django.conf import settings
+from django.utils import timezone
 from io import BytesIO
 import os
-import pytz
 import re
 import requests
 import unicodecsv as csv
 from itassets.utils import ms_graph_client_token, upload_blob, get_blob_json
 
 from .microsoft_products import MS_PRODUCTS
-
-TZ = pytz.timezone(settings.TIME_ZONE)
 
 
 def title_except(s, exceptions=None, acronyms=None):
@@ -22,7 +20,7 @@ def title_except(s, exceptions=None, acronyms=None):
     if not acronyms:
         acronyms = (
             'OIM', 'IT', 'PVS', 'SFM', 'OT', 'NP', 'FMDP', 'VRM', 'TEC', 'GIS', 'ODG', 'RIA', 'ICT',
-            'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO', 'EHP', 'FSB', 'FMP', 'DBCA', 'ZPA',
+            'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO', 'EHP', 'FSB', 'FMP', 'DBCA', 'ZPA', 'FOI',
         )
     words = s.split()
 
@@ -223,7 +221,7 @@ def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
     if not user_signins:
         return None
 
-    then = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
+    then = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
     accounts = []
     for user in user_signins:
         accounts.append({
@@ -232,7 +230,7 @@ def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
             'id': user['id'],
             'accountEnabled': user['accountEnabled'],
             'assignedLicenses': user['assignedLicenses'],
-            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']).astimezone(TZ) if user['signInActivity']['lastSignInDateTime'] else None,
+            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']).astimezone(settings.TZ) if user['signInActivity']['lastSignInDateTime'] else None,
         })
 
     # Excludes accounts with no 'last signed in' value.

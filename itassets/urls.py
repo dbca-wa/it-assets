@@ -4,7 +4,6 @@ from django.views.generic import RedirectView
 from django.contrib import admin
 from django.contrib.sites.models import Site
 from itassets.api_v3 import urlpatterns as api_v3_urlpatterns
-from registers import urls as registers_urls
 from organisation import urls as organisation_urls
 
 
@@ -17,9 +16,7 @@ admin.site.unregister(Site)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v3/', include(api_v3_urlpatterns)),
-    path('registers/', include(registers_urls)),
     path('organisation/', include(organisation_urls)),
-    path('markdownx/', include('markdownx.urls')),
     path('favicon.ico', RedirectView.as_view(url='{}favicon.ico'.format(settings.STATIC_URL)), name='favicon'),
     path('', RedirectView.as_view(url='/admin')),
 ]

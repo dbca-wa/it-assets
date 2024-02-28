@@ -1,9 +1,18 @@
-{% extends "base_b4.html" %}
+{% extends "base_itassets.html" %}
+
+{% block extra_style %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css" integrity="sha512-ENrTWqddXrLJsQS2A86QmvA17PkJ0GVm1bqj5aTgpeMAfDKN2+SIOLpKG8R/6KkimnhTb+VW5qqUHB/r1zaRgg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css" integrity="sha512-fYyZwU1wU0QWB4Yutd/Pvhy5J1oWAwFXun1pt+Bps04WSe4Aq6tyHlT4+MHSJhD8JlLfgLuC4CbCnX5KHSjyCg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<style>
+    #map { width:100%; height: 640px;}
+</style>
+{% endblock extra_style %}
 
 {% block page_content %}
-<br>
 <div class="container">
-    <div class="row">
+    <div class="row pt-3">
         <div class="col-sm-4">
             <h1>{{ page_title }}</h1>
         </div>
@@ -20,21 +29,182 @@
             </div>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col">
+            <ul class="nav nav-tabs nav-fill" id="tab_labels" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-tab-pane" type="button" role="tab" aria-controls="users-tab-pane" aria-selected="true">
+                        Staff
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations-tab-pane" type="button" role="tab" aria-controls="locations-tab-pane" aria-selected="false">
+                        Locations
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="tab_content">
+                <div class="tab-pane fade show active" id="users-tab-pane" role="tabpanel" aria-labelledby="users-tab" tabindex="0">
+                    <div class="row pt-3">
+
+                        <div class="col">
+                            <!-- Search bar -->
+                            <form action="" method="get">
+                                <div class="row">
+                                    <div class="d-none d-md-block col-md-2">
+                                        <label for="search_field">Search:</label>
+                                    </div>
+                                    <div class="col-sm-12 col-md-10 col-lg-7">
+                                        <input id="search_field" type="text" class="form-control" name="q" placeholder="Search name, title or location" value="{{ query_string }}">
+                                    </div>
+                                    {% if query_string %}
+                                    <div class="d-none d-lg-block col-lg-3">
+                                        {{ object_count }} results
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </form>
+                        </div>
+
+                        {% if object_list %}
+                        <!-- Pagination -->
+                        <div class="col">
+                            <div class="d-flex justify-content-end">
+                            {% include "pagination.html" %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div><!-- .row -->
+
+                    {% if object_list %}
+                    <div class="row">
+                        <div class="col">
+                            <table class="table table-striped table-sm table-hover">
+                                <tbody>
+                                {% for obj in object_list %}
+                                    <tr>
+                                        <td>
+                                            <span class="fs-4">{{ obj.name }}</span><br>
+                                            {{ obj.title|default_if_none:"" }}
+                                        </td>
+                                        <td>
+                                            <a href="mailto:{{ obj.email }}">{{ obj.email }}</a><br>
+                                            {% if obj.telephone %}
+                                            Phone: <a href="tel:{{ obj.telephone}}">{{ obj.telephone }}</a><br>
+                                            {% endif %}
+                                            {% if obj.mobile_phone %}
+                                            Mobile: <a href="tel:{{ obj.mobile_phone}}">{{ obj.mobile_phone }}</a>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            Location: {{ obj.get_geo_location_desc|default_if_none:"" }}<br>
+                                            Unit: {{ obj.get_business_unit|default_if_none:"" }}<br>
+                                            Division: {{ obj.get_division|default_if_none:"" }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if object_list %}
+                    <div class="row justify-content-md-center">
+                        <div class="col-md-auto">
+                        {% include "pagination.html" %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div><!-- .tab-pane -->
+
+                <div class="tab-pane fade" id="locations-tab-pane" role="tabpanel" aria-labelledby="locations-tab" tabindex="0"></div>
+            </div><!-- .tab-content -->
+
+            <!-- .map element is initially placed outside the tab-pane due to Leaflet rendering weirdness. -->
+            <div id="map"></div>
+        </div>
+    </div>
 </div>
-<div id="addressbook-app"></div>
 {% endblock page_content %}
 
 {% block extra_js %}
-<script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.7/js/chunk-vendors.js"></script>
-<script type="text/javascript" src="https://static.dbca.wa.gov.au/sites/address-book/0.3.7/js/addressbook.js"></script>
-<script>
-var addressbook = null;
-window.onload = function () {
-    addressbook = addressbookApp('#addressbook-app', {
-        baseUrl: 'https://static.dbca.wa.gov.au/sites/address-book/0.3.7',
-        itAssetsUrl: 'https://itassets.dbca.wa.gov.au',
-        kmiUrl: 'https://kmi.dbca.wa.gov.au/geoserver/gwc/service/wmts',
+{{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js" integrity="sha512-TiMWaqipFi2Vqt4ugRzsF8oRoGFlFFuqIi30FFxEPNw58Ov9mOy6LgC05ysfkxwLE0xVeZtmr92wVg9siAFRWA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript">
+    // Define baselayer tile layers.
+    const mapboxStreets = L.tileLayer.wms('{{ mapproxy_url }}', {
+      layers: 'mapbox-streets',
+      format: 'image/png',
+      tileSize: 1024,
+      zoomOffset: -2,
     });
-};
+
+    // Define overlay tile layers.
+    const dbcaRegions = L.tileLayer.wms('{{ mapproxy_url }}', {
+      layers: 'dbca-regions',
+      format: 'image/png',
+      transparent: true,
+      opacity: 0.75,
+      tileSize: 1024,
+      zoomOffset: -2,
+    });
+    const dbcaDistricts = L.tileLayer.wms('{{ mapproxy_url }}', {
+      layers: 'dbca-districts',
+      format: 'image/png',
+      transparent: true,
+      opacity: 0.75,
+      tileSize: 1024,
+      zoomOffset: -2,
+    });
+
+    // Define map.
+    var map = L.map('map', {
+        crs: L.CRS.EPSG4326,
+        center: [-31.96, 115.87],
+        minZoom: 4,
+        maxZoom: 18,
+        layers: [mapboxStreets, dbcaRegions],  // Sets default selections.
+        attributionControl: false,
+    });
+
+    // Define layer groups.
+    const baseMaps = {
+        "Place names": mapboxStreets,
+    };
+    const overlayMaps = {
+        "DBCA regions": dbcaRegions,
+        "DBCA districts": dbcaDistricts,
+    };
+
+    // Define layer control.
+    L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+    // Define scale bar
+    L.control.scale({maxWidth: 500, imperial: false}).addTo(map);
+
+    // Function to define hover effect for location points.
+    function locationHover(feature, layer) {
+        layer.bindTooltip(feature.properties.ascender_desc, {className: 'leaflet-tooltip-wide'});
+        layer.bindPopup(`<a href="${'{% url "address_book" %}'}?q=${feature.properties.ascender_desc}">${feature.properties.ascender_desc}</a>`);
+    }
+
+    // Add locations to the map display and zoom to their bounds.
+    const geojsonFeatures = JSON.parse('{{ locations_geojson|escapejs }}');
+    const locationsLayer = L.geoJson(geojsonFeatures, {
+        onEachFeature: locationHover
+    });
+    const locations = L.markerClusterGroup();
+    locations.addLayer(locationsLayer);
+    map.addLayer(locations);
+    map.fitBounds(locations.getBounds());
+
+    // Move the map div inside the #locations-tab-pane div.
+    document.getElementById("locations-tab-pane").appendChild(document.getElementById("map"));
 </script>
-{% endblock %}
+{% endblock extra_js %}

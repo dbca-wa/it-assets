@@ -5,7 +5,7 @@ from organisation.utils import ms_graph_users
 
 
 class Command(BaseCommand):
-    help = 'Checks the set of department user email values against Azure AD, and deletes '
+    help = 'Checks the set of inactive department user email values against Azure AD, and deletes any having an email not found in Azure'
 
     def handle(self, *args, **options):
         logger = logging.getLogger('organisation')

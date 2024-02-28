@@ -3,7 +3,8 @@ import dj_database_url
 import os
 from pathlib import Path
 import sys
-import tomli
+import tomllib
+from zoneinfo import ZoneInfo
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
@@ -15,16 +16,17 @@ sys.path.insert(0, PROJECT_DIR)
 DEBUG = env("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "PlaceholderSecretKey")
 CSRF_COOKIE_SECURE = env("CSRF_COOKIE_SECURE", False)
-CSRF_COOKIE_HTTPONLY = env("CSRF_COOKIE_HTTPONLY", False)
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", "http://127.0.0.1").split(",")
 SESSION_COOKIE_SECURE = env("SESSION_COOKIE_SECURE", False)
 if not DEBUG:
-    ALLOWED_HOSTS = env("ALLOWED_DOMAINS", "").split(",")
+    ALLOWED_HOSTS = env("ALLOWED_HOSTS", "").split(",")
 else:
     ALLOWED_HOSTS = ["*"]
 INTERNAL_IPS = ["127.0.0.1", "::1"]
 ROOT_URLCONF = "itassets.urls"
 WSGI_APPLICATION = "itassets.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+MAPPROXY_URL = env("MAPPROXY_URL", "")
 
 # Assume Azure blob storage is used for media uploads, unless explicitly set as local storage.
 LOCAL_MEDIA_STORAGE = env("LOCAL_MEDIA_STORAGE", False)
@@ -50,13 +52,8 @@ INSTALLED_APPS = (
     "django.contrib.sites",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    # Third-party applications:
     "django_extensions",
-    "crispy_forms",
     "webtemplate_dbca",
-    "bootstrap_pagination",
-    "markdownx",
-    # Project applications:
     "organisation",
     "registers",
 )
@@ -96,13 +93,26 @@ TEMPLATES = [
         },
     }
 ]
+SERIALIZATION_MODULES = {
+    "geojson": "django.contrib.gis.serializers.geojson",
+}
+
+# Caching config
+REDIS_CACHE_HOST = env("REDIS_CACHE_HOST", "")
+if REDIS_CACHE_HOST:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_CACHE_HOST,
+        }
+    }
+API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
 
 ADMIN_EMAILS = env("ADMIN_EMAILS", "asi@dbca.wa.gov.au").split(",")
 SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "oim.servicedesk@dbca.wa.gov.au")
-API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
 FRESHSERVICE_ENDPOINT = env("FRESHSERVICE_ENDPOINT", None)
 FRESHSERVICE_API_KEY = env("FRESHSERVICE_API_KEY", None)
-# The FreshService hardcoded values below shouldn"t ever change, but allow them to be overridden.
+# The FreshService hardcoded values below shouldn't ever change, but allow them to be overridden.
 FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID = env("FRESHSERVICE_IT_SYSTEM_ASSET_TYPE_ID", 75000295285)
 FRESHSERVICE_NETWORK_CLIENT_ASSET_TYPE_ID = env("FRESHSERVICE_NETWORK_CLIENT_ASSET_TYPE_ID", 75000346887)
 FRESHSERVICE_DEVICE_ASSET_TYPE_ID = env("FRESHSERVICE_DEVICE_ASSET_TYPE_ID", 75000295286)
@@ -111,7 +121,7 @@ SITE_ID = 1
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", "")
 ENVIRONMENT_COLOUR = env("ENVIRONMENT_COLOUR", "")
 
-project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
 VERSION_NO = project["tool"]["poetry"]["version"]
 
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
@@ -165,6 +175,7 @@ MEDIA_URL = "/media/"
 USE_I18N = False
 USE_TZ = True
 TIME_ZONE = "Australia/Perth"
+TZ = ZoneInfo(TIME_ZONE)
 LANGUAGE_CODE = "en-us"
 DATE_INPUT_FORMATS = (
     "%d/%m/%Y",
@@ -222,13 +233,12 @@ LOGGING = {
     }
 }
 
-# crispy_forms settings
-CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # Sentry settings
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
 SENTRY_TRANSACTION_SAMPLE_RATE = env("SENTRY_TRANSACTION_SAMPLE_RATE", 0.0)  # Transaction sampling
+SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE", 0.0)  # Proportion of sampled transactions to profile.
 SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
@@ -237,6 +247,7 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         dsn=SENTRY_DSN,
         sample_rate=SENTRY_SAMPLE_RATE,
         traces_sample_rate=SENTRY_TRANSACTION_SAMPLE_RATE,
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
         release=VERSION_NO,
     )

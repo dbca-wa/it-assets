@@ -55,7 +55,7 @@ To build a new Docker image from the `Dockerfile`:
 
 This project includes the following pre-commit hooks:
 
-- TruffleHog (credential scanning): https://github.com/marketplace/actions/trufflehog-oss
+- TruffleHog: https://docs.trufflesecurity.com/docs/scanning-git/precommit-hooks/
 
 Pre-commit hooks may have additional system dependencies to run. Optionally
 install pre-commit hooks locally like so:

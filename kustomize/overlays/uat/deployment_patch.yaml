@@ -186,5 +186,20 @@ spec:
             secretKeyRef:
               name: itassets-env-uat
               key: SENTRY_TRANSACTION_SAMPLE_RATE
+        - name: SENTRY_PROFILES_SAMPLE_RATE
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: SENTRY_PROFILES_SAMPLE_RATE
         - name: SENTRY_ENVIRONMENT
           value: "uat"
+        - name: MAPPROXY_URL
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: MAPPROXY_URL
+        - name: REDIS_CACHE_HOST
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: REDIS_CACHE_HOST
