@@ -34,12 +34,14 @@ class ApiTestCase(TestCase):
             email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             account_type=2,  # Permanent
             cost_centre=self.cc1,
+            assigned_licences=['MICROSOFT 365 E5'],
         )
         self.user2 = mixer.blend(
             DepartmentUser, active=True,
             email=random_dbca_email, ad_guid=uuid1, in_sync=False,
             account_type=3,  # Agency contract
             cost_centre=self.cc1,
+            assigned_licences=['MICROSOFT 365 F3'],
         )
         self.inactive_user = mixer.blend(
             DepartmentUser, active=False,
