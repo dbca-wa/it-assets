@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "itassets"
-version = "2.4.17"
+version = "2.4.18"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -24,25 +24,28 @@ pysftp = "0.2.9"
 azure-storage-blob = "12.19.0"
 django-storages = {version = "1.14.2", extras = ["azure"]}
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "1.40.5", extras = ["django"]}
-redis = "5.0.1"
+sentry-sdk = {version = "1.41.0", extras = ["django"]}
+redis = "5.0.3"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.21.0"
+ipython = "^8.22.2"
 ipdb = "^0.13.13"
-black = "^24.1.1"
+black = "^24.2.0"
 pre-commit = "^3.6.2"
-ruff = "^0.2.2"
+ruff = "^0.3.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.ruff]
+[tool.ruff.lint]
 # Enable Pyflakes `E` and `F` codes.
 select = ["E", "F"]
-# Never enforce `E501` (line length violations).
-ignore = ["E501"]
-# Always autofix.
-fix = true
+# Don't enforce `E501` (line length violations).
+# Don't enforce `E722` (bare except).
+ignore = ["E501", "E722"]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+
+[tool.ruff.format]
 exclude = ["__pycache__", "migrations"]
