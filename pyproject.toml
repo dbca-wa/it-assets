@@ -24,15 +24,15 @@ pysftp = "0.2.9"
 azure-storage-blob = "12.19.0"
 django-storages = {version = "1.14.2", extras = ["azure"]}
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "1.40.6", extras = ["django"]}
-redis = "5.0.2"
+sentry-sdk = {version = "1.41.0", extras = ["django"]}
+redis = "5.0.3"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.22.2"
 ipdb = "^0.13.13"
 black = "^24.2.0"
 pre-commit = "^3.6.2"
-ruff = "^0.3.0"
+ruff = "^0.3.2"
 
 [build-system]
 requires = ["poetry-core"]
