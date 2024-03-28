@@ -7,7 +7,7 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-django = "4.2.10"
+django = "4.2.11"
 psycopg2 = "2.9.9"
 dbca-utils = "2.0.2"
 django-extensions = "3.2.3"
@@ -18,21 +18,21 @@ unicodecsv = "0.14.1"
 python-dateutil = "2.8.2"
 webtemplate-dbca = "1.7.0"
 mixer = "7.2.2"
-msal = "1.27.0"
+msal = "1.28.0"
 whitenoise = {version = "6.6.0", extras = ["brotli"]}
 pysftp = "0.2.9"
 azure-storage-blob = "12.19.1"
 django-storages = {version = "1.14.2", extras = ["azure"]}
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "1.42.0", extras = ["django"]}
+sentry-sdk = {version = "1.43.0", extras = ["django"]}
 redis = "5.0.3"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.22.2"
 ipdb = "^0.13.13"
 black = "^24.3.0"
-pre-commit = "^3.6.2"
-ruff = "^0.3.3"
+pre-commit = "^3.7.0"
+ruff = "^0.3.4"
 
 [build-system]
 requires = ["poetry-core"]
