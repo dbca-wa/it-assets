@@ -33,7 +33,7 @@ class AddressBook(LoginRequiredMixin, ListView):
             Location.objects.filter(active=True, point__isnull=False, ascender_desc__isnull=False),
             geometry_field="point",
             srid=4283,
-            fields=["ascender_desc"],
+            fields=["name", "phone", "ascender_desc"],
         )
         return context
 
@@ -52,10 +52,12 @@ class AddressBook(LoginRequiredMixin, ListView):
             queryset = queryset.filter(
                 Q(name__icontains=query_str) |
                 Q(title__icontains=query_str) |
-                Q(ascender_data__geo_location_desc__icontains=query_str)
+                Q(ascender_data__geo_location_desc__icontains=query_str) |
+                Q(telephone__icontains=query_str) |
+                Q(mobile_phone__icontains=query_str)
             )
 
-        queryset = queryset.order_by("email")
+        queryset = queryset.order_by("name")
 
         return queryset
 
