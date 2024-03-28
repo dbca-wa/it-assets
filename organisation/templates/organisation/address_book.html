@@ -190,8 +190,15 @@
 
     // Function to define hover effect for location points.
     function locationHover(feature, layer) {
-        layer.bindTooltip(feature.properties.ascender_desc, {className: 'leaflet-tooltip-wide'});
-        layer.bindPopup(`<a href="${'{% url "address_book" %}'}?q=${feature.properties.ascender_desc}">${feature.properties.ascender_desc}</a>`);
+        layer.bindTooltip(
+            feature.properties.name,
+            {className: 'leaflet-tooltip-wide'}
+        );
+        layer.bindPopup(`
+            <a href="${'{% url "address_book" %}'}?q=${feature.properties.ascender_desc}">${feature.properties.name}</a><br>
+            ${feature.properties.ascender_desc}<br>
+            ${feature.properties.phone}
+        `);
     }
 
     // Add locations to the map display and zoom to their bounds.
