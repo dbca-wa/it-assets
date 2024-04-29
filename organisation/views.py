@@ -52,9 +52,10 @@ class AddressBook(LoginRequiredMixin, ListView):
             queryset = queryset.filter(
                 Q(name__icontains=query_str) |
                 Q(title__icontains=query_str) |
-                Q(ascender_data__geo_location_desc__icontains=query_str) |
                 Q(telephone__icontains=query_str) |
-                Q(mobile_phone__icontains=query_str)
+                Q(mobile_phone__icontains=query_str) |
+                Q(ascender_data__geo_location_desc__icontains=query_str) |
+                Q(ascender_data__clevel5_desc__icontains=query_str)
             )
 
         queryset = queryset.order_by("name")
