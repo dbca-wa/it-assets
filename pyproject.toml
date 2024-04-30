@@ -25,14 +25,14 @@ azure-storage-blob = "12.19.1"
 django-storages = {version = "1.14.2", extras = ["azure"]}
 xlsxwriter = "3.2.0"
 sentry-sdk = {version = "1.45.0", extras = ["django"]}
-redis = "5.0.3"
+redis = "5.0.4"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.23.0"
 ipdb = "^0.13.13"
-black = "^24.3.0"
+black = "^24.4.2"
 pre-commit = "^3.7.0"
-ruff = "^0.3.7"
+ruff = "^0.4.2"
 
 [build-system]
 requires = ["poetry-core"]
