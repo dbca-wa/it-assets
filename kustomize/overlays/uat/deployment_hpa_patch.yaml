@@ -1,0 +1,7 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: itassets-deployment-hpa
+spec:
+  scaleTargetRef:
+    name: itassets-deployment-uat

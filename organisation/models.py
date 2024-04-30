@@ -14,7 +14,7 @@ LOGGER = logging.getLogger('organisation')
 
 
 class DepartmentUser(models.Model):
-    """Represents a user account managed in Active Directory.
+    """Represents a user account managed in Active Directory / Entra ID.
     """
     ACTIVE_FILTER = {'active': True, 'contractor': False}
     # The following choices are intended to match options in Ascender.
@@ -76,7 +76,7 @@ class DepartmentUser(models.Model):
 
     # Fields directly related to the employee, which map to a field in Active Directory.
     active = models.BooleanField(
-        default=True, editable=False, help_text='Account is enabled within Active Directory.')
+        default=True, editable=False, help_text='Account is enabled within Active Directory / Entra ID')
     email = models.EmailField(unique=True, editable=False, help_text='Account email address')
     name = models.CharField(
         max_length=128, verbose_name='display name', help_text='Display name within AD / Outlook')
@@ -156,7 +156,7 @@ class DepartmentUser(models.Model):
     # Azure AD data
     azure_guid = models.CharField(
         max_length=48, unique=True, null=True, blank=True, verbose_name="Azure GUID",
-        editable=False, help_text="Azure Active Directory unique object ID")
+        help_text="Azure Active Directory (Entra ID) unique object ID")
     azure_ad_data = models.JSONField(default=dict, null=True, blank=True, editable=False, help_text="Cache of Azure AD data")
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
     dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Azure AD account is synced to on-prem AD")
@@ -1040,7 +1040,7 @@ class DepartmentUser(models.Model):
                 LOGGER.info(log)
                 self.preferred_name = new_preferred_name
 
-        # Display name (Active Directory / Outlook)
+        # Display name (Active Directory / Entra ID / Outlook)
         # Optional maiden name used for display name (only if the maiden_name field has a value).
         # NOTE: this value is managed by OIM, and does not come from Ascender.
         # This is an exception to our normal rules relating to the source of truth for names.
