@@ -235,7 +235,7 @@ class DepartmentUser(models.Model):
 
     def get_ascender_preferred_name(self):
         if self.ascender_data and 'preferred_name' in self.ascender_data:
-            return self.ascender_data['preferred_name']
+            return self.ascender_data['preferred_name'] or ''
         return ''
 
     def get_position_title(self):
