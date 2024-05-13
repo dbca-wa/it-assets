@@ -21,7 +21,7 @@ mixer = "7.2.2"
 msal = "1.28.0"
 whitenoise = {version = "6.6.0", extras = ["brotli"]}
 pysftp = "0.2.9"
-azure-storage-blob = "12.19.1"
+azure-storage-blob = "12.20.0"
 django-storages = {version = "1.14.2", extras = ["azure"]}
 xlsxwriter = "3.2.0"
 sentry-sdk = {version = "1.45.0", extras = ["django"]}
