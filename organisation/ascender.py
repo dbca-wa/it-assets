@@ -405,6 +405,8 @@ def ascender_user_import_all():
     employee_records = ascender_employees_fetch_all()
 
     for employee_id, jobs in employee_records.items():
+        if not jobs:
+            continue
         # BUSINESS RULE: the "first" object in the list of Ascender jobs for each user is the current one.
         # Jobs are sorted via the `ascender_job_sort_key` function.
         job = jobs[0]
@@ -478,6 +480,9 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     """
     LOGGER.info("Querying Ascender database for employee information")
     employee_id, jobs = ascender_employee_fetch(employee_id)
+    if not jobs:
+        LOGGER.warning(f"Ascender employee ID {employee_id} import did not return jobs data")
+        return None
     job = jobs[0]
 
     rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, logging=True)
