@@ -18,6 +18,11 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: DATABASE_URL
+            - name: ASCENDER_DEACTIVATE_EXPIRED
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: ASCENDER_DEACTIVATE_EXPIRED
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:
