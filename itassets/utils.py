@@ -1,5 +1,6 @@
 from azure.storage.blob import BlobServiceClient
 from io import BytesIO
+from django.conf import settings
 from django.db.models import Q
 from django.utils.encoding import smart_str
 import json
@@ -7,6 +8,9 @@ from msal import ConfidentialClientApplication
 import os
 import re
 import requests
+
+
+FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, 'X')
 
 
 def ms_graph_client_token():
@@ -203,3 +207,54 @@ def get_next_pages(page_num, count=3):
                 next_page_numbers.append(i)
 
     return next_page_numbers
+
+
+def get_freshservice_objects(obj_type):
+    """Query the Freshservice v2 API for objects of a defined type.
+    """
+    url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
+    params = {
+        'page': 1,
+        'per_page': 100,
+    }
+    objects = []
+    further_results = True
+
+    while further_results:
+        resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
+
+        if 'link' not in resp.headers:  # No further paginated results.
+            further_results = False
+
+        objects.extend(resp.json()[obj_type])
+        params['page'] += 1
+
+    # Return the list of objects returned.
+    return objects
+
+
+def get_freshservice_object(obj_type, key, value):
+    """Use the Freshservice v2 API to retrieve a single object.
+    Accepts an object type, object attribute to use, and a value to filter on.
+    Returns the first object found, or None.
+    """
+    objects = get_freshservice_objects(obj_type)
+    return next((obj for obj in objects if obj[key] == value), None)
+
+
+def create_freshservice_object(obj_type, data):
+    """Use the Freshservice v2 API to create an object.
+    Accepts an object name (string) and a dict of key values.
+    """
+    url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
+    resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
+    return resp  # Return the response, so we can handle unsuccessful responses.
+
+
+def update_freshservice_object(obj_type, id, data):
+    """Use the Freshservice v2 API to update an object.
+    Accepts an object type name (string), object ID and a dict of key values.
+    """
+    url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
+    resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
+    return resp  # Return the response, so we can handle unsuccessful responses.
