@@ -1,14 +1,23 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.11.8-slim as builder_base_itassets
+FROM python:3.11.9-slim as builder_base_itassets
 MAINTAINER asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
 RUN apt-get update -y \
   && apt-get upgrade -y \
-  && apt-get install -y libmagic-dev gcc binutils gdal-bin proj-bin python3-dev libpq-dev gzip curl \
+  && apt-get install -y libmagic-dev build-essential gcc make binutils gdal-bin proj-bin python3-dev libc-dev libpq-dev gzip wget \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --upgrade pip
+
+# Temporary additional steps to mitigate CVE-2023-45853.
+WORKDIR /zlib
+RUN wget -q https://zlib.net/zlib-1.3.1.tar.gz && tar xvzf zlib-1.3.1.tar.gz
+WORKDIR /zlib/zlib-1.3.1
+RUN ./configure --prefix=/usr/lib --libdir=/usr/lib/x86_64-linux-gnu \
+ && make \
+ && make install \
+ && rm -rf /zlib
 
 # Install Python libs using Poetry.
 FROM builder_base_itassets as python_libs_itassets
