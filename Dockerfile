@@ -6,23 +6,25 @@ LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
 
 RUN apt-get update -y \
   && apt-get upgrade -y \
-  && apt-get install -y libmagic-dev build-essential gcc make binutils gdal-bin proj-bin python3-dev libc-dev libpq-dev gzip wget \
+  && apt-get install -y libmagic-dev gcc binutils gdal-bin proj-bin python3-dev libpq-dev gzip wget \
+  # Additional requirements to build zlibg
+  #&& apt-get install -y build-essential make libc-dev \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --upgrade pip
 
-# Temporary additional steps to mitigate CVE-2023-45853.
-WORKDIR /zlib
-RUN wget -q https://zlib.net/zlib-1.3.1.tar.gz && tar xvzf zlib-1.3.1.tar.gz
-WORKDIR /zlib/zlib-1.3.1
-RUN ./configure --prefix=/usr/lib --libdir=/usr/lib/x86_64-linux-gnu \
- && make \
- && make install \
- && rm -rf /zlib
+# Temporary additional steps to mitigate CVE-2023-45853 (zlibg).
+#WORKDIR /zlib
+#RUN wget -q https://zlib.net/zlib-1.3.1.tar.gz && tar xvzf zlib-1.3.1.tar.gz
+#WORKDIR /zlib/zlib-1.3.1
+#RUN ./configure --prefix=/usr/lib --libdir=/usr/lib/x86_64-linux-gnu \
+# && make \
+# && make install \
+# && rm -rf /zlib
 
 # Install Python libs using Poetry.
 FROM builder_base_itassets as python_libs_itassets
 WORKDIR /app
-ARG POETRY_VERSION=1.7.1
+ARG POETRY_VERSION=1.8.3
 RUN pip install poetry=="${POETRY_VERSION}"
 COPY poetry.lock pyproject.toml ./
 RUN poetry config virtualenvs.create false \
