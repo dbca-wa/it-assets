@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  # AWST: 12:00 on Sunday
+  schedule: "0 4 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: itassets-cronjob
+            args: ["manage.py", "department_users_changes_report", "--emails", "kmsupport@dbca.wa.gov.au"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DATABASE_URL
