@@ -7,6 +7,7 @@ resources:
   - cronjobs/ascender-csv-upload
   - cronjobs/deptusers-audit-email
   - cronjobs/deptusers-audit-employeeid
+  - cronjobs/deptusers-changes-report
   - cronjobs/deptusers-check-ascender
   - cronjobs/deptusers-check-azure
   - cronjobs/deptusers-check-onprem
@@ -34,4 +35,4 @@ patches:
   - path: postgres_fdw_service_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.20
+    newTag: 2.4.21

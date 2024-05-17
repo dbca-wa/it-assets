@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from itassets.utils_freshservice import get_freshservice_objects, create_freshservice_object, update_freshservice_object
+from itassets.utils import get_freshservice_objects, create_freshservice_object, update_freshservice_object
 import logging
 from organisation.utils import ms_graph_users
 

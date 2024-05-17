@@ -3,7 +3,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 import logging
-import psycopg2
+from psycopg import connect
 import random
 import requests
 import string
@@ -143,12 +143,12 @@ EMP_STATUS_MAP = {
 
 
 def get_ascender_connection():
-    """Returns a pyscopg2 connection to the Ascender database.
+    """Returns a database connection to the Ascender database.
     """
-    return psycopg2.connect(
+    return connect(
         host=settings.FOREIGN_DB_HOST,
         port=settings.FOREIGN_DB_PORT,
-        database=settings.FOREIGN_DB_NAME,
+        dbname=settings.FOREIGN_DB_NAME,
         user=settings.FOREIGN_DB_USERNAME,
         password=settings.FOREIGN_DB_PASSWORD,
     )
@@ -180,6 +180,8 @@ def ascender_db_fetch(employee_id=None):
     """Returns an iterator which yields all rows from the Ascender database query.
     Optionally pass employee_id to filter on a single employee.
     """
+    conn = get_ascender_connection()
+    cur = conn.cursor()
     columns = ", ".join(
         f[0] if isinstance(f, (list, tuple)) else f for f in FOREIGN_TABLE_FIELDS
     )
@@ -189,8 +191,6 @@ def ascender_db_fetch(employee_id=None):
         query = f"SELECT {columns} FROM {schema}.{table} WHERE employee_no = '{employee_id}'"
     else:
         query = f"SELECT {columns} FROM {schema}.{table}"
-    conn = get_ascender_connection()
-    cur = conn.cursor()
     cur.execute(query)
 
     while True:
@@ -405,6 +405,8 @@ def ascender_user_import_all():
     employee_records = ascender_employees_fetch_all()
 
     for employee_id, jobs in employee_records.items():
+        if not jobs:
+            continue
         # BUSINESS RULE: the "first" object in the list of Ascender jobs for each user is the current one.
         # Jobs are sorted via the `ascender_job_sort_key` function.
         job = jobs[0]
@@ -478,6 +480,9 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
     """
     LOGGER.info("Querying Ascender database for employee information")
     employee_id, jobs = ascender_employee_fetch(employee_id)
+    if not jobs:
+        LOGGER.warning(f"Ascender employee ID {employee_id} import did not return jobs data")
+        return None
     job = jobs[0]
 
     rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, logging=True)
@@ -882,13 +887,7 @@ OIM Service Desk\n"""
 def ascender_cc_manager_fetch():
     """Returns all records from cc_manager_view.
     """
-    conn = psycopg2.connect(
-        host=settings.FOREIGN_DB_HOST,
-        port=settings.FOREIGN_DB_PORT,
-        database=settings.FOREIGN_DB_NAME,
-        user=settings.FOREIGN_DB_USERNAME,
-        password=settings.FOREIGN_DB_PASSWORD,
-    )
+    conn = get_ascender_connection()
     cursor = conn.cursor()
     cc_manager_query_sql = f'SELECT * FROM "{settings.FOREIGN_SCHEMA}"."{settings.FOREIGN_TABLE_CC_MANAGER}"'
     cursor.execute(cc_manager_query_sql)
