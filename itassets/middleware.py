@@ -7,6 +7,8 @@ LOGGER = logging.getLogger("django")
 
 
 class HealthCheckMiddleware(object):
+    """Middleware to provide healthcheck HTTP endpoints for the system.
+    """
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -20,23 +22,16 @@ class HealthCheckMiddleware(object):
         return self.get_response(request)
 
     def liveness(self, request):
-        """Returns that the server is alive.
+        """Returns that the server is alive and able to serve HTTP responses.
         """
         return HttpResponse("OK")
 
     def readiness(self, request):
-        """Connect to each database and do a generic standard SQL query
-        that doesn't write any data and doesn't depend on any tables
-        being present.
+        """Verifies that the system is connected to the database and is
+        ready to operate.
         """
-        try:
-            cursor = connections["default"].cursor()
-            cursor.execute("SELECT 1;")
-            row = cursor.fetchone()
-            if row is None:
-                return HttpResponseServerError("Database: invalid response")
-        except Exception as e:
-            LOGGER.exception(e)
-            return HttpResponseServerError("Database: unable to connect")
-
+        cursor = connections["default"].cursor()
+        row = cursor.execute("SELECT 1").fetchone()
+        if row is None:
+            return HttpResponseServerError("Database: invalid response")
         return HttpResponse("OK")
