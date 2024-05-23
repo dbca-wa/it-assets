@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: itassets-postgres-fdw-data
 spec:
-  storageClassName: managed-csi-retain
+  storageClassName: managed-csi-retain-zrs
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
