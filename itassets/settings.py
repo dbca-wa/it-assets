@@ -1,4 +1,5 @@
 from dbca_utils.utils import env
+from django.core.exceptions import DisallowedHost
 from django.db.utils import OperationalError
 import dj_database_url
 import os
@@ -239,10 +240,15 @@ LOGGING = {
 
 def sentry_excluded_exceptions(event, hint):
     """Exclude defined class(es) of Exception from being reported to Sentry.
+    These exception classes are generally related to operational or configuration issues,
+    and they are not errors that we want to capture.
     https://docs.sentry.io/platforms/python/configuration/filtering/#filtering-error-events
     """
     # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
     if hint['exc_info'][0] is OperationalError:
+        return None
+    # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
+    elif hint['exc_info'][0] is DisallowedHost:
         return None
 
     return event
