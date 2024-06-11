@@ -234,6 +234,12 @@ LOGGING = {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
+        },
+        # Azure libraries logging.
+        "azure": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
         }
     }
 }
