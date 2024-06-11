@@ -13,7 +13,9 @@ class Command(BaseCommand):
         logger.info("Running Ascender database import")
         # Optionally run this management command in the context of a Sentry cron monitor.
         if settings.SENTRY_CRON_CHECK_ASCENDER:
+            logger.info(f"Applying Sentry Cron Monitor: {settings.SENTRY_CRON_CHECK_ASCENDER}")
             with monitor(monitor_slug=settings.SENTRY_CRON_CHECK_ASCENDER):
                 ascender_user_import_all()
         else:
             ascender_user_import_all()
+        logger.info("Completed")

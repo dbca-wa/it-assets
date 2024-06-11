@@ -229,9 +229,16 @@ LOGGING = {
             "handlers": ["console"],
             "level": "INFO"
         },
+        # Microsoft Authentication Libraries logging.
+        "msal": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Azure libraries logging.
         "azure": {
             "handlers": ["console"],
-            "level": "ERROR",
+            "level": "WARNING",
             "propagate": False,
         }
     }
@@ -244,12 +251,13 @@ def sentry_excluded_exceptions(event, hint):
     and they are not errors that we want to capture.
     https://docs.sentry.io/platforms/python/configuration/filtering/#filtering-error-events
     """
-    # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
-    if hint['exc_info'][0] is OperationalError:
-        return None
-    # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
-    elif hint['exc_info'][0] is DisallowedHost:
-        return None
+    if "exc_info" in hint and hint["exc_info"]:
+        # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
+        if hint["exc_info"][0] is OperationalError:
+            return None
+        # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
+        elif hint["exc_info"][0] is DisallowedHost:
+            return None
 
     return event
 
