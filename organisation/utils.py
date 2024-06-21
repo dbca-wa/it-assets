@@ -297,6 +297,24 @@ def ms_graph_sites(team_sites=True, token=None):
     return sites
 
 
+def ms_graph_site_detail(site_id, token=None):
+    """Query the MS Graph API for details of a single Sharepoint site.
+    Ref: https://learn.microsoft.com/en-us/graph/api/site-get
+    """
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+    }
+    url = f"https://graph.microsoft.com/v1.0/sites/{site_id}"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+
+    return resp.json()
+
+
 def ms_graph_site_storage_usage(period_value="D7", token=None):
     """Query the MS Graph API to get the storage allocated and consumed by SharePoint sites.
     `period_value` is one of D7 (default), D30, D90 or D180. Returns the endpoint response content,
@@ -319,25 +337,39 @@ def ms_graph_site_storage_usage(period_value="D7", token=None):
     return resp.content
 
 
-def ms_graph_site_storage_summary(ds=None):
+def ms_graph_site_storage_summary(ds=None, token=None):
     """Parses the current SharePoint site usage report, and returns a subset of storage usage data.
     """
-    storage_usage = ms_graph_site_storage_usage()
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+
+    storage_usage = ms_graph_site_storage_usage(token=token)
     storage_csv = storage_usage.splitlines()
-    headers = storage_csv[0].split(b",")
-    headers = [h.decode() for h in headers]
+    header_row = storage_csv[0].split(b",")
+    header_row = [h.decode("utf-8-sig") for h in header_row]  # Decode without byte order mark.
     if not ds:  # Default to today's date.
         ds = datetime.today().strftime("%Y-%m-%d")
 
     f = BytesIO()
     writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
-    writer.writerow([headers[0], headers[2], headers[5], headers[6], headers[10]])
+    writer.writerow([header_row[0], header_row[2], header_row[5], header_row[6], header_row[10]])
     for row in storage_csv[1:]:
-        row = row.split(b",")
-        row = [i.decode() for i in row]
+        row = row.decode()
+        row = row.split(",")
+        # We're only interested in some of the report output.
         if int(row[10]) >= 1024 * 1024 * 1024:  # Only return rows >= 1 GB.
-            # We're only interested in some of the report output.
-            writer.writerow([row[0], row[2].replace("https://dpaw.sharepoint.com/", ""), row[5], int(row[6]), int(row[10])])
+            # TEMP FIX: Microsoft reported an issue where usage reports are incomplete for Sharepoint.
+            # Query each site ID to get the site URL.
+            # Ref: https://stackoverflow.com/a/77550299/14508
+            site_id = row[1]
+            try:
+                site_json = ms_graph_site_detail(site_id, token)
+                site_url = site_json["webUrl"].replace("https://dpaw.sharepoint.com", "")
+            except:
+                site_url = ""
+            writer.writerow([row[0], site_url, row[5], int(row[6]), int(row[10])])
 
     f.seek(0)
     blob_name = f"storage/site_storage_usage_{ds}.csv"
