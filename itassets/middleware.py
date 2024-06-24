@@ -1,9 +1,5 @@
 from django.db import connections
 from django.http import HttpResponse, HttpResponseServerError
-import logging
-
-
-LOGGER = logging.getLogger("django")
 
 
 class HealthCheckMiddleware(object):
