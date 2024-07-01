@@ -19,7 +19,7 @@ python-dateutil = "2.8.2"
 webtemplate-dbca = "1.7.0"
 mixer = "7.2.2"
 msal = "1.29.0"
-whitenoise = {version = "6.6.0", extras = ["brotli"]}
+whitenoise = {version = "6.7.0", extras = ["brotli"]}
 pysftp = "0.2.9"
 azure-storage-blob = "12.20.0"
 django-storages = {version = "1.14.3", extras = ["azure"]}
@@ -35,15 +35,3 @@ pre-commit = "^3.7.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.ruff.lint]
-# Enable Pyflakes `E` and `F` codes.
-select = ["E", "F"]
-# Don't enforce `E501` (line length violations).
-# Don't enforce `E722` (bare except).
-ignore = ["E501", "E722"]
-# Allow fix for all enabled rules (when `--fix`) is provided.
-fixable = ["ALL"]
-
-[tool.ruff.format]
-exclude = ["__pycache__", "migrations"]
