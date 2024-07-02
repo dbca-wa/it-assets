@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.11.9-slim as builder_base_itassets
-MAINTAINER asi@dbca.wa.gov.au
-LABEL org.opencontainers.image.source https://github.com/dbca-wa/it-assets
+FROM python:3.11.9-slim AS builder_base_itassets
+LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
+LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
 RUN apt-get update -y \
   && apt-get upgrade -y \
   && apt-get install -y libmagic-dev gcc binutils gdal-bin proj-bin python3-dev libpq-dev gzip \
   && rm -rf /var/lib/apt/lists/* \
-  && pip install --upgrade pip
+  && pip install --root-user-action=ignore --upgrade pip
 
 # Temporary additional steps to mitigate CVE-2023-45853 (zlibg).
 #WORKDIR /zlib
@@ -23,10 +23,10 @@ RUN apt-get update -y \
 # && rm -rf /zlib
 
 # Install Python libs using Poetry.
-FROM builder_base_itassets as python_libs_itassets
+FROM builder_base_itassets AS python_libs_itassets
 WORKDIR /app
 ARG POETRY_VERSION=1.8.3
-RUN pip install poetry=="${POETRY_VERSION}"
+RUN pip install --root-user-action=ignore poetry=="${POETRY_VERSION}"
 COPY poetry.lock pyproject.toml ./
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --only main
