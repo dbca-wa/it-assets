@@ -671,7 +671,12 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         Response code: {resp.status_code}\n
         Response content:\n
         {resp.content}\n"""
-        msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+        msg = EmailMultiAlternatives(
+            subject=log,
+            body=text_content,
+            from_email=settings.NOREPLY_EMAIL,
+            to=settings.ADMIN_EMAILS,
+        )
         msg.send(fail_silently=True)
         return
 
@@ -706,7 +711,12 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         Response code: {resp.status_code}\n
         Response content:\n
         {resp.content}\n"""
-        msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+        msg = EmailMultiAlternatives(
+            subject=log,
+            body=text_content,
+            from_email=settings.NOREPLY_EMAIL,
+            to=settings.ADMIN_EMAILS,
+        )
         msg.send(fail_silently=True)
         return
 
@@ -728,7 +738,12 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         Response code: {resp.status_code}\n
         Response content:\n
         {resp.content}\n"""
-        msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+        msg = EmailMultiAlternatives(
+            subject=log,
+            body=text_content,
+            from_email=settings.NOREPLY_EMAIL,
+            to=settings.ADMIN_EMAILS,
+        )
         msg.send(fail_silently=True)
         return
 
@@ -765,7 +780,12 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         Response code: {resp.status_code}\n
         Response content:\n
         {resp.content}\n"""
-        msg = EmailMultiAlternatives(log, text_content, settings.NOREPLY_EMAIL, settings.ADMIN_EMAILS)
+        msg = EmailMultiAlternatives(
+            subject=log,
+            body=text_content,
+            from_email=settings.NOREPLY_EMAIL,
+            to=settings.ADMIN_EMAILS,
+        )
         msg.send(fail_silently=True)
         return
 
