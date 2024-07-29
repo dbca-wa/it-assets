@@ -32,7 +32,7 @@ ipython = "^8.25.0"
 ipdb = "^0.13.13"
 black = "^24.4.2"
 pre-commit = "^3.7.1"
-ruff = "^0.4.8"
+ruff = "^0.5.5"
 
 [build-system]
 requires = ["poetry-core"]
