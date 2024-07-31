@@ -8,7 +8,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-django = "4.2.14"
+django = "5.0.7"
 psycopg = {version = "3.2.1", extras = ["binary", "pool"]}
 dbca-utils = "2.0.2"
 django-extensions = "3.2.3"
