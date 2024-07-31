@@ -4,4 +4,17 @@ resources:
   - ../../../../template
 nameSuffix: -storage-usage
 patches:
-  - path: patch.yaml
+  - target:
+      kind: CronJob
+      name: itassets-cronjob
+    path: patch.yaml
+  # Patch the CronJob container name
+  - target:
+      kind: CronJob
+      name: itassets-cronjob
+    options:
+      allowNameChange: true
+    patch: |-
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/name
+        value: itassets-cronjob-storage-usage

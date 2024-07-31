@@ -1,14 +1,15 @@
 [tool.poetry]
 name = "itassets"
-version = "2.4.23"
+version = "2.4.24"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-django = "4.2.11"
-psycopg = {version = "3.1.19", extras = ["binary", "pool"]}
+django = "4.2.14"
+psycopg = {version = "3.2.1", extras = ["binary", "pool"]}
 dbca-utils = "2.0.2"
 django-extensions = "3.2.3"
 python-dotenv = "1.0.1"
@@ -16,36 +17,22 @@ dj-database-url = "2.2.0"
 gunicorn = "22.0.0"
 unicodecsv = "0.14.1"
 python-dateutil = "2.8.2"
-webtemplate-dbca = "1.7.0"
+webtemplate-dbca = "1.7.1"
 mixer = "7.2.2"
-msal = "1.28.0"
-whitenoise = {version = "6.6.0", extras = ["brotli"]}
+msal = "1.30.0"
+whitenoise = {version = "6.7.0", extras = ["brotli"]}
 pysftp = "0.2.9"
-azure-storage-blob = "12.20.0"
-django-storages = {version = "1.14.3", extras = ["azure"]}
+azure-storage-blob = "12.21.0"
+django-storages = {version = "1.14.4", extras = ["azure"]}
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "2.5.1", extras = ["django"]}
-redis = "5.0.5"
+sentry-sdk = {version = "2.11.0", extras = ["django"]}
+redis = "5.0.7"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.25.0"
+ipython = "^8.26.0"
 ipdb = "^0.13.13"
-black = "^24.4.2"
-pre-commit = "^3.7.1"
-ruff = "^0.4.8"
+pre-commit = "^3.8.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.ruff.lint]
-# Enable Pyflakes `E` and `F` codes.
-select = ["E", "F"]
-# Don't enforce `E501` (line length violations).
-# Don't enforce `E722` (bare except).
-ignore = ["E501", "E722"]
-# Allow fix for all enabled rules (when `--fix`) is provided.
-fixable = ["ALL"]
-
-[tool.ruff.format]
-exclude = ["__pycache__", "migrations"]
