@@ -261,7 +261,7 @@ def ms_graph_user(azure_guid, token=None):
         "Authorization": "Bearer {}".format(token["access_token"]),
         "ConsistencyLevel": "eventual",
     }
-    url = f"https://graph.microsoft.com/v1.0/user/{azure_guid}"
+    url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}"
     resp = requests.get(url, headers=headers)
     return resp
 
