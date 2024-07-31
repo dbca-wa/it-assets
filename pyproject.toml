@@ -19,19 +19,19 @@ unicodecsv = "0.14.1"
 python-dateutil = "2.8.2"
 webtemplate-dbca = "1.7.1"
 mixer = "7.2.2"
-msal = "1.29.0"
+msal = "1.30.0"
 whitenoise = {version = "6.7.0", extras = ["brotli"]}
 pysftp = "0.2.9"
-azure-storage-blob = "12.20.0"
-django-storages = {version = "1.14.3", extras = ["azure"]}
+azure-storage-blob = "12.21.0"
+django-storages = {version = "1.14.4", extras = ["azure"]}
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "2.8.0", extras = ["django"]}
+sentry-sdk = {version = "2.11.0", extras = ["django"]}
 redis = "5.0.7"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.25.0"
+ipython = "^8.26.0"
 ipdb = "^0.13.13"
-pre-commit = "^3.7.1"
+pre-commit = "^3.8.0"
 
 [build-system]
 requires = ["poetry-core"]
