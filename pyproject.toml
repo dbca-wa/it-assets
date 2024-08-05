@@ -26,7 +26,7 @@ azure-storage-blob = "12.21.0"
 django-storages = {version = "1.14.4", extras = ["azure"]}
 xlsxwriter = "3.2.0"
 sentry-sdk = {version = "2.11.0", extras = ["django"]}
-redis = "5.0.7"
+redis = "5.0.8"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.26.0"
