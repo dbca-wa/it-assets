@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "itassets"
-version = "2.4.24"
+version = "2.4.25"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -8,7 +8,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-django = "4.2.14"
+django = "4.2.15"
 psycopg = {version = "3.2.1", extras = ["binary", "pool"]}
 dbca-utils = "2.0.2"
 django-extensions = "3.2.3"
@@ -25,8 +25,8 @@ pysftp = "0.2.9"
 azure-storage-blob = "12.21.0"
 django-storages = {version = "1.14.4", extras = ["azure"]}
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "2.11.0", extras = ["django"]}
-redis = "5.0.7"
+sentry-sdk = {version = "2.12.0", extras = ["django"]}
+redis = "5.0.8"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.26.0"
