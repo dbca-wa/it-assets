@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.11.9-slim AS builder_base_itassets
+FROM python:3.12.4-slim AS builder_base_itassets
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
@@ -26,7 +26,7 @@ RUN apt-get update -y \
 FROM builder_base_itassets AS python_libs_itassets
 WORKDIR /app
 ARG POETRY_VERSION=1.8.3
-RUN pip install --root-user-action=ignore poetry=="${POETRY_VERSION}"
+RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION}
 COPY poetry.lock pyproject.toml ./
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --only main
