@@ -28,7 +28,7 @@ INTERNAL_IPS = ["127.0.0.1", "::1"]
 ROOT_URLCONF = "itassets.urls"
 WSGI_APPLICATION = "itassets.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
-MAPPROXY_URL = env("MAPPROXY_URL", "")
+GEOSERVER_URL = env("GEOSERVER_URL", "")
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/"
 
@@ -225,10 +225,7 @@ LOGGING = {
             "handlers": ["console"],
             "level": "DEBUG" if DEBUG else "INFO",
         },
-        "itassets": {
-            "handlers": ["console"],
-            "level": "INFO"
-        },
+        "itassets": {"handlers": ["console"], "level": "INFO"},
         # Microsoft Authentication Libraries logging.
         "msal": {
             "handlers": ["console"],
@@ -240,8 +237,8 @@ LOGGING = {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
-        }
-    }
+        },
+    },
 }
 
 

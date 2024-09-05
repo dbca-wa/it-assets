@@ -27,12 +27,10 @@ class AddressBook(LoginRequiredMixin, ListView):
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
-        context["mapproxy_url"] = settings.MAPPROXY_URL
+        context["geoserver_url"] = settings.GEOSERVER_URL
         context["locations_geojson"] = serialize(
             "geojson",
-            Location.objects.filter(
-                active=True, point__isnull=False, ascender_desc__isnull=False
-            ),
+            Location.objects.filter(active=True, point__isnull=False, ascender_desc__isnull=False),
             geometry_field="point",
             srid=4283,
             fields=["name", "phone", "ascender_desc"],
@@ -91,9 +89,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
         # Filter the queryset
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
-            queryset = queryset.filter(
-                Q(name__icontains=query_str) | Q(cost_centre__code__icontains=query_str)
-            )
+            queryset = queryset.filter(Q(name__icontains=query_str) | Q(cost_centre__code__icontains=query_str))
 
         # Last filter: Ascender job_end_date value is not in the past, or is absent.
         # We need to turn our queryset into a list comprehension to use the model property for filtering.
@@ -102,10 +98,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
             for du in queryset
             if (
                 (not du.get_job_end_date() or du.get_job_end_date() >= date.today())
-                and (
-                    not du.get_job_start_date()
-                    or du.get_job_start_date() <= date.today()
-                )
+                and (not du.get_job_start_date() or du.get_job_start_date() <= date.today())
             )
         ]
 
@@ -114,9 +107,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
     def get(self, request, *args, **kwargs):
         # Return an Excel spreadsheet if requested.
         if "export" in self.request.GET and self.request.GET["export"]:
-            response = HttpResponse(
-                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             response["Content-Disposition"] = (
                 f"attachment; filename=department_user_m365_licences_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.xlsx"
             )
@@ -161,9 +152,7 @@ class DepartmentUserAPIResource(View):
             queryset = queryset.filter(email__icontains=self.request.GET["q"])
 
         # Tailor the API response.
-        if (
-            "selectlist" in request.GET
-        ):  # Smaller response, for use in HTML select lists.
+        if "selectlist" in request.GET:  # Smaller response, for use in HTML select lists.
             users = [{"id": user.pk, "text": user.email} for user in queryset]
         else:  # Normal API response.
             users = [
@@ -172,17 +161,13 @@ class DepartmentUserAPIResource(View):
                     "name": user.name,
                     "given_name": user.given_name,
                     "surname": user.surname,
-                    "preferred_name": user.preferred_name
-                    if user.preferred_name
-                    else None,
+                    "preferred_name": user.preferred_name if user.preferred_name else None,
                     "email": user.email,
                     "title": user.title if user.title else None,
                     "telephone": user.telephone if user.telephone else None,
                     "extension": user.extension if user.extension else None,
                     "mobile_phone": user.mobile_phone if user.mobile_phone else None,
-                    "location": {"id": user.location.pk, "name": user.location.name}
-                    if user.location
-                    else {},
+                    "location": {"id": user.location.pk, "name": user.location.name} if user.location else {},
                     "cost_centre": user.cost_centre.code if user.cost_centre else None,
                     "employee_id": user.employee_id
                     if user.employee_id
@@ -216,20 +201,14 @@ class LocationAPIResource(View):
             queryset = queryset.filter(name__icontains=self.request.GET["q"])
 
         # Tailor the API response.
-        if (
-            "selectlist" in request.GET
-        ):  # Smaller response, for use in HTML select lists.
-            locations = [
-                {"id": location.pk, "text": location.name} for location in queryset
-            ]
+        if "selectlist" in request.GET:  # Smaller response, for use in HTML select lists.
+            locations = [{"id": location.pk, "text": location.name} for location in queryset]
         else:
             locations = [
                 {
                     "id": location.pk,
                     "name": location.name,
-                    "point": {"type": "Point", "coordinates": location.point.coords}
-                    if location.point
-                    else {},
+                    "point": {"type": "Point", "coordinates": location.point.coords} if location.point else {},
                     "address": location.address,
                     "pobox": location.pobox,
                     "phone": location.phone,
@@ -288,9 +267,7 @@ class DepartmentUserExport(View):
     """A custom view to export details of active Department users to an Excel spreadsheet."""
 
     def get(self, request, *args, **kwargs):
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         response["Content-Disposition"] = (
             f"attachment; filename=department_users_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.xlsx"
         )
@@ -298,9 +275,9 @@ class DepartmentUserExport(View):
         if "all" in request.GET:  # Return all objects.
             users = DepartmentUser.objects.all()
         else:  # Default to active users only.
-            users = DepartmentUser.objects.filter(
-                **DepartmentUser.ACTIVE_FILTER
-            ).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
+            users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(
+                account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
+            )
 
         response = department_user_export(response, users)
         return response
