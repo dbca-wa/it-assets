@@ -10,7 +10,13 @@ import string
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
-from organisation.models import DepartmentUser, DepartmentUserLog, CostCentre, Location, AscenderActionLog
+from organisation.models import (
+    DepartmentUser,
+    DepartmentUserLog,
+    CostCentre,
+    Location,
+    AscenderActionLog,
+)
 from organisation.utils import title_except, ms_graph_subscribed_sku
 
 LOGGER = logging.getLogger("organisation")
@@ -41,14 +47,23 @@ FOREIGN_TABLE_FIELDS = (
     "paypoint_desc",
     "geo_location_desc",
     "occup_type",
-    ("job_start_date", lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
-    ("job_end_date", lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    (
+        "job_start_date",
+        lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None,
+    ),
+    (
+        "job_end_date",
+        lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None,
+    ),
     "term_reason",
     "work_phone_no",
     "work_mobile_phone_no",
     "email_address",
     "extended_lv",
-    ("ext_lv_end_date", lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None),
+    (
+        "ext_lv_end_date",
+        lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None,
+    ),
     "licence_type",
     "manager_emp_no",
     "manager_name",
@@ -143,8 +158,7 @@ EMP_STATUS_MAP = {
 
 
 def get_ascender_connection():
-    """Returns a database connection to the Ascender database.
-    """
+    """Returns a database connection to the Ascender database."""
     return connect(
         host=settings.FOREIGN_DB_HOST,
         port=settings.FOREIGN_DB_PORT,
@@ -182,9 +196,7 @@ def ascender_db_fetch(employee_id=None):
     """
     conn = get_ascender_connection()
     cur = conn.cursor()
-    columns = ", ".join(
-        f[0] if isinstance(f, (list, tuple)) else f for f in FOREIGN_TABLE_FIELDS
-    )
+    columns = ", ".join(f[0] if isinstance(f, (list, tuple)) else f for f in FOREIGN_TABLE_FIELDS)
     schema = settings.FOREIGN_SCHEMA
     table = settings.FOREIGN_TABLE
     if employee_id:
@@ -203,41 +215,30 @@ def ascender_db_fetch(employee_id=None):
 
 def ascender_job_sort_key(record):
     """
-    Returns an integer value to "sort" a job, based on job end date and employment status type.
-    The calculated score will be lower for jobs that have ended, and modified by where the employment
-    status occurs in a ordered list (STATUS_RANKING). Jobs with no end date or with an end date in the
-    future will have the same initial score, and are then modified by the employment status.
+    Returns an integer value to "sort" a job, based on job end date.
+    Jobs with an end date in the future will be preferenced over jobs with no end date, which will be
+    preferenced over jobs that have already ended.
 
-    1. The initial score is based on the job's end date (closer date == lower score).
-      - If the job has ended, the initial score is calculated using the job's end date.
-      - If the job is not ended or has no end date recorded, the initial score is calculated from tomorrow's date.
-    2. The score is then modified based on emp_status, with values later in the list scoring higher.
+    The score is based on the job's end date:
+    - If the job has ended, the initial score is calculated using the job's end date.
+    - If the job is not ended, the initial score is calculated using the end date times 100.
+    - If the job has no end date recorded, the initial score is calculated using the DATE_MAX value times 10.
     """
     today = datetime.now().date()
-    tomorrow = today + timedelta(days=1)
-
-    #if record["job_end_date"]:
-    #    score = int(record["job_end_date"].replace("-", "")) * 10000
-    #elif not record["job_end_date"]:
-    #    score = int(tomorrow.strftime("%Y%m%d")) * 10000
-    #return score
 
     # Initial score from job_end_date.
-    if record["job_end_date"] and record["job_end_date"] <= today.strftime("%Y-%m-%d"):
-        score = int(record["job_end_date"].replace("-", "")) * 10000
+    if record["job_end_date"] and record["job_end_date"] < today.strftime("%Y-%m-%d"):
+        score = int(record["job_end_date"].replace("-", ""))
+    elif record["job_end_date"] and record["job_end_date"] >= today.strftime("%Y-%m-%d"):
+        score = int(record["job_end_date"].replace("-", "")) * 100
     else:  # No job end date.
-        score = int(tomorrow.strftime("%Y%m%d0000"))
-
-    # Modify score based on emp_status.
-    if record["emp_status"] and record["emp_status"] in STATUS_RANKING:
-        score += (STATUS_RANKING.index(record["emp_status"]) + 1) * 100
+        score = int(DATE_MAX.strftime("%Y%m%d")) * 10
 
     return score
 
 
 def ascender_employee_fetch(employee_id):
-    """Returns a tuple: (employee_id, [sorted employee jobs])
-    """
+    """Returns a tuple: (employee_id, [sorted employee jobs])"""
     ascender_records = ascender_db_fetch(employee_id)
     jobs = []
 
@@ -250,8 +251,7 @@ def ascender_employee_fetch(employee_id):
 
 
 def ascender_employees_fetch_all():
-    """Returns a dict: {'<employee_id>': [sorted employee jobs], ...}
-    """
+    """Returns a dict: {'<employee_id>': [sorted employee jobs], ...}"""
     ascender_records = ascender_db_fetch()
     records = {}
 
@@ -349,7 +349,9 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=
             LOGGER.info(log)
         except:
             # In the event of an error (probably due to a duplicate code), fail gracefully and log the error.
-            log = f"Exception during creation of new cost centre in new Azure AD account process, code {job['paypoint']}"
+            log = (
+                f"Exception during creation of new cost centre in new Azure AD account process, code {job['paypoint']}"
+            )
             LOGGER.exception(log)
             return False
 
@@ -374,7 +376,11 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=
     # Rule: we set a limit for the number of days ahead of their starting date which we
     # allow to create an Azure AD account. If this value is not set (False/None), assume that there is
     # no limit.
-    if job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
+    if (
+        job_start_date
+        and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+        and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0
+    ):
         diff = job_start_date - today
         if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
             # Start start exceeds our limit, abort creating an AD account yet.
@@ -417,7 +423,9 @@ def ascender_user_import_all():
         # Physical locations: if the Ascender physical location doesn't exist in our database, create it.
         # This is out of band to checks whether the user is new or otherwise, because sometimes new locations
         # are added to existing users.
-        if job["geo_location_desc"] and not Location.objects.filter(ascender_desc=job["geo_location_desc"]).exists():  # geo_location_desc must at least have a value.
+        if (
+            job["geo_location_desc"] and not Location.objects.filter(ascender_desc=job["geo_location_desc"]).exists()
+        ):  # geo_location_desc must have a value.
             # Attempt to manually create a new location description from Ascender data.
             try:
                 Location.objects.create(
@@ -440,7 +448,11 @@ def ascender_user_import_all():
 
             # Check if the user already has Ascender data cached. If so, check if the position_no
             # value has changed. In that situation, create a DepartmentUserLog object.
-            if user.ascender_data and "position_no" in user.ascender_data and user.ascender_data["position_no"] != job["position_no"]:
+            if (
+                user.ascender_data
+                and "position_no" in user.ascender_data
+                and user.ascender_data["position_no"] != job["position_no"]
+            ):
                 DepartmentUserLog.objects.create(
                     department_user=user,
                     log={
@@ -468,7 +480,9 @@ def ascender_user_import_all():
             job, cc, job_start_date, licence_type, manager, location = rules_passed
 
             if cc and job_start_date and licence_type and manager and location:
-                LOGGER.info(f"Ascender employee ID {employee_id} does not exist and passed all rules; provisioning new account")
+                LOGGER.info(
+                    f"Ascender employee ID {employee_id} does not exist and passed all rules; provisioning new account"
+                )
                 create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, token)
 
 
@@ -514,36 +528,39 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     email = None
     mail_nickname = None
 
+    if job["first_name"]:
+        first_name = "".join([i.lower() for i in job["first_name"] if i.isalnum()])
+    else:
+        first_name = None
+    if job["preferred_name"]:
+        preferred_name = "".join([i.lower() for i in job["preferred_name"] if i.isalnum()])
+    else:
+        preferred_name = None
+    if job["surname"]:
+        surname = "".join([i.lower() for i in job["surname"] if i.isalnum()])
+    else:
+        surname = None
+    if job["second_name"]:
+        second_name = "".join([i.lower() for i in job["second_name"] if i.isalnum()])
+    else:
+        second_name = None
+
     # New email address generation.
-    # Make no assumption about names (presence or absence). Remove any spaces within name text.
-    if job["preferred_name"] and job["surname"]:
-        pref_name = job["preferred_name"].lower().replace(" ", "")
-        surname = job["surname"].lower().replace(" ", "")
-        if job["second_name"]:
-            sec = job["second_name"].lower().replace(" ", "")
-        else:
-            sec = ""
-        # Patterns used for new email address generation, in order of preference:
+    # Make no assumption about names (presence or absence). Remove any spaces/special characters within name text.
+    if preferred_name and surname:
         email_patterns = [
-            f"{pref_name}.{surname}@dbca.wa.gov.au",
-            f"{pref_name}{sec}.{surname}@dbca.wa.gov.au",
+            f"{preferred_name}.{surname}@dbca.wa.gov.au",
+            f"{preferred_name}{second_name}.{surname}@dbca.wa.gov.au",
         ]
         for pattern in email_patterns:
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
                 break
-    elif job["first_name"] and job["surname"]:
-        first_name = job["first_name"].lower().replace(" ", "")
-        surname = job["surname"].lower().replace(" ", "")
-        if job["second_name"]:
-            sec = job["second_name"].lower().replace(" ", "")
-        else:
-            sec = ""
-        # Patterns used for new email address generation, in order of preference:
+    elif first_name and surname:
         email_patterns = [
             f"{first_name}.{surname}@dbca.wa.gov.au",
-            f"{first_name}{sec}.{surname}@dbca.wa.gov.au",
+            f"{first_name}{second_name}.{surname}@dbca.wa.gov.au",
         ]
         for pattern in email_patterns:
             if not DepartmentUser.objects.filter(email=pattern).exists():
@@ -611,20 +628,26 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         licence_type = "Cloud"
         # Short circuit: no available licences, abort.
         if f3_assignable - f3_consumed <= 0:
-            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})")
+            LOGGER.warning(
+                f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})"
+            )
             return
         if eo_assignable - eo_consumed <= 0:
-            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})")
+            LOGGER.warning(
+                f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})"
+            )
             return
         if sec_assignable - sec_consumed <= 0:
-            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})")
+            LOGGER.warning(
+                f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
+            )
             return
 
+    LOGGER.info(f"Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
+
     # Configuration setting to explicitly allow creation of new AD users.
-    if settings.ASCENDER_CREATE_AZURE_AD:
-        LOGGER.info(f"Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
-    else:
-        LOGGER.info(f"Skipping creation of new Azure AD account: {ascender_record} (ASCENDER_CREATE_AZURE_AD)")
+    if not settings.ASCENDER_CREATE_AZURE_AD:
+        LOGGER.info(f"Skipping creation of new Azure AD account: {ascender_record} (ASCENDER_CREATE_AZURE_AD == False)")
         return
 
     # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
@@ -634,7 +657,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         return
 
     # Ensure that the generated password meets our security complexity requirements.
-    p = list("Pass1234" + "".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12)))
+    p = list(
+        "Pass1234" + "".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12))
+    )
     random.shuffle(p)
     password = "".join(p)
     headers = {
@@ -653,7 +678,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
             "passwordProfile": {
                 "forceChangePasswordNextSignIn": True,
                 "password": password,
-            }
+            },
         }
         resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
@@ -686,7 +711,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         data = {
             "mail": email,
             "employeeId": job["employee_id"],
-            "givenName": job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip(),
+            "givenName": job["preferred_name"].title().strip()
+            if job["preferred_name"]
+            else job["first_name"].title().strip(),
             "surname": job["surname"].title(),
             "jobTitle": title,
             "companyName": cc.code,
@@ -760,9 +787,22 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         elif licence_type == "Cloud":
             data = {
                 "addLicenses": [
-                    {"skuId": MS_PRODUCTS["MICROSOFT 365 F3"], "disabledPlans": [MS_PRODUCTS["EXCHANGE ONLINE KIOSK"],]},
-                    {"skuId": MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], "disabledPlans": []},
-                    {"skuId": MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], "disabledPlans": [MS_PRODUCTS["EXCHANGE ONLINE ARCHIVING"],]},
+                    {
+                        "skuId": MS_PRODUCTS["MICROSOFT 365 F3"],
+                        "disabledPlans": [
+                            MS_PRODUCTS["EXCHANGE ONLINE KIOSK"],
+                        ],
+                    },
+                    {
+                        "skuId": MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"],
+                        "disabledPlans": [],
+                    },
+                    {
+                        "skuId": MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"],
+                        "disabledPlans": [
+                            MS_PRODUCTS["EXCHANGE ONLINE ARCHIVING"],
+                        ],
+                    },
                 ],
                 "removeLicenses": [],
             }
@@ -797,7 +837,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         active=False,
         email=email,
         name=display_name,
-        given_name=job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip(),
+        given_name=job["preferred_name"].title().strip()
+        if job["preferred_name"]
+        else job["first_name"].title().strip(),
         surname=job["surname"].title(),
         preferred_name=job["preferred_name"].title().strip() if job["preferred_name"] else None,
         title=title,
@@ -905,8 +947,7 @@ OIM Service Desk\n"""
 
 
 def ascender_cc_manager_fetch():
-    """Returns all records from cc_manager_view.
-    """
+    """Returns all records from cc_manager_view."""
     conn = get_ascender_connection()
     cursor = conn.cursor()
     cc_manager_query_sql = f'SELECT * FROM "{settings.FOREIGN_SCHEMA}"."{settings.FOREIGN_TABLE_CC_MANAGER}"'
@@ -923,8 +964,7 @@ def ascender_cc_manager_fetch():
 
 
 def update_cc_managers():
-    """Queries cc_manager_view and updates the cost centre manager for each.
-    """
+    """Queries cc_manager_view and updates the cost centre manager for each."""
     records = ascender_cc_manager_fetch()
     for r in records:
         if CostCentre.objects.filter(ascender_code=r[1]).exists():
