@@ -4,9 +4,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 import logging
 from psycopg import connect
-import random
 import requests
-import string
+import secrets
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
@@ -656,12 +655,6 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         LOGGER.info(f"Skipping creation of new Azure AD account for emp ID {ascender_record} (DEBUG)")
         return
 
-    # Ensure that the generated password meets our security complexity requirements.
-    p = list(
-        "Pass1234" + "".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(12))
-    )
-    random.shuffle(p)
-    password = "".join(p)
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "Content-Type": "application/json",
@@ -677,7 +670,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
             "mailNickname": mail_nickname,
             "passwordProfile": {
                 "forceChangePasswordNextSignIn": True,
-                "password": password,
+                # Generated password should always meet our complexity requirements.
+                # Reference: https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
+                "password": secrets.token_urlsafe(16),
             },
         }
         resp = requests.post(url, headers=headers, json=data)
