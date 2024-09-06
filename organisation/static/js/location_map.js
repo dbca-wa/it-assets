@@ -15,14 +15,14 @@ const mapboxStreets = L.tileLayer(
 
 // Define overlay tile layers.
 const dbcaRegions = L.tileLayer(
-  geoserver_wmts_url_overlay + "&layer=cddp:dbca_regions",
+  geoserver_wmts_url_overlay + "&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS",
   {
     tileSize: 1024,
     zoomOffset: -2,
   },
 );
 const dbcaDistricts = L.tileLayer(
-  geoserver_wmts_url_overlay + "&layer=public:dbca_districts_public",
+  geoserver_wmts_url_overlay + "&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_DISTRICTS",
   {
     tileSize: 1024,
     zoomOffset: -2,
