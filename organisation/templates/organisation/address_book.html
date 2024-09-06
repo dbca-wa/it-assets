@@ -1,4 +1,5 @@
 {% extends "base_itassets.html" %}
+{% load static %}
 
 {% block extra_style %}
 {{ block.super }}
@@ -136,82 +137,9 @@
 {{ block.super }}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js" integrity="sha512-TiMWaqipFi2Vqt4ugRzsF8oRoGFlFFuqIi30FFxEPNw58Ov9mOy6LgC05ysfkxwLE0xVeZtmr92wVg9siAFRWA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script type="text/javascript">
-    // Define baselayer tile layers.
-    const mapboxStreets = L.tileLayer.wms('{{ mapproxy_url }}', {
-      layers: 'mapbox-streets',
-      format: 'image/png',
-      tileSize: 1024,
-      zoomOffset: -2,
-    });
-
-    // Define overlay tile layers.
-    const dbcaRegions = L.tileLayer.wms('{{ mapproxy_url }}', {
-      layers: 'dbca-regions',
-      format: 'image/png',
-      transparent: true,
-      opacity: 0.75,
-      tileSize: 1024,
-      zoomOffset: -2,
-    });
-    const dbcaDistricts = L.tileLayer.wms('{{ mapproxy_url }}', {
-      layers: 'dbca-districts',
-      format: 'image/png',
-      transparent: true,
-      opacity: 0.75,
-      tileSize: 1024,
-      zoomOffset: -2,
-    });
-
-    // Define map.
-    var map = L.map('map', {
-        crs: L.CRS.EPSG4326,
-        center: [-31.96, 115.87],
-        minZoom: 4,
-        maxZoom: 18,
-        layers: [mapboxStreets, dbcaRegions],  // Sets default selections.
-        attributionControl: false,
-    });
-
-    // Define layer groups.
-    const baseMaps = {
-        "Place names": mapboxStreets,
-    };
-    const overlayMaps = {
-        "DBCA regions": dbcaRegions,
-        "DBCA districts": dbcaDistricts,
-    };
-
-    // Define layer control.
-    L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-    // Define scale bar
-    L.control.scale({maxWidth: 500, imperial: false}).addTo(map);
-
-    // Function to define hover effect for location points.
-    function locationHover(feature, layer) {
-        layer.bindTooltip(
-            feature.properties.name,
-            {className: 'leaflet-tooltip-wide'}
-        );
-        layer.bindPopup(`
-            <a href="${'{% url "address_book" %}'}?q=${feature.properties.ascender_desc}">${feature.properties.name}</a><br>
-            ${feature.properties.ascender_desc}<br>
-            ${feature.properties.phone}
-        `);
-    }
-
-    // Add locations to the map display and zoom to their bounds.
-    const geojsonFeatures = JSON.parse('{{ locations_geojson|escapejs }}');
-    const locationsLayer = L.geoJson(geojsonFeatures, {
-        onEachFeature: locationHover
-    });
-    const locations = L.markerClusterGroup();
-    locations.addLayer(locationsLayer);
-    map.addLayer(locations);
-    map.fitBounds(locations.getBounds());
-
-    // Move the map div inside the #locations-tab-pane div.
-    document.getElementById("locations-tab-pane").appendChild(document.getElementById("map"));
+<script>
+  const geoserver_url = "{{ geoserver_url }}";
+  const locationFeatures = JSON.parse("{{ locations_geojson|escapejs }}");
 </script>
+<script src="{% static 'js/location_map.js' %}"></script>
 {% endblock extra_js %}
