@@ -112,6 +112,12 @@ if REDIS_CACHE_HOST:
             "LOCATION": REDIS_CACHE_HOST,
         }
     }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    }
 API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
 CACHE_MIDDLEWARE_SECONDS = env("CACHE_MIDDLEWARE_SECONDS", 60)
 
