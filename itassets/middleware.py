@@ -2,8 +2,11 @@ from django.db import connections
 from django.http import HttpResponse, HttpResponseServerError
 
 
-class HealthCheckMiddleware(object):
+class HealthCheckMiddleware:
     """Middleware to provide healthcheck HTTP endpoints for the system.
+    Should be placed at the top of the MIDDLEWARE list so that requests
+    to healthcheck endpoints short-circuit and return a response without
+    passing through further middleware classes.
     """
 
     def __init__(self, get_response):
@@ -18,8 +21,7 @@ class HealthCheckMiddleware(object):
         return self.get_response(request)
 
     def liveness(self, request):
-        """Returns that the server is alive and able to serve HTTP responses.
-        """
+        """Returns that the server is alive and able to serve HTTP responses."""
         return HttpResponse("OK")
 
     def readiness(self, request):

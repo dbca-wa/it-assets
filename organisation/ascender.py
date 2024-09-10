@@ -466,6 +466,7 @@ def ascender_user_import_all():
             user.ascender_data = job
             user.ascender_data_updated = timezone.localtime()
             user.update_from_ascender_data()  # This method calls save()
+            LOGGER.info(f"Updated existing user {user}")
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
             # Azure AD account and DepartmentUser instance for them.

@@ -67,10 +67,12 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.cache.UpdateCacheMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.cache.FetchFromCacheMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "dbca_utils.middleware.SSOLoginMiddleware",
 ]
@@ -110,7 +112,14 @@ if REDIS_CACHE_HOST:
             "LOCATION": REDIS_CACHE_HOST,
         }
     }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    }
 API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
+CACHE_MIDDLEWARE_SECONDS = env("CACHE_MIDDLEWARE_SECONDS", 60)
 
 ADMIN_EMAILS = env("ADMIN_EMAILS", "asi@dbca.wa.gov.au").split(",")
 SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "oim.servicedesk@dbca.wa.gov.au")

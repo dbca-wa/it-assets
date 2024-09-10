@@ -203,3 +203,8 @@ spec:
             secretKeyRef:
               name: itassets-env-uat
               key: REDIS_CACHE_HOST
+        - name: API_RESPONSE_CACHE_SECONDS
+          valueFrom:
+            secretKeyRef:
+              name: itassets-env-uat
+              key: API_RESPONSE_CACHE_SECONDS
