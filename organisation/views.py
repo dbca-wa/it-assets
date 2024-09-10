@@ -28,13 +28,6 @@ class AddressBook(LoginRequiredMixin, ListView):
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
         context["geoserver_url"] = settings.GEOSERVER_URL
-        context["locations_geojson"] = serialize(
-            "geojson",
-            Location.objects.filter(active=True, point__isnull=False, ascender_desc__isnull=False),
-            geometry_field="point",
-            srid=4283,
-            fields=["name", "phone", "ascender_desc"],
-        )
         return context
 
     def get_queryset(self):

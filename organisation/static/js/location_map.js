@@ -29,8 +29,47 @@ const dbcaDistricts = L.tileLayer(
   },
 );
 
+// Function to define hover effect for location points.
+function locationHover(feature, layer) {
+  layer.bindTooltip(
+    feature.properties.name,
+    { className: "leaflet-tooltip-wide" }
+  );
+  layer.bindPopup(`<a href="?q=${feature.properties.ascender_desc}">${feature.properties.name}</a><br>
+${feature.properties.ascender_desc}<br>
+${feature.properties.phone}`);
+}
+
+// Define a clustered layer for DBCA locations, and a GeoJSON layer to contain the data.
+const locationsClustered = L.markerClusterGroup();
+const dbcaLocations = L.geoJSON(
+  null,  // Initially empty.
+  {
+    onEachFeature: locationHover
+  },
+);
+
+// Function to get location data and populate the layer.
+function queryLocationsData() {
+  $.ajax({
+    dataType: "json",
+    url: location_features_url,
+    data: { format: "geojson" },
+    success: function (data) {
+      // Add the device data to the GeoJSON layer.
+      dbcaLocations.addData(data);
+      // Add DBCA locations layer to the map display and zoom to their bounds.
+      locationsClustered.addLayer(dbcaLocations);
+      map.addLayer(locationsClustered);
+      map.fitBounds(dbcaLocations.getBounds());
+    },
+  });
+};
+// Immediately run the function once to get data.
+queryLocationsData();
+
 // Define map.
-const map = L.map('map', {
+const map = L.map("map", {
   crs: L.CRS.EPSG4326,  // WGS 84
   center: [-31.96, 115.87],
   minZoom: 4,
@@ -54,26 +93,11 @@ L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Define scale bar
 L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
 
-// Function to define hover effect for location points.
-function locationHover(feature, layer) {
-  layer.bindTooltip(
-    feature.properties.name,
-    { className: 'leaflet-tooltip-wide' }
-  );
-  layer.bindPopup(`
-<a href="?q=${feature.properties.ascender_desc}">${feature.properties.name}</a><br>
-${feature.properties.ascender_desc}<br>
-${feature.properties.phone}`);
-}
-
-// Add locations to the map display and zoom to their bounds.
-const locationsLayer = L.geoJson(locationFeatures, {
-  onEachFeature: locationHover
+// Move the map div inside the #locations-tab-pane div and redraw it.
+// https://stackoverflow.com/a/63319084/14508
+const mapDiv = document.getElementById("map");
+const mapResizeObserver = new ResizeObserver(() => {
+  map.invalidateSize();
 });
-const locations = L.markerClusterGroup();
-locations.addLayer(locationsLayer);
-map.addLayer(locations);
-map.fitBounds(locations.getBounds());
-
-// Move the map div inside the #locations-tab-pane div.
-document.getElementById("locations-tab-pane").appendChild(document.getElementById("map"));
+document.getElementById("locations-tab-pane").appendChild(mapDiv);
+mapResizeObserver.observe(mapDiv);
