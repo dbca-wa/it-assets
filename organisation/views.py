@@ -203,6 +203,16 @@ class LocationAPIResource(View):
         # Tailor the API response.
         if "selectlist" in request.GET:  # Smaller response, for use in HTML select lists.
             locations = [{"id": location.pk, "text": location.name} for location in queryset]
+        elif "format" in request.GET and request.GET["format"] == "geojson":
+            # Return the API response in GeoJSON format.
+            locations = serialize(
+                "geojson",
+                Location.objects.filter(active=True, point__isnull=False, ascender_desc__isnull=False),
+                geometry_field="point",
+                srid=4283,
+                fields=["id", "name", "address", "phone", "ascender_desc"],
+            )
+            return HttpResponse(content=locations, content_type="application/json")
         else:
             locations = [
                 {
