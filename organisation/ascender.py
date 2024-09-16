@@ -1,22 +1,17 @@
-from datetime import date, datetime, timedelta
+import logging
+import secrets
+from datetime import date, datetime
+
+import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-import logging
 from psycopg import connect
-import requests
-import secrets
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
-from organisation.models import (
-    DepartmentUser,
-    DepartmentUserLog,
-    CostCentre,
-    Location,
-    AscenderActionLog,
-)
-from organisation.utils import title_except, ms_graph_subscribed_sku
+from organisation.models import AscenderActionLog, CostCentre, DepartmentUser, DepartmentUserLog, Location
+from organisation.utils import ms_graph_subscribed_sku, ms_graph_validate_password, title_except
 
 LOGGER = logging.getLogger("organisation")
 DATE_MAX = date(2049, 12, 31)
@@ -645,6 +640,15 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
 
     LOGGER.info(f"Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
 
+    # Generate an account password and validate its complexity.
+    # Reference: https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
+    password = None
+    while password is None:
+        password = secrets.token_urlsafe(20)
+        resp = ms_graph_validate_password(password)
+        if not resp.json()["isValid"]:
+            password = None
+
     # Configuration setting to explicitly allow creation of new AD users.
     if not settings.ASCENDER_CREATE_AZURE_AD:
         LOGGER.info(f"Skipping creation of new Azure AD account: {ascender_record} (ASCENDER_CREATE_AZURE_AD == False)")
@@ -671,9 +675,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
             "mailNickname": mail_nickname,
             "passwordProfile": {
                 "forceChangePasswordNextSignIn": True,
-                # Generated password should always meet our complexity requirements.
-                # Reference: https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
-                "password": secrets.token_urlsafe(16),
+                "password": password,
             },
         }
         resp = requests.post(url, headers=headers, json=data)

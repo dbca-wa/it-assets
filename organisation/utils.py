@@ -1,32 +1,59 @@
+import os
+import re
 from datetime import datetime, timedelta
+from io import BytesIO
+
+import requests
+import unicodecsv as csv
 from dateutil.parser import parse
 from django.conf import settings
 from django.utils import timezone
-from io import BytesIO
-import os
-import re
-import requests
-import unicodecsv as csv
-from itassets.utils import ms_graph_client_token, upload_blob, get_blob_json
+
+from itassets.utils import get_blob_json, ms_graph_client_token, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
 
 
 def title_except(s, exceptions=None, acronyms=None):
-    """Utility function to title-case words in a job title, except for all the exceptions and edge cases.
-    """
+    """Utility function to title-case words in a job title, except for all the exceptions and edge cases."""
     if not exceptions:
-        exceptions = ('the', 'of', 'for', 'and', 'or')
+        exceptions = ("the", "of", "for", "and", "or")
     if not acronyms:
         acronyms = (
-            'OIM', 'IT', 'PVS', 'SFM', 'OT', 'NP', 'FMDP', 'VRM', 'TEC', 'GIS', 'ODG', 'RIA', 'ICT',
-            'RSD', 'CIS', 'PSB', 'FMB', 'CFO', 'BCS', 'CIO', 'EHP', 'FSB', 'FMP', 'DBCA', 'ZPA', 'FOI',
-            'ARP', 'WA', 'HR',
+            "OIM",
+            "IT",
+            "PVS",
+            "SFM",
+            "OT",
+            "NP",
+            "FMDP",
+            "VRM",
+            "TEC",
+            "GIS",
+            "ODG",
+            "RIA",
+            "ICT",
+            "RSD",
+            "CIS",
+            "PSB",
+            "FMB",
+            "CFO",
+            "BCS",
+            "CIO",
+            "EHP",
+            "FSB",
+            "FMP",
+            "DBCA",
+            "ZPA",
+            "FOI",
+            "ARP",
+            "WA",
+            "HR",
         )
     words = s.split()
 
-    if words[0].startswith('A/'):
-        words_title = ['A/' + words[0].replace('A/', '').capitalize()]
+    if words[0].startswith("A/"):
+        words_title = ["A/" + words[0].replace("A/", "").capitalize()]
     elif words[0] in acronyms:
         words_title = [words[0]]
     else:
@@ -35,19 +62,19 @@ def title_except(s, exceptions=None, acronyms=None):
     for word in words[1:]:
         word = word.lower()
 
-        if word.startswith('('):
-            pre = '('
-            word = word.replace('(', '')
+        if word.startswith("("):
+            pre = "("
+            word = word.replace("(", "")
         else:
-            pre = ''
+            pre = ""
 
-        if word.endswith(')'):
-            post = ')'
-            word = word.replace(')', '')
+        if word.endswith(")"):
+            post = ")"
+            word = word.replace(")", "")
         else:
-            post = ''
+            post = ""
 
-        if word.replace(',', '').upper() in acronyms:
+        if word.replace(",", "").upper() in acronyms:
             word = word.upper()
         elif word in exceptions:
             pass
@@ -56,7 +83,7 @@ def title_except(s, exceptions=None, acronyms=None):
 
         words_title.append(pre + word + post)
 
-    return ' '.join(words_title)
+    return " ".join(words_title)
 
 
 def ms_graph_subscribed_skus(token=None):
@@ -76,13 +103,13 @@ def ms_graph_subscribed_skus(token=None):
     resp.raise_for_status()
     j = resp.json()
 
-    while '@odata.nextLink' in j:
-        skus = skus + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
+    while "@odata.nextLink" in j:
+        skus = skus + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
         resp.raise_for_status()
         j = resp.json()
 
-    skus = skus + j['value']  # Final page.
+    skus = skus + j["value"]  # Final page.
     return skus
 
 
@@ -121,44 +148,50 @@ def ms_graph_users(licensed=False, token=None):
     resp.raise_for_status()
     j = resp.json()
 
-    while '@odata.nextLink' in j:
-        users = users + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
+    while "@odata.nextLink" in j:
+        users = users + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
         resp.raise_for_status()
         j = resp.json()
 
-    users = users + j['value']  # Final page
+    users = users + j["value"]  # Final page
     aad_users = []
 
     for user in users:
-        if not user['mail'] or not user['mail'].lower().endswith('@dbca.wa.gov.au'):
+        if not user["mail"] or not user["mail"].lower().endswith("@dbca.wa.gov.au"):
             continue
-        aad_users.append({
-            'objectId': user['id'],
-            'mail': user['mail'].lower(),
-            'userPrincipalName': user['userPrincipalName'],
-            'displayName': user['displayName'] if user['displayName'] else None,
-            'givenName': user['givenName'] if user['givenName'] else None,
-            'surname': user['surname'] if user['surname'] else None,
-            'employeeId': user['employeeId'] if user['employeeId'] else None,
-            'employeeType': user['employeeType'] if user['employeeType'] else None,
-            'jobTitle': user['jobTitle'] if user['jobTitle'] else None,
-            'telephoneNumber': user['businessPhones'][0] if user['businessPhones'] else None,
-            'mobilePhone': user['mobilePhone'] if user['mobilePhone'] else None,
-            'department': user['department'] if user['department'] else None,
-            'companyName': user['companyName'] if user['companyName'] else None,
-            'officeLocation': user['officeLocation'] if user['officeLocation'] else None,
-            'proxyAddresses': [i.lower().replace('smtp:', '') for i in user['proxyAddresses'] if i.lower().startswith('smtp')],
-            'accountEnabled': user['accountEnabled'],
-            'onPremisesSyncEnabled': user['onPremisesSyncEnabled'],
-            'onPremisesSamAccountName': user['onPremisesSamAccountName'],
-            'lastPasswordChangeDateTime': user['lastPasswordChangeDateTime'],
-            'assignedLicenses': [i['skuId'] for i in user['assignedLicenses']],
-            'manager': {'id': user['manager']['id'], 'mail': user['manager']['mail']} if 'manager' in user else None,
-        })
+        aad_users.append(
+            {
+                "objectId": user["id"],
+                "mail": user["mail"].lower(),
+                "userPrincipalName": user["userPrincipalName"],
+                "displayName": user["displayName"] if user["displayName"] else None,
+                "givenName": user["givenName"] if user["givenName"] else None,
+                "surname": user["surname"] if user["surname"] else None,
+                "employeeId": user["employeeId"] if user["employeeId"] else None,
+                "employeeType": user["employeeType"] if user["employeeType"] else None,
+                "jobTitle": user["jobTitle"] if user["jobTitle"] else None,
+                "telephoneNumber": user["businessPhones"][0] if user["businessPhones"] else None,
+                "mobilePhone": user["mobilePhone"] if user["mobilePhone"] else None,
+                "department": user["department"] if user["department"] else None,
+                "companyName": user["companyName"] if user["companyName"] else None,
+                "officeLocation": user["officeLocation"] if user["officeLocation"] else None,
+                "proxyAddresses": [
+                    i.lower().replace("smtp:", "") for i in user["proxyAddresses"] if i.lower().startswith("smtp")
+                ],
+                "accountEnabled": user["accountEnabled"],
+                "onPremisesSyncEnabled": user["onPremisesSyncEnabled"],
+                "onPremisesSamAccountName": user["onPremisesSamAccountName"],
+                "lastPasswordChangeDateTime": user["lastPasswordChangeDateTime"],
+                "assignedLicenses": [i["skuId"] for i in user["assignedLicenses"]],
+                "manager": {"id": user["manager"]["id"], "mail": user["manager"]["mail"]}
+                if "manager" in user
+                else None,
+            }
+        )
 
     if licensed:
-        return [u for u in aad_users if u['assignedLicenses']]
+        return [u for u in aad_users if u["assignedLicenses"]]
     else:
         return aad_users
 
@@ -184,21 +217,21 @@ def ms_graph_users_signinactivity(licensed=False, token=None):
     resp = requests.get(url, headers=headers)
     j = resp.json()
 
-    while '@odata.nextLink' in j:
-        users = users + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
+    while "@odata.nextLink" in j:
+        users = users + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
         resp.raise_for_status()
         j = resp.json()
 
-    users = users + j['value']  # Final page
+    users = users + j["value"]  # Final page
     user_signins = []
 
     for user in users:
         if licensed:
-            if 'signInActivity' in user and user['signInActivity'] and user['assignedLicenses']:
+            if "signInActivity" in user and user["signInActivity"] and user["assignedLicenses"]:
                 user_signins.append(user)
         else:
-            if 'signInActivity' in user and user['signInActivity']:
+            if "signInActivity" in user and user["signInActivity"]:
                 user_signins.append(user)
 
     return user_signins
@@ -225,25 +258,29 @@ def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
     then = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
     accounts = []
     for user in user_signins:
-        accounts.append({
-            'mail': user['mail'],
-            'userPrincipalName': user['userPrincipalName'],
-            'id': user['id'],
-            'accountEnabled': user['accountEnabled'],
-            'assignedLicenses': user['assignedLicenses'],
-            'lastSignInDateTime': parse(user['signInActivity']['lastSignInDateTime']).astimezone(settings.TZ) if user['signInActivity']['lastSignInDateTime'] else None,
-        })
+        accounts.append(
+            {
+                "mail": user["mail"],
+                "userPrincipalName": user["userPrincipalName"],
+                "id": user["id"],
+                "accountEnabled": user["accountEnabled"],
+                "assignedLicenses": user["assignedLicenses"],
+                "lastSignInDateTime": parse(user["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
+                if user["signInActivity"]["lastSignInDateTime"]
+                else None,
+            }
+        )
 
     # Excludes accounts with no 'last signed in' value.
-    dormant_accounts = [i for i in accounts if i['lastSignInDateTime']]
+    dormant_accounts = [i for i in accounts if i["lastSignInDateTime"]]
     # Determine the list of AD accounts not having been signed into for the last number of `days`.
-    dormant_accounts = [i for i in dormant_accounts if i['lastSignInDateTime'] <= then]
+    dormant_accounts = [i for i in dormant_accounts if i["lastSignInDateTime"] <= then]
 
     if licensed:  # Filter the list to accounts having an E5/F3 license assigned.
         inactive_licensed = []
         for i in dormant_accounts:
-            for license in i['assignedLicenses']:
-                if license['skuId'] in [MS_PRODUCTS['MICROSOFT 365 E5'], MS_PRODUCTS['MICROSOFT 365 F3']]:
+            for license in i["assignedLicenses"]:
+                if license["skuId"] in [MS_PRODUCTS["MICROSOFT 365 E5"], MS_PRODUCTS["MICROSOFT 365 F3"]]:
                     inactive_licensed.append(i)
         return inactive_licensed
     else:
@@ -251,8 +288,7 @@ def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
 
 
 def ms_graph_user(azure_guid, token=None):
-    """Query the Microsoft Graph REST API details of a signle Azure AD user account in our tenancy.
-    """
+    """Query the Microsoft Graph REST API details of a signle Azure AD user account in our tenancy."""
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails and returns None.
@@ -263,6 +299,20 @@ def ms_graph_user(azure_guid, token=None):
     }
     url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}"
     resp = requests.get(url, headers=headers)
+    return resp
+
+
+def ms_graph_validate_password(password, token=None):
+    """Query the Microsoft Graph REST API (beta) if a given password string validates complexity requirements."""
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": "Bearer {}".format(token["access_token"]),
+    }
+    url = "https://graph.microsoft.com/beta/users/validatePassword"
+    resp = requests.post(url, headers=headers, json={"password": password})
     return resp
 
 
@@ -284,15 +334,15 @@ def ms_graph_sites(team_sites=True, token=None):
     j = resp.json()
 
     sites = []
-    while '@odata.nextLink' in j:
-        sites = sites + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
+    while "@odata.nextLink" in j:
+        sites = sites + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
         resp.raise_for_status()
         j = resp.json()
 
-    sites = sites + j['value']  # Final page.
+    sites = sites + j["value"]  # Final page.
     if team_sites:
-        sites = [site for site in sites if 'teams' in site['webUrl']]
+        sites = [site for site in sites if "teams" in site["webUrl"]]
 
     return sites
 
@@ -338,8 +388,7 @@ def ms_graph_site_storage_usage(period_value="D7", token=None):
 
 
 def ms_graph_site_storage_summary(ds=None, token=None):
-    """Parses the current SharePoint site usage report, and returns a subset of storage usage data.
-    """
+    """Parses the current SharePoint site usage report, and returns a subset of storage usage data."""
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails and returns None.
@@ -392,7 +441,7 @@ def parse_windows_ts(s):
     100-nanoseconds elapsed since January 1, 1601 (UTC).
     """
     try:
-        match = re.search('(?P<timestamp>[0-9]+)', s)
+        match = re.search("(?P<timestamp>[0-9]+)", s)
         return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
     except:
         return None
@@ -403,16 +452,18 @@ def department_user_ascender_sync(users):
     object of CSV data that should be synced to Ascender.
     """
     f = BytesIO()
-    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding='utf-8')
-    writer.writerow(['EMPLOYEE_ID', 'EMAIL', 'ACTIVE', 'WORK_TELEPHONE', 'LICENCE_TYPE'])
+    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding="utf-8")
+    writer.writerow(["EMPLOYEE_ID", "EMAIL", "ACTIVE", "WORK_TELEPHONE", "LICENCE_TYPE"])
     for user in users:
-        writer.writerow([
-            user.employee_id,
-            user.email.lower(),
-            user.active,
-            user.telephone,
-            user.get_licence(),
-        ])
+        writer.writerow(
+            [
+                user.employee_id,
+                user.email.lower(),
+                user.active,
+                user.telephone,
+                user.get_licence(),
+            ]
+        )
     f.seek(0)
     return f
 
