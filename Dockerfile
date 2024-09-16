@@ -1,50 +1,53 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.12.4-slim AS builder_base_itassets
+FROM python:3.12.6-alpine AS builder_base
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
-RUN apt-get update -y \
-  && apt-get upgrade -y \
-  && apt-get install -y libmagic-dev gcc binutils gdal-bin proj-bin python3-dev libpq-dev gzip \
-  && rm -rf /var/lib/apt/lists/* \
-  && pip install --root-user-action=ignore --upgrade pip
-
-# Temporary additional steps to mitigate CVE-2023-45853 (zlibg).
-#WORKDIR /zlib
-# Additional requirements to build zlibg
-#RUN apt-get update -y \
-#  && apt-get install -y wget build-essential make libc-dev \
-#RUN wget -q https://zlib.net/zlib-1.3.1.tar.gz && tar xvzf zlib-1.3.1.tar.gz
-#WORKDIR /zlib/zlib-1.3.1
-#RUN ./configure --prefix=/usr/lib --libdir=/usr/lib/x86_64-linux-gnu \
-# && make \
-# && make install \
-# && rm -rf /zlib
-
-# Install Python libs using Poetry.
-FROM builder_base_itassets AS python_libs_itassets
-WORKDIR /app
-ARG POETRY_VERSION=1.8.3
-RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION}
-COPY poetry.lock pyproject.toml ./
-RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --only main
-
-# Create a non-root user.
+# Install system requirements to build Python packages.
+RUN apk add --no-cache \
+  gcc \
+  libressl-dev \
+  musl-dev \
+  libffi-dev
+# Create a non-root user to run the application.
 ARG UID=10001
 ARG GID=10001
-RUN groupadd -g "${GID}" appuser \
-  && useradd --no-create-home --no-log-init --uid "${UID}" --gid "${GID}" appuser
+RUN addgroup -g ${GID} appuser \
+  && adduser -H -D -u ${UID} -G appuser appuser
+
+# Install Python libs using Poetry.
+FROM builder_base AS python_libs_itassets
+# Add system dependencies required to use GDAL
+# Ref: https://stackoverflow.com/a/59040511/14508
+RUN apk add --no-cache \
+  gdal \
+  geos \
+  proj \
+  binutils \
+  && ln -s /usr/lib/libproj.so.25 /usr/lib/libproj.so \
+  && ln -s /usr/lib/libgdal.so.35 /usr/lib/libgdal.so \
+  && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so
+WORKDIR /app
+COPY poetry.lock pyproject.toml ./
+ARG POETRY_VERSION=1.8.3
+RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION} \
+  && poetry config virtualenvs.create false \
+  && poetry install --no-interaction --no-ansi --only main
+# Remove system libraries, no longer required.
+RUN apk del \
+  gcc \
+  libressl-dev \
+  musl-dev \
+  libffi-dev
 
 # Install the project.
-FROM python_libs_itassets
+FROM python_libs_itassets AS project_itassets
 COPY gunicorn.py manage.py ./
 COPY itassets ./itassets
 COPY registers ./registers
 COPY organisation ./organisation
 RUN python manage.py collectstatic --noinput
-
 USER ${UID}
 EXPOSE 8080
 CMD ["gunicorn", "itassets.wsgi", "--config", "gunicorn.py"]
