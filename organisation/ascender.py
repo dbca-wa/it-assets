@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-from psycopg import connect
+from psycopg import connect, sql
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
@@ -188,16 +188,31 @@ def ascender_db_fetch(employee_id=None):
     """Returns an iterator which yields all rows from the Ascender database query.
     Optionally pass employee_id to filter on a single employee.
     """
+    if employee_id:
+        # Validate `employee_id`: this value needs be castable as an integer, even though we use it as a string.
+        try:
+            int(employee_id)
+        except ValueError:
+            raise ValueError("Invalid employee ID value")
+
     conn = get_ascender_connection()
     cur = conn.cursor()
-    columns = ", ".join(f[0] if isinstance(f, (list, tuple)) else f for f in FOREIGN_TABLE_FIELDS)
-    schema = settings.FOREIGN_SCHEMA
-    table = settings.FOREIGN_TABLE
+    columns = sql.SQL(",").join(
+        sql.Identifier(f[0]) if isinstance(f, (list, tuple)) else sql.Identifier(f) for f in FOREIGN_TABLE_FIELDS
+    )
+    schema = sql.Identifier(settings.FOREIGN_SCHEMA)
+    table = sql.Identifier(settings.FOREIGN_TABLE)
+    employee_no = sql.Identifier("employee_no")
+
     if employee_id:
-        query = f"SELECT {columns} FROM {schema}.{table} WHERE employee_no = '{employee_id}'"
+        # query = f"SELECT {columns} FROM {schema}.{table} WHERE employee_no = '{employee_id}'"
+        query = sql.SQL("SELECT {columns} FROM {schema}.{table} WHERE {employee_no} = %s").format(
+            columns=columns, schema=schema, table=table, employee_no=employee_no
+        )
+        cur.execute(query, (employee_id,))
     else:
-        query = f"SELECT {columns} FROM {schema}.{table}"
-    cur.execute(query)
+        query = sql.SQL("SELECT {columns} FROM {schema}.{table}").format(columns=columns, schema=schema, table=table)
+        cur.execute(query)
 
     while True:
         row = cur.fetchone()
