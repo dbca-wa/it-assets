@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "itassets"
-version = "2.4.29"
+version = "2.4.30"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -8,8 +8,8 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
-django = "4.2.15"
-psycopg = {version = "3.2.1", extras = ["binary", "pool"]}
+django = "4.2.16"
+psycopg = { version = "3.2.2", extras = ["binary", "pool"] }
 dbca-utils = "2.0.2"
 django-extensions = "3.2.3"
 python-dotenv = "1.0.1"
@@ -20,12 +20,12 @@ python-dateutil = "2.8.2"
 webtemplate-dbca = "1.7.1"
 mixer = "7.2.2"
 msal = "1.31.0"
-whitenoise = {version = "6.7.0", extras = ["brotli"]}
+whitenoise = { version = "6.7.0", extras = ["brotli"] }
 pysftp = "0.2.9"
 azure-storage-blob = "12.22.0"
-django-storages = {version = "1.14.4", extras = ["azure"]}
+django-storages = { version = "1.14.4", extras = ["azure"] }
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "2.14.0", extras = ["django"]}
+sentry-sdk = { version = "2.14.0", extras = ["django"] }
 redis = "5.0.8"
 
 [tool.poetry.group.dev.dependencies]
@@ -33,9 +33,19 @@ ipython = "^8.27.0"
 ipdb = "^0.13.13"
 pre-commit = "^3.8.0"
 
+# Reference: https://docs.astral.sh/ruff/configuration/
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+
+[tool.ruff.lint]
+ignore = [
+  "E501", # Line too long
+  "E722", # Bare except
+]
+
+# Reference: https://www.djlint.com/docs/configuration/
+[tool.djlint]
+profile = "django"
 
 [build-system]
 requires = ["poetry-core"]
