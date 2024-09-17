@@ -278,7 +278,7 @@ def ascender_employees_fetch_all():
     return records
 
 
-def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=False):
+def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_override_email=None, logging=False):
     """Given a passed-in Ascender record and any qualifiers, determine
     whether a new Azure AD account can be provisioned for that user.
     The 'job start date' rule can be optionally bypassed.
@@ -332,7 +332,15 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, logging=
             licence_type = "Cloud"
 
     # Rule: user must have a manager recorded, and that manager must exist in our database.
-    if job["manager_emp_no"] and DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
+    # Partial exception: if the email is specified, we can override the manager in Ascender.
+    # That specifed manager must still exist in our database to proceed.
+    if manager_override_email and DepartmentUser.objects.filter(email=manager_override_email).exists():
+        manager = DepartmentUser.objects.get(email=manager_override_email)
+    elif manager_override_email and not DepartmentUser.objects.filter(email=manager_override_email).exists():
+        if logging:
+            LOGGER.warning(f"Manager with email {manager_override_email} not present in IT Assets, aborting")
+        return False
+    elif job["manager_emp_no"] and DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
         manager = DepartmentUser.objects.get(employee_id=job["manager_emp_no"])
     elif job["manager_emp_no"] and not DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
         if logging:
@@ -496,7 +504,7 @@ def ascender_user_import_all():
                 create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, token)
 
 
-def ascender_user_import(employee_id, ignore_job_start_date=False):
+def ascender_user_import(employee_id, ignore_job_start_date=False, manager_override_email=None):
     """A convenience function to import a single Ascender employee and create an AD account for them.
     This is to allow easier manual intervention where a record goes in after the start date, or an
     old employee returns to work and needs a new account created.
@@ -509,7 +517,7 @@ def ascender_user_import(employee_id, ignore_job_start_date=False):
         return None
     job = jobs[0]
 
-    rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, logging=True)
+    rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True)
     if not rules_passed:
         LOGGER.warning(f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
