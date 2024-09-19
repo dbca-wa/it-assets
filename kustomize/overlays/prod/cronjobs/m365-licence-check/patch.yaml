@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
           - name: itassets-cronjob
-            args: ["manage.py", "check_m365_licence_count", "--emails", "oim.servicedesk@dbca.wa.gov.au,cyber@dbca.wa.gov.au,oiminfrastructure@dbca.wa.gov.au"]
+            args: ["manage.py", "check_m365_licence_count", "--threshold", "10", "--emails", "oim.servicedesk@dbca.wa.gov.au,cyber@dbca.wa.gov.au,oiminfrastructure@dbca.wa.gov.au"]
             env:
             - name: DATABASE_URL
               valueFrom:
