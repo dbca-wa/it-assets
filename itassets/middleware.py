@@ -25,11 +25,18 @@ class HealthCheckMiddleware:
         return HttpResponse("OK")
 
     def readiness(self, request):
-        """Verifies that the system is connected to the database and is
-        ready to operate.
+        """Connect to each database and do a generic standard SQL query
+        that doesn't write any data and doesn't depend on any tables
+        being present.
         """
-        cursor = connections["default"].cursor()
-        row = cursor.execute("SELECT 1").fetchone()
-        if row is None:
-            return HttpResponseServerError("Database: invalid response")
+        try:
+            cursor = connections["default"].cursor()
+            cursor.execute("SELECT 1;")
+            row = cursor.fetchone()
+            cursor.close()
+            if row is None:
+                return HttpResponseServerError("Database: invalid response")
+        except Exception:
+            return HttpResponseServerError("Database: unable to connect")
+
         return HttpResponse("OK")
