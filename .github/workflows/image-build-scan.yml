@@ -80,6 +80,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'image'
+          scanners: 'vuln'
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
