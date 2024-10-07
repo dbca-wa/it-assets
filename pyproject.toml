@@ -25,13 +25,13 @@ pysftp = "0.2.9"
 azure-storage-blob = "12.23.1"
 django-storages = { version = "1.14.4", extras = ["azure"] }
 xlsxwriter = "3.2.0"
-sentry-sdk = { version = "2.14.0", extras = ["django"] }
-redis = "5.1.0"
+sentry-sdk = { version = "2.15.0", extras = ["django"] }
+redis = "5.1.1"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.27.0"
+ipython = "^8.28.0"
 ipdb = "^0.13.13"
-pre-commit = "^3.8.0"
+pre-commit = "^4.0.0"
 
 # Reference: https://docs.astral.sh/ruff/configuration/
 [tool.ruff]
