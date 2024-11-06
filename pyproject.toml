@@ -13,23 +13,23 @@ psycopg = { version = "3.2.3", extras = ["binary", "pool"] }
 dbca-utils = "2.0.2"
 django-extensions = "3.2.3"
 python-dotenv = "1.0.1"
-dj-database-url = "2.2.0"
+dj-database-url = "2.3.0"
 gunicorn = "23.0.0"
 unicodecsv = "0.14.1"
 python-dateutil = "2.8.2"
 webtemplate-dbca = "1.7.1"
 mixer = "7.2.2"
 msal = "1.31.0"
-whitenoise = { version = "6.7.0", extras = ["brotli"] }
+whitenoise = {version = "6.8.2", extras = ["brotli"]}
 pysftp = "0.2.9"
 azure-storage-blob = "12.23.1"
 django-storages = { version = "1.14.4", extras = ["azure"] }
 xlsxwriter = "3.2.0"
 sentry-sdk = {version = "2.17.0", extras = ["django"]}
-redis = "5.1.1"
+redis = "5.2.0"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.28.0"
+ipython = "^8.29.0"
 ipdb = "^0.13.13"
 pre-commit = "^4.0.1"
 
