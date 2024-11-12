@@ -549,19 +549,19 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     if job["first_name"]:
         first_name = "".join([i.lower() for i in job["first_name"] if i.isalnum()])
     else:
-        first_name = None
+        first_name = ""
     if job["preferred_name"]:
         preferred_name = "".join([i.lower() for i in job["preferred_name"] if i.isalnum()])
     else:
-        preferred_name = None
+        preferred_name = ""
     if job["surname"]:
         surname = "".join([i.lower() for i in job["surname"] if i.isalnum()])
     else:
-        surname = None
+        surname = ""
     if job["second_name"]:
         second_name = "".join([i.lower() for i in job["second_name"] if i.isalnum()])
     else:
-        second_name = None
+        second_name = ""
 
     # New email address generation.
     # Make no assumption about names (presence or absence). Remove any spaces/special characters within name text.
