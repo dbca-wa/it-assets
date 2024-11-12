@@ -1,12 +1,14 @@
+import os
+import sys
+import tomllib
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import dj_database_url
 from dbca_utils.utils import env
 from django.core.exceptions import DisallowedHost
 from django.db.utils import OperationalError
-import dj_database_url
-import os
-from pathlib import Path
-import sys
-import tomllib
-from zoneinfo import ZoneInfo
+from redis.exceptions import ConnectionError
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
@@ -263,6 +265,9 @@ def sentry_excluded_exceptions(event, hint):
             return None
         # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
         elif hint["exc_info"][0] is DisallowedHost:
+            return None
+        # Exclude Redis service connection errors.
+        elif hint["exc_info"][0] is ConnectionError:
             return None
 
     return event
