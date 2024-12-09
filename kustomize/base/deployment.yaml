@@ -2,73 +2,81 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: itassets-deployment
+  labels:
+    app: itassets-deployment
 spec:
+  selector:
+    matchLabels:
+      app: itassets-deployment
   strategy:
     type: RollingUpdate
   template:
+    metadata:
+      labels:
+        app: itassets-deployment
     spec:
       containers:
-      - name: itassets
-        image: ghcr.io/dbca-wa/it-assets
-        env:
-        - name: ALLOWED_HOSTS
-          value: ".dbca.wa.gov.au"
-        - name: CSRF_TRUSTED_ORIGINS
-          value: "https://*.dbca.wa.gov.au"
-        - name: CSRF_COOKIE_SECURE
-          value: "True"
-        - name: SESSION_COOKIE_SECURE
-          value: "True"
-        - name: TZ
-          value: "Australia/Perth"
-        resources:
-          requests:
-            memory: "100Mi"
-            cpu: "5m"
-          limits:
-            memory: "4096Mi"
-            cpu: "1000m"
-        startupProbe:
-          httpGet:
-            path: /livez
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 3
-          periodSeconds: 15
-          timeoutSeconds: 10
-          successThreshold: 1
-          failureThreshold: 3
-        livenessProbe:
-          httpGet:
-            path: /livez
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 0
-          periodSeconds: 15
-          successThreshold: 1
-          failureThreshold: 3
-          timeoutSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 0
-          periodSeconds: 15
-          successThreshold: 1
-          failureThreshold: 3
-          timeoutSeconds: 10
-        securityContext:
-          runAsNonRoot: true
-          privileged: false
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
-        volumeMounts:
-          - mountPath: /tmp
-            name: tmpfs-ram
+        - name: itassets
+          image: ghcr.io/dbca-wa/it-assets
+          env:
+            - name: ALLOWED_HOSTS
+              value: ".dbca.wa.gov.au"
+            - name: CSRF_TRUSTED_ORIGINS
+              value: "https://*.dbca.wa.gov.au"
+            - name: CSRF_COOKIE_SECURE
+              value: "True"
+            - name: SESSION_COOKIE_SECURE
+              value: "True"
+            - name: TZ
+              value: "Australia/Perth"
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "5m"
+            limits:
+              memory: "4096Mi"
+              cpu: "1000m"
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 15
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs-ram
       volumes:
         - name: tmpfs-ram
           emptyDir:

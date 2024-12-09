@@ -5,16 +5,16 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: itassets-uat.dbca.wa.gov.au
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: itassets-clusterip-uat
-            port:
-              number: 8080
+    - host: itassets-uat.dbca.wa.gov.au
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: itassets-clusterip-uat
+                port:
+                  number: 8080
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -23,13 +23,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: addressbook-uat.dbca.wa.gov.au
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: itassets-clusterip-uat
-            port:
-              number: 8080
+    - host: addressbook-uat.dbca.wa.gov.au
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: itassets-clusterip-uat
+                port:
+                  number: 8080

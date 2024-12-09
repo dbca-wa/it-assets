@@ -2,209 +2,201 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: itassets-deployment
-  labels:
-    app: itassets-deployment
 spec:
-  selector:
-    matchLabels:
-      app: itassets-deployment
   template:
-    metadata:
-      labels:
-        app: itassets-deployment
     spec:
       containers:
-      - name: itassets
-        imagePullPolicy: Always
-        env:
-        - name: ENVIRONMENT_COLOUR
-          value: "darkorange"
-        - name: ENVIRONMENT_NAME
-          value: "UAT"
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: DATABASE_URL
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: SECRET_KEY
-        - name: ADMIN_EMAILS
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ADMIN_EMAILS
-        - name: EMAIL_HOST
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: EMAIL_HOST
-        - name: AZURE_ACCOUNT_NAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_ACCOUNT_NAME
-        - name: AZURE_ACCOUNT_KEY
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_ACCOUNT_KEY
-        - name: AZURE_CONTAINER
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_CONTAINER
-        - name: AZURE_CONNECTION_STRING
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_CONNECTION_STRING
-        - name: AZURE_TENANT_ID
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: AZURE_TENANT_ID
-        - name: MS_GRAPH_API_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: MS_GRAPH_API_CLIENT_ID
-        - name: MS_GRAPH_API_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: MS_GRAPH_API_CLIENT_SECRET
-        - name: ASCENDER_DEACTIVATE_EXPIRED
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_DEACTIVATE_EXPIRED
-        - name: ASCENDER_CREATE_AZURE_AD
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_CREATE_AZURE_AD
-        - name: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
-        - name: FOREIGN_DB_HOST
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_HOST
-        - name: FOREIGN_DB_PORT
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_PORT
-        - name: FOREIGN_DB_NAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_NAME
-        - name: FOREIGN_DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_USERNAME
-        - name: FOREIGN_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_DB_PASSWORD
-        - name: FOREIGN_SCHEMA
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_SCHEMA
-        - name: FOREIGN_SERVER
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_SERVER
-        - name: FOREIGN_TABLE
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_TABLE
-        - name: FOREIGN_TABLE_CC_MANAGER
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FOREIGN_TABLE_CC_MANAGER
-        - name: FRESHSERVICE_ENDPOINT
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FRESHSERVICE_ENDPOINT
-        - name: FRESHSERVICE_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: FRESHSERVICE_API_KEY
-        - name: ASCENDER_SFTP_HOSTNAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_SFTP_HOSTNAME
-        - name: ASCENDER_SFTP_PORT
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_SFTP_PORT
-        - name: ASCENDER_SFTP_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_SFTP_USERNAME
-        - name: ASCENDER_SFTP_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_SFTP_PASSWORD
-        - name: ASCENDER_SFTP_DIRECTORY
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: ASCENDER_SFTP_DIRECTORY
-        - name: SENTRY_DSN
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: SENTRY_DSN
-        - name: SENTRY_SAMPLE_RATE
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: SENTRY_SAMPLE_RATE
-        - name: SENTRY_TRANSACTION_SAMPLE_RATE
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: SENTRY_TRANSACTION_SAMPLE_RATE
-        - name: SENTRY_PROFILES_SAMPLE_RATE
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: SENTRY_PROFILES_SAMPLE_RATE
-        - name: SENTRY_ENVIRONMENT
-          value: "uat"
-        - name: GEOSERVER_URL
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: GEOSERVER_URL
-        - name: REDIS_CACHE_HOST
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: REDIS_CACHE_HOST
-        - name: API_RESPONSE_CACHE_SECONDS
-          valueFrom:
-            secretKeyRef:
-              name: itassets-env-uat
-              key: API_RESPONSE_CACHE_SECONDS
+        - name: itassets
+          imagePullPolicy: Always
+          env:
+            - name: ENVIRONMENT_COLOUR
+              value: "darkorange"
+            - name: ENVIRONMENT_NAME
+              value: "UAT"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: SECRET_KEY
+            - name: ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ADMIN_EMAILS
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: EMAIL_HOST
+            - name: AZURE_ACCOUNT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: AZURE_ACCOUNT_NAME
+            - name: AZURE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: AZURE_ACCOUNT_KEY
+            - name: AZURE_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: AZURE_CONTAINER
+            - name: AZURE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: AZURE_CONNECTION_STRING
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: AZURE_TENANT_ID
+            - name: MS_GRAPH_API_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: MS_GRAPH_API_CLIENT_ID
+            - name: MS_GRAPH_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: MS_GRAPH_API_CLIENT_SECRET
+            - name: ASCENDER_DEACTIVATE_EXPIRED
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_DEACTIVATE_EXPIRED
+            - name: ASCENDER_CREATE_AZURE_AD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_CREATE_AZURE_AD
+            - name: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+            - name: FOREIGN_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_HOST
+            - name: FOREIGN_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_PORT
+            - name: FOREIGN_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_NAME
+            - name: FOREIGN_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_USERNAME
+            - name: FOREIGN_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_DB_PASSWORD
+            - name: FOREIGN_SCHEMA
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_SCHEMA
+            - name: FOREIGN_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_SERVER
+            - name: FOREIGN_TABLE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_TABLE
+            - name: FOREIGN_TABLE_CC_MANAGER
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FOREIGN_TABLE_CC_MANAGER
+            - name: FRESHSERVICE_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FRESHSERVICE_ENDPOINT
+            - name: FRESHSERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: FRESHSERVICE_API_KEY
+            - name: ASCENDER_SFTP_HOSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_SFTP_HOSTNAME
+            - name: ASCENDER_SFTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_SFTP_PORT
+            - name: ASCENDER_SFTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_SFTP_USERNAME
+            - name: ASCENDER_SFTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_SFTP_PASSWORD
+            - name: ASCENDER_SFTP_DIRECTORY
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: ASCENDER_SFTP_DIRECTORY
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: SENTRY_DSN
+            - name: SENTRY_SAMPLE_RATE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: SENTRY_SAMPLE_RATE
+            - name: SENTRY_TRANSACTION_SAMPLE_RATE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: SENTRY_TRANSACTION_SAMPLE_RATE
+            - name: SENTRY_PROFILES_SAMPLE_RATE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: SENTRY_PROFILES_SAMPLE_RATE
+            - name: SENTRY_ENVIRONMENT
+              value: "uat"
+            - name: GEOSERVER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: GEOSERVER_URL
+            - name: REDIS_CACHE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: REDIS_CACHE_HOST
+            - name: API_RESPONSE_CACHE_SECONDS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: API_RESPONSE_CACHE_SECONDS
