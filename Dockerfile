@@ -26,7 +26,7 @@ RUN apk add --no-cache \
   proj \
   binutils \
   && ln -s /usr/lib/libproj.so.25 /usr/lib/libproj.so \
-  && ln -s /usr/lib/libgdal.so.35 /usr/lib/libgdal.so \
+  && ln -s /usr/lib/libgdal.so.36 /usr/lib/libgdal.so \
   && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so
 WORKDIR /app
 COPY poetry.lock pyproject.toml ./
