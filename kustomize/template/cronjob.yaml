@@ -15,24 +15,24 @@ spec:
         spec:
           restartPolicy: Never
           containers:
-          - name: itassets-cronjob
-            image: ghcr.io/dbca-wa/it-assets
-            command: ["python"]
-            args: ["--version"]
-            env:
-            - name: TZ
-              value: "Australia/Perth"
-            securityContext:
-              runAsNonRoot: true
-              privileged: false
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-              readOnlyRootFilesystem: true
-            volumeMounts:
-              - mountPath: /tmp
-                name: tmpfs-ram
+            - name: itassets-cronjob
+              image: ghcr.io/dbca-wa/it-assets
+              command: ["python"]
+              args: ["--version"]
+              env:
+                - name: TZ
+                  value: "Australia/Perth"
+              securityContext:
+                runAsNonRoot: true
+                privileged: false
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /tmp
+                  name: tmpfs-ram
           volumes:
             - name: tmpfs-ram
               emptyDir:

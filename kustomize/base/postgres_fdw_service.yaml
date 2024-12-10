@@ -6,7 +6,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-  - name: default
-    port: 42
-    protocol: TCP
-    targetPort: 42
+    - name: default
+      port: 42
+      protocol: TCP
+      targetPort: 42

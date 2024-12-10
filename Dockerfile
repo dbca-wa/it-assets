@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.12.6-alpine AS builder_base
+FROM python:3.12.8-alpine AS builder_base
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
@@ -26,11 +26,11 @@ RUN apk add --no-cache \
   proj \
   binutils \
   && ln -s /usr/lib/libproj.so.25 /usr/lib/libproj.so \
-  && ln -s /usr/lib/libgdal.so.35 /usr/lib/libgdal.so \
+  && ln -s /usr/lib/libgdal.so.36 /usr/lib/libgdal.so \
   && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so
 WORKDIR /app
 COPY poetry.lock pyproject.toml ./
-ARG POETRY_VERSION=1.8.3
+ARG POETRY_VERSION=1.8.5
 RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION} \
   && poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --only main

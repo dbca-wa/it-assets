@@ -9,27 +9,27 @@ spec:
   template:
     spec:
       containers:
-      - name: itassets-postgres-fdw
-        image: ghcr.io/dbca-wa/postgres-oracle-fdw:16-3.4
-        imagePullPolicy: IfNotPresent
-        env:
-        - name: TZ
-          value: "Australia/Perth"
-        - name: POSTGRES_DB
-          value: "fdw"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "10m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
-        securityContext:
-          runAsUser: 999
-          privileged: false
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: false
+        - name: itassets-postgres-fdw
+          image: ghcr.io/dbca-wa/postgres-oracle-fdw:16-3.4
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: "Australia/Perth"
+            - name: POSTGRES_DB
+              value: "fdw"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "10m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          securityContext:
+            runAsUser: 999
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
       restartPolicy: Always

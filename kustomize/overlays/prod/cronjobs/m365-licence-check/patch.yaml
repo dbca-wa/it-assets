@@ -10,31 +10,39 @@ spec:
       template:
         spec:
           containers:
-          - name: itassets-cronjob
-            args: ["manage.py", "check_m365_licence_count", "--threshold", "10", "--emails", "oim.servicedesk@dbca.wa.gov.au,cyber@dbca.wa.gov.au,oiminfrastructure@dbca.wa.gov.au"]
-            env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: DATABASE_URL
-            - name: EMAIL_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: EMAIL_HOST
-            - name: AZURE_TENANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: AZURE_TENANT_ID
-            - name: MS_GRAPH_API_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: MS_GRAPH_API_CLIENT_ID
-            - name: MS_GRAPH_API_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: MS_GRAPH_API_CLIENT_SECRET
+            - name: itassets-cronjob
+              args:
+                [
+                  "manage.py",
+                  "check_m365_licence_count",
+                  "--threshold",
+                  "10",
+                  "--emails",
+                  "oim.servicedesk@dbca.wa.gov.au,cyber@dbca.wa.gov.au,oiminfrastructure@dbca.wa.gov.au",
+                ]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: DATABASE_URL
+                - name: EMAIL_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: EMAIL_HOST
+                - name: AZURE_TENANT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: AZURE_TENANT_ID
+                - name: MS_GRAPH_API_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: MS_GRAPH_API_CLIENT_ID
+                - name: MS_GRAPH_API_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: MS_GRAPH_API_CLIENT_SECRET
