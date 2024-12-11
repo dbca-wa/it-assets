@@ -7,7 +7,7 @@ source code repositories managed through our GitHub organisation
 
 This repository takes guidance relating to Secure Software Development from the
 [WA Government Cyber Security
-Policy](https://www.wa.gov.au/system/files/2022-01/WA%20Government%20Cyber%20Security%20Policy.pdf).
+Policy](https://www.wa.gov.au/government/publications/2024-wa-government-cyber-security-policy).
 
 If you believe that you have found a security vulnerability in any DBCA-managed
 repository, please report it to us as described below.
@@ -17,7 +17,7 @@ repository, please report it to us as described below.
 **Please do not report security vulnerabilities through public GitHub issues.**
 
 Instead, please report any security vulnerabilities to
-[OIMSecurity@dbca.wa.gov.au](mailto:OIMSecurity@dbca.wa.gov.au).
+[cyber@dbca.wa.gov.au](mailto:cyber@dbca.wa.gov.au).
 
 You should receive a response within 1-2 business days. If for some reason you
 do not, please follow up via email to ensure we received your original message.
@@ -25,13 +25,13 @@ do not, please follow up via email to ensure we received your original message.
 Please include the requested information listed below (as much as you can provide)
 to help us better understand the nature and scope of the possible issue:
 
-  * Type of issue (e.g. buffer overflow, SQL injection, cross-site scripting, etc.)
-  * Full paths of source file(s) related to the manifestation of the issue
-  * The location of the affected source code (tag/branch/commit or direct URL)
-  * Any special configuration required to reproduce the issue
-  * Step-by-step instructions to reproduce the issue
-  * Proof-of-concept or exploit code (if possible)
-  * Impact of the issue, including how an attacker might exploit the issue
+- Type of issue (e.g. buffer overflow, SQL injection, cross-site scripting, etc.)
+- Full paths of source file(s) related to the manifestation of the issue
+- The location of the affected source code (tag/branch/commit or direct URL)
+- Any special configuration required to reproduce the issue
+- Step-by-step instructions to reproduce the issue
+- Proof-of-concept or exploit code (if possible)
+- Impact of the issue, including how an attacker might exploit the issue
 
 This information will help us triage your report more quickly. Please note that
 we prefer all communications to be in English.
