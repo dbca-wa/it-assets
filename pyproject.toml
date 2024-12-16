@@ -25,8 +25,8 @@ pysftp = "0.2.9"
 azure-storage-blob = "12.24.0"
 django-storages = { version = "1.14.4", extras = ["azure"] }
 xlsxwriter = "3.2.0"
-sentry-sdk = {version = "2.19.0", extras = ["django"]}
-redis = "5.2.0"
+sentry-sdk = {version = "2.19.2", extras = ["django"]}
+redis = "5.2.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.30.0"
