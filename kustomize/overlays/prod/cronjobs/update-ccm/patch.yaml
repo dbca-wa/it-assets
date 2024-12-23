@@ -7,6 +7,8 @@ spec:
   schedule: "1 13 * * 1-5"
   jobTemplate:
     spec:
+      # Database query takes a long time.
+      activeDeadlineSeconds: 600
       template:
         spec:
           containers:
