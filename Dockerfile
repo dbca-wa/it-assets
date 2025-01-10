@@ -29,10 +29,7 @@ RUN apk add --no-cache \
   && ln -s /usr/lib/libgdal.so.36 /usr/lib/libgdal.so \
   && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so
 WORKDIR /app
-COPY LICENSE ./
 COPY poetry.lock pyproject.toml ./
-# COPY license file does not seem to work, but Poetry needs it present.
-RUN touch /app/LICENSE
 ARG POETRY_VERSION=2.0.0
 RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION} \
   && poetry config virtualenvs.create false \
