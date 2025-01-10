@@ -30,7 +30,7 @@ RUN apk add --no-cache \
   && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so
 WORKDIR /app
 COPY poetry.lock pyproject.toml ./
-ARG POETRY_VERSION=1.8.5
+ARG POETRY_VERSION=2.0.0
 RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION} \
   && poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --only main

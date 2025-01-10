@@ -1,37 +1,45 @@
-[tool.poetry]
+[project]
 name = "itassets"
 version = "2.4.32"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
-authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
-license = "Apache-2.0"
-package-mode = false
+authors = [
+  { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
+  { name = "Rocky Chen", email = "rocky.chen@dbca.wa.gov.au" },
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.12,<4.0"
+dependencies = [
+  "django == 4.2.17",
+  "psycopg[binary,pool] == 3.2.3",
+  "dbca-utils == 2.0.3",
+  "django-extensions == 3.2.3",
+  "python-dotenv == 1.0.1",
+  "dj-database-url == 2.3.0",
+  "gunicorn == 23.0.0",
+  "unicodecsv == 0.14.1",
+  "python-dateutil == 2.8.2",
+  "webtemplate-dbca == 1.7.2",
+  "msal == 1.31.1",
+  "whitenoise[brotli] == 6.8.2",
+  "pysftp == 0.2.9",
+  "xlsxwriter == 3.2.0",
+  "sentry-sdk[django] == 2.19.2",
+  "redis == 5.2.1",
+  "django-storages[azure] == 1.14.4",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-django = "4.2.17"
-psycopg = { version = "3.2.3", extras = ["binary", "pool"] }
-dbca-utils = "2.0.3"
-django-extensions = "3.2.3"
-python-dotenv = "1.0.1"
-dj-database-url = "2.3.0"
-gunicorn = "23.0.0"
-unicodecsv = "0.14.1"
-python-dateutil = "2.8.2"
-webtemplate-dbca = "1.7.2"
-mixer = "7.2.2"
-msal = "1.31.1"
-whitenoise = { version = "6.8.2", extras = ["brotli"] }
-pysftp = "0.2.9"
-azure-storage-blob = "12.24.0"
-django-storages = { version = "1.14.4", extras = ["azure"] }
-xlsxwriter = "3.2.0"
-sentry-sdk = {version = "2.19.2", extras = ["django"]}
-redis = "5.2.1"
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.masonry.api"
+
+[tool.poetry]
+package-mode = false
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.31.0"
 ipdb = "^0.13.13"
 pre-commit = "^4.0.1"
+mixer = "^7.2.2"
 
 # Reference: https://docs.astral.sh/ruff/configuration/
 [tool.ruff]
@@ -46,7 +54,3 @@ ignore = [
 # Reference: https://www.djlint.com/docs/configuration/
 [tool.djlint]
 profile = "django"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
