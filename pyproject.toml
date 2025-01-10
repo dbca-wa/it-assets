@@ -6,7 +6,7 @@ authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
   { name = "Rocky Chen", email = "rocky.chen@dbca.wa.gov.au" },
 ]
-license = { file = "LICENSE" }
+license = "Apache-2.0"
 requires-python = ">=3.12,<4.0"
 dependencies = [
   "django == 4.2.17",
