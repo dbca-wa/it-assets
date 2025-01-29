@@ -278,7 +278,7 @@ def ascender_employees_fetch_all():
     return records
 
 
-def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_override_email=None, logging=False):
+def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manager_override_email=None, logging=False):
     """Given a passed-in Ascender record and any qualifiers, determine
     whether a new Azure AD account can be provisioned for that user.
     The 'job start date' rule can be optionally bypassed.
@@ -382,8 +382,9 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_
 
     # Skippable rule: if job_start_date is in the past, skip account creation.
     today = date.today()
-    if ignore_job_start_date and logging:
-        LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
+    if ignore_job_start_date:
+        if logging:
+            LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
     else:
         if job_start_date < today:
             if logging:
@@ -410,12 +411,17 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_
     if job["geo_location_desc"] and Location.objects.filter(ascender_desc=job["geo_location_desc"]).exists():
         location = Location.objects.get(ascender_desc=job["geo_location_desc"])
     else:
-        LOGGER.warning(f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting")
+        if job["geo_location_desc"]:
+            LOGGER.warning(f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting")
+        else:
+            LOGGER.warning("No job physical location recorded, aborting")
         return False
 
     # If all rules have passed, return a tuple containing required values.
     if cc and job_start_date and licence_type and manager and location:
         return (job, cc, job_start_date, licence_type, manager, location)
+    else:
+        return False
 
 
 def ascender_user_import_all():
@@ -489,7 +495,7 @@ def ascender_user_import_all():
             # Ascender record does not exist in our database; conditionally create a new
             # Azure AD account and DepartmentUser instance for them.
             # In this bulk check/create function, we do not ignore any account creation rules.
-            rules_passed = check_ascender_user_account_rules(job, logging=False)
+            rules_passed = validate_ascender_user_account_rules(job, logging=False)
 
             if not rules_passed:
                 continue
@@ -517,7 +523,9 @@ def ascender_user_import(employee_id, ignore_job_start_date=False, manager_overr
         return None
     job = jobs[0]
 
-    rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True)
+    rules_passed = validate_ascender_user_account_rules(
+        job, ignore_job_start_date, manager_override_email, logging=True
+    )
     if not rules_passed:
         LOGGER.warning(f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
@@ -543,9 +551,8 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     job_end_date = None
     if job["job_end_date"] and datetime.strptime(job["job_end_date"], "%Y-%m-%d").date() != DATE_MAX:
         job_end_date = datetime.strptime(job["job_end_date"], "%Y-%m-%d").date()
-    email = None
-    mail_nickname = None
 
+    # Remove all non-alphanumeric characters from all four name fields.
     if job["first_name"]:
         first_name = "".join([i.lower() for i in job["first_name"] if i.isalnum()])
     else:
@@ -563,35 +570,22 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     else:
         second_name = ""
 
-    # New email address generation.
-    # Make no assumption about names (presence or absence). Remove any spaces/special characters within name text.
-    if preferred_name and surname:
-        email_patterns = [
-            f"{preferred_name}.{surname}@dbca.wa.gov.au",
-            f"{preferred_name}{second_name}.{surname}@dbca.wa.gov.au",
-        ]
-        for pattern in email_patterns:
-            if not DepartmentUser.objects.filter(email=pattern).exists():
-                email = pattern
-                mail_nickname = pattern.split("@")[0]
-                break
-    elif first_name and surname:
-        email_patterns = [
-            f"{first_name}.{surname}@dbca.wa.gov.au",
-            f"{first_name}{second_name}.{surname}@dbca.wa.gov.au",
-        ]
-        for pattern in email_patterns:
-            if not DepartmentUser.objects.filter(email=pattern).exists():
-                email = pattern
-                mail_nickname = pattern.split("@")[0]
-                break
-    else:  # No preferred/first name recorded.
-        log = f"Creation of new Azure AD account aborted, first/preferred name absent ({ascender_record})"
+    # Rule: we require values for surname plus first_name and/or preferred_name.
+    if not surname:
+        log = f"Creation of new Azure AD account aborted, surname absent ({ascender_record})"
+        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
+        LOGGER.warning(log)
+        return
+    if not preferred_name and not first_name:
+        log = f"Creation of new Azure AD account aborted, first and preferred name both absent ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
         LOGGER.warning(log)
         return
 
-    if not email and mail_nickname:
+    # New email address generation.
+    email, mail_nickname = generate_valid_dbca_email(surname, preferred_name, first_name, second_name)
+
+    if not (email and mail_nickname):
         # We can't generate a unique email with the supplied information; abort.
         log = f"Creation of new Azure AD account aborted at email step, unable to generate unique email ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
@@ -688,19 +682,19 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         "Content-Type": "application/json",
     }
 
-    # Initially create the Azure AD user with the MS Graph API.
+    # Initially create the bare-minimum Entra ID user with the MS Graph API.
+    url = "https://graph.microsoft.com/v1.0/users"
+    data = {
+        "accountEnabled": False,
+        "displayName": display_name,
+        "userPrincipalName": email,
+        "mailNickname": mail_nickname,
+        "passwordProfile": {
+            "forceChangePasswordNextSignIn": True,
+            "password": password,
+        },
+    }
     try:
-        url = "https://graph.microsoft.com/v1.0/users"
-        data = {
-            "accountEnabled": False,
-            "displayName": display_name,
-            "userPrincipalName": email,
-            "mailNickname": mail_nickname,
-            "passwordProfile": {
-                "forceChangePasswordNextSignIn": True,
-                "password": password,
-            },
-        }
         resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
         resp_json = resp.json()
@@ -727,24 +721,24 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         return
 
     # Next, update the user details with additional information.
+    url = f"https://graph.microsoft.com/v1.0/users/{guid}"
+    data = {
+        "mail": email,
+        "employeeId": job["employee_id"],
+        "givenName": job["preferred_name"].title().strip()
+        if job["preferred_name"]
+        else job["first_name"].title().strip(),
+        "surname": job["surname"].title(),
+        "jobTitle": title,
+        "companyName": cc.code,
+        "department": cc.get_division_name_display(),
+        "officeLocation": location.name,
+        "streetAddress": location.address,
+        "state": "Western Australia",
+        "country": "Australia",
+        "usageLocation": "AU",
+    }
     try:
-        url = f"https://graph.microsoft.com/v1.0/users/{guid}"
-        data = {
-            "mail": email,
-            "employeeId": job["employee_id"],
-            "givenName": job["preferred_name"].title().strip()
-            if job["preferred_name"]
-            else job["first_name"].title().strip(),
-            "surname": job["surname"].title(),
-            "jobTitle": title,
-            "companyName": cc.code,
-            "department": cc.get_division_name_display(),
-            "officeLocation": location.name,
-            "streetAddress": location.address,
-            "state": "Western Australia",
-            "country": "Australia",
-            "usageLocation": "AU",
-        }
         resp = requests.patch(url, headers=headers, json=data)
         resp.raise_for_status()
     except:
@@ -769,9 +763,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         return
 
     # Next, set the user manager.
+    manager_url = f"https://graph.microsoft.com/v1.0/users/{guid}/manager/$ref"
+    data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{manager.azure_guid}"}
     try:
-        manager_url = f"https://graph.microsoft.com/v1.0/users/{guid}/manager/$ref"
-        data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{manager.azure_guid}"}
         resp = requests.put(manager_url, headers=headers, json=data)
         resp.raise_for_status()
     except:
@@ -796,37 +790,37 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         return
 
     # Next, add the required licenses to the user.
+    url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
+    if licence_type == "On-premise":
+        data = {
+            "addLicenses": [
+                {"skuId": MS_PRODUCTS["MICROSOFT 365 E5"], "disabledPlans": []},
+            ],
+            "removeLicenses": [],
+        }
+    elif licence_type == "Cloud":
+        data = {
+            "addLicenses": [
+                {
+                    "skuId": MS_PRODUCTS["MICROSOFT 365 F3"],
+                    "disabledPlans": [
+                        MS_PRODUCTS["EXCHANGE ONLINE KIOSK"],
+                    ],
+                },
+                {
+                    "skuId": MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"],
+                    "disabledPlans": [],
+                },
+                {
+                    "skuId": MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"],
+                    "disabledPlans": [
+                        MS_PRODUCTS["EXCHANGE ONLINE ARCHIVING"],
+                    ],
+                },
+            ],
+            "removeLicenses": [],
+        }
     try:
-        url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
-        if licence_type == "On-premise":
-            data = {
-                "addLicenses": [
-                    {"skuId": MS_PRODUCTS["MICROSOFT 365 E5"], "disabledPlans": []},
-                ],
-                "removeLicenses": [],
-            }
-        elif licence_type == "Cloud":
-            data = {
-                "addLicenses": [
-                    {
-                        "skuId": MS_PRODUCTS["MICROSOFT 365 F3"],
-                        "disabledPlans": [
-                            MS_PRODUCTS["EXCHANGE ONLINE KIOSK"],
-                        ],
-                    },
-                    {
-                        "skuId": MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"],
-                        "disabledPlans": [],
-                    },
-                    {
-                        "skuId": MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"],
-                        "disabledPlans": [
-                            MS_PRODUCTS["EXCHANGE ONLINE ARCHIVING"],
-                        ],
-                    },
-                ],
-                "removeLicenses": [],
-            }
         resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
     except:
@@ -853,14 +847,58 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     LOGGER.info(f"New Azure AD account created from Ascender data ({email})")
 
     # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.
+    new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager)
+
+    # Email the new account's manager the checklist to finish account provision.
+    new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
+    LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
+
+    return new_user
+
+
+def generate_valid_dbca_email(surname, preferred_name="", first_name="", second_name=""):
+    # New DBCA email address generation.
+    # Make no assumption about names (presence or absence) other than surname.
+    # Email patterns in order of preference:
+    # 1. {preferred_name}.{surname}@dbca.wa.gov.au
+    # 2. {preferred_name}{second_name}.{surname}@dbca.wa.gov.au
+    # 3. {first_name}.{surname}@dbca.wa.gov.au
+    # 4. {first_name}{second_name}.{surname}@dbca.wa.gov.au
+    # If we can't make a new unique (according to current records) email, return a null result.
+
+    if preferred_name and surname:
+        email_patterns = [
+            f"{preferred_name}.{surname}@dbca.wa.gov.au",
+            f"{preferred_name}{second_name}.{surname}@dbca.wa.gov.au",
+        ]
+        for pattern in email_patterns:
+            if not DepartmentUser.objects.filter(email=pattern).exists():
+                email = pattern
+                mail_nickname = pattern.split("@")[0]
+                return email.lower(), mail_nickname.lower()
+    elif first_name and surname:
+        email_patterns = [
+            f"{first_name}.{surname}@dbca.wa.gov.au",
+            f"{first_name}{second_name}.{surname}@dbca.wa.gov.au",
+        ]
+        for pattern in email_patterns:
+            if not DepartmentUser.objects.filter(email=pattern).exists():
+                email = pattern
+                mail_nickname = pattern.split("@")[0]
+                return email.lower(), mail_nickname.lower()
+
+    return None, None
+
+
+def department_user_create(job, guid, email, display_name, title, cc, location, manager):
+    """This create function is split from the Entra ID/AD 'create' function to allow for unit testing."""
+    given_name = job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip()
     new_user = DepartmentUser.objects.create(
         azure_guid=guid,
         active=False,
         email=email,
         name=display_name,
-        given_name=job["preferred_name"].title().strip()
-        if job["preferred_name"]
-        else job["first_name"].title().strip(),
+        given_name=given_name,
         surname=job["surname"].title(),
         preferred_name=job["preferred_name"].title().strip() if job["preferred_name"] else None,
         title=title,
@@ -871,13 +909,10 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         ascender_data=job,
         ascender_data_updated=timezone.localtime(),
     )
+    ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     log = f"Created new department user {new_user} ({ascender_record})"
     AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
     LOGGER.info(log)
-
-    # Email the new account's manager the checklist to finish account provision.
-    new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
-    LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
 
     return new_user
 

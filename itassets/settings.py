@@ -137,7 +137,7 @@ ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", "")
 ENVIRONMENT_COLOUR = env("ENVIRONMENT_COLOUR", "")
 
 project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
-VERSION_NO = project["tool"]["poetry"]["version"]
+VERSION_NO = project["project"]["version"]
 
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
 LICENCE_NOTIFY_THRESHOLD = env("LICENCE_NOTIFY_THRESHOLD", 5)

@@ -1,11 +1,11 @@
-name: "Build Docker image and run Trivy vulnerability scan"
+name: 'Build Docker image and run Trivy vulnerability scan'
 
 on:
   push:
     # Publish `master` as `latest` image.
     branches: [master]
     # Publish tagged commits as releases.
-    tags: ["*"]
+    tags: ['*']
   pull_request:
     branches: [master]
 
@@ -61,6 +61,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -81,14 +82,14 @@ jobs:
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         with:
-          scan-type: "image"
-          scanners: "vuln"
+          scan-type: 'image'
+          scanners: 'vuln'
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          vuln-type: "os,library"
-          severity: "HIGH,CRITICAL"
-          format: "sarif"
-          output: "trivy-results.sarif"
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: "trivy-results.sarif"
+          sarif_file: 'trivy-results.sarif'

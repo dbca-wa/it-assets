@@ -1,53 +1,61 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.12.8-alpine AS builder_base
+FROM python:3.12-slim-bookworm AS builder_base
+
+# This approximately follows this guide: https://hynek.me/articles/docker-uv/
+# Which creates a standalone environment with the dependencies.
+# - Silence uv complaining about not being able to use hard links,
+# - tell uv to byte-compile packages for faster application startups,
+# - prevent uv from accidentally downloading isolated Python builds,
+# - pick a Python,
+# - and finally declare `/app` as the target for `uv sync`.
+ENV UV_LINK_MODE=copy \
+  UV_COMPILE_BYTECODE=1 \
+  UV_PYTHON_DOWNLOADS=never \
+  UV_PROJECT_ENVIRONMENT=/app/.venv
+
+COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /uvx /bin/
+
+# Since there's no point in shipping lock files, we move them
+# into a directory that is NOT copied into the runtime image.
+# The trailing slash makes COPY create `/_lock/` automagically.
+COPY pyproject.toml uv.lock /_lock/
+
+# Synchronize dependencies.
+# This layer is cached until uv.lock or pyproject.toml change.
+RUN --mount=type=cache,target=/root/.cache \
+  cd /_lock && \
+  uv sync \
+  --frozen \
+  --no-group dev
+
+##################################################################################
+
+FROM python:3.12-slim-bookworm
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
-# Install system requirements to build Python packages.
-RUN apk add --no-cache \
-  gcc \
-  libressl-dev \
-  musl-dev \
-  libffi-dev
-# Create a non-root user to run the application.
-ARG UID=10001
-ARG GID=10001
-RUN addgroup -g ${GID} appuser \
-  && adduser -H -D -u ${UID} -G appuser appuser
+# Install OS packages
+RUN apt-get update -y \
+  && apt-get upgrade -y \
+  && apt-get install -y gdal-bin proj-bin libmagic-dev \
+  && rm -rf /var/lib/apt/lists/*
 
-# Install Python libs using Poetry.
-FROM builder_base AS python_libs_itassets
-# Add system dependencies required to use GDAL
-# Ref: https://stackoverflow.com/a/59040511/14508
-RUN apk add --no-cache \
-  gdal \
-  geos \
-  proj \
-  binutils \
-  && ln -s /usr/lib/libproj.so.25 /usr/lib/libproj.so \
-  && ln -s /usr/lib/libgdal.so.36 /usr/lib/libgdal.so \
-  && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so
-WORKDIR /app
-COPY poetry.lock pyproject.toml ./
-ARG POETRY_VERSION=1.8.5
-RUN pip install --no-cache-dir --root-user-action=ignore poetry==${POETRY_VERSION} \
-  && poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --only main
-# Remove system libraries, no longer required.
-RUN apk del \
-  gcc \
-  libressl-dev \
-  musl-dev \
-  libffi-dev
+# Create a non-root user.
+RUN groupadd -r -g 1000 app \
+  && useradd -r -u 1000 -d /app -g app -N app
+
+COPY --from=builder_base --chown=app:app /app /app
+# Make sure we use the virtualenv by default
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Install the project.
-FROM python_libs_itassets AS project_itassets
-COPY gunicorn.py manage.py ./
+WORKDIR /app
+COPY gunicorn.py manage.py pyproject.toml ./
 COPY itassets ./itassets
 COPY registers ./registers
 COPY organisation ./organisation
 RUN python manage.py collectstatic --noinput
-USER ${UID}
+USER app
 EXPOSE 8080
 CMD ["gunicorn", "itassets.wsgi", "--config", "gunicorn.py"]
