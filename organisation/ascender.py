@@ -278,7 +278,7 @@ def ascender_employees_fetch_all():
     return records
 
 
-def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_override_email=None, logging=False):
+def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manager_override_email=None, logging=False):
     """Given a passed-in Ascender record and any qualifiers, determine
     whether a new Azure AD account can be provisioned for that user.
     The 'job start date' rule can be optionally bypassed.
@@ -495,7 +495,7 @@ def ascender_user_import_all():
             # Ascender record does not exist in our database; conditionally create a new
             # Azure AD account and DepartmentUser instance for them.
             # In this bulk check/create function, we do not ignore any account creation rules.
-            rules_passed = check_ascender_user_account_rules(job, logging=False)
+            rules_passed = validate_ascender_user_account_rules(job, logging=False)
 
             if not rules_passed:
                 continue
@@ -523,7 +523,9 @@ def ascender_user_import(employee_id, ignore_job_start_date=False, manager_overr
         return None
     job = jobs[0]
 
-    rules_passed = check_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True)
+    rules_passed = validate_ascender_user_account_rules(
+        job, ignore_job_start_date, manager_override_email, logging=True
+    )
     if not rules_passed:
         LOGGER.warning(f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
