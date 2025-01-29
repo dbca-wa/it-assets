@@ -12,7 +12,7 @@ from organisation.models import CostCentre, DepartmentUser
 
 def random_string(len=10):
     """Return a random string of arbitary length."""
-    return "".join(random.choice(string.ascii_letters) for i in range(len))
+    return "".join(random.choice(string.ascii_letters) for _ in range(len))
 
 
 class DepartmentUserTestCase(TestCase):

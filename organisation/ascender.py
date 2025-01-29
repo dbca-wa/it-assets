@@ -382,8 +382,9 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_
 
     # Skippable rule: if job_start_date is in the past, skip account creation.
     today = date.today()
-    if ignore_job_start_date and logging:
-        LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
+    if ignore_job_start_date:
+        if logging:
+            LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
     else:
         if job_start_date < today:
             if logging:
@@ -410,12 +411,17 @@ def check_ascender_user_account_rules(job, ignore_job_start_date=False, manager_
     if job["geo_location_desc"] and Location.objects.filter(ascender_desc=job["geo_location_desc"]).exists():
         location = Location.objects.get(ascender_desc=job["geo_location_desc"])
     else:
-        LOGGER.warning(f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting")
+        if job["geo_location_desc"]:
+            LOGGER.warning(f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting")
+        else:
+            LOGGER.warning("No job physical location recorded, aborting")
         return False
 
     # If all rules have passed, return a tuple containing required values.
     if cc and job_start_date and licence_type and manager and location:
         return (job, cc, job_start_date, licence_type, manager, location)
+    else:
+        return False
 
 
 def ascender_user_import_all():
