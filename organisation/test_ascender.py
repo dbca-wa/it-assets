@@ -49,6 +49,11 @@ class AscenderTestCase(TestCase):
             "geo_location_desc": loc_desc,
             "paypoint": cc_code,
             "clevel1_id": "BCA",
+            "clevel1_desc": "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS",
+            "clevel2_desc": "STRATEGY AND GOVERNANCE",
+            "clevel3_desc": "OFFICE OF EXPECTATION MANAGEMENT",
+            "clevel4_desc": "CENTRAL OFFICE",
+            "clevel5_desc": None,
             "emp_status": "PFA",
             "position_no": str(random.randint(10000000, 99999999)),
             "job_start_date": self.next_week.strftime("%Y-%m-%d"),
@@ -56,6 +61,13 @@ class AscenderTestCase(TestCase):
             "licence_type": "ONPUL",
             "manager_emp_no": str(self.manager.employee_id),
         }
+        self.email, _ = generate_valid_dbca_email(
+            surname=self.ascender_data["surname"], first_name=self.ascender_data["first_name"]
+        )
+        self.display_name = (
+            f"{self.ascender_data['first_name'].title().strip()} {self.ascender_data['surname'].title().strip()}"
+        )
+        self.title = title_except(self.ascender_data["occup_pos_title"])
 
     def test_validate_ascender_user_account_rules(self):
         self.assertTrue(validate_ascender_user_account_rules(self.ascender_data))
@@ -144,21 +156,14 @@ class AscenderTestCase(TestCase):
         self.assertFalse(email and mail_nickname)
 
     def test_department_user_create(self):
-        email, _ = generate_valid_dbca_email(
-            surname=self.ascender_data["surname"], first_name=self.ascender_data["first_name"]
-        )
-        display_name = (
-            f"{self.ascender_data['first_name'].title().strip()} {self.ascender_data['surname'].title().strip()}"
-        )
-        title = title_except(self.ascender_data["occup_pos_title"])
         initial_count = DepartmentUser.objects.count()
         self.assertTrue(
             department_user_create(
                 job=self.ascender_data,
                 guid=str(uuid4()),
-                email=email,
-                display_name=display_name,
-                title=title,
+                email=self.email,
+                display_name=self.display_name,
+                title=self.title,
                 cc=self.cc,
                 location=self.location,
                 manager=self.manager,
@@ -167,19 +172,12 @@ class AscenderTestCase(TestCase):
         self.assertTrue(DepartmentUser.objects.count() > initial_count)
 
     def test_new_user_creation_email_sends(self):
-        email, _ = generate_valid_dbca_email(
-            surname=self.ascender_data["surname"], first_name=self.ascender_data["first_name"]
-        )
-        display_name = (
-            f"{self.ascender_data['first_name'].title().strip()} {self.ascender_data['surname'].title().strip()}"
-        )
-        title = title_except(self.ascender_data["occup_pos_title"])
         new_user = department_user_create(
             job=self.ascender_data,
             guid=str(uuid4()),
-            email=email,
-            display_name=display_name,
-            title=title,
+            email=self.email,
+            display_name=self.display_name,
+            title=self.title,
             cc=self.cc,
             location=self.location,
             manager=self.manager,
@@ -188,3 +186,26 @@ class AscenderTestCase(TestCase):
         new_user_creation_email(new_user, licence_type, job_start_date=self.next_week)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"New user account creation details - {new_user.name}")
+
+    def test_department_user_ascender_methods(self):
+        new_user = department_user_create(
+            job=self.ascender_data,
+            guid=str(uuid4()),
+            email=self.email,
+            display_name=self.display_name,
+            title=self.title,
+            cc=self.cc,
+            location=self.location,
+            manager=self.manager,
+        )
+        self.assertTrue(new_user.get_ascender_org_path())
+        self.assertTrue(new_user.get_division())
+        self.assertTrue(new_user.get_business_unit())
+        self.assertTrue(new_user.get_employment_status())
+        self.assertTrue(new_user.get_ascender_full_name())
+        self.assertTrue(new_user.get_position_title())
+        self.assertTrue(new_user.get_position_number())
+        self.assertTrue(new_user.get_paypoint())
+        self.assertTrue(new_user.get_ascender_clevels())
+        self.assertTrue(new_user.get_geo_location_desc())
+        self.assertTrue(new_user.get_job_start_date())

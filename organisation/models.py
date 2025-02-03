@@ -405,9 +405,11 @@ class DepartmentUser(models.Model):
                 self.ascender_data["clevel5_desc"],
             ]
             for field in fields:
-                branch = field.replace("ROTTNEST ISLAND AUTHORITY - ", "").replace("  ", " ")
-                if branch not in path and branch != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
-                    path.append(branch)
+                # Field value might be None, ignore these.
+                if field:
+                    branch = field.replace("ROTTNEST ISLAND AUTHORITY - ", "").replace("  ", " ")
+                    if branch not in path and branch != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
+                        path.append(branch)
         return path
 
     def get_geo_location_desc(self):
