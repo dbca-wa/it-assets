@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.33"
+version = "2.4.34"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },

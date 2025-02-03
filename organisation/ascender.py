@@ -289,7 +289,7 @@ def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manag
         LOGGER.info(f"Checking Ascender record {ascender_record}")
 
     # Only process non-FPC users.
-    if job["clevel1_id"] == "FPC":
+    if "clevel1_id" in job and job["clevel1_id"] == "FPC":
         if logging:
             LOGGER.warning("FPC Ascender record, aborting")
         return False
@@ -440,7 +440,7 @@ def ascender_user_import_all():
         # Jobs are sorted via the `ascender_job_sort_key` function.
         job = jobs[0]
         # Only look at non-FPC users.
-        if job["clevel1_id"] == "FPC":
+        if "clevel1_id" in job and job["clevel1_id"] == "FPC":
             continue
 
         # Physical locations: if the Ascender physical location doesn't exist in our database, create it.

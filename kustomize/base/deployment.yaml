@@ -20,22 +20,22 @@ spec:
           image: ghcr.io/dbca-wa/it-assets
           env:
             - name: ALLOWED_HOSTS
-              value: ".dbca.wa.gov.au"
+              value: '.dbca.wa.gov.au'
             - name: CSRF_TRUSTED_ORIGINS
-              value: "https://*.dbca.wa.gov.au"
+              value: 'https://*.dbca.wa.gov.au'
             - name: CSRF_COOKIE_SECURE
-              value: "True"
+              value: 'True'
             - name: SESSION_COOKIE_SECURE
-              value: "True"
+              value: 'True'
             - name: TZ
-              value: "Australia/Perth"
+              value: 'Australia/Perth'
           resources:
             requests:
-              memory: "100Mi"
-              cpu: "5m"
+              memory: '100Mi'
+              cpu: '5m'
             limits:
-              memory: "4096Mi"
-              cpu: "1000m"
+              memory: '4096Mi'
+              cpu: '1000m'
           startupProbe:
             httpGet:
               path: /livez
@@ -68,6 +68,7 @@ spec:
             timeoutSeconds: 10
           securityContext:
             runAsNonRoot: true
+            runAsUser: 1000
             privileged: false
             allowPrivilegeEscalation: false
             capabilities:
@@ -80,6 +81,6 @@ spec:
       volumes:
         - name: tmpfs-ram
           emptyDir:
-            medium: "Memory"
+            medium: 'Memory'
       restartPolicy: Always
       terminationGracePeriodSeconds: 180
