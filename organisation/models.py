@@ -431,7 +431,7 @@ class DepartmentUser(models.Model):
         return ""
 
     def get_manager_name(self):
-        """From Ascender data, return the user's occupation/job termination/end date."""
+        """From Ascender data, return the user's manager name."""
         if self.ascender_data and "manager_name" in self.ascender_data and self.ascender_data["manager_name"]:
             return self.ascender_data["manager_name"]
         return ""

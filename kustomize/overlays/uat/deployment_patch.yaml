@@ -10,9 +10,9 @@ spec:
           imagePullPolicy: Always
           env:
             - name: ENVIRONMENT_COLOUR
-              value: "darkorange"
+              value: 'darkorange'
             - name: ENVIRONMENT_NAME
-              value: "UAT"
+              value: 'UAT'
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -184,7 +184,7 @@ spec:
                   name: itassets-env-uat
                   key: SENTRY_PROFILES_SAMPLE_RATE
             - name: SENTRY_ENVIRONMENT
-              value: "uat"
+              value: 'uat'
             - name: GEOSERVER_URL
               valueFrom:
                 secretKeyRef:

@@ -4,7 +4,7 @@ metadata:
   name: itassets-cronjob
 spec:
   # AWST: 10/40 min past the hour, 07:00-19:00, Mon-Fri
-  schedule: "10,40 0-10,23 * * 1-5"
+  schedule: '10,40 0-10,23 * * 1-5'
   jobTemplate:
     spec:
       activeDeadlineSeconds: 600
@@ -12,7 +12,7 @@ spec:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ["manage.py", "check_ascender_accounts"]
+              args: ['manage.py', 'check_ascender_accounts']
               env:
                 - name: DATABASE_URL
                   valueFrom:
@@ -100,7 +100,7 @@ spec:
                       name: itassets-env-prod
                       key: SENTRY_DSN
                 - name: SENTRY_ENVIRONMENT
-                  value: "prod"
+                  value: 'prod'
                 - name: SENTRY_CRON_CHECK_ASCENDER
                   valueFrom:
                     secretKeyRef:

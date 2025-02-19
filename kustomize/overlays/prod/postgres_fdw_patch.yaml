@@ -20,7 +20,7 @@ spec:
           command:
             - chown
             - -R
-            - "999:999"
+            - '999:999'
             - /var/lib/postgresql/data
           volumeMounts:
             - name: itassets-postgres-fdw-data

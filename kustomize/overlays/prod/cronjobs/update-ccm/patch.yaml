@@ -4,7 +4,7 @@ metadata:
   name: itassets-cronjob
 spec:
   # AWST: 21:01, Mon-Fri
-  schedule: "1 13 * * 1-5"
+  schedule: '1 13 * * 1-5'
   jobTemplate:
     spec:
       # Database query takes a long time.
@@ -13,7 +13,7 @@ spec:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ["manage.py", "check_cost_centre_managers"]
+              args: ['manage.py', 'check_cost_centre_managers']
               env:
                 - name: DATABASE_URL
                   valueFrom:

@@ -10,20 +10,20 @@ spec:
     spec:
       containers:
         - name: itassets-postgres-fdw
-          image: ghcr.io/dbca-wa/postgres-oracle-fdw:16-3.4
+          image: ghcr.io/dbca-wa/postgres-oracle-fdw:16-3.5
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
-              value: "Australia/Perth"
+              value: 'Australia/Perth'
             - name: POSTGRES_DB
-              value: "fdw"
+              value: 'fdw'
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "10m"
+              memory: '128Mi'
+              cpu: '10m'
             limits:
-              memory: "1Gi"
-              cpu: "1000m"
+              memory: '1Gi'
+              cpu: '1000m'
           securityContext:
             runAsUser: 999
             privileged: false
