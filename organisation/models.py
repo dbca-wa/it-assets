@@ -1030,16 +1030,21 @@ class DepartmentUser(models.Model):
 
         # manager (source of truth: Ascender)
         # Onprem AD users
+        manager_ad = None
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and "Manager" in self.ad_data:
-            if (
+            # Hard-coded short-circuit business rule: a staff member having the title "DIRECTOR GENERAL"
+            # will not have a manager set. Context: the Ascender record for the DG has the DDG set as
+            # the 'manager' for payroll certification purposes. We want to avoid setting up a circular
+            # management graph in Entra ID.
+            if self.title and self.title.upper() == "DIRECTOR GENERAL":
+                self.manager = None
+            elif (
                 self.ad_data["Manager"]
                 and DepartmentUser.objects.filter(
                     active=True, ad_data__DistinguishedName=self.ad_data["Manager"]
                 ).exists()
             ):
                 manager_ad = DepartmentUser.objects.get(ad_data__DistinguishedName=self.ad_data["Manager"])
-            else:
-                manager_ad = None
 
             if self.manager != manager_ad:
                 prop = "Manager"
@@ -1060,13 +1065,15 @@ class DepartmentUser(models.Model):
                     LOGGER.info("NO ACTION (log only)")
         # Azure (cloud only) AD users
         elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data and "manager" in self.azure_ad_data:
-            if (
+            # Hard-coded short-circuit business rule: a staff member having the title "DIRECTOR GENERAL"
+            # will not have a manager set. See above.
+            if self.title and self.title.upper() == "DIRECTOR GENERAL":
+                self.manager = None
+            elif (
                 self.azure_ad_data["manager"]
                 and DepartmentUser.objects.filter(azure_guid=self.azure_ad_data["manager"]["id"]).exists()
             ):
                 manager_ad = DepartmentUser.objects.get(azure_guid=self.azure_ad_data["manager"]["id"])
-            else:
-                manager_ad = None
 
             if self.manager and self.manager.azure_guid and self.manager != manager_ad:
                 if token:
@@ -1284,8 +1291,16 @@ class DepartmentUser(models.Model):
             and DepartmentUser.objects.filter(employee_id=self.ascender_data["manager_emp_no"]).exists()
         ):
             manager = DepartmentUser.objects.get(employee_id=self.ascender_data["manager_emp_no"])
+            # Hard-coded short-circuit business rule: a staff member having the title "DIRECTOR GENERAL"
+            # will not have a manager set. Context: the Ascender record for the DG has the DDG set as
+            # the 'manager' for payroll certification purposes.
+            if self.title and self.title.upper() == "DIRECTOR GENERAL":
+                log = f"Director General {self} manager set manually to null"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
+                self.manager = None
             # The user's current manager differs from that in Ascender (it might be set to None).
-            if self.manager != manager:
+            elif self.manager != manager:
                 if self.manager:
                     log = f"{self} manager {self.manager} differs from Ascender, updating it to {manager}"
                     AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
