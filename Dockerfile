@@ -48,6 +48,8 @@ RUN groupadd -r -g 1000 app \
 COPY --from=builder_base --chown=app:app /app /app
 # Make sure we use the virtualenv by default
 ENV PATH="/app/.venv/bin:$PATH"
+# Run Python unbuffered
+ENV PYTHONUNBUFFERED=1
 
 # Install the project.
 WORKDIR /app
