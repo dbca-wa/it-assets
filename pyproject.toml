@@ -20,12 +20,12 @@ dependencies = [
   "python-dateutil == 2.8.2",
   "webtemplate-dbca == 1.7.2",
   "msal == 1.31.1",
-  "whitenoise[brotli] == 6.8.2",
+  "whitenoise[brotli]==6.9.0",
   "pysftp == 0.2.9",
   "xlsxwriter==3.2.2",
-  "sentry-sdk[django]==2.20.0",
+  "sentry-sdk[django]==2.22.0",
   "redis == 5.2.1",
-  "django-storages[azure] == 1.14.4",
+  "django-storages[azure]==1.14.5",
 ]
 
 [dependency-groups]
