@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.34"
+version = "2.4.35"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -9,31 +9,31 @@ authors = [
 license = "Apache-2.0"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-  "django == 4.2.18",
+  "django==4.2.18",
   "psycopg[binary,pool]==3.2.5",
-  "dbca-utils == 2.0.3",
-  "django-extensions == 3.2.3",
-  "python-dotenv == 1.0.1",
-  "dj-database-url == 2.3.0",
-  "gunicorn == 23.0.0",
-  "unicodecsv == 0.14.1",
-  "python-dateutil == 2.8.2",
-  "webtemplate-dbca == 1.7.2",
-  "msal == 1.31.1",
+  "dbca-utils==2.0.3",
+  "django-extensions==3.2.3",
+  "python-dotenv==1.0.1",
+  "dj-database-url==2.3.0",
+  "gunicorn==23.0.0",
+  "unicodecsv==0.14.1",
+  "python-dateutil==2.8.2",
+  "webtemplate-dbca==1.7.2",
+  "msal==1.31.1",
   "whitenoise[brotli]==6.9.0",
-  "pysftp == 0.2.9",
+  "pysftp==0.2.9",
   "xlsxwriter==3.2.2",
   "sentry-sdk[django]==2.22.0",
-  "redis == 5.2.1",
+  "redis==5.2.1",
   "django-storages[azure]==1.14.5",
 ]
 
 [dependency-groups]
 dev = [
-  "ipython >= 8.31.0",
-  "ipdb >= 0.13.13",
-  "mixer >= 7.2.2",
-  "pre-commit >= 4.0.1",
+  "ipython>=8.31.0",
+  "ipdb>=0.13.13",
+  "mixer>=7.2.2",
+  "pre-commit>=4.0.1",
   "coverage>=7.6.12",
 ]
 
