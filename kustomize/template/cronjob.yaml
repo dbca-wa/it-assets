@@ -38,3 +38,4 @@ spec:
             - name: tmpfs-ram
               emptyDir:
                 medium: 'Memory'
+          automountServiceAccountToken: false

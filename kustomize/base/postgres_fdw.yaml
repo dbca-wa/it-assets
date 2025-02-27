@@ -25,6 +25,7 @@ spec:
               memory: '1Gi'
               cpu: '1000m'
           securityContext:
+            runAsNonRoot: true
             runAsUser: 999
             privileged: false
             allowPrivilegeEscalation: false
@@ -33,3 +34,4 @@ spec:
                 - ALL
             readOnlyRootFilesystem: false
       restartPolicy: Always
+      automountServiceAccountToken: false
