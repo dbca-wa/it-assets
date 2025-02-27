@@ -34,6 +34,7 @@ dev = [
   "ipdb >= 0.13.13",
   "mixer >= 7.2.2",
   "pre-commit >= 4.0.1",
+  "coverage>=7.6.12",
 ]
 
 # Reference: https://docs.astral.sh/ruff/configuration/
