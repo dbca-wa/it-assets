@@ -50,9 +50,9 @@ Run console commands manually:
 
 ## Unit tests
 
-Start with `pip install coverage`. Run unit tests and obtain test coverage as follows:
+Run unit tests and obtain test coverage as follows:
 
-    coverage run --source='.' manage.py test -k
+    coverage run manage.py test --keepdb
     coverage report -m
 
 ## Docker image

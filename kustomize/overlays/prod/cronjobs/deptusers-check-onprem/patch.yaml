@@ -4,22 +4,14 @@ metadata:
   name: itassets-cronjob
 spec:
   # AWST: 20/50 min past the hour, 08:00-19:00, Mon-Fri
-  schedule: "20,50 0-10 * * 1-5"
+  schedule: '20,50 0-10 * * 1-5'
   jobTemplate:
     spec:
       template:
         spec:
           containers:
             - name: itassets-cronjob
-              args:
-                [
-                  "manage.py",
-                  "check_onprem_accounts",
-                  "--container",
-                  "azuread",
-                  "--path",
-                  "adusers.json",
-                ]
+              args: ['manage.py', 'check_onprem_accounts', '--container', 'azuread', '--path', 'adusers.json']
               env:
                 - name: DATABASE_URL
                   valueFrom:
@@ -37,7 +29,7 @@ spec:
                       name: itassets-env-prod
                       key: SENTRY_DSN
                 - name: SENTRY_ENVIRONMENT
-                  value: "prod"
+                  value: 'prod'
                 - name: SENTRY_CRON_CHECK_ONPREM
                   valueFrom:
                     secretKeyRef:

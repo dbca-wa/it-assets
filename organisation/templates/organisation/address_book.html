@@ -1,151 +1,180 @@
 {% extends "base_itassets.html" %}
 {% load static %}
-
 {% block extra_style %}
-{{ block.super }}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css" integrity="sha512-ENrTWqddXrLJsQS2A86QmvA17PkJ0GVm1bqj5aTgpeMAfDKN2+SIOLpKG8R/6KkimnhTb+VW5qqUHB/r1zaRgg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css" integrity="sha512-fYyZwU1wU0QWB4Yutd/Pvhy5J1oWAwFXun1pt+Bps04WSe4Aq6tyHlT4+MHSJhD8JlLfgLuC4CbCnX5KHSjyCg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<style>
-    #map { width:100%; height: 640px;}
-</style>
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+          integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"
+          integrity="sha512-ENrTWqddXrLJsQS2A86QmvA17PkJ0GVm1bqj5aTgpeMAfDKN2+SIOLpKG8R/6KkimnhTb+VW5qqUHB/r1zaRgg=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"
+          integrity="sha512-fYyZwU1wU0QWB4Yutd/Pvhy5J1oWAwFXun1pt+Bps04WSe4Aq6tyHlT4+MHSJhD8JlLfgLuC4CbCnX5KHSjyCg=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" />
+    <style>#map { width:100%; height: 640px;}</style>
 {% endblock extra_style %}
-
 {% block page_content %}
-<div class="container">
-    <div class="row pt-3">
-        <div class="col-sm-4">
-            <h1>{{ page_title }}</h1>
+    <div class="container">
+        <div class="row pt-3">
+            <div class="col-sm-4">
+                <h1>{{ page_title }}</h1>
+            </div>
+            <div class="col-sm-8 d-none d-sm-block">
+                <div class="alert alert-secondary">
+                    <p>
+                        <b>To update information in the address book, please obtain approval from a Cost Centre manager or higher before contacting:</b>
+                    </p>
+                    <ul>
+                        <li>
+                            For changes to your Teams/work phone or work mobile number, contact the <a href="mailto:oim.servicedesk@dbca.wa.gov.au">OIM Service Desk</a>.
+                        </li>
+                        <li>For all other changes, please contact People Services Branch (via your payroll officer).</li>
+                    </ul>
+                    <p>
+                        <i><b>Important Notice:</b> Address Book information supports the department's shared IT common operating environment (Shared IT COE)
+                            <a href="https://dpaw.sharepoint.com/Divisions/corporate/oim/SitePages/Identity-and-Access-Management.aspx"
+                               target="_blank">identity and access management</a>.
+                        Cost Centre managers are responsible for ensuring their staff's Address Book information is correct.</i>
+                    </p>
+                </div>
+            </div>
         </div>
-        <div class="col-sm-8 d-none d-sm-block">
-            <div class="alert alert-secondary">
-                <p><b>To update information in the address book, please obtain approval from a Cost Centre manager or higher before contacting:</b></p>
-                <ul>
-                    <li>For changes to your Teams/work phone or work mobile number, contact the <a href="mailto:oim.servicedesk@dbca.wa.gov.au">OIM Service Desk</a>.</li>
-                    <li>For all other changes, please contact People Services Branch (via your payroll officer).</li>
+        <div class="row">
+            <div class="col">
+                <!-- .map element is initially placed outside the tab-pane due to Leaflet rendering weirdness. -->
+                <div id="map"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <ul class="nav nav-tabs nav-fill" id="tab_labels" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active"
+                                id="users-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#users-tab-pane"
+                                type="button"
+                                role="tab"
+                                aria-controls="users-tab-pane"
+                                aria-selected="true">Staff</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="locations-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#locations-tab-pane"
+                                type="button"
+                                role="tab"
+                                aria-controls="locations-tab-pane"
+                                aria-selected="false">Locations</button>
+                    </li>
                 </ul>
-                <p><i><b>Important Notice:</b> Address Book information supports the department's shared IT common operating environment (Shared IT COE)
-                        <a href="https://dpaw.sharepoint.com/Divisions/corporate/oim/SitePages/Identity-and-Access-Management.aspx" target="_blank">identity and access management</a>.
-                        Cost Centre managers are responsible for ensuring their staff's Address Book information is correct.</i></p>
+                <div class="tab-content" id="tab_content">
+                    <div class="tab-pane fade show active"
+                         id="users-tab-pane"
+                         role="tabpanel"
+                         aria-labelledby="users-tab"
+                         tabindex="0">
+                        <div class="row pt-3">
+                            <div class="col">
+                                <!-- Search bar -->
+                                <form action="" method="get">
+                                    <div class="row">
+                                        <div class="d-none d-md-block col-md-2">
+                                            <label for="search_field">Search:</label>
+                                        </div>
+                                        <div class="col-sm-12 col-md-10 col-lg-7">
+                                            <input id="search_field"
+                                                   type="text"
+                                                   class="form-control"
+                                                   name="q"
+                                                   placeholder="Search name, title, phone, location or unit"
+                                                   value="{{ query_string }}">
+                                        </div>
+                                        {% if query_string %}<div class="d-none d-lg-block col-lg-3">{{ object_count }} results</div>{% endif %}
+                                    </div>
+                                </form>
+                            </div>
+                            {% if object_list %}
+                                <!-- Pagination -->
+                                <div class="col">
+                                    <div class="d-flex justify-content-end">{% include "pagination.html" %}</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <!-- .row -->
+                        {% if object_list %}
+                            <div class="row">
+                                <div class="col">
+                                    <table class="table table-striped table-sm table-hover">
+                                        <tbody>
+                                            {% for obj in object_list %}
+                                                <tr>
+                                                    <td>
+                                                        <span class="fs-4">{{ obj.name }}</span>
+                                                        <br>
+                                                        {{ obj.title|default_if_none:"" }}
+                                                    </td>
+                                                    <td>
+                                                        <a href="mailto:{{ obj.email }}">{{ obj.email }}</a>
+                                                        <br>
+                                                        {% if obj.telephone %}
+                                                            Phone: <a href="tel:{{ obj.telephone }}">{{ obj.telephone }}</a>
+                                                            <br>
+                                                        {% endif %}
+                                                        {% if obj.mobile_phone %}Mobile: <a href="tel:{{ obj.mobile_phone }}">{{ obj.mobile_phone }}</a>{% endif %}
+                                                    </td>
+                                                    <td>
+                                                        Location: {{ obj.get_geo_location_desc|default_if_none:"" }}
+                                                        <br>
+                                                        Unit: {{ obj.get_business_unit|default_if_none:"" }}
+                                                        <br>
+                                                        Division: {{ obj.get_division|default_if_none:"" }}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if object_list %}
+                            <div class="row justify-content-md-center">
+                                <div class="col-md-auto">{% include "pagination.html" %}</div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <!-- .tab-pane -->
+                    <div class="tab-pane fade"
+                         id="locations-tab-pane"
+                         role="tabpanel"
+                         aria-labelledby="locations-tab"
+                         tabindex="0"></div>
+                </div>
+                <!-- .tab-content -->
             </div>
         </div>
     </div>
-
-
-    <div class="row">
-        <div class="col">
-            <!-- .map element is initially placed outside the tab-pane due to Leaflet rendering weirdness. -->
-            <div id="map"></div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col">
-            <ul class="nav nav-tabs nav-fill" id="tab_labels" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-tab-pane" type="button" role="tab" aria-controls="users-tab-pane" aria-selected="true">
-                        Staff
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations-tab-pane" type="button" role="tab" aria-controls="locations-tab-pane" aria-selected="false">
-                        Locations
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content" id="tab_content">
-                <div class="tab-pane fade show active" id="users-tab-pane" role="tabpanel" aria-labelledby="users-tab" tabindex="0">
-                    <div class="row pt-3">
-
-                        <div class="col">
-                            <!-- Search bar -->
-                            <form action="" method="get">
-                                <div class="row">
-                                    <div class="d-none d-md-block col-md-2">
-                                        <label for="search_field">Search:</label>
-                                    </div>
-                                    <div class="col-sm-12 col-md-10 col-lg-7">
-                                        <input id="search_field" type="text" class="form-control" name="q" placeholder="Search name, title, phone, location or unit" value="{{ query_string }}">
-                                    </div>
-                                    {% if query_string %}
-                                    <div class="d-none d-lg-block col-lg-3">
-                                        {{ object_count }} results
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </form>
-                        </div>
-
-                        {% if object_list %}
-                        <!-- Pagination -->
-                        <div class="col">
-                            <div class="d-flex justify-content-end">
-                            {% include "pagination.html" %}
-                            </div>
-                        </div>
-                        {% endif %}
-
-                    </div><!-- .row -->
-
-                    {% if object_list %}
-                    <div class="row">
-                        <div class="col">
-                            <table class="table table-striped table-sm table-hover">
-                                <tbody>
-                                {% for obj in object_list %}
-                                    <tr>
-                                        <td>
-                                            <span class="fs-4">{{ obj.name }}</span><br>
-                                            {{ obj.title|default_if_none:"" }}
-                                        </td>
-                                        <td>
-                                            <a href="mailto:{{ obj.email }}">{{ obj.email }}</a><br>
-                                            {% if obj.telephone %}
-                                            Phone: <a href="tel:{{ obj.telephone}}">{{ obj.telephone }}</a><br>
-                                            {% endif %}
-                                            {% if obj.mobile_phone %}
-                                            Mobile: <a href="tel:{{ obj.mobile_phone}}">{{ obj.mobile_phone }}</a>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            Location: {{ obj.get_geo_location_desc|default_if_none:"" }}<br>
-                                            Unit: {{ obj.get_business_unit|default_if_none:"" }}<br>
-                                            Division: {{ obj.get_division|default_if_none:"" }}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if object_list %}
-                    <div class="row justify-content-md-center">
-                        <div class="col-md-auto">
-                        {% include "pagination.html" %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                </div><!-- .tab-pane -->
-
-                <div class="tab-pane fade" id="locations-tab-pane" role="tabpanel" aria-labelledby="locations-tab" tabindex="0"></div>
-            </div><!-- .tab-content -->
-        </div>
-    </div>
-</div>
 {% endblock page_content %}
-
 {% block extra_js %}
-{{ block.super }}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js" integrity="sha512-TiMWaqipFi2Vqt4ugRzsF8oRoGFlFFuqIi30FFxEPNw58Ov9mOy6LgC05ysfkxwLE0xVeZtmr92wVg9siAFRWA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script>
+    {{ block.super }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+            integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"
+            integrity="sha512-TiMWaqipFi2Vqt4ugRzsF8oRoGFlFFuqIi30FFxEPNw58Ov9mOy6LgC05ysfkxwLE0xVeZtmr92wVg9siAFRWA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+    <script>
   const geoserver_url = "{{ geoserver_url }}";
   const location_features_url = "{% url 'location_api_resource' %}";
-</script>
-<script src="{% static 'js/location_map.js' %}"></script>
+    </script>
+    <script src="{% static 'js/location_map.js' %}"></script>
 {% endblock extra_js %}

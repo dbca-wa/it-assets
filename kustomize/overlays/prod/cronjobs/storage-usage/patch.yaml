@@ -4,14 +4,14 @@ metadata:
   name: itassets-cronjob
 spec:
   # AWST: 23:01, Wed & Sat
-  schedule: "1 15 * * 3,6"
+  schedule: '1 15 * * 3,6'
   jobTemplate:
     spec:
       template:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ["manage.py", "site_storage_upload"]
+              args: ['manage.py', 'site_storage_upload']
               env:
                 - name: DATABASE_URL
                   valueFrom:

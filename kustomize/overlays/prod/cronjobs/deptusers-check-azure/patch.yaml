@@ -4,14 +4,14 @@ metadata:
   name: itassets-cronjob
 spec:
   # AWST: 15/45 min past the hour, 08:00-19:00, Mon-Fri
-  schedule: "15,45 0-10 * * 1-5"
+  schedule: '15,45 0-10 * * 1-5'
   jobTemplate:
     spec:
       template:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ["manage.py", "check_azure_accounts"]
+              args: ['manage.py', 'check_azure_accounts']
               env:
                 - name: DATABASE_URL
                   valueFrom:
@@ -44,7 +44,7 @@ spec:
                       name: itassets-env-prod
                       key: SENTRY_DSN
                 - name: SENTRY_ENVIRONMENT
-                  value: "prod"
+                  value: 'prod'
                 - name: SENTRY_CRON_CHECK_AZURE
                   valueFrom:
                     secretKeyRef:

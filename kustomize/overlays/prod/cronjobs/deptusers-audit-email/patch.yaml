@@ -4,14 +4,14 @@ metadata:
   name: itassets-cronjob
 spec:
   # AWST: 19:08 Mon-Fri
-  schedule: "8 11 * * 1-5"
+  schedule: '8 11 * * 1-5'
   jobTemplate:
     spec:
       template:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ["manage.py", "department_users_audit_emails"]
+              args: ['manage.py', 'department_users_audit_emails']
               env:
                 - name: DATABASE_URL
                   valueFrom:
