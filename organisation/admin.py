@@ -1,15 +1,17 @@
+import json
+
 from django import forms
-from django.contrib.admin import helpers, register, ModelAdmin, SimpleListFilter
+from django.contrib.admin import ModelAdmin, SimpleListFilter, helpers, register
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied
 from django.urls import path
 from django.utils.html import mark_safe
-import json
 
 from itassets.utils import ModelDescMixin
-from .models import DepartmentUser, Location, CostCentre, AscenderActionLog
-from .views import DepartmentUserExport
+
+from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .utils import title_except
+from .views import DepartmentUserExport
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -160,18 +162,10 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         return False
 
     def division(self, instance):
-        return (
-            instance.cost_centre.get_division_name_display()
-            if instance.cost_centre
-            else ""
-        )
+        return instance.cost_centre.get_division_name_display() if instance.cost_centre else ""
 
     def unit(self, instance):
-        return (
-            title_except(instance.get_ascender_org_path()[-1])
-            if instance.get_ascender_org_path()
-            else ""
-        )
+        return title_except(instance.get_ascender_org_path()[-1]) if instance.get_ascender_org_path() else ""
 
     def ascender_full_name(self, instance):
         return instance.get_ascender_full_name()
@@ -230,24 +224,34 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         return instance.get_licence()
 
     def ad_data_pprint(self, obj=None):
-        result = ""
         if obj and obj.ad_data:
             result = json.dumps(obj.ad_data, indent=4, sort_keys=True)
-            result_str = f"<pre>{result}</pre>"
-            result = mark_safe(result_str)
-        return result
+            result = f"<pre>{result}</pre>"
+            return mark_safe(result)
+        else:
+            return ""
 
     ad_data_pprint.short_description = "AD data"
 
     def azure_ad_data_pprint(self, obj=None):
-        result = ""
         if obj and obj.azure_ad_data:
             result = json.dumps(obj.azure_ad_data, indent=4, sort_keys=True)
-            result_str = f"<pre>{result}</pre>"
-            result = mark_safe(result_str)
-        return result
+            result = f"<pre>{result}</pre>"
+            return mark_safe(result)
+        else:
+            return ""
 
     azure_ad_data_pprint.short_description = "Azure AD data"
+
+    def ascender_data_pprint(self, obj=None):
+        if obj and obj.ascender_data:
+            result = json.dumps(obj.ascender_data, indent=4, sort_keys=True)
+            result = f"<pre>{result}</pre>"
+            return mark_safe(result)
+        else:
+            return ""
+
+    ascender_data_pprint.short_description = "Ascender data"
 
     def admin_change_view(self, request, object_id, form_url="", extra_context={}):
         """A special change form for superusers only to edit employee_id/maiden_name.
@@ -260,7 +264,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         obj = self.get_object(request, unquote(object_id))
         add = False
         change = True
-        readonly_fields = ("ad_data_pprint", "azure_ad_data_pprint")
+        readonly_fields = ("ad_data_pprint", "azure_ad_data_pprint", "ascender_data_pprint")
         fieldsets = (
             (
                 "Employee information",
@@ -273,6 +277,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                         "azure_guid",
                         "ad_data_pprint",
                         "azure_ad_data_pprint",
+                        "ascender_data_pprint",
                     ),
                 },
             ),
@@ -285,9 +290,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             if form_validated:
                 new_object = self.save_form(request, form, change=True)
                 self.save_model(request, new_object, form, True)
-                change_message = self.construct_change_message(
-                    request, form, formsets, add
-                )
+                change_message = self.construct_change_message(request, form, formsets, add)
                 self.log_change(request, new_object, change_message)
                 return self.response_change(request, new_object)
         else:
@@ -321,9 +324,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         }
         context.update(extra_context or {})
 
-        return self.render_change_form(
-            request, context, add=add, change=change, obj=obj, form_url=form_url
-        )
+        return self.render_change_form(request, context, add=add, change=change, obj=obj, form_url=form_url)
 
     def get_urls(self):
         urls = super().get_urls()
