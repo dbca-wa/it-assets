@@ -1294,7 +1294,7 @@ class DepartmentUser(models.Model):
             # Hard-coded short-circuit business rule: a staff member having the title "DIRECTOR GENERAL"
             # will not have a manager set. Context: the Ascender record for the DG has the DDG set as
             # the 'manager' for payroll certification purposes.
-            if self.title and self.title.upper() == "DIRECTOR GENERAL":
+            if self.title and self.title.upper() == "DIRECTOR GENERAL" and self.manager:
                 log = f"Director General {self} manager set manually to null"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
