@@ -473,7 +473,7 @@ wheels = [
 
 [[package]]
 name = "itassets"
-version = "2.4.35"
+version = "2.4.37"
 source = { virtual = "." }
 dependencies = [
     { name = "dbca-utils" },
@@ -516,9 +516,9 @@ requires-dist = [
     { name = "psycopg", extras = ["binary", "pool"], specifier = "==3.2.6" },
     { name = "pysftp", specifier = "==0.2.9" },
     { name = "python-dateutil", specifier = "==2.9.0" },
-    { name = "python-dotenv", specifier = "==1.0.1" },
+    { name = "python-dotenv", specifier = "==1.1.0" },
     { name = "redis", specifier = "==5.2.1" },
-    { name = "sentry-sdk", extras = ["django"], specifier = "==2.23.1" },
+    { name = "sentry-sdk", extras = ["django"], specifier = "==2.24.1" },
     { name = "unicodecsv", specifier = "==0.14.1" },
     { name = "webtemplate-dbca", specifier = "==1.7.2" },
     { name = "whitenoise", extras = ["brotli"], specifier = "==6.9.0" },
@@ -829,11 +829,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.0.1"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bc/57/e84d88dfe0aec03b7a2d4327012c1627ab5f03652216c63d49846d7a6c58/python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca", size = 39115 }
+sdist = { url = "https://files.pythonhosted.org/packages/88/2c/7bb1416c5620485aa793f2de31d3df393d3686aa8a8506d11e10e13c5baf/python_dotenv-1.1.0.tar.gz", hash = "sha256:41f90bc6f5f177fb41f53e87666db362025010eb28f60a01c9143bfa33a2b2d5", size = 39920 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/3e/b68c118422ec867fa7ab88444e1274aa40681c606d59ac27de5a5588f082/python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a", size = 19863 },
+    { url = "https://files.pythonhosted.org/packages/1e/18/98a99ad95133c6a6e2005fe89faedf294a748bd5dc803008059409ac9b1e/python_dotenv-1.1.0-py3-none-any.whl", hash = "sha256:d7c01d9e2293916c18baf562d95698754b0dbbb5e74d457c45d4f6561fb9d55d", size = 20256 },
 ]
 
 [[package]]
@@ -888,15 +888,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.23.1"
+version = "2.24.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/fd/2c5f7161dbea1fa03381f139c443b4524f3a15d58e50c96a65d19f454ba2/sentry_sdk-2.23.1.tar.gz", hash = "sha256:2288320465065f3f056630ce55936426204f96f63f1208edb79e033ed03774db", size = 316248 }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/ef/4847dcd63e3f3c451cf701a825d21200f1322d46ac97586d5c90a13dfea1/sentry_sdk-2.24.1.tar.gz", hash = "sha256:8ba3c29990fa48865b908b3b9dc5ae7fa7e72407c7c9e91303e5206b32d7b8b1", size = 318124 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/00/9a9a2ab9020ee824d787f7e82a539305bf926393fe139baedbcf34356770/sentry_sdk-2.23.1-py2.py3-none-any.whl", hash = "sha256:42ef3a6cc1db3d22cb2ab24163d75b23f291ad9892b1a8c44075ce809a32b191", size = 336327 },
+    { url = "https://files.pythonhosted.org/packages/65/95/91137ffe7a5956496155af5ffbe45ee4ddfa795a569136147e766abd14b1/sentry_sdk-2.24.1-py2.py3-none-any.whl", hash = "sha256:36baa6a1128b9d98d2adc5e9b2f887eff0a6af558fc2b96ed51919042413556d", size = 336945 },
 ]
 
 [package.optional-dependencies]
