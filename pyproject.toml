@@ -25,7 +25,7 @@ dependencies = [
   "xlsxwriter==3.2.2",
   "sentry-sdk[django]==2.23.1",
   "redis==5.2.1",
-  "django-storages[azure]==1.14.5",
+  "django-storages[azure]==1.14.6",
 ]
 
 [dependency-groups]
