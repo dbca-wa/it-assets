@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.12-slim-bookworm AS builder_base
+FROM python:3.13.3-slim-bookworm AS builder_base
 
 # This approximately follows this guide: https://hynek.me/articles/docker-uv/
 # Which creates a standalone environment with the dependencies.
@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/root/.cache \
 
 ##################################################################################
 
-FROM python:3.12-slim-bookworm
+FROM python:3.13.3-slim-bookworm
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
