@@ -33,11 +33,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 GEOSERVER_URL = env("GEOSERVER_URL", "")
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # Use whitenoise to add compression and caching support for static files.
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Assume Azure blob storage is used for media uploads, unless explicitly set as local storage.
 LOCAL_MEDIA_STORAGE = env("LOCAL_MEDIA_STORAGE", False)
 if LOCAL_MEDIA_STORAGE:
-    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
     if not os.path.exists(os.path.join(BASE_DIR, "media")):
         os.mkdir(os.path.join(BASE_DIR, "media"))
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -136,7 +144,9 @@ SITE_ID = 1
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", "")
 ENVIRONMENT_COLOUR = env("ENVIRONMENT_COLOUR", "")
 
-project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+pyproject = open(os.path.join(BASE_DIR, "pyproject.toml"), "rb")
+project = tomllib.load(pyproject)
+pyproject.close()
 VERSION_NO = project["project"]["version"]
 
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
@@ -179,7 +189,6 @@ DATABASES = {
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "/static/"
 STATICFILES_DIRS = (os.path.join(BASE_DIR, "itassets", "static"),)
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_ROOT = STATIC_ROOT
 
 # Media uploads
