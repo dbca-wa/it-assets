@@ -11,7 +11,7 @@ requires-python = ">=3.12,<4.0"
 dependencies = [
   "django==4.2.20",
   "psycopg[binary,pool]==3.2.6",
-  "dbca-utils==2.0.3",
+  "dbca-utils==2.1.1",
   "django-extensions==3.2.3",
   "python-dotenv==1.1.0",
   "dj-database-url==2.3.0",
@@ -22,10 +22,10 @@ dependencies = [
   "msal==1.32.0",
   "whitenoise[brotli]==6.9.0",
   "pysftp==0.2.9",
-  "xlsxwriter==3.2.2",
-  "sentry-sdk[django]==2.24.1",
+  "xlsxwriter==3.2.3",
+  "sentry-sdk[django]==2.26.1",
   "redis==5.2.1",
-  "django-storages[azure]==1.14.5",
+  "django-storages[azure]==1.14.6",
 ]
 
 [dependency-groups]

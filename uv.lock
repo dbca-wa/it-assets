@@ -284,14 +284,14 @@ wheels = [
 
 [[package]]
 name = "dbca-utils"
-version = "2.0.3"
+version = "2.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/92/b23ab24a12274e6d1e37dfc665741536ef3305874df9e0aa02d84134ec2b/dbca_utils-2.0.3.tar.gz", hash = "sha256:a5d0eb14f75509ca78690985785f6a467c1733ea7e6ba86f495aa5626f755e0b", size = 9540 }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/a3/d21001c060f1203b07ab7e116f52ae2d2afbd6dc0c7c86e7c739198ca2a2/dbca_utils-2.1.1.tar.gz", hash = "sha256:f44c8f2e1d53f6aab3f18baa676e518503f01c13ed900264394c47c6e2034e71", size = 13569 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/08/6fd046200e1922061b44408051be753a175a740b609c3fab0225b5448519/dbca_utils-2.0.3-py3-none-any.whl", hash = "sha256:8159238fc6d6abe3d0b645bc17fc39866272533e2689b3512367792b5ceda959", size = 10487 },
+    { url = "https://files.pythonhosted.org/packages/69/ca/671fdb6c285e3b3f0d51eb956a3793072c11862da4d55b8dad81e5ee55fe/dbca_utils-2.1.1-py3-none-any.whl", hash = "sha256:5fb17a3941d053787d88fdb30f15635b5162865e2355761b9e8aae76c2c31d78", size = 11188 },
 ]
 
 [[package]]
@@ -353,14 +353,14 @@ wheels = [
 
 [[package]]
 name = "django-storages"
-version = "1.14.5"
+version = "1.14.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/eb/4ec2b551a6769cb8112497c9fe5c773717622cec0862a8225bda2dfedb66/django_storages-1.14.5.tar.gz", hash = "sha256:ace80dbee311258453e30cd5cfd91096b834180ccf09bc1f4d2cb6d38d68571a", size = 85867 }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/d6/2e50e378fff0408d558f36c4acffc090f9a641fd6e084af9e54d45307efa/django_storages-1.14.6.tar.gz", hash = "sha256:7a25ce8f4214f69ac9c7ce87e2603887f7ae99326c316bc8d2d75375e09341c9", size = 87587 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/61/00e4bcbf55337c2633c6cddc77a15d4ea16cbe74c01c1f745ecde8feff47/django_storages-1.14.5-py3-none-any.whl", hash = "sha256:5ce9c69426f24f379821fd688442314e4aa03de87ae43183c4e16915f4c165d4", size = 32636 },
+    { url = "https://files.pythonhosted.org/packages/1f/21/3cedee63417bc5553eed0c204be478071c9ab208e5e259e97287590194f1/django_storages-1.14.6-py3-none-any.whl", hash = "sha256:11b7b6200e1cb5ffcd9962bd3673a39c7d6a6109e8096f0e03d46fab3d3aabd9", size = 33095 },
 ]
 
 [package.optional-dependencies]
@@ -506,11 +506,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dbca-utils", specifier = "==2.0.3" },
+    { name = "dbca-utils", specifier = "==2.1.1" },
     { name = "dj-database-url", specifier = "==2.3.0" },
     { name = "django", specifier = "==4.2.20" },
     { name = "django-extensions", specifier = "==3.2.3" },
-    { name = "django-storages", extras = ["azure"], specifier = "==1.14.5" },
+    { name = "django-storages", extras = ["azure"], specifier = "==1.14.6" },
     { name = "gunicorn", specifier = "==23.0.0" },
     { name = "msal", specifier = "==1.32.0" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = "==3.2.6" },
@@ -518,11 +518,11 @@ requires-dist = [
     { name = "python-dateutil", specifier = "==2.9.0" },
     { name = "python-dotenv", specifier = "==1.1.0" },
     { name = "redis", specifier = "==5.2.1" },
-    { name = "sentry-sdk", extras = ["django"], specifier = "==2.24.1" },
+    { name = "sentry-sdk", extras = ["django"], specifier = "==2.26.1" },
     { name = "unicodecsv", specifier = "==0.14.1" },
     { name = "webtemplate-dbca", specifier = "==1.7.2" },
     { name = "whitenoise", extras = ["brotli"], specifier = "==6.9.0" },
-    { name = "xlsxwriter", specifier = "==3.2.2" },
+    { name = "xlsxwriter", specifier = "==3.2.3" },
 ]
 
 [package.metadata.requires-dev]
@@ -888,15 +888,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.24.1"
+version = "2.26.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/ef/4847dcd63e3f3c451cf701a825d21200f1322d46ac97586d5c90a13dfea1/sentry_sdk-2.24.1.tar.gz", hash = "sha256:8ba3c29990fa48865b908b3b9dc5ae7fa7e72407c7c9e91303e5206b32d7b8b1", size = 318124 }
+sdist = { url = "https://files.pythonhosted.org/packages/85/26/099631caa51abffb1fd9e08c2138bc6681d3f288a5936c2fc4e054729611/sentry_sdk-2.26.1.tar.gz", hash = "sha256:759e019c41551a21519a95e6cef6d91fb4af1054761923dadaee2e6eca9c02c7", size = 323099 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/95/91137ffe7a5956496155af5ffbe45ee4ddfa795a569136147e766abd14b1/sentry_sdk-2.24.1-py2.py3-none-any.whl", hash = "sha256:36baa6a1128b9d98d2adc5e9b2f887eff0a6af558fc2b96ed51919042413556d", size = 336945 },
+    { url = "https://files.pythonhosted.org/packages/23/32/0a30b4fafdb3d26d133f99bb566aaa6000004ee7f2c4b72aafea9237ab7e/sentry_sdk-2.26.1-py2.py3-none-any.whl", hash = "sha256:e99390e3f217d13ddcbaeaed08789f1ca614d663b345b9da42e35ad6b60d696a", size = 340558 },
 ]
 
 [package.optional-dependencies]
@@ -1029,9 +1029,9 @@ brotli = [
 
 [[package]]
 name = "xlsxwriter"
-version = "3.2.2"
+version = "3.2.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a1/08/26f69d1e9264e8107253018de9fc6b96f9219817d01c5f021e927384a8d1/xlsxwriter-3.2.2.tar.gz", hash = "sha256:befc7f92578a85fed261639fb6cde1fd51b79c5e854040847dde59d4317077dc", size = 205202 }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/d1/e026d33dd5d552e5bf3a873dee54dad66b550230df8290d79394f09b2315/xlsxwriter-3.2.3.tar.gz", hash = "sha256:ad6fd41bdcf1b885876b1f6b7087560aecc9ae5a9cc2ba97dcac7ab2e210d3d5", size = 209135 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/07/df054f7413bdfff5e98f75056e4ed0977d0c8716424011fac2587864d1d3/XlsxWriter-3.2.2-py3-none-any.whl", hash = "sha256:272ce861e7fa5e82a4a6ebc24511f2cb952fde3461f6c6e1a1e81d3272db1471", size = 165121 },
+    { url = "https://files.pythonhosted.org/packages/37/b1/a252d499f2760b314fcf264d2b36fcc4343a1ecdb25492b210cb0db70a68/XlsxWriter-3.2.3-py3-none-any.whl", hash = "sha256:593f8296e8a91790c6d0378ab08b064f34a642b3feb787cf6738236bd0a4860d", size = 169433 },
 ]
