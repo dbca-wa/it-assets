@@ -50,7 +50,9 @@ if LOCAL_MEDIA_STORAGE:
         os.mkdir(os.path.join(BASE_DIR, "media"))
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 else:
-    DEFAULT_FILE_STORAGE = "storages.backends.azure_storage.AzureStorage"
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+    }
     AZURE_ACCOUNT_NAME = env("AZURE_ACCOUNT_NAME", "name")
     AZURE_ACCOUNT_KEY = env("AZURE_ACCOUNT_KEY", "key")
     AZURE_CONTAINER = env("AZURE_CONTAINER", "container")
