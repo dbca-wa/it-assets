@@ -341,14 +341,14 @@ wheels = [
 
 [[package]]
 name = "django-extensions"
-version = "3.2.3"
+version = "4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/f1/318684c9466968bf9a9c221663128206e460c1a67f595055be4b284cde8a/django-extensions-3.2.3.tar.gz", hash = "sha256:44d27919d04e23b3f40231c4ab7af4e61ce832ef46d610cc650d53e68328410a", size = 277216 }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/b3/ed0f54ed706ec0b54fd251cc0364a249c6cd6c6ec97f04dc34be5e929eac/django_extensions-4.1.tar.gz", hash = "sha256:7b70a4d28e9b840f44694e3f7feb54f55d495f8b3fa6c5c0e5e12bcb2aa3cdeb", size = 283078 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/7e/ba12b9660642663f5273141018d2bec0a1cae1711f4f6d1093920e157946/django_extensions-3.2.3-py3-none-any.whl", hash = "sha256:9600b7562f79a92cbf1fde6403c04fee314608fefbb595502e34383ae8203401", size = 229868 },
+    { url = "https://files.pythonhosted.org/packages/64/96/d967ca440d6a8e3861120f51985d8e5aec79b9a8bdda16041206adfe7adc/django_extensions-4.1-py3-none-any.whl", hash = "sha256:0699a7af28f2523bf8db309a80278519362cd4b6e1fd0a8cd4bf063e1e023336", size = 232980 },
 ]
 
 [[package]]
@@ -509,18 +509,18 @@ requires-dist = [
     { name = "dbca-utils", specifier = "==2.1.1" },
     { name = "dj-database-url", specifier = "==2.3.0" },
     { name = "django", specifier = "==4.2.20" },
-    { name = "django-extensions", specifier = "==3.2.3" },
+    { name = "django-extensions", specifier = "==4.1" },
     { name = "django-storages", extras = ["azure"], specifier = "==1.14.6" },
     { name = "gunicorn", specifier = "==23.0.0" },
-    { name = "msal", specifier = "==1.32.0" },
+    { name = "msal", specifier = "==1.32.3" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = "==3.2.6" },
     { name = "pysftp", specifier = "==0.2.9" },
     { name = "python-dateutil", specifier = "==2.9.0" },
     { name = "python-dotenv", specifier = "==1.1.0" },
     { name = "redis", specifier = "==5.2.1" },
-    { name = "sentry-sdk", extras = ["django"], specifier = "==2.26.1" },
+    { name = "sentry-sdk", extras = ["django"], specifier = "==2.27.0" },
     { name = "unicodecsv", specifier = "==0.14.1" },
-    { name = "webtemplate-dbca", specifier = "==1.7.2" },
+    { name = "webtemplate-dbca", specifier = "==1.8.2" },
     { name = "whitenoise", extras = ["brotli"], specifier = "==6.9.0" },
     { name = "xlsxwriter", specifier = "==3.2.3" },
 ]
@@ -572,16 +572,16 @@ wheels = [
 
 [[package]]
 name = "msal"
-version = "1.32.0"
+version = "1.32.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/5f/ef42ef25fba682e83a8ee326a1a788e60c25affb58d014495349e37bce50/msal-1.32.0.tar.gz", hash = "sha256:5445fe3af1da6be484991a7ab32eaa82461dc2347de105b76af92c610c3335c2", size = 149817 }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/90/81dcc50f0be11a8c4dcbae1a9f761a26e5f905231330a7cacc9f04ec4c61/msal-1.32.3.tar.gz", hash = "sha256:5eea038689c78a5a70ca8ecbe1245458b55a857bd096efb6989c69ba15985d35", size = 151449 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/93/5a/2e663ef56a5d89eba962941b267ebe5be8c5ea340a9929d286e2f5fac505/msal-1.32.0-py3-none-any.whl", hash = "sha256:9dbac5384a10bbbf4dae5c7ea0d707d14e087b92c5aa4954b3feaa2d1aa0bcb7", size = 114655 },
+    { url = "https://files.pythonhosted.org/packages/04/bf/81516b9aac7fd867709984d08eb4db1d2e3fe1df795c8e442cde9b568962/msal-1.32.3-py3-none-any.whl", hash = "sha256:b2798db57760b1961b142f027ffb7c8169536bf77316e99a0df5c4aaebb11569", size = 115358 },
 ]
 
 [[package]]
@@ -888,15 +888,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.26.1"
+version = "2.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/26/099631caa51abffb1fd9e08c2138bc6681d3f288a5936c2fc4e054729611/sentry_sdk-2.26.1.tar.gz", hash = "sha256:759e019c41551a21519a95e6cef6d91fb4af1054761923dadaee2e6eca9c02c7", size = 323099 }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/b6/a92ae6fa6d7e6e536bc586776b1669b84fb724dfe21b8ff08297f2d7c969/sentry_sdk-2.27.0.tar.gz", hash = "sha256:90f4f883f9eff294aff59af3d58c2d1b64e3927b28d5ada2b9b41f5aeda47daf", size = 323556 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/32/0a30b4fafdb3d26d133f99bb566aaa6000004ee7f2c4b72aafea9237ab7e/sentry_sdk-2.26.1-py2.py3-none-any.whl", hash = "sha256:e99390e3f217d13ddcbaeaed08789f1ca614d663b345b9da42e35ad6b60d696a", size = 340558 },
+    { url = "https://files.pythonhosted.org/packages/dd/8b/fb496a45854e37930b57564a20fb8e90dd0f8b6add0491527c00f2163b00/sentry_sdk-2.27.0-py2.py3-none-any.whl", hash = "sha256:c58935bfff8af6a0856d37e8adebdbc7b3281c2b632ec823ef03cd108d216ff0", size = 340786 },
 ]
 
 [package.optional-dependencies]
@@ -1003,14 +1003,14 @@ wheels = [
 
 [[package]]
 name = "webtemplate-dbca"
-version = "1.7.2"
+version = "1.8.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/15/8b7a735f2f2ae0cb0e3afa2dac1c07d208c1467daef0e09eb73b90f2265f/webtemplate_dbca-1.7.2.tar.gz", hash = "sha256:fbd6fdf342bacc0f43bd9005a302539f6680ed15e6fcdfc0e120d368ce59a391", size = 43324 }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/cd/eda9f608b9d9d9a63924817bd4fb0f38cf2759d327367e644b1625c2bc60/webtemplate_dbca-1.8.2.tar.gz", hash = "sha256:55899634c19ad7e862355616ee2592d18619e48e2797a2db6ef6f8a073ed8e17", size = 48599 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/10/676312d2fdaca5977442127f0c1853a3d1601925c65e5a5f0df50382e113/webtemplate_dbca-1.7.2-py3-none-any.whl", hash = "sha256:4ebfa62ad7261dcf9e49b19430444e3c12ea1db0e487fb4aa4a05ffa5849d917", size = 49419 },
+    { url = "https://files.pythonhosted.org/packages/0d/1e/27be81a01460309f2d775e90ad251674a7031f83fb78c9c00df9da40c551/webtemplate_dbca-1.8.2-py3-none-any.whl", hash = "sha256:70bc7f5ec347d38cb86a5b50e8a456f9ca95b378e420316b6428a83bae60f0cf", size = 53368 },
 ]
 
 [[package]]
