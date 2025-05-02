@@ -43,7 +43,7 @@ def ms_security_api_client_token():
         "client_secret": client_secret,
         "grant_type": "client_credentials",
     }
-    url = "https://login.windows.net/{}/oauth2/token".format(azure_tenant_id)
+    url = f"https://login.windows.net/{azure_tenant_id}/oauth2/token"
     resp = requests.post(url, data=data)
     return resp.json()["access_token"]
 
@@ -207,7 +207,7 @@ def get_next_pages(page_num, count=3):
 
 def get_freshservice_objects(obj_type):
     """Query the Freshservice v2 API for objects of a defined type."""
-    url = "{}/{}".format(settings.FRESHSERVICE_ENDPOINT, obj_type)
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}"
     params = {
         "page": 1,
         "per_page": 100,
@@ -241,7 +241,7 @@ def create_freshservice_object(obj_type, data):
     """Use the Freshservice v2 API to create an object.
     Accepts an object name (string) and a dict of key values.
     """
-    url = "{}/{}".format(settings.FRESHSERVICE_ENDPOINT, obj_type)
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}"
     resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
     return resp  # Return the response, so we can handle unsuccessful responses.
 
@@ -250,6 +250,6 @@ def update_freshservice_object(obj_type, id, data):
     """Use the Freshservice v2 API to update an object.
     Accepts an object type name (string), object ID and a dict of key values.
     """
-    url = "{}/{}/{}".format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}/{id}"
     resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
     return resp  # Return the response, so we can handle unsuccessful responses.

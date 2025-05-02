@@ -19,6 +19,5 @@ class ReportsTestCase(ApiTestCase):
     def test_user_changes_export(self):
         # Generate some logs.
         mixer.cycle(2).blend(AscenderActionLog, level="INFO", log=f"{self.user1.email} {mixer.faker.text()}")
-        print(AscenderActionLog.objects.all())
         report = user_changes_export(BytesIO(), AscenderActionLog.objects.all())
         self.assertTrue(report.getbuffer().nbytes > 0)
