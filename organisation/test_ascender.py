@@ -1,3 +1,4 @@
+import logging
 import random
 from datetime import date, timedelta
 from uuid import uuid4
@@ -15,6 +16,9 @@ from organisation.ascender import (
 )
 from organisation.models import CostCentre, DepartmentUser, Location
 from organisation.utils import title_except
+
+# Disable non-critical logging output.
+logging.disable(logging.CRITICAL)
 
 
 class AscenderTestCase(TestCase):

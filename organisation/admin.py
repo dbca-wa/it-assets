@@ -126,7 +126,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         (
             "Microsoft 365 and Active Directory account information",
             {
-                "description": '<span class="errornote">Data in these fields is maintained in Azure Active Directory.</span>',
+                "description": '<span class="errornote">Data in these fields is maintained in Azure Entra ID / Active Directory.</span>',
                 "fields": (
                     "active",
                     "email",

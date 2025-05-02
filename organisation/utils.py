@@ -294,7 +294,7 @@ def ms_graph_user(azure_guid, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
     url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}"
@@ -309,7 +309,7 @@ def ms_graph_validate_password(password, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
     }
     url = "https://graph.microsoft.com/beta/users/validatePassword"
     resp = requests.post(url, headers=headers, json={"password": password})
@@ -325,7 +325,7 @@ def ms_graph_sites(team_sites=True, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
     url = "https://graph.microsoft.com/v1.0/sites"
@@ -356,7 +356,7 @@ def ms_graph_site_detail(site_id, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
     }
     url = f"https://graph.microsoft.com/v1.0/sites/{site_id}"
     resp = requests.get(url, headers=headers)
@@ -377,7 +377,7 @@ def ms_graph_site_storage_usage(period_value="D7", token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
     url = f"https://graph.microsoft.com/v1.0/reports/getSharePointSiteUsageDetail(period='{period_value}')"

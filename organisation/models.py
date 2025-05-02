@@ -231,7 +231,7 @@ class DepartmentUser(models.Model):
         null=True,
         blank=True,
         verbose_name="Azure GUID",
-        help_text="Azure Active Directory (Entra ID) unique object ID",
+        help_text="Azure Entra ID unique object ID",
     )
     azure_ad_data = models.JSONField(
         default=dict,
@@ -309,13 +309,23 @@ class DepartmentUser(models.Model):
                 return "Cloud"
         return None
 
-    def get_full_name(self):
-        """Return given_name and surname, with a space in between."""
-        full_name = "{} {}".format(
-            self.given_name if self.given_name else "",
-            self.surname if self.surname else "",
-        )
-        return full_name.strip()
+    def get_display_name(self):
+        """
+        Return the user's display name for Active Directory / Entra ID / Outlook.
+        NOTE: this value is managed by OIM, and does not come from Ascender.
+        This is an exception to our normal rules relating to the source of truth for names.
+        It uses preferred name (if present), first name, maiden name (if present), surname.
+        """
+        if self.preferred_name:
+            if self.maiden_name:
+                return f"{self.preferred_name} {self.maiden_name}".strip()
+            else:
+                return f"{self.preferred_name} {self.surname}".strip()
+        else:
+            if self.maiden_name:
+                return f"{self.given_name} {self.maiden_name}".strip()
+            else:
+                return f"{self.given_name} {self.surname}".strip()
 
     def get_employment_status(self):
         """From Ascender data, return a description of a user's employment status."""
@@ -407,6 +417,7 @@ class DepartmentUser(models.Model):
             for field in fields:
                 # Field value might be None, ignore these.
                 if field:
+                    # Tweak/sanitise field values.
                     branch = field.replace("ROTTNEST ISLAND AUTHORITY - ", "").replace("  ", " ")
                     if branch not in path and branch != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
                         path.append(branch)
@@ -504,7 +515,7 @@ class DepartmentUser(models.Model):
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
                     if token:
                         headers = {
-                            "Authorization": "Bearer {}".format(token["access_token"]),
+                            "Authorization": f"Bearer {token['access_token']}",
                             "Content-Type": "application/json",
                         }
                         data = {"accountEnabled": False}
@@ -653,7 +664,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"displayName": self.name}
@@ -700,7 +711,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"givenName": self.given_name}
@@ -745,7 +756,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"surname": self.surname}
@@ -793,7 +804,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"companyName": self.cost_centre.code}
@@ -840,7 +851,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"department": self.get_division()}
@@ -885,7 +896,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"jobTitle": self.title}
@@ -931,7 +942,7 @@ class DepartmentUser(models.Model):
             ) or (self.telephone and not self.azure_ad_data["telephoneNumber"]):
                 if token:
                     headers = {
-                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Authorization": f"Bearer {token['access_token']}",
                         "Content-Type": "application/json",
                     }
                     data = {"businessPhones": [self.telephone if self.telephone else " "]}
@@ -973,7 +984,7 @@ class DepartmentUser(models.Model):
             ) or (self.mobile_phone and not self.azure_ad_data["mobilePhone"]):
                 if token:
                     headers = {
-                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Authorization": f"Bearer {token['access_token']}",
                         "Content-Type": "application/json",
                     }
                     data = {"mobilePhone": self.mobile_phone}
@@ -1018,7 +1029,7 @@ class DepartmentUser(models.Model):
         ):
             if token:
                 headers = {
-                    "Authorization": "Bearer {}".format(token["access_token"]),
+                    "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
                 data = {"employeeId": self.employee_id}
@@ -1078,7 +1089,7 @@ class DepartmentUser(models.Model):
             if self.manager and self.manager.azure_guid and self.manager != manager_ad:
                 if token:
                     headers = {
-                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Authorization": f"Bearer {token['access_token']}",
                         "Content-Type": "application/json",
                     }
                     manager_url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}/manager/$ref"
@@ -1170,7 +1181,7 @@ class DepartmentUser(models.Model):
                 # Update both officeLocation and streetAddress in Azure AD.
                 if token:
                     headers = {
-                        "Authorization": "Bearer {}".format(token["access_token"]),
+                        "Authorization": f"Bearer {token['access_token']}",
                         "Content-Type": "application/json",
                     }
                     data = {
@@ -1195,31 +1206,31 @@ class DepartmentUser(models.Model):
         if not self.employee_id or not self.ascender_data:
             return
 
-        # First name - note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
-        if "preferred_name" in self.ascender_data and self.ascender_data["preferred_name"]:
-            if not self.given_name:
+        # Comment about names: assume nothing about the content or format. They may be returned in any form of casing.
+        # They may change, or be set to null and then changed back. We need to handle all the circumstances because
+        # there is no guarantee about the order of operations.
+
+        # First/given name
+        if "first_name" in self.ascender_data and self.ascender_data["first_name"]:
+            if not self.given_name:  # Handle `None`
                 given_name = ""
             else:
                 given_name = self.given_name
-            if self.ascender_data["preferred_name"].upper() != given_name.upper():
-                first_name = self.ascender_data["preferred_name"].title()
-                log = f"{self} first name {self.given_name} differs from Ascender preferred name {first_name}, updating it"
+            # Compare the values case-insensitively.
+            if self.ascender_data["first_name"].upper() != given_name.upper():
+                # Ascender stores names in all caps, use title case.
+                first_name = self.ascender_data["first_name"].title()
+                log = f"{self} first name {self.given_name} differs from Ascender first name {first_name}, updating it"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.given_name = first_name
-
-        # Surname
-        if "surname" in self.ascender_data and self.ascender_data["surname"]:
-            if not self.surname:
-                surname = ""
-            else:
-                surname = self.surname
-            if self.ascender_data["surname"].upper() != surname.upper():
-                new_surname = self.ascender_data["surname"].title()
-                log = f"{self} surname {self.surname} differs from Ascender surname {new_surname}, updating it"
+        # Handle blank/null value.
+        elif "first_name" in self.ascender_data and not self.ascender_data["first_name"]:
+            if self.ascender_data["first_name"] != self.given_name:
+                log = f"{self} first name {self.given_name} differs from Ascender first name {self.ascender_data['first_name']}, updating it"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
-                self.surname = new_surname
+                self.given_name = self.ascender_data["first_name"]
 
         # Preferred name
         if "preferred_name" in self.ascender_data and self.ascender_data["preferred_name"]:
@@ -1228,26 +1239,41 @@ class DepartmentUser(models.Model):
             else:
                 preferred_name = self.preferred_name
             if self.ascender_data["preferred_name"].upper() != preferred_name.upper():
-                new_preferred_name = self.ascender_data["preferred_name"].title()
-                log = f"{self} preferred name {self.preferred_name} differs from Ascender preferred name {new_preferred_name}, updating it"
+                preferred_name = self.ascender_data["preferred_name"].title()
+                log = f"{self} preferred name {self.preferred_name} differs from Ascender preferred name {preferred_name}, updating it"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
-                self.preferred_name = new_preferred_name
+                self.preferred_name = preferred_name
+        # Handle blank/null value.
+        elif "preferred_name" in self.ascender_data and not self.ascender_data["preferred_name"]:
+            if self.ascender_data["preferred_name"] != self.preferred_name:
+                log = f"{self} preferred name {self.preferred_name} differs from Ascender preferred name {self.ascender_data['preferred_name']}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
+                self.preferred_name = self.ascender_data["preferred_name"]
 
-        # Display name (Active Directory / Entra ID / Outlook)
-        # Optional maiden name used for display name (only if the maiden_name field has a value).
-        # NOTE: this value is managed by OIM, and does not come from Ascender.
-        # This is an exception to our normal rules relating to the source of truth for names.
-        if self.preferred_name:
-            if self.maiden_name:
-                self.name = f"{self.preferred_name} {self.maiden_name}"
+        # Surname
+        if "surname" in self.ascender_data and self.ascender_data["surname"]:
+            if not self.surname:
+                surname = ""
             else:
-                self.name = f"{self.preferred_name} {self.surname}"
-        else:
-            if self.maiden_name:
-                self.name = f"{self.given_name} {self.maiden_name}"
-            else:
-                self.name = f"{self.given_name} {self.surname}"
+                surname = self.surname
+            if self.ascender_data["surname"].upper() != surname.upper():
+                surname = self.ascender_data["surname"].title()
+                log = f"{self} surname {self.surname} differs from Ascender surname {surname}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
+                self.surname = surname
+        # Handle blank/null value.
+        elif "surname" in self.ascender_data and not self.ascender_data["surname"]:
+            if self.ascender_data["surname"] != self.surname:
+                log = f"{self} surname {self.surname} differs from Ascender surname {self.ascender_data['surname']}, updating it"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
+                LOGGER.info(log)
+                self.surname = self.ascender_data["surname"]
+
+        # Set the user display name (Entra ID / Outlook) from Ascender name values.
+        self.name = self.get_display_name()
 
         # Cost centre (Ascender records cost centre as 'paypoint').
         if (
@@ -1272,10 +1298,8 @@ class DepartmentUser(models.Model):
             "paypoint" in self.ascender_data
             and not CostCentre.objects.filter(ascender_code=self.ascender_data["paypoint"]).exists()
         ):
-            LOGGER.warning(
-                "Cost centre {} is not present in the IT Assets database, creating it".format(
-                    self.ascender_data["paypoint"]
-                )
+            LOGGER.info(
+                f"Cost centre {self.ascender_data['paypoint']} is not present in the IT Assets database, creating it"
             )
             paypoint = self.ascender_data["paypoint"]
             new_cc = CostCentre.objects.create(code=paypoint, ascender_code=paypoint)
@@ -1354,7 +1378,7 @@ class DepartmentUser(models.Model):
             self.active = self.azure_ad_data["accountEnabled"]
             LOGGER.info(f"AZURE AD SYNC: {self} active changed to {self.active}")
         if "mail" in self.azure_ad_data and self.azure_ad_data["mail"] != self.email:
-            LOGGER.info("AZURE AD SYNC: {} email changed to {}".format(self, self.azure_ad_data["mail"]))
+            LOGGER.info(f"AZURE AD SYNC: {self} email changed to {self.azure_ad_data['mail']}")
             self.email = self.azure_ad_data["mail"]
         if "onPremisesSyncEnabled" in self.azure_ad_data:
             if not self.azure_ad_data["onPremisesSyncEnabled"]:  # False/None
@@ -1400,11 +1424,7 @@ class DepartmentUserLog(models.Model):
     log = models.JSONField(default=dict, editable=False)
 
     def __str__(self):
-        return "{} {} {}".format(
-            self.created.isoformat(),
-            self.department_user,
-            self.log,
-        )
+        return f"{self.created.isoformat()} {self.department_user} {self.log}"
 
 
 class AscenderActionLog(models.Model):
