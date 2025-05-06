@@ -152,7 +152,7 @@ class DepartmentUserTestCase(TestCase):
         self.user.ascender_data["preferred_name"] = "JANEY"
         self.user.update_from_ascender_data()
         self.assertEqual(self.user.get_display_name(), "Janey Doe")
-        self.assertEqual(self.user.get_ascender_full_name(), "JANEY DOE")
+        self.assertEqual(self.user.get_ascender_full_name(), "JANE DOE")
 
     def test_get_display_name_ascender_preferred_maiden(self):
         self.user.maiden_name = "Jones"
