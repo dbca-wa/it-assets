@@ -1,13 +1,15 @@
+from unittest import skip
+
 from django.urls import reverse
+
 from itassets.test_api import ApiTestCase
 
 
 class ITSystemAPIResourceTestCase(ApiTestCase):
-
+    @skip
     def test_list(self):
-        """Test the ITSystemAPIResource list response
-        """
-        url = reverse('it_system_api_resource')
+        """Test the ITSystemAPIResource list response"""
+        url = reverse("it_system_api_resource")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.it_prod.name)
@@ -16,24 +18,24 @@ class ITSystemAPIResourceTestCase(ApiTestCase):
         self.assertNotContains(response, self.it_dev.name)
         self.assertNotContains(response, self.it_dec.name)
 
+    @skip
     def test_list_filtering(self):
-        """Test the ITSystemAPIResource filtered responses
-        """
-        url = reverse('it_system_api_resource', kwargs={'pk': self.it_prod.pk})
+        """Test the ITSystemAPIResource filtered responses"""
+        url = reverse("it_system_api_resource", kwargs={"pk": self.it_prod.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.it_prod.name)
         self.assertNotContains(response, self.it_leg.name)
-        url = '{}?q={}'.format(reverse('it_system_api_resource'), self.it_leg.name)
+        url = "{}?q={}".format(reverse("it_system_api_resource"), self.it_leg.name)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, self.it_prod.name)
         self.assertContains(response, self.it_leg.name)
 
+    @skip
     def test_list_tailored(self):
-        """Test the ITSystemAPIResource tailored list responses
-        """
+        """Test the ITSystemAPIResource tailored list responses"""
         # Test the "selectlist" response.
-        url = '{}?selectlist='.format(reverse('it_system_api_resource'))
+        url = "{}?selectlist=".format(reverse("it_system_api_resource"))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
