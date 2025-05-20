@@ -188,6 +188,13 @@ DATABASES = {
     "default": dj_database_url.config(),
 }
 
+DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
+# Use PostgreSQL connection pool if using that DB engine (use ConnectionPool defaults).
+if any(eng in DATABASES["default"]["ENGINE"] for eng in ["postgresql", "postgis"]):
+    if "OPTIONS" in DATABASES["default"]:
+        DATABASES["default"]["OPTIONS"]["pool"] = True
+    else:
+        DATABASES["default"]["OPTIONS"] = {"pool": True}
 
 # Static files configuration
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
