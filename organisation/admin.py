@@ -86,6 +86,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "assigned_licences",
         "proxy_addresses",
         "dir_sync_enabled",
+        "last_signin",
         "ascender_org_path",
         "geo_location_desc",
         "paypoint",
@@ -133,6 +134,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "name",
                     "assigned_licences",
                     "dir_sync_enabled",
+                    "last_signin",
                     "azure_guid",
                     "ad_guid",
                 ),
@@ -300,9 +302,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         admin_form = helpers.AdminForm(
             form=form,
             fieldsets=list(fieldsets),
-            prepopulated_fields=self.get_prepopulated_fields(request, obj)
-            if add or self.has_change_permission(request, obj)
-            else {},
+            prepopulated_fields=self.get_prepopulated_fields(request, obj) if add or self.has_change_permission(request, obj) else {},
             readonly_fields=readonly_fields,
             model_admin=self,
         )

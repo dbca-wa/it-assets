@@ -1,11 +1,12 @@
+import logging
 from datetime import datetime, timezone
+
 from django.conf import settings
 from django.core import mail
 from django.core.management.base import BaseCommand
-import logging
 from sentry_sdk.crons import monitor
 
-from organisation.models import DepartmentUser, CostCentre, Location
+from organisation.models import CostCentre, DepartmentUser, Location
 from organisation.utils import ms_graph_users
 
 
@@ -58,7 +59,7 @@ class Command(BaseCommand):
                             existing_user.azure_guid = az["objectId"]
                             existing_user.azure_ad_data = az
                             existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                            existing_user.update_from_azure_ad_data()  # This method calls save()
+                            existing_user.update_from_entra_id_data()  # This method calls save()
                             logger.info(f"Linked existing user {az['mail']} with Azure objectId {az['objectId']}")
                             continue  # Skip to the next Azure user.
 
@@ -99,7 +100,7 @@ class Command(BaseCommand):
                         existing_user = DepartmentUser.objects.get(azure_guid=az["objectId"])
                         existing_user.azure_ad_data = az
                         existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
-                        existing_user.update_from_azure_ad_data()  # This method calls save()
+                        existing_user.update_from_entra_id_data()  # This method calls save()
                 except:
                     # In the event of an exception, fail gracefully and alert the admins.
                     subject = f"AZURE AD SYNC: exception during sync of Azure AD account (object {az['objectId']})"

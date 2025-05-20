@@ -162,6 +162,8 @@ ASCENDER_CREATE_AZURE_AD = env("ASCENDER_CREATE_AZURE_AD", False)
 # Flag to set how many days ahead of their start date a new AD account should be created.
 # False == no limit. Value should be a positive integer value.
 ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env("ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS", -1)
+# Number of days after which an Entra ID account may be considered "dormant":
+DORMANT_ACCOUNT_DAYS = env("DORMANT_ACCOUNT_DAYS", 90)
 
 # Settings related to the Ascender SFTP target
 ASCENDER_SFTP_HOST = env("ASCENDER_SFTP_HOST", None)

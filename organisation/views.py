@@ -1,12 +1,14 @@
 from datetime import date, datetime
+
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.serializers import serialize
-from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-from django.views.generic import View, ListView
+from django.http import HttpResponse, JsonResponse
+from django.views.generic import ListView, View
 
-from itassets.utils import get_previous_pages, get_next_pages
+from itassets.utils import get_next_pages, get_previous_pages
+
 from .models import DepartmentUser, Location
 from .reports import department_user_export, user_account_export
 
