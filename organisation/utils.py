@@ -142,7 +142,7 @@ def ms_graph_users(licensed=False, token=None):
         "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses&$expand=manager($select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,signInActivity,assignedLicenses&$expand=manager($select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -155,45 +155,44 @@ def ms_graph_users(licensed=False, token=None):
         j = resp.json()
 
     users = users + j["value"]  # Final page
-    aad_users = []
+    entra_users = []
 
     for user in users:
         if not user["mail"] or not user["mail"].lower().endswith("@dbca.wa.gov.au"):
             continue
-        aad_users.append(
-            {
-                "objectId": user["id"],
-                "mail": user["mail"].lower(),
-                "userPrincipalName": user["userPrincipalName"],
-                "displayName": user["displayName"] if user["displayName"] else None,
-                "givenName": user["givenName"] if user["givenName"] else None,
-                "surname": user["surname"] if user["surname"] else None,
-                "employeeId": user["employeeId"] if user["employeeId"] else None,
-                "employeeType": user["employeeType"] if user["employeeType"] else None,
-                "jobTitle": user["jobTitle"] if user["jobTitle"] else None,
-                "telephoneNumber": user["businessPhones"][0] if user["businessPhones"] else None,
-                "mobilePhone": user["mobilePhone"] if user["mobilePhone"] else None,
-                "department": user["department"] if user["department"] else None,
-                "companyName": user["companyName"] if user["companyName"] else None,
-                "officeLocation": user["officeLocation"] if user["officeLocation"] else None,
-                "proxyAddresses": [
-                    i.lower().replace("smtp:", "") for i in user["proxyAddresses"] if i.lower().startswith("smtp")
-                ],
-                "accountEnabled": user["accountEnabled"],
-                "onPremisesSyncEnabled": user["onPremisesSyncEnabled"],
-                "onPremisesSamAccountName": user["onPremisesSamAccountName"],
-                "lastPasswordChangeDateTime": user["lastPasswordChangeDateTime"],
-                "assignedLicenses": [i["skuId"] for i in user["assignedLicenses"]],
-                "manager": {"id": user["manager"]["id"], "mail": user["manager"]["mail"]}
-                if "manager" in user
-                else None,
-            }
-        )
+        user_data = {
+            "objectId": user["id"],
+            "mail": user["mail"].lower(),
+            "userPrincipalName": user["userPrincipalName"],
+            "displayName": user["displayName"] if user["displayName"] else None,
+            "givenName": user["givenName"] if user["givenName"] else None,
+            "surname": user["surname"] if user["surname"] else None,
+            "employeeId": user["employeeId"] if user["employeeId"] else None,
+            "employeeType": user["employeeType"] if user["employeeType"] else None,
+            "jobTitle": user["jobTitle"] if user["jobTitle"] else None,
+            "telephoneNumber": user["businessPhones"][0] if user["businessPhones"] else None,
+            "mobilePhone": user["mobilePhone"] if user["mobilePhone"] else None,
+            "department": user["department"] if user["department"] else None,
+            "companyName": user["companyName"] if user["companyName"] else None,
+            "officeLocation": user["officeLocation"] if user["officeLocation"] else None,
+            "proxyAddresses": [i.lower().replace("smtp:", "") for i in user["proxyAddresses"] if i.lower().startswith("smtp")],
+            "accountEnabled": user["accountEnabled"],
+            "onPremisesSyncEnabled": user["onPremisesSyncEnabled"],
+            "onPremisesSamAccountName": user["onPremisesSamAccountName"],
+            "lastPasswordChangeDateTime": user["lastPasswordChangeDateTime"],
+            "signInActivity": None,
+            "assignedLicenses": [i["skuId"] for i in user["assignedLicenses"]],
+            "manager": {"id": user["manager"]["id"], "mail": user["manager"]["mail"]} if "manager" in user else None,
+        }
+        if "signInActivity" in user:
+            user_data["signInActivity"] = user["signInActivity"]
+
+        entra_users.append(user_data)
 
     if licensed:
-        return [u for u in aad_users if u["assignedLicenses"]]
+        return [u for u in entra_users if u["assignedLicenses"]]
     else:
-        return aad_users
+        return entra_users
 
 
 def ms_graph_users_signinactivity(licensed=False, token=None):
@@ -294,7 +293,7 @@ def ms_graph_user(azure_guid, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
     url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}"
@@ -309,7 +308,7 @@ def ms_graph_validate_password(password, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
     }
     url = "https://graph.microsoft.com/beta/users/validatePassword"
     resp = requests.post(url, headers=headers, json={"password": password})
@@ -325,7 +324,7 @@ def ms_graph_sites(team_sites=True, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
     url = "https://graph.microsoft.com/v1.0/sites"
@@ -356,7 +355,7 @@ def ms_graph_site_detail(site_id, token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
     }
     url = f"https://graph.microsoft.com/v1.0/sites/{site_id}"
     resp = requests.get(url, headers=headers)
@@ -377,7 +376,7 @@ def ms_graph_site_storage_usage(period_value="D7", token=None):
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
     headers = {
-        "Authorization": "Bearer {}".format(token["access_token"]),
+        "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
     url = f"https://graph.microsoft.com/v1.0/reports/getSharePointSiteUsageDetail(period='{period_value}')"

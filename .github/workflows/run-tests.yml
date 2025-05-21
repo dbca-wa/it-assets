@@ -17,7 +17,7 @@ jobs:
       ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS: 14
     services:
       postgres:
-        image: postgis/postgis:13-3.1-alpine
+        image: postgis/postgis:15-3.4-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -26,18 +26,13 @@ jobs:
         options: --mount type=tmpfs,destination=/var/lib/postgresql/data --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       #----------------------------------------------
-      # Checkout repo and set up Python
+      # Checkout repo
       #----------------------------------------------
       - name: Checkout repo
         uses: actions/checkout@v4
         id: checkout-repo
         with:
           fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        id: setup-python
-        with:
-          python-version: '3.12'
       #----------------------------------------------
       # Install GDAL into the environment
       #----------------------------------------------
@@ -51,7 +46,7 @@ jobs:
       # Install & configure uv
       #----------------------------------------------
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       #----------------------------------------------

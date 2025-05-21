@@ -1,16 +1,16 @@
-from azure.storage.blob import BlobServiceClient
+import json
+import os
+import re
 from io import BytesIO
+
+import requests
+from azure.storage.blob import BlobServiceClient
 from django.conf import settings
 from django.db.models import Q
 from django.utils.encoding import smart_str
-import json
 from msal import ConfidentialClientApplication
-import os
-import re
-import requests
 
-
-FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, 'X')
+FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, "X")
 
 
 def ms_graph_client_token():
@@ -23,7 +23,7 @@ def ms_graph_client_token():
     context = ConfidentialClientApplication(
         client_id=client_id,
         client_credential=client_secret,
-        authority="https://login.microsoftonline.com/{}".format(azure_tenant_id),
+        authority=f"https://login.microsoftonline.com/{azure_tenant_id}",
     )
     token = context.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
 
@@ -38,29 +38,27 @@ def ms_security_api_client_token():
     client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
     client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
     data = {
-        'resource': 'https://api.security.microsoft.com',
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'grant_type': 'client_credentials',
+        "resource": "https://api.security.microsoft.com",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "client_credentials",
     }
-    url = "https://login.windows.net/{}/oauth2/token".format(azure_tenant_id)
+    url = f"https://login.windows.net/{azure_tenant_id}/oauth2/token"
     resp = requests.post(url, data=data)
-    return resp.json()['access_token']
+    return resp.json()["access_token"]
 
 
 def upload_blob(in_file, container, blob, overwrite=True):
-    """For the passed-in file, upload to blob storage.
-    """
-    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+    """For the passed-in file, upload to blob storage."""
+    connect_string = os.environ.get("AZURE_CONNECTION_STRING")
     service_client = BlobServiceClient.from_connection_string(connect_string)
     blob_client = service_client.get_blob_client(container=container, blob=blob)
     blob_client.upload_blob(in_file, overwrite=overwrite)
 
 
 def download_blob(out_file, container, blob):
-    """For the passed-in file, download the nominated blob into it.
-    """
-    connect_string = os.environ.get('AZURE_CONNECTION_STRING')
+    """For the passed-in file, download the nominated blob into it."""
+    connect_string = os.environ.get("AZURE_CONNECTION_STRING")
     service_client = BlobServiceClient.from_connection_string(connect_string)
     container_client = service_client.get_container_client(container=container)
     out_file.write(container_client.download_blob(blob).readall())
@@ -128,37 +126,35 @@ def get_query(query_string, search_fields):
 
 
 TIME_DURATION_UNITS = (
-    ('week', 60 * 60 * 24 * 7),
-    ('day', 60 * 60 * 24),
-    ('hour', 60 * 60),
-    ('minute', 60),
-    ('second', 1)
+    ("week", 60 * 60 * 24 * 7),
+    ("day", 60 * 60 * 24),
+    ("hour", 60 * 60),
+    ("minute", 60),
+    ("second", 1),
 )
 
 
 def human_time_duration(seconds: int) -> str:
-    """For a passed-in integer (seconds), return a human-readable duration string.
-    """
+    """For a passed-in integer (seconds), return a human-readable duration string."""
     if seconds <= 1:
-        return '<1 second'
+        return "<1 second"
     parts = []
     for unit, div in TIME_DURATION_UNITS:
         amount, seconds = divmod(int(seconds), div)
         if amount > 0:
-            parts.append('{} {}{}'.format(amount, unit, "" if amount == 1 else "s"))
-    return ', '.join(parts)
+            parts.append("{} {}{}".format(amount, unit, "" if amount == 1 else "s"))
+    return ", ".join(parts)
 
 
 def humanise_bytes(bytes: int) -> str:
-    """For a passed-in integer (bytes), return a human-readable string.
-    """
+    """For a passed-in integer (bytes), return a human-readable string."""
     for x in ["B", "KB", "MB", "GB", "TB", "PB"]:
         if bytes < 1024.0:
             return "{:3.1f} {}".format(bytes, x)
         bytes /= 1024.0
 
 
-def smart_truncate(content, length=100, suffix='....(more)'):
+def smart_truncate(content, length=100, suffix="....(more)"):
     """Small function to truncate a string in a sensible way, sourced from:
     http://stackoverflow.com/questions/250357/smart-truncate-in-python
     """
@@ -166,7 +162,7 @@ def smart_truncate(content, length=100, suffix='....(more)'):
     if len(content) <= length:
         return content
     else:
-        return ' '.join(content[:length + 1].split(' ')[0:-1]) + suffix
+        return " ".join(content[: length + 1].split(" ")[0:-1]) + suffix
 
 
 def get_blob_json(container, blob):
@@ -210,12 +206,11 @@ def get_next_pages(page_num, count=3):
 
 
 def get_freshservice_objects(obj_type):
-    """Query the Freshservice v2 API for objects of a defined type.
-    """
-    url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
+    """Query the Freshservice v2 API for objects of a defined type."""
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}"
     params = {
-        'page': 1,
-        'per_page': 100,
+        "page": 1,
+        "per_page": 100,
     }
     objects = []
     further_results = True
@@ -223,11 +218,11 @@ def get_freshservice_objects(obj_type):
     while further_results:
         resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
 
-        if 'link' not in resp.headers:  # No further paginated results.
+        if "link" not in resp.headers:  # No further paginated results.
             further_results = False
 
         objects.extend(resp.json()[obj_type])
-        params['page'] += 1
+        params["page"] += 1
 
     # Return the list of objects returned.
     return objects
@@ -246,7 +241,7 @@ def create_freshservice_object(obj_type, data):
     """Use the Freshservice v2 API to create an object.
     Accepts an object name (string) and a dict of key values.
     """
-    url = '{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type)
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}"
     resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
     return resp  # Return the response, so we can handle unsuccessful responses.
 
@@ -255,6 +250,6 @@ def update_freshservice_object(obj_type, id, data):
     """Use the Freshservice v2 API to update an object.
     Accepts an object type name (string), object ID and a dict of key values.
     """
-    url = '{}/{}/{}'.format(settings.FRESHSERVICE_ENDPOINT, obj_type, id)
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}/{id}"
     resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
     return resp  # Return the response, so we can handle unsuccessful responses.

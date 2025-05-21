@@ -1,5 +1,7 @@
 import re
+
 import xlsxwriter
+
 from .models import DepartmentUser, Location
 from .utils import title_except
 
@@ -16,6 +18,7 @@ def department_user_export(fileobj, users):
             "remove_timezone": True,
         },
     ) as workbook:
+        date_format = workbook.add_format({"num_format": "dd-mmm-yyyy HH:MM", "align": "left"})
         users_sheet = workbook.add_worksheet("Department users")
         users_sheet.write_row(
             "A1",
@@ -29,13 +32,14 @@ def department_user_export(fileobj, users):
                 "COST CENTRE",
                 "CC MANAGER",
                 "CC MANAGER EMAIL",
-                "ACTIVE",
+                "ACCOUNT ACTIVE?",
                 "M365 LICENCE",
                 "TELEPHONE",
                 "MOBILE PHONE",
                 "LOCATION",
                 "DIVISION",
                 "UNIT",
+                "LAST SIGN-IN",
             ),
         )
         row = 1
@@ -51,24 +55,23 @@ def department_user_export(fileobj, users):
                     i.employee_id,
                     i.get_employment_status(),
                     i.cost_centre.code if i.cost_centre else "",
-                    i.cost_centre.manager.name
-                    if i.cost_centre and i.cost_centre.manager
-                    else "",
-                    i.cost_centre.manager.email
-                    if i.cost_centre and i.cost_centre.manager
-                    else "",
+                    i.cost_centre.manager.name if i.cost_centre and i.cost_centre.manager else "",
+                    i.cost_centre.manager.email if i.cost_centre and i.cost_centre.manager else "",
                     i.active,
                     i.get_licence(),
                     i.telephone,
                     i.mobile_phone,
                     i.location.name if i.location else "",
                     i.cost_centre.get_division_name_display() if i.cost_centre else "",
-                    title_except(i.get_ascender_org_path()[-1])
-                    if i.get_ascender_org_path()
-                    else "",
+                    title_except(i.get_ascender_org_path()[-1]) if i.get_ascender_org_path() else "",
                 ],
             )
+            # Write the last sign-in cell value
+            if i.last_signin:
+                users_sheet.write_datetime(row, 16, i.last_signin, date_format)
+
             row += 1
+
         users_sheet.set_column("A:A", 35)
         users_sheet.set_column("B:D", 45)
         users_sheet.set_column("E:E", 12)
@@ -79,6 +82,7 @@ def department_user_export(fileobj, users):
         users_sheet.set_column("J:K", 13)
         users_sheet.set_column("L:M", 20)
         users_sheet.set_column("N:P", 60)
+        users_sheet.set_column("Q:Q", 20)
 
     return fileobj
 
@@ -102,26 +106,28 @@ def user_account_export(fileobj, users):
                 "NAME",
                 "COST CENTRE",
                 "MICROSOFT 365 LICENCE",
-                "AD ACCOUNT ACTIVE?",
+                "ACCOUNT ACTIVE?",
+                "LAST SIGN-IN",
             ),
         )
         row = 1
-        for i in users:
+        for user in users:
             users_sheet.write_row(
                 row,
                 0,
                 [
-                    i.name,
-                    i.cost_centre.code if i.cost_centre else "",
-                    i.get_licence(),
-                    i.active,
+                    user.name,
+                    user.cost_centre.code if user.cost_centre else "",
+                    user.get_licence(),
+                    user.active,
+                    user.last_signin.strftime("%d-%b-%Y %H:%M:%S") if user.last_signin else "",
                 ],
             )
             row += 1
         users_sheet.set_column("A:A", 30)
         users_sheet.set_column("B:B", 15)
         users_sheet.set_column("C:C", 22)
-        users_sheet.set_column("D:D", 20)
+        users_sheet.set_column("D:E", 20)
 
     return fileobj
 
@@ -228,9 +234,7 @@ def user_changes_export(fileobj, action_logs):
                 pattern = r"location (.+) differs"
                 old_location = re.findall(pattern, log.log)
                 if old_location:
-                    new_location = Location.objects.get(
-                        ascender_desc=log.ascender_data["geo_location_desc"]
-                    )
+                    new_location = Location.objects.get(ascender_desc=log.ascender_data["geo_location_desc"])
                     row_data[9] = old_location[0]
                     row_data[10] = new_location.name
                     changes_sheet.write_row(row, 0, row_data)

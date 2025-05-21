@@ -33,16 +33,26 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 GEOSERVER_URL = env("GEOSERVER_URL", "")
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # Use whitenoise to add compression and caching support for static files.
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Assume Azure blob storage is used for media uploads, unless explicitly set as local storage.
 LOCAL_MEDIA_STORAGE = env("LOCAL_MEDIA_STORAGE", False)
 if LOCAL_MEDIA_STORAGE:
-    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
     if not os.path.exists(os.path.join(BASE_DIR, "media")):
         os.mkdir(os.path.join(BASE_DIR, "media"))
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 else:
-    DEFAULT_FILE_STORAGE = "storages.backends.azure_storage.AzureStorage"
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+    }
     AZURE_ACCOUNT_NAME = env("AZURE_ACCOUNT_NAME", "name")
     AZURE_ACCOUNT_KEY = env("AZURE_ACCOUNT_KEY", "key")
     AZURE_CONTAINER = env("AZURE_CONTAINER", "container")
@@ -136,7 +146,9 @@ SITE_ID = 1
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", "")
 ENVIRONMENT_COLOUR = env("ENVIRONMENT_COLOUR", "")
 
-project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+pyproject = open(os.path.join(BASE_DIR, "pyproject.toml"), "rb")
+project = tomllib.load(pyproject)
+pyproject.close()
 VERSION_NO = project["project"]["version"]
 
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
@@ -150,6 +162,8 @@ ASCENDER_CREATE_AZURE_AD = env("ASCENDER_CREATE_AZURE_AD", False)
 # Flag to set how many days ahead of their start date a new AD account should be created.
 # False == no limit. Value should be a positive integer value.
 ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env("ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS", -1)
+# Number of days after which an Entra ID account may be considered "dormant":
+DORMANT_ACCOUNT_DAYS = env("DORMANT_ACCOUNT_DAYS", 90)
 
 # Settings related to the Ascender SFTP target
 ASCENDER_SFTP_HOST = env("ASCENDER_SFTP_HOST", None)
@@ -174,12 +188,18 @@ DATABASES = {
     "default": dj_database_url.config(),
 }
 
+DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
+# Use PostgreSQL connection pool if using that DB engine (use ConnectionPool defaults).
+if "ENGINE" in DATABASES["default"] and any(eng in DATABASES["default"]["ENGINE"] for eng in ["postgresql", "postgis"]):
+    if "OPTIONS" in DATABASES["default"]:
+        DATABASES["default"]["OPTIONS"]["pool"] = True
+    else:
+        DATABASES["default"]["OPTIONS"] = {"pool": True}
 
 # Static files configuration
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "/static/"
 STATICFILES_DIRS = (os.path.join(BASE_DIR, "itassets", "static"),)
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_ROOT = STATIC_ROOT
 
 # Media uploads

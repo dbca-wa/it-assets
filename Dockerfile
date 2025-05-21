@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Prepare the base environment.
-FROM python:3.12-slim-bookworm AS builder_base
+FROM python:3.13-slim-bookworm AS builder_base
 
 # This approximately follows this guide: https://hynek.me/articles/docker-uv/
 # Which creates a standalone environment with the dependencies.
@@ -31,14 +31,14 @@ RUN --mount=type=cache,target=/root/.cache \
 
 ##################################################################################
 
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
 # Install OS packages
 RUN apt-get update -y \
   && apt-get upgrade -y \
-  && apt-get install -y gdal-bin proj-bin libmagic-dev \
+  && apt-get install -y --no-install-recommends gdal-bin proj-bin libmagic-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user.
@@ -47,9 +47,9 @@ RUN groupadd -r -g 1000 app \
 
 COPY --from=builder_base --chown=app:app /app /app
 # Make sure we use the virtualenv by default
-ENV PATH="/app/.venv/bin:$PATH"
 # Run Python unbuffered
-ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/.venv/bin:$PATH" \
+  PYTHONUNBUFFERED=1
 
 # Install the project.
 WORKDIR /app
