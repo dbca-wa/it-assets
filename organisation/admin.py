@@ -132,6 +132,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "active",
                     "email",
                     "name",
+                    "maiden_name",
                     "assigned_licences",
                     "dir_sync_enabled",
                     "last_signin",
@@ -148,13 +149,20 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 "fields": (
                     "telephone",
                     "mobile_phone",
+                ),
+            },
+        ),
+        (
+            "OIM-internal fields",
+            {
+                "description": """<span class="errornote">Data in these fields is used within OIM for record-keeping purposes.</span>""",
+                "fields": (
                     "name_update_reference",
                     "account_type",
                     "vip",
                     "executive",
                     "contractor",
                     "security_clearance",
-                    "maiden_name",
                 ),
             },
         ),
