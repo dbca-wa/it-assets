@@ -157,15 +157,19 @@ class DepartmentUser(models.Model):
         verbose_name="update reference",
         help_text="Reference for name/CC change request",
     )
+    # TODO: deprecate field.
     vip = models.BooleanField(
         default=False,
         help_text="An individual who carries out a critical role for the department",
     )
+    # TODO: deprecate field.
     executive = models.BooleanField(default=False, help_text="An individual who is an executive")
+    # TODO: deprecate field.
     contractor = models.BooleanField(
         default=False,
         help_text="An individual who is an external contractor (does not include agency contract staff)",
     )
+    # TODO: deprecate field.
     notes = models.TextField(
         null=True,
         blank=True,
@@ -177,6 +181,7 @@ class DepartmentUser(models.Model):
         blank=True,
         help_text="Employee network account status",
     )
+    # TODO: deprecate field.
     security_clearance = models.BooleanField(
         default=False,
         verbose_name="security clearance granted",
@@ -668,22 +673,29 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # given_name (source of truth: Ascender)
+        # Given name (source of truth: Ascender)
         # Note that we use "preferred name" in place of legal first name here, and this should flow through to AD.
-        # given_name is set by the `update_from_ascender_data` method.
+        # preferred_name and given_name are set by the `update_from_ascender_data` method.
+
+        # Define the appropriate given name value for the AD user.
+        if self.preferred_name:
+            given_name = self.preferred_name
+        else:
+            given_name = self.given_name
+
         # Onprem AD users
         if (
             self.dir_sync_enabled
             and self.ad_guid
             and self.ad_data
             and "GivenName" in self.ad_data
-            and self.ad_data["GivenName"] != self.given_name
+            and self.ad_data["GivenName"] != given_name
         ):
             prop = "GivenName"
             change = {
                 "identity": self.ad_guid,
                 "property": prop,
-                "value": self.given_name,
+                "value": given_name,
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
@@ -701,21 +713,21 @@ class DepartmentUser(models.Model):
             and self.azure_guid
             and self.azure_ad_data
             and "givenName" in self.azure_ad_data
-            and self.azure_ad_data["givenName"] != self.given_name
+            and self.azure_ad_data["givenName"] != given_name
         ):
             if token:
                 headers = {
                     "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
-                data = {"givenName": self.given_name}
+                data = {"givenName": given_name}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account givenName set to {self.given_name}")
+                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account givenName set to {given_name}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # surname (source of truth: Ascender)
+        # Surname (source of truth: Ascender)
         # Onprem AD users
         if (
             self.dir_sync_enabled
@@ -760,7 +772,7 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # cost_centre (source of truth: Ascender, recorded in AD to the Company field).
+        # Cost Centre (source of truth: Ascender, recorded in AD to the Company field).
         if (
             self.employee_id
             and self.dir_sync_enabled
@@ -808,7 +820,7 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # division (source of truth: Ascender, recorded in AD to the Department field).
+        # Division (source of truth: Ascender, recorded in AD to the Department field).
         # Onprem AD users
         if (
             self.dir_sync_enabled
@@ -855,7 +867,7 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # title (source of truth: Ascender)
+        # Title (source of truth: Ascender)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and "Title" in self.ad_data and self.ad_data["Title"] != self.title:
             prop = "Title"
@@ -894,7 +906,7 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # telephone (source of truth: IT Assets)
+        # Telephone (source of truth: IT Assets)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and "telephoneNumber" in self.ad_data:
             if (self.ad_data["telephoneNumber"] and not compare_values(self.ad_data["telephoneNumber"].strip(), self.telephone)) or (
@@ -933,7 +945,7 @@ class DepartmentUser(models.Model):
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
-        # mobile (source of truth: IT Assets)
+        # Mobile (source of truth: IT Assets)
         # Onprem AD users
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and "Mobile" in self.ad_data:
             if (self.ad_data["Mobile"] and not compare_values(self.ad_data["Mobile"].strip(), self.mobile_phone)) or (
@@ -972,7 +984,7 @@ class DepartmentUser(models.Model):
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
-        # employee_id (source of truth: Ascender)
+        # Employee ID (source of truth: Ascender)
         # Onprem AD users
         if (
             self.dir_sync_enabled
@@ -1017,7 +1029,7 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # manager (source of truth: Ascender)
+        # Manager (source of truth: Ascender)
         # Onprem AD users
         manager_ad = None
         if self.dir_sync_enabled and self.ad_guid and self.ad_data and "Manager" in self.ad_data:
@@ -1073,7 +1085,7 @@ class DepartmentUser(models.Model):
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
-        # location (source of truth: Ascender)
+        # Physical location (source of truth: Ascender)
         # Onprem AD users
         if (
             self.dir_sync_enabled
