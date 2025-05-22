@@ -159,10 +159,6 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 "fields": (
                     "name_update_reference",
                     "account_type",
-                    "vip",
-                    "executive",
-                    "contractor",
-                    "security_clearance",
                 ),
             },
         ),
