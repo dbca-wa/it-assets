@@ -124,16 +124,6 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: FOREIGN_TABLE_CC_MANAGER
-            - name: FRESHSERVICE_ENDPOINT
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: FRESHSERVICE_ENDPOINT
-            - name: FRESHSERVICE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: itassets-env-prod
-                  key: FRESHSERVICE_API_KEY
             - name: ASCENDER_SFTP_HOSTNAME
               valueFrom:
                 secretKeyRef:

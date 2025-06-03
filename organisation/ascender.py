@@ -197,9 +197,7 @@ def ascender_db_fetch(employee_id=None):
 
     conn = get_ascender_connection()
     cur = conn.cursor()
-    columns = sql.SQL(",").join(
-        sql.Identifier(f[0]) if isinstance(f, (list, tuple)) else sql.Identifier(f) for f in FOREIGN_TABLE_FIELDS
-    )
+    columns = sql.SQL(",").join(sql.Identifier(f[0]) if isinstance(f, (list, tuple)) else sql.Identifier(f) for f in FOREIGN_TABLE_FIELDS)
     schema = sql.Identifier(settings.FOREIGN_SCHEMA)
     table = sql.Identifier(settings.FOREIGN_TABLE)
     employee_no = sql.Identifier("employee_no")
@@ -366,9 +364,7 @@ def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manag
             LOGGER.info(log)
         except:
             # In the event of an error (probably due to a duplicate code), fail gracefully and log the error.
-            log = (
-                f"Exception during creation of new cost centre in new Azure AD account process, code {job['paypoint']}"
-            )
+            log = f"Exception during creation of new cost centre in new Azure AD account process, code {job['paypoint']}"
             LOGGER.exception(log)
             return False
 
@@ -394,11 +390,7 @@ def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manag
     # Rule: we set a limit for the number of days ahead of their starting date which we
     # allow to create an Azure AD account. If this value is not set (False/None), assume that there is
     # no limit.
-    if (
-        job_start_date
-        and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
-        and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0
-    ):
+    if job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
         diff = job_start_date - today
         if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
             # Start start exceeds our limit, abort creating an AD account yet.
@@ -471,11 +463,7 @@ def ascender_user_import_all():
 
             # Check if the user already has Ascender data cached. If so, check if the position_no
             # value has changed. In that situation, create a DepartmentUserLog object.
-            if (
-                user.ascender_data
-                and "position_no" in user.ascender_data
-                and user.ascender_data["position_no"] != job["position_no"]
-            ):
+            if user.ascender_data and "position_no" in user.ascender_data and user.ascender_data["position_no"] != job["position_no"]:
                 DepartmentUserLog.objects.create(
                     department_user=user,
                     log={
@@ -504,9 +492,7 @@ def ascender_user_import_all():
             job, cc, job_start_date, licence_type, manager, location = rules_passed
 
             if cc and job_start_date and licence_type and manager and location:
-                LOGGER.info(
-                    f"Ascender employee ID {employee_id} does not exist and passed all rules; provisioning new account"
-                )
+                LOGGER.info(f"Ascender employee ID {employee_id} does not exist and passed all rules; provisioning new account")
                 create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, token)
 
 
@@ -523,9 +509,7 @@ def ascender_user_import(employee_id, ignore_job_start_date=False, manager_overr
         return None
     job = jobs[0]
 
-    rules_passed = validate_ascender_user_account_rules(
-        job, ignore_job_start_date, manager_override_email, logging=True
-    )
+    rules_passed = validate_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True)
     if not rules_passed:
         LOGGER.warning(f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
@@ -640,14 +624,10 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         licence_type = "Cloud"
         # Short circuit: no available licences, abort.
         if f3_assignable - f3_consumed <= 0:
-            LOGGER.warning(
-                f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})"
-            )
+            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})")
             return
         if eo_assignable - eo_consumed <= 0:
-            LOGGER.warning(
-                f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})"
-            )
+            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})")
             return
         if sec_assignable - sec_consumed <= 0:
             LOGGER.warning(
@@ -725,9 +705,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     data = {
         "mail": email,
         "employeeId": job["employee_id"],
-        "givenName": job["preferred_name"].title().strip()
-        if job["preferred_name"]
-        else job["first_name"].title().strip(),
+        "givenName": job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip(),
         "surname": job["surname"].title(),
         "jobTitle": title,
         "companyName": cc.code,
@@ -915,27 +893,6 @@ def department_user_create(job, guid, email, display_name, title, cc, location, 
     LOGGER.info(log)
 
     return new_user
-
-
-def employee_ids_audit(employee_ids=None):
-    """A utility function to check the set of current Ascender employee ID values and prune/remove
-    any outdated ones.
-    """
-    LOGGER.info("Querying Ascender database for employee information")
-    if not employee_ids:
-        employee_ids = []
-        ascender_iter = ascender_db_fetch()
-        for record in ascender_iter:
-            employee_ids.append(record["employee_id"])
-
-    LOGGER.info(f"Auditing {len(employee_ids)} employee ID values recorded on department users")
-    for user in DepartmentUser.objects.filter(employee_id__isnull=False):
-        if user.employee_id not in employee_ids:
-            LOGGER.info(f"{user.employee_id} not found in current Ascender employee IDs, clearing it from {user}")
-            user.employee_id = None
-            user.ascender_data = {}
-            user.ascender_data_updated = None
-            user.save()
 
 
 def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date=None):

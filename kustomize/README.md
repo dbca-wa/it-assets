@@ -27,8 +27,6 @@ values in the format KEY=value (i.e. `overlays/uat/.env`). Required keys:
     FOREIGN_SERVER
     FOREIGN_TABLE
     FOREIGN_TABLE_CC_MANAGER
-    FRESHSERVICE_ENDPOINT
-    FRESHSERVICE_API_KEY
     AZURE_ACCOUNT_NAME
     AZURE_ACCOUNT_KEY
     AZURE_CONTAINER

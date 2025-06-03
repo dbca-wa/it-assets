@@ -65,13 +65,21 @@ class AscenderTestCase(TestCase):
             "licence_type": "ONPUL",
             "manager_emp_no": str(self.manager.employee_id),
         }
-        self.email, _ = generate_valid_dbca_email(
-            surname=self.ascender_data["surname"], first_name=self.ascender_data["first_name"]
-        )
-        self.display_name = (
-            f"{self.ascender_data['first_name'].title().strip()} {self.ascender_data['surname'].title().strip()}"
-        )
+        self.email, _ = generate_valid_dbca_email(surname=self.ascender_data["surname"], first_name=self.ascender_data["first_name"])
+        self.display_name = f"{self.ascender_data['first_name'].title().strip()} {self.ascender_data['surname'].title().strip()}"
         self.title = title_except(self.ascender_data["occup_pos_title"])
+
+    def create_new_user(self):
+        return department_user_create(
+            job=self.ascender_data,
+            guid=str(uuid4()),
+            email=self.email,
+            display_name=self.display_name,
+            title=self.title,
+            cc=self.cc,
+            location=self.location,
+            manager=self.manager,
+        )
 
     def test_validate_ascender_user_account_rules(self):
         self.assertTrue(validate_ascender_user_account_rules(self.ascender_data))
@@ -144,15 +152,11 @@ class AscenderTestCase(TestCase):
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_generate_valid_dbca_email(self):
-        email, mail_nickname = generate_valid_dbca_email(
-            surname=mixer.faker.last_name(), preferred_name=mixer.faker.first_name()
-        )
+        email, mail_nickname = generate_valid_dbca_email(surname=mixer.faker.last_name(), preferred_name=mixer.faker.first_name())
         self.assertTrue(email and mail_nickname)
 
     def test_generate_valid_dbca_email_first_name(self):
-        email, mail_nickname = generate_valid_dbca_email(
-            surname=mixer.faker.last_name(), first_name=mixer.faker.first_name()
-        )
+        email, mail_nickname = generate_valid_dbca_email(surname=mixer.faker.last_name(), first_name=mixer.faker.first_name())
         self.assertTrue(email and mail_nickname)
 
     def test_generate_valid_dbca_email_missing_name(self):
@@ -176,35 +180,15 @@ class AscenderTestCase(TestCase):
         self.assertTrue(DepartmentUser.objects.count() > initial_count)
 
     def test_new_user_creation_email_sends(self):
-        new_user = department_user_create(
-            job=self.ascender_data,
-            guid=str(uuid4()),
-            email=self.email,
-            display_name=self.display_name,
-            title=self.title,
-            cc=self.cc,
-            location=self.location,
-            manager=self.manager,
-        )
+        new_user = self.create_new_user()
         licence_type = "On-premise"
         new_user_creation_email(new_user, licence_type, job_start_date=self.next_week)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"New user account creation details - {new_user.name}")
 
     def test_department_user_ascender_methods(self):
-        new_user = department_user_create(
-            job=self.ascender_data,
-            guid=str(uuid4()),
-            email=self.email,
-            display_name=self.display_name,
-            title=self.title,
-            cc=self.cc,
-            location=self.location,
-            manager=self.manager,
-        )
+        new_user = self.create_new_user()
         self.assertTrue(new_user.get_ascender_org_path())
-        self.assertTrue(new_user.get_division())
-        self.assertTrue(new_user.get_business_unit())
         self.assertTrue(new_user.get_employment_status())
         self.assertTrue(new_user.get_ascender_full_name())
         self.assertTrue(new_user.get_position_title())
@@ -213,3 +197,13 @@ class AscenderTestCase(TestCase):
         self.assertTrue(new_user.get_ascender_clevels())
         self.assertTrue(new_user.get_geo_location_desc())
         self.assertTrue(new_user.get_job_start_date())
+
+    def test_department_user_get_division(self):
+        new_user = self.create_new_user()
+        self.assertTrue(new_user.get_division())
+        self.assertEqual(new_user.get_division(), "Strategy and Governance")
+
+    def test_department_user_get_business_unit(self):
+        new_user = self.create_new_user()
+        self.assertTrue(new_user.get_business_unit())
+        self.assertEqual(new_user.get_business_unit(), "Office of Expectation Management")

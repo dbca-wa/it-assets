@@ -422,7 +422,7 @@ class DepartmentUser(models.Model):
                 if field:
                     # Tweak/sanitise field values.
                     branch = field.replace("ROTTNEST ISLAND AUTHORITY - ", "").replace("  ", " ")
-                    if branch not in path and branch != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
+                    if branch not in path and branch.upper() != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
                         path.append(branch)
         return path
 
