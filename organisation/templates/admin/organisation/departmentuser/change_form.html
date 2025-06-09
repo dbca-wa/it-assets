@@ -1,15 +1,14 @@
 {% extends "admin/change_form.html" %}
-
 {% block object-tools-items %}
     {% if not is_popup %}
         {% if superuser_only_form %}
-        <li>
-            <a href="{% url 'admin:organisation_departmentuser_change' object_id=object_id %}">Normal fields</a>
-        </li>
+            <li>
+                <a href="{% url 'service_desk_admin:organisation_departmentuser_change' object_id=object_id %}">Normal fields</a>
+            </li>
         {% else %}
-        <li>
-            <a href="{% url 'admin:organisation_departmentuser_admin_change' object_id=object_id %}">Superuser-only fields</a>
-        </li>
+            <li>
+                <a href="{% url 'service_desk_admin:organisation_departmentuser_admin_change' object_id=object_id %}">Superuser-only fields</a>
+            </li>
         {% endif %}
     {% endif %}
     {{ block.super }}
