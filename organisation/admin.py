@@ -1,7 +1,7 @@
 import json
 
 from django import forms
-from django.contrib.admin import ModelAdmin, SimpleListFilter, helpers, register
+from django.contrib.admin import AdminSite, ModelAdmin, SimpleListFilter, helpers, register
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied
 from django.urls import path
@@ -398,3 +398,18 @@ class AscenderActionLogAdmin(ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class ServiceDeskAdminSite(AdminSite):
+    """Define a customised admin site for Service Desk staff."""
+
+    site_header = "Service Desk IT Assets database administration"
+    index_title = "IT Assets database"
+    site_title = "IT Assets"
+
+
+service_desk_admin_site = ServiceDeskAdminSite(name="service_desk_admin")
+service_desk_admin_site.register(AscenderActionLog, AscenderActionLogAdmin)
+service_desk_admin_site.register(CostCentre, CostCentreAdmin)
+service_desk_admin_site.register(DepartmentUser, DepartmentUserAdmin)
+service_desk_admin_site.register(Location, LocationAdmin)

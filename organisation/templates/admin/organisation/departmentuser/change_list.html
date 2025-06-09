@@ -1,13 +1,12 @@
 {% extends "admin/change_list.html" %}
-
 {% block object-tools-items %}
     {% if not is_popup %}
-    <li>
-        <a href="{% url 'admin:organisation_departmentuser_export' %}?all=true">Download all Department Users</a>
-    </li>
-    <li>
-        <a href="{% url 'admin:organisation_departmentuser_export' %}">Download active Department Users</a>
-    </li>
+        <li>
+            <a href="{% url 'service_desk_admin:organisation_departmentuser_export' %}?all=true">Download all Department Users</a>
+        </li>
+        <li>
+            <a href="{% url 'service_desk_admin:organisation_departmentuser_export' %}">Download active Department Users</a>
+        </li>
     {% endif %}
     {{ block.super }}
 {% endblock %}
