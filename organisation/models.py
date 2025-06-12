@@ -268,30 +268,31 @@ class DepartmentUser(models.Model):
 
     def get_division(self):
         """Returns the name of the division this user belongs to, based on their Ascender org path."""
-        org_path = self.get_ascender_org_path()
-        if not org_path:
-            return None
-        division = org_path[0]
-        # Hard-coded map of Ascender values present in the (normally) `clevel1_desc` field,
-        # which represents the highest-minus-one org hierarchy unit that the user belongs to.
-        # Ascender records these
-        division_map = {
-            "AUDIT, INTEGRITY AND RISK BRANCH": "Audit and Risk",
-            "BIODIVERSITY AND CONSERVATION SCIENCE": "Biodiversity and Conservation Science",
-            "BOTANIC GARDENS AND PARKS": "Botanic Gardens and Parks Authority",
-            "CONSERVATION AND PARKS COMMISSION": "Conservation and Parks Commission",
-            "PARKS AND VISITOR SERVICES DIVISION": "Parks and Visitor Services",
-            "PARKS AND WILDLIFE SERVICE": "Parks and Wildlife Service",
-            "REGIONAL AND FIRE MANAGEMENT SERVICES": "Regional and Fire Management Services",
-            "ROTTNEST ISLAND AUTHORITY": "Rottnest Island Authority",
-            "STRATEGY AND GOVERNANCE": "Strategy and Governance",
-            "ZOOLOGICAL PARKS AUTHORITY": "Zoological Parks Authority",
-        }
+        if self.get_ascender_org_path():
+            org_path = self.get_ascender_org_path()
+            division = org_path[0]
+            # Hard-coded map of Ascender values present in the (normally) `clevel1_desc` field,
+            # which represents the highest-minus-one org hierarchy unit that the user belongs to.
+            # Ascender records these
+            division_map = {
+                "AUDIT, INTEGRITY AND RISK BRANCH": "Audit and Risk",
+                "BIODIVERSITY AND CONSERVATION SCIENCE": "Biodiversity and Conservation Science",
+                "BOTANIC GARDENS AND PARKS": "Botanic Gardens and Parks Authority",
+                "CONSERVATION AND PARKS COMMISSION": "Conservation and Parks Commission",
+                "PARKS AND VISITOR SERVICES DIVISION": "Parks and Visitor Services",
+                "PARKS AND WILDLIFE SERVICE": "Parks and Wildlife Service",
+                "REGIONAL AND FIRE MANAGEMENT SERVICES": "Regional and Fire Management Services",
+                "ROTTNEST ISLAND AUTHORITY": "Rottnest Island Authority",
+                "STRATEGY AND GOVERNANCE": "Strategy and Governance",
+                "ZOOLOGICAL PARKS AUTHORITY": "Zoological Parks Authority",
+            }
 
-        if division in division_map:
-            return division_map[division]
+            if division in division_map:
+                return division_map[division]
+            else:
+                return title_except(division)
         else:
-            return title_except(division)
+            return None
 
     def get_business_unit(self):
         """Returns the business unit this users belongs to, based upon their Ascender org path."""
@@ -301,7 +302,8 @@ class DepartmentUser(models.Model):
                 return title_except(org_path[1])
             else:  # Edge case: org path is single-length.
                 return title_except(org_path[0])
-        return None
+        else:
+            return None
 
     def get_licence(self):
         """Return Microsoft 365 licence description consistent with other OIM communications."""
@@ -820,21 +822,21 @@ class DepartmentUser(models.Model):
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
-        # Division (source of truth: Ascender, recorded in AD to the Department field).
+        # Business unit / Division (source of truth: Ascender, recorded in AD to the Department field).
         # Onprem AD users
         if (
             self.dir_sync_enabled
             and self.ad_guid
             and self.ad_data
-            and self.get_division()
+            and self.get_business_unit()
             and "Department" in self.ad_data
-            and self.ad_data["Department"] != self.get_division()
+            and self.ad_data["Department"] != self.get_business_unit()
         ):
             prop = "Department"
             change = {
                 "identity": self.ad_guid,
                 "property": prop,
-                "value": self.get_division(),
+                "value": self.get_business_unit(),
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
@@ -852,18 +854,18 @@ class DepartmentUser(models.Model):
             and self.azure_guid
             and self.azure_ad_data
             and "department" in self.azure_ad_data
-            and self.get_division()
-            and self.azure_ad_data["department"] != self.get_division()
+            and self.get_business_unit()
+            and self.azure_ad_data["department"] != self.get_business_unit()
         ):
             if token:
                 headers = {
                     "Authorization": f"Bearer {token['access_token']}",
                     "Content-Type": "application/json",
                 }
-                data = {"department": self.get_division()}
+                data = {"department": self.get_business_unit()}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE SYNC: {self} Azure AD account department set to {self.get_division()}")
+                    LOGGER.info(f"AZURE SYNC: {self} Azure AD account department set to {self.get_business_unit()}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
