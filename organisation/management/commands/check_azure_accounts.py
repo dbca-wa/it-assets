@@ -107,7 +107,7 @@ class Command(BaseCommand):
                     subject = f"AZURE AD SYNC: exception during sync of Azure AD account (object {az['objectId']})"
                     logger.error(subject)
                     message = f"Azure data:\n{json.dumps(az, indent=2)}\nException:\n{str(e)}\n"
-                    html_message = f"<p>Azure data:</p><p>{json.dumps(az, indent=2)}\nException:\n{str(e)}\n</p>"
+                    html_message = f"<p>Azure data:</p><p>{json.dumps(az, indent=2)}</p><p>Exception:</p><p>{str(e)}\n</p>"
                     mail.send_mail(
                         subject=subject,
                         message=message,

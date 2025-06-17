@@ -1379,7 +1379,7 @@ class DepartmentUser(models.Model):
             "signInActivity" in self.azure_ad_data
             and self.azure_ad_data["signInActivity"]
             and "lastSignInDateTime" in self.azure_ad_data["signInActivity"]
-            and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]  # Not falsy
+            and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]
         ):
             self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
 
