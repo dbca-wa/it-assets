@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -101,12 +102,12 @@ class Command(BaseCommand):
                         existing_user.azure_ad_data = az
                         existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                         existing_user.update_from_entra_id_data()  # This method calls save()
-                except:
+                except Exception as e:
                     # In the event of an exception, fail gracefully and alert the admins.
                     subject = f"AZURE AD SYNC: exception during sync of Azure AD account (object {az['objectId']})"
                     logger.error(subject)
-                    message = f"Azure data:\n{az}"
-                    html_message = f"<p>Azure data:</p><p>{az}</p>"
+                    message = f"Azure data:\n{json.dumps(az, indent=2)}\nException:\n{str(e)}\n"
+                    html_message = f"<p>Azure data:</p><p>{json.dumps(az, indent=2)}</p><p>Exception:</p><p>{str(e)}\n</p>"
                     mail.send_mail(
                         subject=subject,
                         message=message,

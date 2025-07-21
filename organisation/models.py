@@ -1254,7 +1254,8 @@ class DepartmentUser(models.Model):
                 LOGGER.info(log)
                 self.surname = self.ascender_data["surname"]
 
-        # Set the user display name (Entra ID / Outlook) from Ascender name values.
+        # Set the user display name (Entra ID / Outlook) from Ascender name values,
+        # with optional local override via any value in the given_name field.
         self.name = self.get_display_name()
 
         # Cost centre (Ascender records cost centre as 'paypoint').
@@ -1379,6 +1380,7 @@ class DepartmentUser(models.Model):
             "signInActivity" in self.azure_ad_data
             and self.azure_ad_data["signInActivity"]
             and "lastSignInDateTime" in self.azure_ad_data["signInActivity"]
+            and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]
         ):
             self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
 

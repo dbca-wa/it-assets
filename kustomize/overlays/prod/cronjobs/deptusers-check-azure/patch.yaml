@@ -18,6 +18,11 @@ spec:
                     secretKeyRef:
                       name: itassets-env-prod
                       key: DATABASE_URL
+                - name: EMAIL_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: EMAIL_HOST
                 - name: AZURE_TENANT_ID
                   valueFrom:
                     secretKeyRef:

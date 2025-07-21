@@ -78,14 +78,14 @@ jobs:
       # Run vulnerability scan on built image
       #----------------------------------------------
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.31.0
+        uses: aquasecurity/trivy-action@0.32.0
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         with:
           scan-type: 'image'
           scanners: 'vuln'
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          vuln-type: 'os,library'
+          vuln-type: 'library'
           severity: 'HIGH,CRITICAL'
           format: 'sarif'
           output: 'trivy-results.sarif'

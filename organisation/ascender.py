@@ -203,7 +203,6 @@ def ascender_db_fetch(employee_id=None):
     employee_no = sql.Identifier("employee_no")
 
     if employee_id:
-        # query = f"SELECT {columns} FROM {schema}.{table} WHERE employee_no = '{employee_id}'"
         query = sql.SQL("SELECT {columns} FROM {schema}.{table} WHERE {employee_no} = %s").format(
             columns=columns, schema=schema, table=table, employee_no=employee_no
         )
@@ -963,8 +962,10 @@ def ascender_cc_manager_fetch():
     """Returns all records from cc_manager_view."""
     conn = get_ascender_connection()
     cursor = conn.cursor()
-    cc_manager_query_sql = f'SELECT * FROM "{settings.FOREIGN_SCHEMA}"."{settings.FOREIGN_TABLE_CC_MANAGER}"'
-    cursor.execute(cc_manager_query_sql)
+    schema = sql.Identifier(settings.FOREIGN_SCHEMA)
+    table = sql.Identifier(settings.FOREIGN_TABLE_CC_MANAGER)
+    query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
+    cursor.execute(query)
     records = []
 
     while True:
