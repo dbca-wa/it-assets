@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.42"
+version = "2.4.43"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -30,7 +30,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "ipython>=8.31.0",
+  "ipython>=8.32.0",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.0.1",
