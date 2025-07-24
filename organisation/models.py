@@ -235,44 +235,6 @@ class DepartmentUser(models.Model):
                 self.account_type = 14  # Unknown - AD disabled
         super(DepartmentUser, self).save(*args, **kwargs)
 
-    def get_division(self) -> Optional[str]:
-        """Returns the name of the division this user belongs to, based on their Ascender org path."""
-        if self.get_ascender_org_path():
-            org_path = self.get_ascender_org_path()
-            division = org_path[0]
-            # Hard-coded map of Ascender values present in the (normally) `clevel1_desc` field,
-            # which represents the highest-minus-one org hierarchy unit that the user belongs to.
-            # Ascender records these
-            division_map = {
-                "AUDIT, INTEGRITY AND RISK BRANCH": "Audit and Risk",
-                "BIODIVERSITY AND CONSERVATION SCIENCE": "Biodiversity and Conservation Science",
-                "BOTANIC GARDENS AND PARKS": "Botanic Gardens and Parks Authority",
-                "CONSERVATION AND PARKS COMMISSION": "Conservation and Parks Commission",
-                "PARKS AND VISITOR SERVICES DIVISION": "Parks and Visitor Services",
-                "PARKS AND WILDLIFE SERVICE": "Parks and Wildlife Service",
-                "REGIONAL AND FIRE MANAGEMENT SERVICES": "Regional and Fire Management Services",
-                "ROTTNEST ISLAND AUTHORITY": "Rottnest Island Authority",
-                "STRATEGY AND GOVERNANCE": "Strategy and Governance",
-                "ZOOLOGICAL PARKS AUTHORITY": "Zoological Parks Authority",
-            }
-            if division in division_map:
-                return division_map[division]
-            else:
-                return division
-        return None
-
-    def get_business_unit(self) -> Optional[str]:
-        """Returns the business unit this users belongs to, based upon their Ascender org path."""
-        if self.get_ascender_org_path():
-            org_path = self.get_ascender_org_path()
-            if len(org_path) > 1:  # Second the second org path element as the 'business unit'.
-                return org_path[1]
-            elif len(org_path) == 1:  # Edge case: org path is single-length.
-                return org_path[0]
-            else:
-                return None
-        return None
-
     def get_licence(self) -> Optional[str]:
         """Return Microsoft 365 licence description consistent with other OIM communications."""
         if self.assigned_licences:
@@ -298,52 +260,6 @@ class DepartmentUser(models.Model):
                 return f"{self.given_name} {self.maiden_name}".strip()
             else:
                 return f"{self.given_name} {self.surname}".strip()
-
-    def get_employment_status(self) -> Optional[str]:
-        """From Ascender data, return a description of a user's employment status."""
-        if self.ascender_data and "emp_status" in self.ascender_data and self.ascender_data["emp_status"]:
-            from .ascender import EMP_STATUS_MAP
-
-            if self.ascender_data["emp_status"] in EMP_STATUS_MAP:
-                return EMP_STATUS_MAP[self.ascender_data["emp_status"]]
-        return None
-
-    def get_ascender_full_name(self) -> Optional[str]:
-        """From Ascender data, return the users's full name."""
-        if self.ascender_data:
-            name = []
-            if "first_name" in self.ascender_data and self.ascender_data["first_name"]:
-                name.append(self.ascender_data["first_name"])
-            if "second_name" in self.ascender_data and self.ascender_data["second_name"]:
-                name.append(self.ascender_data["second_name"])
-            if "surname" in self.ascender_data and self.ascender_data["surname"]:
-                name.append(self.ascender_data["surname"])
-            return " ".join(name)
-        return None
-
-    def get_ascender_preferred_name(self) -> Optional[str]:
-        if self.ascender_data and "preferred_name" in self.ascender_data:
-            return self.ascender_data["preferred_name"] or ""
-        return None
-
-    def get_position_title(self) -> Optional[str]:
-        """From Ascender data, return the user's position title."""
-        if self.ascender_data and "occup_pos_title" in self.ascender_data and self.ascender_data["occup_pos_title"]:
-            return self.ascender_data["occup_pos_title"]
-        return None
-
-    def get_position_number(self) -> Optional[str]:
-        """From Ascender data, return the user's position number."""
-        if self.ascender_data and "position_no" in self.ascender_data and self.ascender_data["position_no"]:
-            return self.ascender_data["position_no"]
-        return None
-
-    def get_paypoint(self) -> Optional[str]:
-        """From Ascender data, return the user's paypoint value."""
-        if self.ascender_data and "paypoint" in self.ascender_data and self.ascender_data["paypoint"]:
-            return self.ascender_data["paypoint"]
-
-        return ""
 
     def get_ascender_clevels(self) -> list:
         """From Ascender data, return the users's raw clevel values."""
@@ -398,6 +314,90 @@ class DepartmentUser(models.Model):
                             path.append(title_except(branch))
         return path
 
+    def get_division(self) -> Optional[str]:
+        """Returns the name of the division this user belongs to, based on their Ascender org path."""
+        if self.get_ascender_org_path():
+            org_path = self.get_ascender_org_path()
+            division = org_path[0]
+            # Hard-coded map of Ascender values present in the (normally) `clevel1_desc` field,
+            # which represents the highest-minus-one org hierarchy unit that the user belongs to.
+            # Ascender records these
+            division_map = {
+                "AUDIT, INTEGRITY AND RISK BRANCH": "Audit and Risk",
+                "BIODIVERSITY AND CONSERVATION SCIENCE": "Biodiversity and Conservation Science",
+                "BOTANIC GARDENS AND PARKS": "Botanic Gardens and Parks Authority",
+                "CONSERVATION AND PARKS COMMISSION": "Conservation and Parks Commission",
+                "PARKS AND VISITOR SERVICES DIVISION": "Parks and Visitor Services",
+                "PARKS AND WILDLIFE SERVICE": "Parks and Wildlife Service",
+                "REGIONAL AND FIRE MANAGEMENT SERVICES": "Regional and Fire Management Services",
+                "ROTTNEST ISLAND AUTHORITY": "Rottnest Island Authority",
+                "STRATEGY AND GOVERNANCE": "Strategy and Governance",
+                "ZOOLOGICAL PARKS AUTHORITY": "Zoological Parks Authority",
+            }
+            if division in division_map:
+                return division_map[division]
+            else:
+                return division
+        return None
+
+    def get_business_unit(self) -> Optional[str]:
+        """Returns the business unit this users belongs to, based upon their Ascender org path."""
+        if self.get_ascender_org_path():
+            org_path = self.get_ascender_org_path()
+            if len(org_path) > 1:  # Second the second org path element as the 'business unit'.
+                return org_path[1]
+            elif len(org_path) == 1:  # Edge case: org path is single-length.
+                return org_path[0]
+            else:
+                return None
+        return None
+
+    def get_employment_status(self) -> Optional[str]:
+        """From Ascender data, return a description of a user's employment status."""
+        if self.ascender_data and "emp_status" in self.ascender_data and self.ascender_data["emp_status"]:
+            from .ascender import EMP_STATUS_MAP
+
+            if self.ascender_data["emp_status"] in EMP_STATUS_MAP:
+                return EMP_STATUS_MAP[self.ascender_data["emp_status"]]
+        return None
+
+    def get_ascender_full_name(self) -> Optional[str]:
+        """From Ascender data, return the users's full name."""
+        if self.ascender_data:
+            name = []
+            if "first_name" in self.ascender_data and self.ascender_data["first_name"]:
+                name.append(self.ascender_data["first_name"])
+            if "second_name" in self.ascender_data and self.ascender_data["second_name"]:
+                name.append(self.ascender_data["second_name"])
+            if "surname" in self.ascender_data and self.ascender_data["surname"]:
+                name.append(self.ascender_data["surname"])
+            return " ".join(name)
+        return None
+
+    def get_ascender_preferred_name(self) -> Optional[str]:
+        if self.ascender_data and "preferred_name" in self.ascender_data:
+            return self.ascender_data["preferred_name"] or ""
+        return None
+
+    def get_position_title(self) -> Optional[str]:
+        """From Ascender data, return the user's position title."""
+        if self.ascender_data and "occup_pos_title" in self.ascender_data and self.ascender_data["occup_pos_title"]:
+            return self.ascender_data["occup_pos_title"]
+        return None
+
+    def get_position_number(self) -> Optional[str]:
+        """From Ascender data, return the user's position number."""
+        if self.ascender_data and "position_no" in self.ascender_data and self.ascender_data["position_no"]:
+            return self.ascender_data["position_no"]
+        return None
+
+    def get_paypoint(self) -> Optional[str]:
+        """From Ascender data, return the user's paypoint value."""
+        if self.ascender_data and "paypoint" in self.ascender_data and self.ascender_data["paypoint"]:
+            return self.ascender_data["paypoint"]
+
+        return ""
+
     def get_geo_location_desc(self) -> Optional[str]:
         """From Ascender data, return the user's geographical location description."""
         if self.ascender_data and "geo_location_desc" in self.ascender_data:
@@ -433,6 +433,16 @@ class DepartmentUser(models.Model):
         ):
             return datetime.strptime(self.ascender_data["ext_lv_end_date"], "%Y-%m-%d").date()
         return None
+
+    def get_ascender_jobs(self) -> Optional[list]:
+        """Return the associated Ascender jobs records for this DepartmentUser, sorted."""
+        if not self.employee_id:
+            return None
+
+        from organisation.ascender import ascender_employee_fetch
+
+        jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
+        return jobs_data[1]
 
     def sync_ad_data(self, container="azuread", log_only=False, token=None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
@@ -1355,16 +1365,6 @@ class DepartmentUser(models.Model):
             self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
 
         self.save()
-
-    def get_ascender_jobs(self) -> Optional[list]:
-        """Return the associated Ascender jobs records for this DepartmentUser, sorted."""
-        if not self.employee_id:
-            return None
-
-        from organisation.ascender import ascender_employee_fetch
-
-        jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
-        return jobs_data[1]
 
     def account_dormant(self) -> Optional[bool]:
         """Returns boolean if the last_signin date is within the threshold, or None if unknown."""
