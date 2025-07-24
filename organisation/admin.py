@@ -10,7 +10,6 @@ from django.utils.html import mark_safe
 from itassets.utils import ModelDescMixin
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
-from .utils import title_except
 from .views import DepartmentUserExport
 
 
@@ -69,7 +68,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "m365_licence",
         "account_type",
     )
-    list_filter = (AssignedLicenceFilter, "active", "account_type", "shared_account")
+    list_filter = (AssignedLicenceFilter, "active", "account_type")
     model_description = DepartmentUser.__doc__
     search_fields = ("name", "email", "title", "employee_id", "ad_guid", "azure_guid")
     raw_id_fields = ("manager",)
@@ -157,7 +156,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             {
                 "description": """<span class="errornote">Data in these fields is used within OIM for record-keeping purposes.</span>""",
                 "fields": (
-                    "name_update_reference",
+                    "update_reference",
                     "account_type",
                 ),
             },
@@ -168,10 +167,10 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         return False
 
     def division(self, instance):
-        return instance.cost_centre.get_division_name_display() if instance.cost_centre else ""
+        return instance.get_division() or ""
 
     def unit(self, instance):
-        return title_except(instance.get_ascender_org_path()[-1]) if instance.get_ascender_org_path() else ""
+        return instance.get_business_unit() or ""
 
     def ascender_full_name(self, instance):
         return instance.get_ascender_full_name()

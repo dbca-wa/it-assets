@@ -160,7 +160,6 @@ class DepartmentUserAPIResource(View):
                     "email": user.email,
                     "title": user.title if user.title else None,
                     "telephone": user.telephone if user.telephone else None,
-                    "extension": user.extension if user.extension else None,
                     "mobile_phone": user.mobile_phone if user.mobile_phone else None,
                     "location": {"id": user.location.pk, "name": user.location.name} if user.location else {},
                     "cost_centre": user.cost_centre.code if user.cost_centre else None,
@@ -260,7 +259,6 @@ class LicenseAPIResource(View):
                 "cost_centre": user.cost_centre.code if user.cost_centre else None,
                 "microsoft_365_licence": user.get_licence(),
                 "active": user.active,
-                "shared": user.shared_account,
             }
             for user in queryset
         ]

@@ -29,7 +29,6 @@ class DepartmentUserTestCase(TestCase):
             given_name="Jane",
             surname="Doe",
             employee_id=mixer.RANDOM,
-            shared_account=False,
             dir_sync_enabled=True,
         )
         # Set some valid Ascender data from the test user.
@@ -78,7 +77,6 @@ class DepartmentUserTestCase(TestCase):
             given_name=mixer.RANDOM,
             surname=mixer.RANDOM,
             employee_id=mixer.RANDOM,
-            shared_account=False,
             dir_sync_enabled=True,
             ad_data={"DistinguishedName": random_string()},
             azure_guid=uuid1,
@@ -92,12 +90,10 @@ class DepartmentUserTestCase(TestCase):
 
     def test_save(self):
         self.assertTrue(self.user.employee_id)
-        self.assertFalse(self.user.shared_account)
         self.user.employee_id = "N/A"
         self.user.account_type = 5
         self.user.save()
         self.assertFalse(self.user.employee_id)
-        self.assertTrue(self.user.shared_account)
 
     def test_get_licence(self):
         self.assertFalse(self.user.get_licence())

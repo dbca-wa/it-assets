@@ -20,7 +20,7 @@ LOGGER = logging.getLogger("organisation")
 class DepartmentUser(models.Model):
     """Represents a user account managed in Active Directory / Entra ID."""
 
-    ACTIVE_FILTER = {"active": True, "contractor": False}
+    ACTIVE_FILTER = {"active": True}
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, "L1 User Account - Permanent"),
@@ -147,33 +147,11 @@ class DepartmentUser(models.Model):
 
     # Metadata fields with no direct equivalent in AD.
     # They are used for internal reporting and the Address Book.
-    extension = models.CharField(max_length=128, null=True, blank=True, verbose_name="VoIP extension")
-    home_phone = models.CharField(max_length=128, null=True, blank=True)
-    other_phone = models.CharField(max_length=128, null=True, blank=True)
-    name_update_reference = models.CharField(
+    update_reference = models.CharField(
         max_length=512,
         null=True,
         blank=True,
-        verbose_name="update reference",
-        help_text="Reference for name/CC change request",
-    )
-    # TODO: deprecate field.
-    vip = models.BooleanField(
-        default=False,
-        help_text="An individual who carries out a critical role for the department",
-    )
-    # TODO: deprecate field.
-    executive = models.BooleanField(default=False, help_text="An individual who is an executive")
-    # TODO: deprecate field.
-    contractor = models.BooleanField(
-        default=False,
-        help_text="An individual who is an external contractor (does not include agency contract staff)",
-    )
-    # TODO: deprecate field.
-    notes = models.TextField(
-        null=True,
-        blank=True,
-        help_text="Records relevant to any AD account extension, expiry or deletion (e.g. ticket #).",
+        help_text="Reference(s) for name/CC change request",
     )
     account_type = models.PositiveSmallIntegerField(
         choices=ACCOUNT_TYPE_CHOICES,
@@ -181,14 +159,6 @@ class DepartmentUser(models.Model):
         blank=True,
         help_text="Employee network account status",
     )
-    # TODO: deprecate field.
-    security_clearance = models.BooleanField(
-        default=False,
-        verbose_name="security clearance granted",
-        help_text="""Security clearance approved by CC Manager (confidentiality
-        agreement, referee check, police clearance, etc.""",
-    )
-    shared_account = models.BooleanField(default=False, editable=False, help_text="Automatically set from account type.")
 
     # Ascender data
     employee_id = models.CharField(
@@ -256,8 +226,6 @@ class DepartmentUser(models.Model):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ""):
                 self.employee_id = None
-        if self.account_type in [5, 9, 10]:  # Shared/role-based/system account types.
-            self.shared_account = True
         # If an account type is not set, set one here.
         if self.account_type is None:
             if self.active:

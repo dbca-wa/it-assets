@@ -55,25 +55,6 @@ class ApiTestCase(TestCase):
             account_type=2,
             cost_centre=self.cc1,
         )
-        self.shared_acct = mixer.blend(
-            DepartmentUser,
-            active=True,
-            email=random_dbca_email,
-            ad_guid=uuid1,
-            in_sync=False,
-            account_type=5,  # Shared account
-            cost_centre=self.cc1,
-        )
-        self.contractor = mixer.blend(
-            DepartmentUser,
-            active=True,
-            email=random_dbca_email,
-            ad_guid=uuid1,
-            in_sync=False,
-            contractor=True,
-            account_type=0,  # Fixed term contract
-            cost_centre=self.cc1,
-        )
 
         # Generate a test user for endpoint responses.
         self.testuser = User.objects.create_user(username="testuser", email="user@dbca.wa.gov.au.com", password="pass")
