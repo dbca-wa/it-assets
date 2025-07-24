@@ -243,7 +243,7 @@ def ascender_job_sort_key(record):
     return score
 
 
-def ascender_employee_fetch(employee_id):
+def ascender_employee_fetch(employee_id) -> tuple:
     """Returns a tuple: (employee_id, [sorted employee jobs])"""
     ascender_records = ascender_db_fetch(employee_id)
     jobs = []

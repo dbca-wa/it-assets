@@ -173,7 +173,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         return instance.get_business_unit() or ""
 
     def ascender_full_name(self, instance):
-        return instance.get_ascender_full_name()
+        return instance.get_ascender_full_name() or ""
 
     ascender_full_name.short_description = "full name"
 
@@ -191,42 +191,36 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
     ascender_org_path.short_description = "organisation path"
 
     def paypoint(self, instance):
-        return instance.get_paypoint()
+        return instance.get_paypoint() or ""
 
     def employment_status(self, instance):
-        return instance.get_employment_status()
+        return instance.get_employment_status() or ""
 
     def geo_location_desc(self, instance):
-        return instance.get_geo_location_desc()
+        return instance.get_geo_location_desc() or ""
 
     geo_location_desc.short_description = "Geographic location"
 
     def position_title(self, instance):
-        return instance.get_position_title()
+        return instance.get_position_title() or ""
 
     def position_number(self, instance):
-        return instance.get_position_number()
+        return instance.get_position_number() or ""
 
     def job_start_date(self, instance):
-        if instance.get_job_start_date():
-            return instance.get_job_start_date().strftime("%d-%B-%Y")
-        return ""
+        return instance.get_job_start_date().strftime("%d-%B-%Y") or ""
 
     def job_end_date(self, instance):
-        if instance.get_job_end_date():
-            return instance.get_job_end_date().strftime("%d-%B-%Y")
-        return ""
+        return instance.get_job_end_date().strftime("%d-%B-%Y") or ""
 
     def manager_name(self, instance):
-        return instance.get_manager_name()
+        return instance.get_manager_name() or ""
 
     def extended_leave(self, instance):
-        if instance.get_extended_leave():
-            return instance.get_extended_leave().strftime("%d-%B-%Y")
-        return ""
+        return instance.get_extended_leave().strftime("%d-%B-%Y") or ""
 
     def m365_licence(self, instance):
-        return instance.get_licence()
+        return instance.get_licence() or ""
 
     def ad_data_pprint(self, obj=None):
         if obj and obj.ad_data:

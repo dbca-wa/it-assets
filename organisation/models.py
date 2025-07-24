@@ -1,7 +1,8 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from io import BytesIO
+from typing import Optional
 
 import requests
 from dateutil.parser import parse
@@ -234,7 +235,7 @@ class DepartmentUser(models.Model):
                 self.account_type = 14  # Unknown - AD disabled
         super(DepartmentUser, self).save(*args, **kwargs)
 
-    def get_division(self):
+    def get_division(self) -> Optional[str]:
         """Returns the name of the division this user belongs to, based on their Ascender org path."""
         if self.get_ascender_org_path():
             org_path = self.get_ascender_org_path()
@@ -254,15 +255,13 @@ class DepartmentUser(models.Model):
                 "STRATEGY AND GOVERNANCE": "Strategy and Governance",
                 "ZOOLOGICAL PARKS AUTHORITY": "Zoological Parks Authority",
             }
-
             if division in division_map:
                 return division_map[division]
             else:
                 return division
-        else:
-            return None
+        return None
 
-    def get_business_unit(self):
+    def get_business_unit(self) -> Optional[str]:
         """Returns the business unit this users belongs to, based upon their Ascender org path."""
         if self.get_ascender_org_path():
             org_path = self.get_ascender_org_path()
@@ -272,10 +271,9 @@ class DepartmentUser(models.Model):
                 return org_path[0]
             else:
                 return None
-        else:
-            return None
+        return None
 
-    def get_licence(self):
+    def get_licence(self) -> Optional[str]:
         """Return Microsoft 365 licence description consistent with other OIM communications."""
         if self.assigned_licences:
             if "MICROSOFT 365 E5" in self.assigned_licences:
@@ -284,9 +282,8 @@ class DepartmentUser(models.Model):
                 return "Cloud"
         return None
 
-    def get_display_name(self):
-        """
-        Return the user's display name for Active Directory / Entra ID / Outlook.
+    def get_display_name(self) -> str:
+        """Return the user's display name for Active Directory / Entra ID / Outlook.
         NOTE: this value is managed by OIM, and does not come from Ascender.
         This is an exception to our normal rules relating to the source of truth for names.
         It uses preferred name (if present), first name, maiden name (if present), surname.
@@ -302,16 +299,16 @@ class DepartmentUser(models.Model):
             else:
                 return f"{self.given_name} {self.surname}".strip()
 
-    def get_employment_status(self):
+    def get_employment_status(self) -> Optional[str]:
         """From Ascender data, return a description of a user's employment status."""
         if self.ascender_data and "emp_status" in self.ascender_data and self.ascender_data["emp_status"]:
             from .ascender import EMP_STATUS_MAP
 
             if self.ascender_data["emp_status"] in EMP_STATUS_MAP:
                 return EMP_STATUS_MAP[self.ascender_data["emp_status"]]
-        return ""
+        return None
 
-    def get_ascender_full_name(self):
+    def get_ascender_full_name(self) -> Optional[str]:
         """From Ascender data, return the users's full name."""
         if self.ascender_data:
             name = []
@@ -322,33 +319,34 @@ class DepartmentUser(models.Model):
             if "surname" in self.ascender_data and self.ascender_data["surname"]:
                 name.append(self.ascender_data["surname"])
             return " ".join(name)
-        return ""
+        return None
 
-    def get_ascender_preferred_name(self):
+    def get_ascender_preferred_name(self) -> Optional[str]:
         if self.ascender_data and "preferred_name" in self.ascender_data:
             return self.ascender_data["preferred_name"] or ""
-        return ""
+        return None
 
-    def get_position_title(self):
+    def get_position_title(self) -> Optional[str]:
         """From Ascender data, return the user's position title."""
         if self.ascender_data and "occup_pos_title" in self.ascender_data and self.ascender_data["occup_pos_title"]:
             return self.ascender_data["occup_pos_title"]
-        return ""
+        return None
 
-    def get_position_number(self):
+    def get_position_number(self) -> Optional[str]:
         """From Ascender data, return the user's position number."""
         if self.ascender_data and "position_no" in self.ascender_data and self.ascender_data["position_no"]:
             return self.ascender_data["position_no"]
-        return ""
+        return None
 
-    def get_paypoint(self):
+    def get_paypoint(self) -> Optional[str]:
         """From Ascender data, return the user's paypoint value."""
         if self.ascender_data and "paypoint" in self.ascender_data and self.ascender_data["paypoint"]:
             return self.ascender_data["paypoint"]
+
         return ""
 
-    def get_ascender_clevels(self):
-        """From Ascender data, return the users's raw Clevel values."""
+    def get_ascender_clevels(self) -> list:
+        """From Ascender data, return the users's raw clevel values."""
         path = []
         if (
             self.ascender_data
@@ -367,12 +365,12 @@ class DepartmentUser(models.Model):
             ]
             for field in fields:
                 path.append(field)
-
         return path
 
-    def get_ascender_org_path(self):
+    def get_ascender_org_path(self) -> list:
         """From Ascender data, return the users's organisation tree path as a list of section names.
         Carry out a small amount of cleansing on field values, exclude the top-level DBCA value, and dedupe values from the return."""
+        path = []
         if (
             self.ascender_data
             and "clevel1_desc" in self.ascender_data
@@ -381,7 +379,6 @@ class DepartmentUser(models.Model):
             and "clevel4_desc" in self.ascender_data
             and "clevel5_desc" in self.ascender_data
         ):
-            path = []
             fields = [
                 self.ascender_data["clevel1_desc"],
                 self.ascender_data["clevel2_desc"],
@@ -399,35 +396,33 @@ class DepartmentUser(models.Model):
                     if branch.upper() != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
                         if title_except(branch) not in path:  # Dedupe the org path.
                             path.append(title_except(branch))
-            return path
-        else:
-            return None
+        return path
 
-    def get_geo_location_desc(self):
+    def get_geo_location_desc(self) -> Optional[str]:
         """From Ascender data, return the user's geographical location description."""
         if self.ascender_data and "geo_location_desc" in self.ascender_data:
             return self.ascender_data["geo_location_desc"]
-        return ""
+        return None
 
-    def get_job_start_date(self):
+    def get_job_start_date(self) -> Optional[date]:
         """From Ascender data, return the user's job start date."""
         if self.ascender_data and "job_start_date" in self.ascender_data and self.ascender_data["job_start_date"]:
             return datetime.strptime(self.ascender_data["job_start_date"], "%Y-%m-%d").date()
-        return ""
+        return None
 
-    def get_job_end_date(self):
+    def get_job_end_date(self) -> Optional[date]:
         """From Ascender data, return the user's occupation/job termination/end date."""
         if self.ascender_data and "job_end_date" in self.ascender_data and self.ascender_data["job_end_date"]:
             return datetime.strptime(self.ascender_data["job_end_date"], "%Y-%m-%d").date()
-        return ""
+        return None
 
-    def get_manager_name(self):
+    def get_manager_name(self) -> Optional[str]:
         """From Ascender data, return the user's manager name."""
         if self.ascender_data and "manager_name" in self.ascender_data and self.ascender_data["manager_name"]:
             return self.ascender_data["manager_name"]
-        return ""
+        return None
 
-    def get_extended_leave(self):
+    def get_extended_leave(self) -> Optional[date]:
         """From Ascender data, return the date from which a user's extended leave ends (if applicable)."""
         if (
             self.ascender_data
@@ -437,7 +432,7 @@ class DepartmentUser(models.Model):
             and self.ascender_data["ext_lv_end_date"]
         ):
             return datetime.strptime(self.ascender_data["ext_lv_end_date"], "%Y-%m-%d").date()
-        return ""
+        return None
 
     def sync_ad_data(self, container="azuread", log_only=False, token=None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
@@ -1361,7 +1356,7 @@ class DepartmentUser(models.Model):
 
         self.save()
 
-    def get_ascender_jobs(self):
+    def get_ascender_jobs(self) -> Optional[list]:
         """Return the associated Ascender jobs records for this DepartmentUser, sorted."""
         if not self.employee_id:
             return None
@@ -1371,8 +1366,8 @@ class DepartmentUser(models.Model):
         jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
         return jobs_data[1]
 
-    def account_dormant(self):
-        """Returns boolean or None"""
+    def account_dormant(self) -> Optional[bool]:
+        """Returns boolean if the last_signin date is within the threshold, or None if unknown."""
         if not self.azure_guid:
             return None
         elif not self.azure_ad_data:
