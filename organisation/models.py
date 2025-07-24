@@ -258,7 +258,7 @@ class DepartmentUser(models.Model):
             if division in division_map:
                 return division_map[division]
             else:
-                return title_except(division)
+                return division
         else:
             return None
 
@@ -266,10 +266,12 @@ class DepartmentUser(models.Model):
         """Returns the business unit this users belongs to, based upon their Ascender org path."""
         if self.get_ascender_org_path():
             org_path = self.get_ascender_org_path()
-            if len(org_path) > 1:
-                return title_except(org_path[1])
-            else:  # Edge case: org path is single-length.
-                return title_except(org_path[0])
+            if len(org_path) > 1:  # Second the second org path element as the 'business unit'.
+                return org_path[1]
+            elif len(org_path) == 1:  # Edge case: org path is single-length.
+                return org_path[0]
+            else:
+                return None
         else:
             return None
 
@@ -370,8 +372,7 @@ class DepartmentUser(models.Model):
 
     def get_ascender_org_path(self):
         """From Ascender data, return the users's organisation tree path as a list of section names.
-        Carry out a small amount of cleansing on field values, and exclude the top-level DBCA value from the return list."""
-        path = []
+        Carry out a small amount of cleansing on field values, exclude the top-level DBCA value, and dedupe values from the return."""
         if (
             self.ascender_data
             and "clevel1_desc" in self.ascender_data
@@ -380,6 +381,7 @@ class DepartmentUser(models.Model):
             and "clevel4_desc" in self.ascender_data
             and "clevel5_desc" in self.ascender_data
         ):
+            path = []
             fields = [
                 self.ascender_data["clevel1_desc"],
                 self.ascender_data["clevel2_desc"],
@@ -392,9 +394,14 @@ class DepartmentUser(models.Model):
                 if field:
                     # Tweak/sanitise field values.
                     branch = field.replace("ROTTNEST ISLAND AUTHORITY - ", "").replace("  ", " ")
-                    if branch not in path and branch.upper() != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
-                        path.append(branch)
-        return path
+                    # Exclude DBCA from the org path (this is assumed for everyone).
+                    # Note that this value isn't present for RIA staff, we don't just skip the first value.
+                    if branch.upper() != "DEPT BIODIVERSITY, CONSERVATION AND ATTRACTIONS":
+                        if title_except(branch) not in path:  # Dedupe the org path.
+                            path.append(title_except(branch))
+            return path
+        else:
+            return None
 
     def get_geo_location_desc(self):
         """From Ascender data, return the user's geographical location description."""
