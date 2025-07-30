@@ -96,7 +96,7 @@ def ms_graph_subscribed_skus(token=None):
     if not token:  # The call to the MS API occasionally fails.
         return None
 
-    headers = {"Authorization": f"Bearer {token['access_token']}"}
+    headers = {"Authorization": f"{token['token_type']} {token['access_token']}"}
     url = "https://graph.microsoft.com/v1.0/subscribedSkus"
     skus = []
     resp = requests.get(url, headers=headers)

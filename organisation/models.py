@@ -25,43 +25,43 @@ class DepartmentUser(models.Model):
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, "L1 User Account - Permanent"),
-        (3, "L1 User Account - Agency contract"),
-        (0, "L1 User Account - Department fixed-term contract"),
+        # (3, "L1 User Account - Agency contract"),
+        (0, "L1 User Account - Contract"),
         (8, "L1 User Account - Seasonal"),
-        (6, "L1 User Account - Vendor"),
+        (6, "L1 User Account - Vendor/External"),
         (7, "L1 User Account - Volunteer"),
-        (1, "L1 User Account - Other/Alumni"),
-        (11, "L1 User Account - RoomMailbox"),
-        (12, "L1 User Account - EquipmentMailbox"),
-        (10, "L2 Service Account - System"),
-        (5, "L1 Group (shared) Mailbox - Shared account"),
-        (9, "L1 Role Account - Role-based account"),
-        (4, "Terminated"),
-        (14, "Unknown - AD disabled"),
-        (15, "Cleanup - Permanent"),
-        (16, "Unknown - AD active"),
+        (1, "L1 User Account - Alumni/Other"),
+        # (11, "L1 User Account - RoomMailbox"),
+        # (12, "L1 User Account - EquipmentMailbox"),
+        # (10, "L2 Service Account - System"),
+        # (5, "L1 Group (shared) Mailbox - Shared account"),
+        # (9, "L1 Role Account - Role-based account"),
+        # (4, "Terminated"),
+        (14, "Unknown"),
+        # (15, "Cleanup - Permanent"),
+        # (16, "Unknown - AD active"),
     )
     # The following is a list of account types to normally exclude from user queries.
     # E.g. shared accounts, meeting rooms, terminated accounts, etc.
     ACCOUNT_TYPE_EXCLUDE = [
-        4,  # Terminated
-        5,  # Shared
+        # 4,  # Terminated
+        # 5,  # Shared
         7,  # Volunteer
-        1,  # Other/alumni
-        9,  # Role-based
-        10,  # System
-        11,  # Room
-        12,  # Equipment
+        1,  # Alumni
+        # 9,  # Role-based
+        # 10,  # System
+        # 11,  # Room
+        # 12,  # Equipment
         14,  # Unknown, disabled
-        16,  # Unknown, active
+        # 16,  # Unknown, active
     ]
     # The following is a list of user account types for individual staff/vendors,
     # i.e. no shared or role-based account types.
     # NOTE: it may not necessarily be the inverse of the previous list.
     ACCOUNT_TYPE_USER = [
         2,  # Permanent
-        3,  # Agency contract
-        0,  # Department contract
+        # 3,  # Agency contract
+        0,  # Contract
         8,  # Seasonal
         6,  # Vendor
         7,  # Volunteer
@@ -227,12 +227,19 @@ class DepartmentUser(models.Model):
         if self.employee_id:
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ""):
                 self.employee_id = None
-        # If an account type is not set, set one here.
         if self.account_type is None:
-            if self.active:
-                self.account_type = 16  # Unknown - AD active
-            elif not self.active:
-                self.account_type = 14  # Unknown - AD disabled
+            self.account_type = 14  # Unknown
+        if "emp_status" in self.ascender_data and self.ascender_data["emp_status"]:
+            if self.ascender_data["emp_status"] == "EXT":
+                self.account_type = 1  # Alumni/other
+            elif self.ascender_data["emp_status"] == "AO":
+                self.account_type = 6  # Vendor/external
+            elif self.ascender_data["emp_status"] in ["SEAP", "SEAS"]:
+                self.account_type = 8  # Seasonal
+            elif self.ascender_data["emp_status"] in ["CAS", "CFA", "CFAS", "CCFA", "CFT", "CPA", "CPT", "CON", "NPAYT"]:
+                self.account_type = 0  # Contract
+            elif self.ascender_data["emp_status"] in ["PFA", "PFAS", "PFT", "PPA", "PPT"]:
+                self.account_type = 2  # Permanent
         super(DepartmentUser, self).save(*args, **kwargs)
 
     def get_licence(self) -> Optional[str]:
