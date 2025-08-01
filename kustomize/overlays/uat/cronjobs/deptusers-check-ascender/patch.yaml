@@ -93,3 +93,8 @@ spec:
                     secretKeyRef:
                       name: itassets-env-uat
                       key: MS_GRAPH_API_CLIENT_SECRET
+          tolerations:
+            - effect: NoSchedule
+              key: kubernetes.azure.com/scalesetpriority
+              operator: Equal
+              value: spot

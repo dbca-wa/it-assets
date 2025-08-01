@@ -40,3 +40,8 @@ spec:
         - name: itassets-postgres-fdw-data
           persistentVolumeClaim:
             claimName: itassets-postgres-fdw-data-uat
+      tolerations:
+        - effect: NoSchedule
+          key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
