@@ -5,6 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 from django.views.generic import ListView, View
 
 from itassets.utils import get_next_pages, get_previous_pages
@@ -128,6 +130,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
 class DepartmentUserAPIResource(View):
     """An API view that returns JSON of active department staff accounts."""
 
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = (
             DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
@@ -185,6 +188,7 @@ class DepartmentUserAPIResource(View):
 class LocationAPIResource(View):
     """An API view that returns JSON of active physical locations."""
 
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = Location.objects.filter(active=True).order_by("name")
 
@@ -227,6 +231,7 @@ class LocationAPIResource(View):
 class LicenseAPIResource(View):
     """An API view that returns a list of active Microsoft-licensed accounts."""
 
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         # Return active users having an E5 or E1 licence assigned.
         queryset = (
