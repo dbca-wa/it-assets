@@ -24,7 +24,7 @@ dependencies = [
   "pysftp==0.2.9",
   "xlsxwriter==3.2.5",
   "sentry-sdk[django]==2.33.0",
-  "redis==6.2.0",
+  "redis==6.4.0",
   "django-storages[azure]==1.14.6",
 ]
 
