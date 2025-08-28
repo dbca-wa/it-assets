@@ -38,7 +38,7 @@ class AddressBook(LoginRequiredMixin, ListView):
         queryset = (
             DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .prefetch_related(
+            .select_related(
                 "cost_centre",
             )
         )
@@ -77,7 +77,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])
                 | Q(assigned_licences__contains=["OFFICE 365 E1"])
             )
-            .prefetch_related(
+            .select_related(
                 "cost_centre",
             )
             .order_by("name")
@@ -135,7 +135,7 @@ class DepartmentUserAPIResource(View):
         queryset = (
             DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .prefetch_related(
+            .select_related(
                 "manager",
                 "cost_centre",
                 "location",
@@ -244,7 +244,7 @@ class LicenseAPIResource(View):
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])
                 | Q(assigned_licences__contains=["OFFICE 365 E1"])
             )
-            .prefetch_related(
+            .select_related(
                 "cost_centre",
             )
             .order_by("name")
