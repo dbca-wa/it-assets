@@ -40,9 +40,12 @@ dev = [
 # Reference: https://docs.astral.sh/ruff/configuration/
 [tool.ruff]
 line-length = 140
+indent-width = 4
+extend-exclude = ["migrations"]
 
 [tool.ruff.lint]
 ignore = [
+  "E265", # Block comment should start with '#'
   "E501", # Line too long
   "E722", # Bare except
 ]

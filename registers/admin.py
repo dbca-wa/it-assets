@@ -43,7 +43,7 @@ class ITSystemAdmin(ModelDescMixin, ModelAdmin):
         (
             "Overview",
             {
-                "description": '<span class="errornote">Data in these fields is maintained in SharePoint.</span>' "",
+                "description": '<span class="errornote">Data in these fields is maintained in SharePoint.</span>',
                 "fields": (
                     "system_id",
                     "name",

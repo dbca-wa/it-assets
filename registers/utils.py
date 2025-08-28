@@ -6,13 +6,12 @@ from itassets.utils import ms_graph_client_token
 
 
 def split_text_query(query):
-    """Filter stopwords, but only if there are also other words.
-    """
-    stopwords = '''a,am,an,and,as,at,be,by,can,did,do,for,get,got,
+    """Filter stopwords, but only if there are also other words."""
+    stopwords = """a,am,an,and,as,at,be,by,can,did,do,for,get,got,
         had,has,he,her,him,his,how,i,if,in,is,it,its,let,may,me,
         my,no,nor,not,of,off,on,or,our,own,say,says,she,so,than,
         that,the,them,then,they,this,to,too,us,was,we,were,what,
-        when,who,whom,why,will,yet,you,your'''.split(',')
+        when,who,whom,why,will,yet,you,your""".split(",")
     split_query = list(smart_split(query))
     filtered_query = [word for word in split_query if word not in stopwords]
 
@@ -28,7 +27,7 @@ def search_filter(search_fields, query_string):
     null_filter = Q(pk=None)
 
     for word in split_text_query(query_string):
-        queries = [Q(**{'{}__icontains'.format(field_name): word}) for field_name in search_fields]
+        queries = [Q(**{"{}__icontains".format(field_name): word}) for field_name in search_fields]
         filters.append(reduce(Q.__or__, queries))
 
     return reduce(Q.__and__, filters) if len(filters) else null_filter
@@ -48,14 +47,14 @@ def ms_graph_sharepoint_users():
     resp = requests.get(url, headers=headers)
     j = resp.json()
 
-    while '@odata.nextLink' in j:
-        sharepoint_users = sharepoint_users + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
+    while "@odata.nextLink" in j:
+        sharepoint_users = sharepoint_users + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
         resp.raise_for_status()
         j = resp.json()
 
-    sharepoint_users = sharepoint_users + j['value']  # Final page
-    return [user['fields'] for user in sharepoint_users]
+    sharepoint_users = sharepoint_users + j["value"]  # Final page
+    return [user["fields"] for user in sharepoint_users]
 
 
 def ms_graph_sharepoint_it_systems():
@@ -72,11 +71,11 @@ def ms_graph_sharepoint_it_systems():
     resp = requests.get(url, headers=headers)
     j = resp.json()
 
-    while '@odata.nextLink' in j:
-        it_systems = it_systems + j['value']
-        resp = requests.get(j['@odata.nextLink'], headers=headers)
+    while "@odata.nextLink" in j:
+        it_systems = it_systems + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
         resp.raise_for_status()
         j = resp.json()
 
-    it_systems = it_systems + j['value']
-    return [system['fields'] for system in it_systems]
+    it_systems = it_systems + j["value"]
+    return [system["fields"] for system in it_systems]

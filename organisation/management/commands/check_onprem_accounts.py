@@ -11,20 +11,8 @@ class Command(BaseCommand):
     help = "Checks user accounts from onprem AD and links DepartmentUser objects (no creation)"
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--container",
-            action="store",
-            dest="container",
-            required=True,
-            help="Azure container name"
-        )
-        parser.add_argument(
-            "--path",
-            action="store",
-            dest="path",
-            required=True,
-            help="JSON output file path"
-        )
+        parser.add_argument("--container", action="store", dest="container", required=True, help="Azure container name")
+        parser.add_argument("--path", action="store", dest="path", required=True, help="JSON output file path")
 
     def handle(self, *args, **options):
         logger = logging.getLogger("organisation")
