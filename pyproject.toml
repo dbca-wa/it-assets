@@ -33,8 +33,8 @@ dev = [
   "ipython>=9.4.0",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
-  "pre-commit>=4.2.0",
-  "coverage>=7.6.12",
+  "pre-commit>=4.3.0",
+  "coverage>=7.10.5",
 ]
 
 # Reference: https://docs.astral.sh/ruff/configuration/
