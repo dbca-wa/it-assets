@@ -25,9 +25,7 @@ COPY pyproject.toml uv.lock /_lock/
 # This layer is cached until uv.lock or pyproject.toml change.
 RUN --mount=type=cache,target=/root/.cache \
   cd /_lock && \
-  uv sync \
-  --frozen \
-  --no-group dev
+  uv sync --frozen --no-group dev
 
 ##################################################################################
 
