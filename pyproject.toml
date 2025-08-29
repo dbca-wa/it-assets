@@ -17,7 +17,7 @@ dependencies = [
   "dj-database-url==3.0.1",
   "gunicorn==23.0.0",
   "unicodecsv==0.14.1",
-  "python-dateutil==2.9.0",
+  "python-dateutil==2.9.0.post0",
   "webtemplate-dbca==1.8.2",
   "msal==1.33.0",
   "whitenoise[brotli]==6.9.0",
