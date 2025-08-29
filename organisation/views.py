@@ -5,6 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 from django.views.generic import ListView, View
 
 from itassets.utils import get_next_pages, get_previous_pages
@@ -36,7 +38,7 @@ class AddressBook(LoginRequiredMixin, ListView):
         queryset = (
             DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .prefetch_related(
+            .select_related(
                 "cost_centre",
             )
         )
@@ -75,7 +77,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])
                 | Q(assigned_licences__contains=["OFFICE 365 E1"])
             )
-            .prefetch_related(
+            .select_related(
                 "cost_centre",
             )
             .order_by("name")
@@ -128,11 +130,12 @@ class UserAccounts(LoginRequiredMixin, ListView):
 class DepartmentUserAPIResource(View):
     """An API view that returns JSON of active department staff accounts."""
 
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = (
             DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .prefetch_related(
+            .select_related(
                 "manager",
                 "cost_centre",
                 "location",
@@ -160,7 +163,6 @@ class DepartmentUserAPIResource(View):
                     "email": user.email,
                     "title": user.title if user.title else None,
                     "telephone": user.telephone if user.telephone else None,
-                    "extension": user.extension if user.extension else None,
                     "mobile_phone": user.mobile_phone if user.mobile_phone else None,
                     "location": {"id": user.location.pk, "name": user.location.name} if user.location else {},
                     "cost_centre": user.cost_centre.code if user.cost_centre else None,
@@ -186,6 +188,7 @@ class DepartmentUserAPIResource(View):
 class LocationAPIResource(View):
     """An API view that returns JSON of active physical locations."""
 
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = Location.objects.filter(active=True).order_by("name")
 
@@ -228,6 +231,7 @@ class LocationAPIResource(View):
 class LicenseAPIResource(View):
     """An API view that returns a list of active Microsoft-licensed accounts."""
 
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         # Return active users having an E5 or E1 licence assigned.
         queryset = (
@@ -240,7 +244,7 @@ class LicenseAPIResource(View):
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])
                 | Q(assigned_licences__contains=["OFFICE 365 E1"])
             )
-            .prefetch_related(
+            .select_related(
                 "cost_centre",
             )
             .order_by("name")
@@ -260,7 +264,6 @@ class LicenseAPIResource(View):
                 "cost_centre": user.cost_centre.code if user.cost_centre else None,
                 "microsoft_365_licence": user.get_licence(),
                 "active": user.active,
-                "shared": user.shared_account,
             }
             for user in queryset
         ]

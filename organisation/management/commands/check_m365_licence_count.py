@@ -9,39 +9,39 @@ from organisation.utils import ms_graph_subscribed_sku
 
 
 class Command(BaseCommand):
-    help = 'Checks Microsoft 365 product licence availability and sends a notification email when availability drops too low'
+    help = "Checks Microsoft 365 product licence availability and sends a notification email when availability drops too low"
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--emails',
-            action='store',
+            "--emails",
+            action="store",
             default=None,
             type=str,
-            help='Comma-separated list of emails to which to send the notification (defaults to OIM Service Desk)',
-            dest='emails',
+            help="Comma-separated list of emails to which to send the notification (defaults to OIM Service Desk)",
+            dest="emails",
         )
         parser.add_argument(
-            '--threshold',
-            action='store',
+            "--threshold",
+            action="store",
             default=None,
             type=int,
-            help='Number of available licences at which to send the notification (default 5)',
-            dest='threshold',
+            help="Number of available licences at which to send the notification (default 5)",
+            dest="threshold",
         )
 
     def handle(self, *args, **options):
-        logger = logging.getLogger('organisation')
+        logger = logging.getLogger("organisation")
 
-        if options['emails']:
+        if options["emails"]:
             try:
-                recipients = options['emails'].split(',')
+                recipients = options["emails"].split(",")
             except ValueError:
-                raise CommandError('Invalid emails value: {} (use comma-separated string)'.format(options['emails']))
+                raise CommandError("Invalid emails value: {} (use comma-separated string)".format(options["emails"]))
         else:
             recipients = [settings.SERVICE_DESK_EMAIL]
 
-        if options['threshold']:
-            threshold = options['threshold']
+        if options["threshold"]:
+            threshold = options["threshold"]
         else:
             threshold = settings.LICENCE_NOTIFY_THRESHOLD
 

@@ -243,7 +243,7 @@ def ascender_job_sort_key(record):
     return score
 
 
-def ascender_employee_fetch(employee_id):
+def ascender_employee_fetch(employee_id) -> tuple:
     """Returns a tuple: (employee_id, [sorted employee jobs])"""
     ascender_records = ascender_db_fetch(employee_id)
     jobs = []
@@ -911,17 +911,17 @@ Name: {new_user.name}\n
 Employee ID: {new_user.employee_id}\n
 Email: {new_user.email}\n
 Title: {new_user.title}\n
-Position number: {new_user.ascender_data['position_no']}\n
+Position number: {new_user.ascender_data["position_no"]}\n
 Cost centre: {new_user.cost_centre}\n
 Division: {new_user.cost_centre.get_division_name_display()}\n
 Organisational unit: {unit}\n
-Employment status: {new_user.ascender_data['emp_stat_desc']}\n
+Employment status: {new_user.ascender_data["emp_stat_desc"]}\n
 M365 licence: {licence_type}\n
 Manager: {new_user.manager.name}\n
 Location: {new_user.location}\n
-Job start date: {job_start_date.strftime('%d/%b/%Y')}\n\n
-Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}\n\n
-Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ''}\n\n
+Job start date: {job_start_date.strftime("%d/%b/%Y")}\n\n
+Job end date: {job_end_date.strftime("%d/%b/%Y") if job_end_date else ""}\n\n
+Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ""}\n\n
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
@@ -932,17 +932,17 @@ OIM Service Desk\n"""
 <li>Employee ID: {new_user.employee_id}</li>
 <li>Email: {new_user.email}</li>
 <li>Title: {new_user.title}</li>
-<li>Position number: {new_user.ascender_data['position_no']}</li>
+<li>Position number: {new_user.ascender_data["position_no"]}</li>
 <li>Cost centre: {new_user.cost_centre}</li>
 <li>Division: {new_user.cost_centre.get_division_name_display()}</li>
 <li>Organisational unit: {unit}</li>
-<li>Employment status: {new_user.ascender_data['emp_stat_desc']}</li>
+<li>Employment status: {new_user.ascender_data["emp_stat_desc"]}</li>
 <li>M365 licence: {licence_type}</li>
 <li>Manager: {new_user.manager.name}</li>
 <li>Location: {new_user.location}</li>
-<li>Job start date: {job_start_date.strftime('%d/%b/%Y')}</li>
-<li>Job end date: {job_end_date.strftime('%d/%b/%Y') if job_end_date else ''}</li>
-<li>Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ''}</li>
+<li>Job start date: {job_start_date.strftime("%d/%b/%Y")}</li>
+<li>Job end date: {job_end_date.strftime("%d/%b/%Y") if job_end_date else ""}</li>
+<li>Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.manager else ""}</li>
 </ul>
 <p>OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.</p>
 <p>Regards,</p>

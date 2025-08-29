@@ -58,12 +58,12 @@ def department_user_export(fileobj, users):
                     i.cost_centre.manager.name if i.cost_centre and i.cost_centre.manager else "",
                     i.cost_centre.manager.email if i.cost_centre and i.cost_centre.manager else "",
                     i.active,
-                    i.get_licence(),
+                    i.get_licence() or "",
                     i.telephone,
                     i.mobile_phone,
                     i.location.name if i.location else "",
-                    i.cost_centre.get_division_name_display() if i.cost_centre else "",
-                    title_except(i.get_ascender_org_path()[-1]) if i.get_ascender_org_path() else "",
+                    i.get_division() or "",
+                    i.get_business_unit() or "",
                 ],
             )
             # Write the last sign-in cell value

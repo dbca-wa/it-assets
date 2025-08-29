@@ -9,7 +9,7 @@ from dateutil.parser import parse
 from django.conf import settings
 from django.utils import timezone
 
-from itassets.utils import get_blob_json, ms_graph_client_token, upload_blob
+from itassets.utils import ms_graph_client_token, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
 
@@ -96,7 +96,7 @@ def ms_graph_subscribed_skus(token=None):
     if not token:  # The call to the MS API occasionally fails.
         return None
 
-    headers = {"Authorization": f"Bearer {token['access_token']}"}
+    headers = {"Authorization": f"{token['token_type']} {token['access_token']}"}
     url = "https://graph.microsoft.com/v1.0/subscribedSkus"
     skus = []
     resp = requests.get(url, headers=headers)
@@ -465,49 +465,3 @@ def department_user_ascender_sync(users):
         )
     f.seek(0)
     return f
-
-
-def nginx_hosts_upload(container="analytics", source_blob="nginx_host_proxy_targets.json", dest_blob="nginx_hosts.csv"):
-    print("Downloading source data")
-    hosts = get_blob_json(container, source_blob)
-    f = BytesIO()
-    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding="utf-8")
-    writer.writerow(["HOST", "SSO", "HTTPS RESPONSE"])
-
-    for rule in hosts:
-        host = rule["host"]
-        if "sso_locations" in rule and rule["sso_locations"]:
-            sso_locations = [i for i in rule["sso_locations"] if i]
-        else:
-            sso_locations = []
-        if "/" in sso_locations or "^~ /" in sso_locations:
-            sso = True
-        else:
-            sso = False
-
-        # We can only check non-SSO sites.
-        status_code = "Unknown"
-        if not sso:
-            print(f"Querying https://{host}")
-            try:
-                resp = requests.get(f"https://{host}", timeout=(3.05, 10))
-                status_code = resp.status_code
-            except requests.exceptions.SSLError:
-                print("SSL error")
-                status_code = "SSL Error"
-            except requests.exceptions.Timeout:
-                print("Timeout")
-                status_code = "Timeout"
-            except requests.exceptions.TooManyRedirects:
-                print("Redirect loop")
-                status_code = "Redirect loop"
-            except:
-                print("Error")
-                status_code = "Error"
-        else:
-            print(f"Skipped {host} (SSO)")
-        writer.writerow([host, sso, status_code])
-
-    f.seek(0)
-    print("Uploaded data to Azure")
-    upload_blob(in_file=f, container="analytics", blob=dest_blob)

@@ -29,7 +29,6 @@ class DepartmentUserTestCase(TestCase):
             given_name="Jane",
             surname="Doe",
             employee_id=mixer.RANDOM,
-            shared_account=False,
             dir_sync_enabled=True,
         )
         # Set some valid Ascender data from the test user.
@@ -78,7 +77,6 @@ class DepartmentUserTestCase(TestCase):
             given_name=mixer.RANDOM,
             surname=mixer.RANDOM,
             employee_id=mixer.RANDOM,
-            shared_account=False,
             dir_sync_enabled=True,
             ad_data={"DistinguishedName": random_string()},
             azure_guid=uuid1,
@@ -92,12 +90,10 @@ class DepartmentUserTestCase(TestCase):
 
     def test_save(self):
         self.assertTrue(self.user.employee_id)
-        self.assertFalse(self.user.shared_account)
         self.user.employee_id = "N/A"
         self.user.account_type = 5
         self.user.save()
         self.assertFalse(self.user.employee_id)
-        self.assertTrue(self.user.shared_account)
 
     def test_get_licence(self):
         self.assertFalse(self.user.get_licence())
@@ -129,6 +125,14 @@ class DepartmentUserTestCase(TestCase):
 
     def test_get_ascender_full_name(self):
         self.assertEqual(self.user.get_ascender_full_name(), "JANE DOE")
+
+    def test_get_division(self):
+        self.assertEqual(self.user.get_division(), "Strategy and Governance")
+        self.user.ascender_data["clevel2_desc"] = "ROTTNEST ISLAND AUTHORITY"
+        self.assertEqual(self.user.get_division(), "Rottnest Island Authority")
+
+    def test_get_business_unit(self):
+        self.assertEqual(self.user.get_business_unit(), "Office of Information Management")
 
     def test_get_employment_status(self):
         self.assertTrue(self.user.get_employment_status())

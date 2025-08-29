@@ -133,9 +133,9 @@
                                                     <td>
                                                         Location: {{ obj.get_geo_location_desc|default_if_none:"" }}
                                                         <br>
-                                                        Unit: {{ obj.get_business_unit|default_if_none:"" }}
-                                                        <br>
                                                         Division: {{ obj.get_division|default_if_none:"" }}
+                                                        <br>
+                                                        Unit: {{ obj.get_business_unit|default_if_none:"" }}
                                                     </td>
                                                 </tr>
                                             {% endfor %}

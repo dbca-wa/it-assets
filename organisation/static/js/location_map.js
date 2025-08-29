@@ -1,15 +1,15 @@
 'use strict';
 // NOTE: some global constants are set in the base template.
-const geoserver_wms_url = `${geoserver_url}/ows`;
-const geoserver_wmts_url = `${geoserver_url}/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}`;
-const geoserver_wmts_url_overlay = `${geoserver_wmts_url}&format=image/png`;
+const geoserver_wmts_url = `${geoserver_url}/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&format=image/png&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}`;
 
 // Define tile layers.
-const openStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
-const dbcaRegions = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS`, {
+const mapboxStreets = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-public:mapbox-streets-public`);
+const dbcaRegions = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-public:CPT_DBCA_REGIONS`, {
+  transparent: true,
   opacity: 0.75,
 });
-const dbcaDistricts = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_DISTRICTS`, {
+const dbcaDistricts = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-public:CPT_DBCA_DISTRICTS`, {
+  transparent: true,
   opacity: 0.75,
 });
 
@@ -51,17 +51,16 @@ queryLocationsData();
 
 // Define map.
 const map = L.map('map', {
-  // crs: L.CRS.EPSG4326, // WGS 84
-  center: [-31.96, 115.87],
+  center: [-32, 116],
   minZoom: 5,
   maxZoom: 18,
-  layers: [openStreetMap, dbcaRegions], // Sets default selections.
+  layers: [mapboxStreets, dbcaRegions], // Sets default selections.
   attributionControl: false,
 });
 
 // Define layer groups.
 const baseMaps = {
-  'Place names': openStreetMap,
+  'Mapbox streets': mapboxStreets,
 };
 const overlayMaps = {
   'DBCA regions': dbcaRegions,
