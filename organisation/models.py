@@ -1388,6 +1388,14 @@ class DepartmentUser(models.Model):
         else:
             return False
 
+    def get_last_pw_change(self) -> Optional[datetime]:
+        """Returns a TZ-aware datetime for when the user last changed their M365 account password."""
+        if self.azure_ad_data and "lastPasswordChangeDateTime" in self.azure_ad_data and self.azure_ad_data["lastPasswordChangeDateTime"]:
+            # Parse the datetime value and return.
+            return parse(self.azure_ad_data["lastPasswordChangeDateTime"]).astimezone(settings.TZ)
+        else:
+            return None
+
 
 class DepartmentUserLog(models.Model):
     """Represents an event carried out on a DepartmentUser object that may need to be reported

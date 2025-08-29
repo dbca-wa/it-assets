@@ -30,6 +30,7 @@ class DepartmentUserTestCase(TestCase):
             surname="Doe",
             employee_id=mixer.RANDOM,
             dir_sync_enabled=True,
+            azure_guid=uuid1,
         )
         # Set some valid Ascender data from the test user.
         self.user.ascender_data = {
@@ -69,6 +70,13 @@ class DepartmentUserTestCase(TestCase):
             "work_mobile_phone_no": None,
         }
         self.user.ascender_data_updated = timezone.localtime()
+        # Set some valid Azure data for the test user.
+        self.user.azure_ad_data = {
+            "objectId": self.user.azure_guid,
+            "mail": self.user.email,
+            "lastPasswordChangeDateTime": timezone.localtime().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        self.user.azure_ad_data_updated = timezone.localtime()
         self.user.save()
         self.manager = mixer.blend(
             DepartmentUser,
@@ -174,3 +182,9 @@ class DepartmentUserTestCase(TestCase):
         self.user.update_from_ascender_data()
         self.assertEqual(self.user.get_display_name(), "Jane Jones")
         self.assertEqual(self.user.get_ascender_full_name(), "JANE DOE")
+
+    def test_get_last_pw_change(self):
+        self.assertTrue(self.user.get_last_pw_change())
+        self.user.azure_ad_data = {}
+        self.user.save()
+        self.assertFalse(self.user.get_last_pw_change())
