@@ -1,9 +1,11 @@
-from datetime import datetime, timezone
-from django.core.management.base import BaseCommand
 import logging
+from datetime import datetime, timezone
 
+from django.core.management.base import BaseCommand
+
+from itassets.utils import get_blob_json
 from organisation.models import DepartmentUser
-from organisation.utils import ms_graph_users, get_blob_json
+from organisation.utils import ms_graph_users
 
 
 class Command(BaseCommand):

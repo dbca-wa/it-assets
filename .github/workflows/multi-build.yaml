@@ -8,11 +8,6 @@ on:
       - master
     tags:
       - '*'
-  pull_request:
-    branches:
-      - master
-    tags:
-      - '*'
 env:
   # The name of the Docker image to be built and pushed to GitHub Container Registry.
   # The image name will be in the format: ghcr.io/<owner>/<repo>
@@ -285,7 +280,7 @@ jobs:
       security-events: write
     steps:
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.32.0
+        uses: aquasecurity/trivy-action@0.33.0
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
         with:

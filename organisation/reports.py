@@ -40,6 +40,7 @@ def department_user_export(fileobj, users):
                 "DIVISION",
                 "UNIT",
                 "LAST SIGN-IN",
+                "LAST PASSWORD CHANGE",
             ),
         )
         row = 1
@@ -69,6 +70,9 @@ def department_user_export(fileobj, users):
             # Write the last sign-in cell value
             if i.last_signin:
                 users_sheet.write_datetime(row, 16, i.last_signin, date_format)
+            # Write the last password change value
+            if i.get_pw_last_change():
+                users_sheet.write_datetime(row, 17, i.get_pw_last_change(), date_format)
 
             row += 1
 
@@ -82,7 +86,7 @@ def department_user_export(fileobj, users):
         users_sheet.set_column("J:K", 13)
         users_sheet.set_column("L:M", 20)
         users_sheet.set_column("N:P", 60)
-        users_sheet.set_column("Q:Q", 20)
+        users_sheet.set_column("Q:R", 20)
 
     return fileobj
 

@@ -13,7 +13,7 @@ from django.contrib.postgres.fields import ArrayField
 from itassets.utils import ms_graph_client_token, smart_truncate, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
-from .utils import compare_values, parse_windows_ts, title_except
+from .utils import compare_values, parse_ad_pwd_last_set, parse_windows_ts, title_except
 
 LOGGER = logging.getLogger("organisation")
 
@@ -492,7 +492,6 @@ class DepartmentUser(models.Model):
                     }
                     f = BytesIO()
                     f.write(json.dumps(change, indent=2).encode("utf-8"))
-                    f.flush()
                     f.seek(0)
                     if not log_only and settings.ASCENDER_DEACTIVATE_EXPIRED:  # Defaults as False, must be explicitly set True.
                         blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -550,7 +549,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -596,7 +594,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -634,7 +631,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -688,7 +684,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -733,7 +728,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -779,7 +773,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -827,7 +820,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -867,7 +859,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -909,7 +900,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -948,7 +938,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -990,7 +979,6 @@ class DepartmentUser(models.Model):
             }
             f = BytesIO()
             f.write(json.dumps(change, indent=2).encode("utf-8"))
-            f.flush()
             f.seek(0)
             if not log_only:
                 blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -1043,7 +1031,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -1106,7 +1093,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -1122,7 +1108,6 @@ class DepartmentUser(models.Model):
                 }
                 f = BytesIO()
                 f.write(json.dumps(change, indent=2).encode("utf-8"))
-                f.flush()
                 f.seek(0)
                 if not log_only:
                     blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
@@ -1387,6 +1372,17 @@ class DepartmentUser(models.Model):
             return True
         else:
             return False
+
+    def get_pw_last_change(self) -> Optional[datetime]:
+        """Returns a TZ-aware datetime for when the user last changed their M365 account password."""
+        if self.azure_ad_data and "lastPasswordChangeDateTime" in self.azure_ad_data and self.azure_ad_data["lastPasswordChangeDateTime"]:
+            # Prefer any value on the user's M365 account.
+            return parse(self.azure_ad_data["lastPasswordChangeDateTime"]).astimezone(settings.TZ)
+        elif self.ad_data and "pwdLastSet" in self.ad_data and self.ad_data["pwdLastSet"]:
+            # User's onprem AD account might have a value where the M365 account doesn't.
+            return parse_ad_pwd_last_set(self.ad_data["pwdLastSet"])
+        else:
+            return None
 
 
 class DepartmentUserLog(models.Model):
