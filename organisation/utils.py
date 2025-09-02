@@ -446,6 +446,13 @@ def parse_windows_ts(s):
         return None
 
 
+def parse_ad_pwd_last_set(pwd_last_set):
+    # Onprem AD accounts store the Pwd-Last-Set attribute as a large integer representing the number of
+    # 100 nanosecond intervals since January 1, 1601 (UTC).
+    # Reference: https://learn.microsoft.com/en-us/windows/win32/adschema/a-pwdlastset
+    return (datetime(1601, 1, 1) + timedelta(microseconds=pwd_last_set / 10)).astimezone(settings.TZ)
+
+
 def department_user_ascender_sync(users):
     """For a passed-in queryset of Department Users and a file-like object, returns a file-like
     object of CSV data that should be synced to Ascender.
