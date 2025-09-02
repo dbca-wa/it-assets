@@ -84,7 +84,8 @@ STATUS_RANKING = [
 # A map of codes in the `emp_status` field to descriptive text.
 EMP_STATUS_MAP = {
     "ADV": "ADVERTISED VACANCY",
-    "BD": "Board",
+    "AO": "ACCESS ONLY",
+    "BD": "BOARD",
     "CAS": "CASUAL EMPLOYEES",
     "CCFA": "COMMITTEE-BOARD MEMBERS FIXED TERM CONTRACT  AUTO",
     "CD": "CADET",
@@ -134,7 +135,7 @@ EMP_STATUS_MAP = {
     "SCFA": "SECONDMENT FULL-TIME AUTO",
     "SEAP": "SEASONAL EMPLOYMENT (PERMANENT)",
     "SEAS": "SEASONAL EMPLOYMENT",
-    "SES": "Senior Executive Service",
+    "SES": "SENIOR EXECUTIVE SERVICE",
     "SFTC": "SPONSORED FIXED TERM CONTRACT AUTO",
     "SFTT": "SECONDMENT FULL-TIME TSHEET",
     "SN": "SUPERNUMERY",
@@ -147,7 +148,7 @@ EMP_STATUS_MAP = {
     "TRAIN": "TRAINEE",
     "V": "VOLUNTEER",
     "WWR": "WEEKEND WEATHER READER",
-    "Z": "Non-Resident",
+    "Z": "NON-RESIDENT",
 }
 
 
