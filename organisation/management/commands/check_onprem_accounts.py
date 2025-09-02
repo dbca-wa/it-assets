@@ -1,10 +1,12 @@
+import logging
 from datetime import datetime, timezone
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
-import logging
-from organisation.models import DepartmentUser
-from organisation.utils import get_blob_json
 from sentry_sdk.crons import monitor
+
+from itassets.utils import get_blob_json
+from organisation.models import DepartmentUser
 
 
 class Command(BaseCommand):
