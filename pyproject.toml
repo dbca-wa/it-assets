@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.44"
+version = "2.4.45"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -23,18 +23,18 @@ dependencies = [
   "whitenoise[brotli]==6.9.0",
   "pysftp==0.2.9",
   "xlsxwriter==3.2.5",
-  "sentry-sdk[django]==2.35.0",
+  "sentry-sdk[django]==2.35.2",
   "redis==6.4.0",
   "django-storages[azure]==1.14.6",
 ]
 
 [dependency-groups]
 dev = [
-  "ipython>=9.4.0",
+  "ipython>=9.5.0",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.3.0",
-  "coverage>=7.10.5",
+  "coverage>=7.10.6",
 ]
 
 # Reference: https://docs.astral.sh/ruff/configuration/
