@@ -54,12 +54,12 @@ def upload_blob(in_file, container, blob, overwrite=True):
 
 
 def download_blob(out_file, container, blob):
-    """For the passed-in file, download the nominated blob into it."""
+    """For the passed-in file stream object, download the nominated blob into it."""
     connect_string = os.environ.get("AZURE_CONNECTION_STRING")
     service_client = BlobServiceClient.from_connection_string(connect_string)
     container_client = service_client.get_container_client(container=container)
     out_file.write(container_client.download_blob(blob).readall())
-    out_file.flush()
+    out_file.flush()  # Required for file stream objects.
     out_file.seek(0)
 
     return out_file
@@ -168,8 +168,6 @@ def get_blob_json(container, blob):
     """
     tf = BytesIO()
     download_blob(tf, container, blob)
-    tf.flush()
-
     return json.loads(tf.read())
 
 

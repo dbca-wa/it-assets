@@ -183,8 +183,8 @@ class DepartmentUserTestCase(TestCase):
         self.assertEqual(self.user.get_display_name(), "Jane Jones")
         self.assertEqual(self.user.get_ascender_full_name(), "JANE DOE")
 
-    def test_get_last_pw_change(self):
-        self.assertTrue(self.user.get_last_pw_change())
+    def test_get_pw_last_change(self):
+        self.assertTrue(self.user.get_pw_last_change())
         self.user.azure_ad_data = {}
         self.user.save()
-        self.assertFalse(self.user.get_last_pw_change())
+        self.assertFalse(self.user.get_pw_last_change())

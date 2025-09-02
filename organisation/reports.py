@@ -71,8 +71,8 @@ def department_user_export(fileobj, users):
             if i.last_signin:
                 users_sheet.write_datetime(row, 16, i.last_signin, date_format)
             # Write the last password change value
-            if i.get_last_pw_change():
-                users_sheet.write_datetime(row, 17, i.get_last_pw_change(), date_format)
+            if i.get_pw_last_change():
+                users_sheet.write_datetime(row, 17, i.get_pw_last_change(), date_format)
 
             row += 1
 
