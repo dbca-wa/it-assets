@@ -8,11 +8,6 @@ on:
       - master
     tags:
       - '*'
-  pull_request:
-    branches:
-      - master
-    tags:
-      - '*'
 env:
   # The name of the Docker image to be built and pushed to GitHub Container Registry.
   # The image name will be in the format: ghcr.io/<owner>/<repo>
@@ -132,7 +127,6 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
           outputs: type=image,name=${{ env.GHCR_IMAGE }},push-by-digest=true,name-canonical=true,push=true,oci-mediatypes=true
