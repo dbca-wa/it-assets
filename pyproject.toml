@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.45"
+version = "2.4.46"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -21,11 +21,11 @@ dependencies = [
   "webtemplate-dbca==1.8.2",
   "msal==1.33.0",
   "whitenoise[brotli]==6.9.0",
-  "pysftp==0.2.9",
   "xlsxwriter==3.2.5",
   "sentry-sdk[django]==2.35.2",
   "redis==6.4.0",
   "django-storages[azure]==1.14.6",
+  "paramiko==4.0.0",
 ]
 
 [dependency-groups]
