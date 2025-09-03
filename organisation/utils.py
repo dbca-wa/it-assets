@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime, timedelta
 from io import BytesIO
+from typing import AnyStr, Dict, Iterable, List, Optional
 
 import requests
 import unicodecsv as csv
@@ -13,8 +14,10 @@ from itassets.utils import ms_graph_client_token, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
 
+FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, "X")
 
-def title_except(s, exceptions=None, acronyms=None):
+
+def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: Optional[Iterable[str]] = None) -> AnyStr:
     """Utility function to title-case words in a job title, except for all the exceptions and edge cases."""
     if not exceptions:
         exceptions = ("the", "of", "for", "and", "or")
@@ -86,7 +89,7 @@ def title_except(s, exceptions=None, acronyms=None):
     return " ".join(words_title)
 
 
-def ms_graph_subscribed_skus(token=None):
+def ms_graph_subscribed_skus(token: Optional[dict] = None) -> List[Dict] | None:
     """Query the Microsoft Graph REST API for a list of commercial licence subscriptions.
     To map licence names against skuId, reference:
     https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/licensing-service-plan-reference
@@ -113,7 +116,7 @@ def ms_graph_subscribed_skus(token=None):
     return skus
 
 
-def ms_graph_subscribed_sku(sku_id, token=None):
+def ms_graph_subscribed_sku(sku_id: str, token: Optional[dict] = None) -> Dict | None:
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails.
@@ -127,7 +130,7 @@ def ms_graph_subscribed_sku(sku_id, token=None):
     return resp.json()
 
 
-def ms_graph_users(licensed=False, token=None):
+def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
     """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
     Passing ``licensed=True`` will return only those users having >0 licenses assigned.
     Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
@@ -424,7 +427,7 @@ def ms_graph_site_storage_summary(ds=None, token=None):
     upload_blob(in_file=f, container="analytics", blob=blob_name)
 
 
-def compare_values(a, b):
+def compare_values(a, b) -> bool:
     """A utility function to compare two values for equality, with the exception that 'falsy' values
     (e.g. None and '') are equal. This is used to account for differences in how data is returned
     from the different AD environments and APIs.
@@ -435,40 +438,79 @@ def compare_values(a, b):
     return a == b
 
 
-def parse_windows_ts(s):
+def parse_windows_ts(ts: str) -> datetime | None:
     """Parse the string repr of Windows timestamp output, a 64-bit value representing the number of
     100-nanoseconds elapsed since January 1, 1601 (UTC).
     """
     try:
-        match = re.search("(?P<timestamp>[0-9]+)", s)
+        match = re.search("(?P<timestamp>[0-9]+)", ts)
         return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
     except:
         return None
 
 
-def parse_ad_pwd_last_set(pwd_last_set):
-    # Onprem AD accounts store the Pwd-Last-Set attribute as a large integer representing the number of
-    # 100 nanosecond intervals since January 1, 1601 (UTC).
-    # Reference: https://learn.microsoft.com/en-us/windows/win32/adschema/a-pwdlastset
+def parse_ad_pwd_last_set(pwd_last_set: int) -> datetime:
+    """Parse onprem AD Pwd-Last-Set integer as a TZ-aware datetime.
+    Onprem AD accounts store the Pwd-Last-Set attribute as a large integer representing the number of
+    100 nanosecond intervals since January 1, 1601 (UTC).
+    Reference: https://learn.microsoft.com/en-us/windows/win32/adschema/a-pwdlastset
+    """
     return (datetime(1601, 1, 1) + timedelta(microseconds=pwd_last_set / 10)).astimezone(settings.TZ)
 
 
-def department_user_ascender_sync(users):
-    """For a passed-in queryset of Department Users and a file-like object, returns a file-like
-    object of CSV data that should be synced to Ascender.
+def get_freshservice_objects(obj_type) -> List[Dict]:
+    """Query the Freshservice v2 API for objects of a defined type."""
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}"
+    params = {
+        "page": 1,
+        "per_page": 100,
+    }
+    objects = []
+    further_results = True
+
+    while further_results:
+        print(f"Downloading page {params['page']}")
+        resp = requests.get(url, auth=FRESHSERVICE_AUTH, params=params)
+        resp.raise_for_status()
+        if "link" not in resp.headers:  # No further paginated results.
+            further_results = False
+        else:
+            print(resp.headers["link"])
+
+        objects.extend(resp.json()[obj_type])
+        params["page"] += 1
+
+    # Return the list of objects returned.
+    return objects
+
+
+def get_freshservice_object(obj_type, key, value):
+    """Use the Freshservice v2 API to retrieve a single object.
+    Accepts an object type, object attribute to use, and a value to filter on.
+    Returns the first object found, or None.
     """
-    f = BytesIO()
-    writer = csv.writer(f, quoting=csv.QUOTE_ALL, encoding="utf-8")
-    writer.writerow(["EMPLOYEE_ID", "EMAIL", "ACTIVE", "WORK_TELEPHONE", "LICENCE_TYPE"])
-    for user in users:
-        writer.writerow(
-            [
-                user.employee_id,
-                user.email.lower(),
-                user.active,
-                user.telephone,
-                user.get_licence(),
-            ]
-        )
-    f.seek(0)
-    return f
+
+    objects = get_freshservice_objects(obj_type)
+    return next((obj for obj in objects if obj[key] == value), None)
+
+
+def create_freshservice_object(obj_type, data):
+    """Use the Freshservice v2 API to create an object.
+    Accepts an object name (string) and a dict of key values.
+    """
+
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}"
+    resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
+
+    return resp
+
+
+def update_freshservice_object(obj_type, id, data):
+    """Use the Freshservice v2 API to update an object.
+    Accepts an object type name (string), object ID and a dict of key values.
+    """
+
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/{obj_type}/{id}"
+    resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
+
+    return resp
