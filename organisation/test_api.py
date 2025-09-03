@@ -12,22 +12,22 @@ class DepartmentUserAPIResourceTestCase(ApiTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         # Response should not contain inactive or shared accounts.
-        self.assertContains(response, self.user1.email)
-        self.assertContains(response, self.user2.email)
+        self.assertContains(response, self.user_permanent.email)
+        self.assertContains(response, self.user_contract.email)
         self.assertNotContains(response, self.inactive_user.email)
 
     def test_list_filtering(self):
         """Test the DepartmentUserAPIResource filtered responses"""
-        url = reverse("department_user_api_resource", kwargs={"pk": self.user1.pk})
+        url = reverse("department_user_api_resource", kwargs={"pk": self.user_permanent.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.user1.email)
-        self.assertNotContains(response, self.user2.email)
-        url = "{}?q={}".format(reverse("department_user_api_resource"), self.user2.email)
+        self.assertContains(response, self.user_permanent.email)
+        self.assertNotContains(response, self.user_contract.email)
+        url = "{}?q={}".format(reverse("department_user_api_resource"), self.user_contract.email)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, self.user1.email)
-        self.assertContains(response, self.user2.email)
+        self.assertNotContains(response, self.user_permanent.email)
+        self.assertContains(response, self.user_contract.email)
 
     def test_list_tailored(self):
         """Test the LocationAPIResource tailored list responses"""
@@ -72,28 +72,28 @@ class LocationAPIResourceTestCase(ApiTestCase):
 class LicenseAPIResourceTestCase(ApiTestCase):
     def setUp(self):
         super(LicenseAPIResourceTestCase, self).setUp()
-        self.user1.assigned_licences = ["MICROSOFT 365 E5"]
-        self.user1.save()
-        self.user2.assigned_licences = ["OFFICE 365 E1"]
-        self.user2.save()
+        self.user_permanent.assigned_licences = ["MICROSOFT 365 E5"]
+        self.user_permanent.save()
+        self.user_contract.assigned_licences = ["OFFICE 365 E1"]
+        self.user_contract.save()
 
     def test_list(self):
         """Test the LicenseAPIResource list response"""
         url = reverse("license_api_resource")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.user1.email)
-        self.assertContains(response, self.user2.email)
+        self.assertContains(response, self.user_permanent.email)
+        self.assertContains(response, self.user_contract.email)
 
     def test_filter(self):
         """Test the LicenseAPIResource filtered response"""
-        url = reverse("license_api_resource", kwargs={"pk": self.user1.pk})
+        url = reverse("license_api_resource", kwargs={"pk": self.user_permanent.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.user1.email)
-        self.assertNotContains(response, self.user2.email)
-        url = "{}?q={}".format(reverse("license_api_resource"), self.user2.email)
+        self.assertContains(response, self.user_permanent.email)
+        self.assertNotContains(response, self.user_contract.email)
+        url = "{}?q={}".format(reverse("license_api_resource"), self.user_contract.email)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, self.user1.email)
-        self.assertContains(response, self.user2.email)
+        self.assertNotContains(response, self.user_permanent.email)
+        self.assertContains(response, self.user_contract.email)

@@ -26,7 +26,7 @@ class ApiTestCase(TestCase):
         self.cc2 = CostCentre.objects.create(code="002", division_name="Division B")
 
         # Generate some other DepartmentUser objects.
-        self.user1 = mixer.blend(
+        self.user_permanent = mixer.blend(
             DepartmentUser,
             active=True,
             email=random_dbca_email,
@@ -36,13 +36,13 @@ class ApiTestCase(TestCase):
             cost_centre=self.cc1,
             assigned_licences=["MICROSOFT 365 E5"],
         )
-        self.user2 = mixer.blend(
+        self.user_contract = mixer.blend(
             DepartmentUser,
             active=True,
             email=random_dbca_email,
             ad_guid=uuid1,
             in_sync=False,
-            account_type=3,  # Agency contract
+            account_type=0,  # Contract
             cost_centre=self.cc1,
             assigned_licences=["MICROSOFT 365 F3"],
         )
@@ -52,7 +52,7 @@ class ApiTestCase(TestCase):
             email=random_dbca_email,
             ad_guid=uuid1,
             in_sync=False,
-            account_type=2,
+            account_type=2,  # Permanent
             cost_centre=self.cc1,
         )
 
@@ -64,7 +64,7 @@ class ApiTestCase(TestCase):
         self.client.login(username="testuser", password="pass")
 
         # Generate some IT Systems.
-        self.it_prod = mixer.blend(ITSystem, status=0, owner=self.user1)  # Production
-        self.it_dev = mixer.blend(ITSystem, status=1, owner=self.user2)  # Development
-        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user2)  # Production legacy
-        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user2)  # Decommissioned
+        self.it_prod = mixer.blend(ITSystem, status=0, owner=self.user_permanent)  # Production
+        self.it_dev = mixer.blend(ITSystem, status=1, owner=self.user_contract)  # Development
+        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user_contract)  # Production legacy
+        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user_contract)  # Decommissioned
