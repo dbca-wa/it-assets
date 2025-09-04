@@ -86,6 +86,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "proxy_addresses",
         "dir_sync_enabled",
         "last_signin",
+        "password_last_change",
         "ascender_org_path",
         "geo_location_desc",
         "paypoint",
@@ -135,6 +136,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "assigned_licences",
                     "dir_sync_enabled",
                     "last_signin",
+                    "password_last_change",
                     "azure_guid",
                     "ad_guid",
                 ),
@@ -221,6 +223,9 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
 
     def m365_licence(self, instance):
         return instance.get_licence() or ""
+
+    def password_last_change(self, instance):
+        return instance.get_pw_last_change().strftime("%d-%B-%Y") or ""
 
     def ad_data_pprint(self, obj=None):
         if obj and obj.ad_data:

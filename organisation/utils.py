@@ -145,7 +145,7 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
         "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,signInActivity,assignedLicenses&$expand=manager($select=id,mail)"
+    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,signInActivity,assignedLicenses,createdDateTime&$expand=manager($select=id,mail)"
     users = []
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
@@ -184,6 +184,7 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
             "onPremisesSamAccountName": user["onPremisesSamAccountName"],
             "lastPasswordChangeDateTime": user["lastPasswordChangeDateTime"],
             "signInActivity": None,
+            "createdDateTime": user["createdDateTime"],
             "assignedLicenses": [i["skuId"] for i in user["assignedLicenses"]],
             "manager": {"id": user["manager"]["id"], "mail": user["manager"]["mail"]} if "manager" in user else None,
         }
