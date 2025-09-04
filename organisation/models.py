@@ -216,8 +216,11 @@ class DepartmentUser(models.Model):
         help_text="Cache of Azure AD data",
     )
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
-    dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Azure AD account is synced to on-prem AD")
+    dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Entra ID account is synced to on-prem Active Directory")
     last_signin = models.DateTimeField(null=True, editable=False, help_text="Entra ID last sign-in time")
+    last_password_change = models.DateTimeField(
+        null=True, editable=False, help_text="The time when the user account password was last changed"
+    )
 
     def __str__(self):
         return self.email
@@ -451,7 +454,7 @@ class DepartmentUser(models.Model):
         jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
         return jobs_data[1]
 
-    def sync_ad_data(self, container="azuread", log_only=False, token=None):
+    def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Azure AD, onprem AD).
         Each field has a 'source of truth'. In each case, check the source of truth and make changes
@@ -1356,9 +1359,12 @@ class DepartmentUser(models.Model):
         ):
             self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
 
+        if self.get_pw_last_change():
+            self.last_password_change = self.get_pw_last_change()
+
         self.save()
 
-    def account_dormant(self) -> Optional[bool]:
+    def account_dormant(self, dormant_account_days: Optional[int] = None) -> Optional[bool]:
         """Returns boolean if the last_signin date is within the threshold, or None if unknown."""
         if not self.azure_guid:
             return None
@@ -1367,22 +1373,30 @@ class DepartmentUser(models.Model):
         elif not self.last_signin:
             return None
 
+        if not dormant_account_days:
+            dormant_account_days = settings.DORMANT_ACCOUNT_DAYS
+
         delta = datetime.now(settings.TZ) - self.last_signin
-        if delta.days >= settings.DORMANT_ACCOUNT_DAYS:
+        if delta.days >= dormant_account_days:
             return True
         else:
             return False
 
     def get_pw_last_change(self) -> Optional[datetime]:
-        """Returns a TZ-aware datetime for when the user last changed their M365 account password."""
+        """Returns a TZ-aware datetime for when the user last changed their account password from synced Entra ID/AD data."""
+        d = None
         if self.azure_ad_data and "lastPasswordChangeDateTime" in self.azure_ad_data and self.azure_ad_data["lastPasswordChangeDateTime"]:
             # Prefer any value on the user's M365 account.
-            return parse(self.azure_ad_data["lastPasswordChangeDateTime"]).astimezone(settings.TZ)
+            d = parse(self.azure_ad_data["lastPasswordChangeDateTime"]).astimezone(settings.TZ)
         elif self.ad_data and "pwdLastSet" in self.ad_data and self.ad_data["pwdLastSet"]:
             # User's onprem AD account might have a value where the M365 account doesn't.
-            return parse_ad_pwd_last_set(self.ad_data["pwdLastSet"])
-        else:
-            return None
+            d = parse_ad_pwd_last_set(self.ad_data["pwdLastSet"])
+
+        # Sanity check, as Entra sometimes contains implausible datetimes.
+        if d and d > datetime(1900, 1, 1).astimezone(settings.TZ):
+            return d
+
+        return None
 
 
 class DepartmentUserLog(models.Model):

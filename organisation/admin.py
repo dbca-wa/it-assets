@@ -86,7 +86,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "proxy_addresses",
         "dir_sync_enabled",
         "last_signin",
-        "password_last_change",
+        "last_password_change",
         "ascender_org_path",
         "geo_location_desc",
         "paypoint",
@@ -127,16 +127,15 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         (
             "Microsoft 365 and Active Directory account information",
             {
-                "description": '<span class="errornote">Data in these fields is maintained in Azure Entra ID / Active Directory.</span>',
+                "description": '<span class="errornote">Data in these fields is maintained in Azure Entra ID / on-prem Active Directory.</span>',
                 "fields": (
                     "active",
                     "email",
                     "name",
-                    "maiden_name",
                     "assigned_licences",
                     "dir_sync_enabled",
                     "last_signin",
-                    "password_last_change",
+                    "last_password_change",
                     "azure_guid",
                     "ad_guid",
                 ),
@@ -148,6 +147,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 "description": """<span class="errornote">Data in these fields can be edited here for display in the Address Book.<br>
                 Do not edit information in this section without a service request from an authorised person.</span>""",
                 "fields": (
+                    "maiden_name",
                     "telephone",
                     "mobile_phone",
                 ),
@@ -223,9 +223,6 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
 
     def m365_licence(self, instance):
         return instance.get_licence() or ""
-
-    def password_last_change(self, instance):
-        return instance.get_pw_last_change().strftime("%d-%B-%Y") or ""
 
     def ad_data_pprint(self, obj=None):
         if obj and obj.ad_data:
