@@ -157,6 +157,8 @@ ASCENDER_CREATE_AZURE_AD = env("ASCENDER_CREATE_AZURE_AD", False)
 ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env("ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS", -1)
 # Number of days after which an Entra ID account may be considered "dormant":
 DORMANT_ACCOUNT_DAYS = env("DORMANT_ACCOUNT_DAYS", 90)
+# Flag to control whether dormant accounts are deactivated.
+DORMANT_ACCOUNT_DEACTIVATE = env("DORMANT_ACCOUNT_DEACTIVATE", False)
 
 # Settings related to the Ascender SFTP target
 ASCENDER_SFTP_HOST = env("ASCENDER_SFTP_HOST", None)
