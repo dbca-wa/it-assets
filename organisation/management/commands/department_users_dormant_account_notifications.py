@@ -71,13 +71,12 @@ class Command(BaseCommand):
                 if last_signin_days_ago == days_before_dormant:
                     subject = f"Unused account notification - {du.name}"
 
-                    recipient = DepartmentUser.objects.get(email="ashley.felton@dbca.wa.gov.au")
-                    # if du.manager:
-                    #     recipient = du.manager
-                    # elif du.cost_centre and du.cost_centre.manager:
-                    #     recipient = du.cost_centre.manager
-                    # else:
-                    #     recipient = None
+                    if du.manager:
+                        recipient = du.manager
+                    elif du.cost_centre and du.cost_centre.manager:
+                        recipient = du.cost_centre.manager
+                    else:
+                        recipient = None
 
                     if recipient:
                         text_content = f"""Hi {recipient.given_name},\n
@@ -104,7 +103,6 @@ OIM automatically deactivates accounts which have not been logged into for {dorm
 <p>If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.</p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
-                        print(text_content)
                         if options["send_email"]:
                             logger.info(f"Sending {day}-day notification to {recipient.email}")
                             msg = EmailMultiAlternatives(
