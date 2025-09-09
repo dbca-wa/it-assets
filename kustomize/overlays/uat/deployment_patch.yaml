@@ -33,6 +33,11 @@ spec:
                 secretKeyRef:
                   name: itassets-env-uat
                   key: EMAIL_HOST
+            - name: EMAIL_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-uat
+                  key: EMAIL_PORT
             - name: AZURE_ACCOUNT_NAME
               valueFrom:
                 secretKeyRef:
