@@ -84,6 +84,16 @@ spec:
                 secretKeyRef:
                   name: itassets-env-prod
                   key: ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS
+            - name: DORMANT_ACCOUNT_DAYS
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DORMANT_ACCOUNT_DAYS
+            - name: DORMANT_ACCOUNT_DEACTIVATE
+              valueFrom:
+                secretKeyRef:
+                  name: itassets-env-prod
+                  key: DORMANT_ACCOUNT_DEACTIVATE
             - name: FOREIGN_DB_HOST
               valueFrom:
                 secretKeyRef:
