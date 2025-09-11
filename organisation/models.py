@@ -216,8 +216,11 @@ class DepartmentUser(models.Model):
         help_text="Cache of Azure AD data",
     )
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
-    dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Azure AD account is synced to on-prem AD")
+    dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Entra ID account is synced to on-prem Active Directory")
     last_signin = models.DateTimeField(null=True, editable=False, help_text="Entra ID last sign-in time")
+    last_password_change = models.DateTimeField(
+        null=True, editable=False, help_text="The time when the user account password was last changed"
+    )
 
     def __str__(self):
         return self.email
@@ -451,7 +454,7 @@ class DepartmentUser(models.Model):
         jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
         return jobs_data[1]
 
-    def sync_ad_data(self, container="azuread", log_only=False, token=None):
+    def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Azure AD, onprem AD).
         Each field has a 'source of truth'. In each case, check the source of truth and make changes
@@ -478,7 +481,7 @@ class DepartmentUser(models.Model):
 
             # Where a user has a job which in which the job end date is in the past, deactivate the user's AD account.
             if job_end_date < today:
-                log = f"{self} job is past end date of {job_end_date.date()}; deactivating their {acct} AD account"
+                log = f"{self} job is past end date of {job_end_date.date()}; deactivating their {acct} account"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
 
@@ -500,7 +503,7 @@ class DepartmentUser(models.Model):
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
-                # Azure (cloud only) AD users.
+                # Cloud users.
                 elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
                     if token:
                         headers = {
@@ -508,15 +511,52 @@ class DepartmentUser(models.Model):
                             "Content-Type": "application/json",
                         }
                         data = {"accountEnabled": False}
-                        if not log_only:
+                        if not log_only and settings.ASCENDER_DEACTIVATE_EXPIRED:
                             requests.patch(url, headers=headers, json=data)
-                            LOGGER.info(f"AZURE SYNC: {self} Azure AD account accountEnabled set to False")
+                            LOGGER.info(f"AZURE SYNC: {self} Entra ID account accountEnabled set to False")
                         else:
                             LOGGER.info("NO ACTION (log only)")
 
-        # Future scenarios:
-        # SCENARIO 2: Ascender record indicates that a user is on extended leave.
-        # SCENARIO 3: Ascender record indicates that a user is seconded to another organisation.
+        # SCENARIO 2: user account has become dormant (no sign-ins for a defined number of days).
+        # Source of truth: Entra ID last interactive sign-in timestamp.
+        if self.active and self.get_licence() and self.get_account_dormant():
+            # Where a user has an active licenced account that is considered dormant, deactivate the account.
+            # Log the action
+            log = f"{self} account is considered to be dormant; deactivating the {acct} account"
+            AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.azure_ad_data)
+            LOGGER.info(log)
+
+            # Onprem AD users.
+            if self.dir_sync_enabled and self.ad_guid and self.ad_data:
+                prop = "Enabled"
+                change = {
+                    "identity": self.ad_guid,
+                    "property": prop,
+                    "value": False,
+                }
+                f = BytesIO()
+                f.write(json.dumps(change, indent=2).encode("utf-8"))
+                f.seek(0)
+                if not log_only and settings.DORMANT_ACCOUNT_DEACTIVATE:  # Defaults as False, must be explicitly set True.
+                    blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
+                    upload_blob(f, container, blob)
+                    LOGGER.info(f"AD SYNC: {self} onprem AD change diff uploaded to blob storage ({prop})")
+                else:
+                    LOGGER.info("NO ACTION (log only)")
+
+            # Cloud users.
+            elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
+                if token:
+                    headers = {
+                        "Authorization": f"Bearer {token['access_token']}",
+                        "Content-Type": "application/json",
+                    }
+                    data = {"accountEnabled": False}
+                    if not log_only and settings.DORMANT_ACCOUNT_DEACTIVATE:
+                        requests.patch(url, headers=headers, json=data)
+                        LOGGER.info(f"AZURE SYNC: {self} Entra ID account accountEnabled set to False")
+                    else:
+                        LOGGER.info("NO ACTION (log only)")
 
         # expiry date (source of truth: Ascender).
         # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
@@ -1348,6 +1388,7 @@ class DepartmentUser(models.Model):
                 if not match:
                     self.assigned_licences.append(sku)
 
+        # last_signin
         if (
             "signInActivity" in self.azure_ad_data
             and self.azure_ad_data["signInActivity"]
@@ -1356,10 +1397,15 @@ class DepartmentUser(models.Model):
         ):
             self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
 
+        # last_password_change
+        if self.get_pw_last_change():
+            self.last_password_change = self.get_pw_last_change()
+
         self.save()
 
-    def account_dormant(self) -> Optional[bool]:
+    def get_account_dormant(self, dormant_account_days: Optional[int] = None) -> Optional[bool]:
         """Returns boolean if the last_signin date is within the threshold, or None if unknown."""
+        # If we don't have the account object GUID, cached account data or the timestamp of the last sign-in, return None.
         if not self.azure_guid:
             return None
         elif not self.azure_ad_data:
@@ -1367,22 +1413,31 @@ class DepartmentUser(models.Model):
         elif not self.last_signin:
             return None
 
+        if not dormant_account_days:
+            dormant_account_days = settings.DORMANT_ACCOUNT_DAYS
+
         delta = datetime.now(settings.TZ) - self.last_signin
-        if delta.days >= settings.DORMANT_ACCOUNT_DAYS:
+        if delta.days >= dormant_account_days:
             return True
         else:
             return False
 
     def get_pw_last_change(self) -> Optional[datetime]:
-        """Returns a TZ-aware datetime for when the user last changed their M365 account password."""
+        """Returns a TZ-aware datetime for when the user last changed their account password from synced Entra ID/AD data."""
+        d = None
         if self.azure_ad_data and "lastPasswordChangeDateTime" in self.azure_ad_data and self.azure_ad_data["lastPasswordChangeDateTime"]:
             # Prefer any value on the user's M365 account.
-            return parse(self.azure_ad_data["lastPasswordChangeDateTime"]).astimezone(settings.TZ)
+            d = parse(self.azure_ad_data["lastPasswordChangeDateTime"]).astimezone(settings.TZ)
         elif self.ad_data and "pwdLastSet" in self.ad_data and self.ad_data["pwdLastSet"]:
             # User's onprem AD account might have a value where the M365 account doesn't.
-            return parse_ad_pwd_last_set(self.ad_data["pwdLastSet"])
-        else:
-            return None
+            d = parse_ad_pwd_last_set(self.ad_data["pwdLastSet"])
+
+        # Sanity check, as Entra sometimes contains implausible datetimes.
+        # Reference: https://stackoverflow.com/questions/45014731/1601-01-01-of-lastlogontimestamp-attribute
+        if d and d > datetime(1900, 1, 1).astimezone(settings.TZ):
+            return d
+
+        return None
 
 
 class DepartmentUserLog(models.Model):

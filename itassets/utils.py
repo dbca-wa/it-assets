@@ -2,6 +2,7 @@ import json
 import os
 import re
 from io import BytesIO
+from typing import BinaryIO, Dict
 
 import requests
 from azure.storage.blob import BlobServiceClient
@@ -10,7 +11,7 @@ from django.utils.encoding import smart_str
 from msal import ConfidentialClientApplication
 
 
-def ms_graph_client_token():
+def ms_graph_client_token() -> Dict:
     """Uses the Microsoft msal library to obtain an access token for the Graph API.
     Ref: https://docs.microsoft.com/en-us/python/api/msal/msal.application.confidentialclientapplication
     """
@@ -27,7 +28,7 @@ def ms_graph_client_token():
     return token
 
 
-def ms_security_api_client_token():
+def ms_security_api_client_token() -> str:
     """Calls the Microsoft 365 Defender API endpoint to obtain an access token.
     Ref: https://docs.microsoft.com/en-us/microsoft-365/security/defender/api-hello-world
     """
@@ -45,7 +46,7 @@ def ms_security_api_client_token():
     return resp.json()["access_token"]
 
 
-def upload_blob(in_file, container, blob, overwrite=True):
+def upload_blob(in_file: BinaryIO, container: str, blob: str, overwrite=True):
     """For the passed-in file, upload to blob storage."""
     connect_string = os.environ.get("AZURE_CONNECTION_STRING")
     service_client = BlobServiceClient.from_connection_string(connect_string)
@@ -53,7 +54,7 @@ def upload_blob(in_file, container, blob, overwrite=True):
     blob_client.upload_blob(in_file, overwrite=overwrite)
 
 
-def download_blob(out_file, container, blob):
+def download_blob(out_file: BinaryIO, container: str, blob: str) -> BinaryIO:
     """For the passed-in file stream object, download the nominated blob into it."""
     connect_string = os.environ.get("AZURE_CONNECTION_STRING")
     service_client = BlobServiceClient.from_connection_string(connect_string)
@@ -162,7 +163,7 @@ def smart_truncate(content, length=100, suffix="....(more)"):
         return " ".join(content[: length + 1].split(" ")[0:-1]) + suffix
 
 
-def get_blob_json(container, blob):
+def get_blob_json(container: str, blob: str) -> Dict:
     """Convenience function to download an Azure blob which contains JSON data,
     parse it, and return the data. Pass in the container and blob names.
     """
