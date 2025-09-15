@@ -21,7 +21,7 @@ dependencies = [
   "webtemplate-dbca==1.8.2",
   "msal==1.33.0",
   "whitenoise[brotli]==6.9.0",
-  "xlsxwriter==3.2.5",
+  "xlsxwriter==3.2.8",
   "sentry-sdk[django]==2.37.0",
   "redis==6.4.0",
   "django-storages[azure]==1.14.6",
