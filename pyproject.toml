@@ -20,7 +20,7 @@ dependencies = [
   "python-dateutil==2.9.0",
   "webtemplate-dbca==1.8.2",
   "msal==1.33.0",
-  "whitenoise[brotli]==6.9.0",
+  "whitenoise[brotli]==6.11.0",
   "xlsxwriter==3.2.5",
   "sentry-sdk[django]==2.37.0",
   "redis==6.4.0",
