@@ -36,7 +36,7 @@ class AddressBook(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = (
-            DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
+            DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
             .select_related(
                 "cost_centre",
@@ -122,7 +122,7 @@ class DepartmentUserAPIResource(View):
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = (
-            DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
+            DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
             .select_related(
                 "manager",
@@ -272,9 +272,7 @@ class DepartmentUserExport(View):
         if "all" in request.GET:  # Return all objects.
             users = DepartmentUser.objects.all()
         else:  # Default to active users only.
-            users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(
-                account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
-            )
+            users = DepartmentUser.objects.filter(active=True).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
 
         response = department_user_export(response, users)
         return response
