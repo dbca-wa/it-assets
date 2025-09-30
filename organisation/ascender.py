@@ -425,6 +425,16 @@ def ascender_user_import_all():
     token = ms_graph_client_token()
     employee_records = ascender_employees_fetch_all()
 
+    # First, check for any invalid/outdated Ascender cached on user records.
+    valid_employee_ids = [employee_id for employee_id in employee_records.keys()]
+    cached_employee_ids = DepartmentUser.objects.filter(employee_id__isnull=False).values_list("employee_id", flat=True)
+    for eid in cached_employee_ids:
+        if eid not in valid_employee_ids:
+            du = DepartmentUser.objects.get(employee_id=eid)
+            du.employee_id = None
+            du.save()
+            LOGGER.info(f"Removed invalid Ascender employee ID {eid} from department user {du}")
+
     for employee_id, jobs in employee_records.items():
         # If we have no jobs data from Ascender for this employee, skip them.
         if not jobs:
