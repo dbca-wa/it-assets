@@ -164,6 +164,15 @@ class DepartmentUser(models.Model):
         editable=False,
         help_text="Timestamp of when Ascender data was last updated for this user",
     )
+    position_no = models.CharField(
+        max_length=128,
+        null=True,
+        unique=True,
+        blank=True,
+        verbose_name="position no.",
+        help_text="Optional Ascender position number to specify the user's current active job",
+    )
+
     # On-premise AD data
     ad_guid = models.CharField(
         max_length=48,
@@ -181,6 +190,7 @@ class DepartmentUser(models.Model):
         help_text="Cache of on-premise AD data",
     )
     ad_data_updated = models.DateTimeField(null=True, editable=False)
+
     # Azure Entra ID data
     azure_guid = models.CharField(
         max_length=48,
