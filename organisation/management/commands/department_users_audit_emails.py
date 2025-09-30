@@ -13,7 +13,7 @@ class Command(BaseCommand):
         logger = logging.getLogger("organisation")
         logger.info("Checking currently-recorded emails for department users against Azure AD")
         entra_users = ms_graph_users()
-        entra_emails = [i["mail"].lower() for i in entra_users]
+        entra_emails = [i["mail"].lower() for i in entra_users if i["mail"]]
         du_emails = [
             i.lower()
             for i in DepartmentUser.objects.filter(email__iendswith="@dbca.wa.gov.au", active=False).values_list("email", flat=True)
