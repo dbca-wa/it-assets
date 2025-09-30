@@ -41,6 +41,17 @@ class Command(BaseCommand):
             logger.error("No on-prem AD user account data could be downloaded")
             return
 
+        # Initially, check for any invalid onprem AD GUID values that are cached.
+        logger.info("Checking cached onprem AD GUID values")
+        valid_ad_guids = [i["ObjectGUID"] for i in ad_users]
+        cached_ad_guids = DepartmentUser.objects.filter(ad_guid__isnull=False).values_list("ad_guid", flat=True)
+        for guid in cached_ad_guids:
+            if guid not in valid_ad_guids:
+                du = DepartmentUser.objects.get(ad_guid=guid)
+                du.ad_guid = None
+                du.save()
+                logger.info(f"Removed invalid onprem AD GUID {guid} from department user {du}")
+
         logger.info("Comparing Department Users to on-prem AD user accounts")
         for ad in ad_users:
             # Only AD accounts which have an email address.
