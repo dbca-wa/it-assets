@@ -9,6 +9,7 @@ resources:
   - cronjobs/deptusers-changes-report
   - cronjobs/deptusers-check-ascender
   - cronjobs/deptusers-check-azure
+  - cronjobs/deptusers-check-cached
   - cronjobs/deptusers-check-onprem
   - cronjobs/deptusers-sync-ad
   - cronjobs/m365-licence-check
