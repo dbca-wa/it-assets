@@ -88,17 +88,6 @@ class UserAccounts(LoginRequiredMixin, ListView):
             query_str = self.request.GET["q"]
             queryset = queryset.filter(Q(name__icontains=query_str) | Q(cost_centre__code__icontains=query_str))
 
-        # Last filter: Ascender job_end_date value is not in the past, or is absent.
-        # We need to turn our queryset into a list comprehension to use the model property for filtering.
-        queryset = [
-            du
-            for du in queryset
-            if (
-                (not du.get_job_end_date() or du.get_job_end_date() >= date.today())
-                and (not du.get_job_start_date() or du.get_job_start_date() <= date.today())
-            )
-        ]
-
         return queryset
 
     def get(self, request, *args, **kwargs):
