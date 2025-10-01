@@ -85,3 +85,8 @@ spec:
       restartPolicy: Always
       terminationGracePeriodSeconds: 180
       automountServiceAccountToken: false
+      tolerations:
+        - key: arch
+          operator: Equal
+          value: arm64
+          effect: NoSchedule
