@@ -163,7 +163,7 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
     for user in users:
         user_data = {
             "objectId": user["id"],
-            "userPrincipalName": user["userPrincipalName"],
+            "userPrincipalName": user["userPrincipalName"].lower(),
             "mail": user["mail"].lower() if user["mail"] else None,
             "displayName": user["displayName"] if user["displayName"] else None,
             "givenName": user["givenName"] if user["givenName"] else None,
