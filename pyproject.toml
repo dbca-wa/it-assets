@@ -19,6 +19,7 @@ dependencies = [
   "unicodecsv==0.14.1",
   "python-dateutil==2.9.0",
   "webtemplate-dbca==1.8.2",
+  "requests==2.32.5",
   "msal==1.34.0",
   "whitenoise[brotli]==6.11.0",
   "xlsxwriter==3.2.9",
