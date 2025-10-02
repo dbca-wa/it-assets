@@ -61,9 +61,7 @@ class AddressBook(LoginRequiredMixin, ListView):
 
 
 class UserAccounts(LoginRequiredMixin, ListView):
-    """A custom view to return a subset of DepartmentUser objects having licensed AD accounts
-    (though not necessarily enabled) as well as a 'current' job in Ascender (i.e. past its end date).
-    """
+    """A custom view to return a subset of DepartmentUser objects having licensed Entra ID accounts."""
 
     template_name = "organisation/user_accounts.html"
     model = DepartmentUser
@@ -71,7 +69,8 @@ class UserAccounts(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = (
-            DepartmentUser.objects.filter(
+            DepartmentUser.objects.filter(azure_guid__isnull=False)
+            .filter(
                 Q(assigned_licences__contains=["MICROSOFT 365 E5"])
                 | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])

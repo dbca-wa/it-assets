@@ -26,12 +26,16 @@ class ViewsTestCase(ApiTestCase):
         """Test the User Accounts view"""
         url = reverse("user_accounts")
         resp = self.client.get(url)
-        # self.assertEqual(resp.status_code, 200)
-        # self.assertContains(resp, self.user_permanent.name)
-        # self.assertContains(resp, self.user_contract.name)
-        # Remove the license from a user and re-check.
-        self.user_permanent.assigned_licences = []
-        self.user_permanent.save()
-        resp = self.client.get(url)
-        self.assertNotContains(resp, self.user_permanent.name)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, self.user_permanent.name)
         self.assertContains(resp, self.user_contract.name)
+
+    def test_view_user_accounts_no_license(self):
+        """Test the User Accounts view excludes users without a licence"""
+        self.user_permanent.assigned_licences = None
+        self.user_permanent.save()
+        url = reverse("user_accounts")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, self.user_contract.name)
+        self.assertNotContains(resp, self.user_permanent.name)

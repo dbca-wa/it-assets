@@ -31,6 +31,7 @@ class ApiTestCase(TestCase):
             active=True,
             email=random_dbca_email,
             ad_guid=uuid1,
+            azure_guid=uuid1,
             in_sync=False,
             account_type=2,  # Permanent
             cost_centre=self.cc1,
@@ -40,7 +41,7 @@ class ApiTestCase(TestCase):
             DepartmentUser,
             active=True,
             email=random_dbca_email,
-            ad_guid=uuid1,
+            azure_guid=uuid1,
             in_sync=False,
             account_type=0,  # Contract
             cost_centre=self.cc1,
@@ -50,7 +51,6 @@ class ApiTestCase(TestCase):
             DepartmentUser,
             active=False,
             email=random_dbca_email,
-            ad_guid=uuid1,
             in_sync=False,
             account_type=2,  # Permanent
             cost_centre=self.cc1,
@@ -66,5 +66,5 @@ class ApiTestCase(TestCase):
         # Generate some IT Systems.
         self.it_prod = mixer.blend(ITSystem, status=0, owner=self.user_permanent)  # Production
         self.it_dev = mixer.blend(ITSystem, status=1, owner=self.user_contract)  # Development
-        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user_contract)  # Production legacy
-        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user_contract)  # Decommissioned
+        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user_permanent)  # Production legacy
+        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user_permanent)  # Decommissioned
