@@ -29,33 +29,16 @@ class DepartmentUser(models.Model):
         (6, "L1 User Account - Vendor/External"),
         (7, "L1 User Account - Volunteer"),
         (1, "L1 User Account - Alumni/Other"),
+        (9, "L1 Role Account - Role-based account"),
         (14, "Unknown"),
     )
     # The following is a list of account types to normally exclude from user queries.
-    # E.g. shared accounts, meeting rooms, terminated accounts, etc.
+    # E.g. Role-based accounts, volunteers, etc.
     ACCOUNT_TYPE_EXCLUDE = [
         7,  # Volunteer
         1,  # Alumni
+        9,  # Role-based
         14,  # Unknown, disabled
-    ]
-    # The following is a list of user account types for individual staff/vendors,
-    # i.e. no shared or role-based account types.
-    # NOTE: it may not necessarily be the inverse of the previous list.
-    ACCOUNT_TYPE_USER = [
-        2,  # Permanent
-        0,  # Contract
-        8,  # Seasonal
-        6,  # Vendor
-        7,  # Volunteer
-        1,  # Other/alumni
-    ]
-    # The following is a list of user account types where it may be reasonable for there to be
-    # an active Azure AD account without the user also having a current Ascender job.
-    ACCOUNT_TYPE_NONSTAFF = [
-        8,  # Seasonal
-        6,  # Vendor
-        7,  # Volunteer
-        1,  # Other/alumni
     ]
 
     date_created = models.DateTimeField(auto_now_add=True)
@@ -1356,7 +1339,7 @@ class DepartmentUser(models.Model):
         if "accountEnabled" in self.azure_ad_data and self.azure_ad_data["accountEnabled"] != self.active:
             self.active = self.azure_ad_data["accountEnabled"]
             LOGGER.info(f"AZURE AD SYNC: {self} active changed to {self.active}")
-        if "mail" in self.azure_ad_data and self.azure_ad_data["mail"] != self.email:
+        if "mail" in self.azure_ad_data and self.azure_ad_data["mail"] and self.azure_ad_data["mail"] != self.email:
             LOGGER.info(f"AZURE AD SYNC: {self} email changed to {self.azure_ad_data['mail']}")
             self.email = self.azure_ad_data["mail"]
         if "onPremisesSyncEnabled" in self.azure_ad_data:
