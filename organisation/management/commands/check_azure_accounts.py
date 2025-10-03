@@ -60,7 +60,10 @@ class Command(BaseCommand):
                     # EDGE CASE 1: a department user with matching email may already exist with a different azure_guid.
                     # This should be cleaned up by the 'invalid GUID' check above in most cases.
                     # We'll need to correct this issue manually. Email a warning to admins and skip the account.
-                    if DepartmentUser.objects.filter(email=az["userPrincipalName"], azure_guid__isnull=False).exists():
+                    if (
+                        az["userPrincipalName"]
+                        and DepartmentUser.objects.filter(email=az["userPrincipalName"], azure_guid__isnull=False).exists()
+                    ):
                         existing_user = DepartmentUser.objects.filter(email=az["userPrincipalName"]).first()
                         message = f"Skipped {az['userPrincipalName']} ({az['objectId']}): email exists and is already associated with Entra ID {existing_user.azure_guid}"
                         logger.warning(message)
@@ -75,7 +78,7 @@ class Command(BaseCommand):
 
                     # EDGE CASE 2: a department user with matching employee ID may already exist with a different azure_guid.
                     # We'll need to correct this issue manually. Email a warning to admins and skip the account.
-                    if DepartmentUser.objects.filter(employee_id=az["employeeId"], azure_guid__isnull=True).exists():
+                    if az["employeeId"] and DepartmentUser.objects.filter(employee_id=az["employeeId"], azure_guid__isnull=True).exists():
                         existing_user = DepartmentUser.objects.filter(employee_id=az["employeeId"]).first()
                         message = f"Skipped {az['userPrincipalName']} ({az['objectId']}): employeeId exists and is already associated with {existing_user}"
                         logger.warning(message)
