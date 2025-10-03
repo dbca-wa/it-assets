@@ -23,6 +23,16 @@ spec:
                     secretKeyRef:
                       name: itassets-env-prod
                       key: ASCENDER_DEACTIVATE_EXPIRED
+                - name: DORMANT_ACCOUNT_DAYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: DORMANT_ACCOUNT_DAYS
+                - name: DORMANT_ACCOUNT_DEACTIVATE
+                  valueFrom:
+                    secretKeyRef:
+                      name: itassets-env-prod
+                      key: DORMANT_ACCOUNT_DEACTIVATE
                 - name: AZURE_TENANT_ID
                   valueFrom:
                     secretKeyRef:
