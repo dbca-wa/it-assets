@@ -63,20 +63,12 @@ class LocationAPIResourceTestCase(ApiTestCase):
 
     def test_list_tailored(self):
         """Test the LocationAPIResource tailored list responses"""
-        # Test the "selectlist" response.
         url = "{}?selectlist=".format(reverse("location_api_resource"))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
 
 class LicenseAPIResourceTestCase(ApiTestCase):
-    def setUp(self):
-        super(LicenseAPIResourceTestCase, self).setUp()
-        self.user_permanent.assigned_licences = ["MICROSOFT 365 E5"]
-        self.user_permanent.save()
-        self.user_contract.assigned_licences = ["OFFICE 365 E1"]
-        self.user_contract.save()
-
     def test_list(self):
         """Test the LicenseAPIResource list response"""
         url = reverse("license_api_resource")

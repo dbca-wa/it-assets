@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.47"
+version = "2.4.48"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -9,7 +9,7 @@ authors = [
 license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
-  "django==5.2.6",
+  "django==5.2.7",
   "psycopg[binary,pool]==3.2.10",
   "dbca-utils==2.1.3",
   "django-extensions==4.1",
@@ -19,10 +19,11 @@ dependencies = [
   "unicodecsv==0.14.1",
   "python-dateutil==2.9.0",
   "webtemplate-dbca==1.8.2",
-  "msal==1.33.0",
-  "whitenoise[brotli]==6.9.0",
-  "xlsxwriter==3.2.5",
-  "sentry-sdk[django]==2.37.0",
+  "requests==2.32.5",
+  "msal==1.34.0",
+  "whitenoise[brotli]==6.11.0",
+  "xlsxwriter==3.2.9",
+  "sentry-sdk[django]==2.40.0",
   "redis==6.4.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",

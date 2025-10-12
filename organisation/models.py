@@ -21,59 +21,24 @@ LOGGER = logging.getLogger("organisation")
 class DepartmentUser(models.Model):
     """Represents a user account managed in Active Directory / Entra ID."""
 
-    ACTIVE_FILTER = {"active": True}
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
         (2, "L1 User Account - Permanent"),
-        # (3, "L1 User Account - Agency contract"),
         (0, "L1 User Account - Contract"),
         (8, "L1 User Account - Seasonal"),
         (6, "L1 User Account - Vendor/External"),
         (7, "L1 User Account - Volunteer"),
         (1, "L1 User Account - Alumni/Other"),
-        # (11, "L1 User Account - RoomMailbox"),
-        # (12, "L1 User Account - EquipmentMailbox"),
-        # (10, "L2 Service Account - System"),
-        # (5, "L1 Group (shared) Mailbox - Shared account"),
-        # (9, "L1 Role Account - Role-based account"),
-        # (4, "Terminated"),
+        (9, "L1 Role Account - Role-based account"),
         (14, "Unknown"),
-        # (15, "Cleanup - Permanent"),
-        # (16, "Unknown - AD active"),
     )
     # The following is a list of account types to normally exclude from user queries.
-    # E.g. shared accounts, meeting rooms, terminated accounts, etc.
+    # E.g. Role-based accounts, volunteers, etc.
     ACCOUNT_TYPE_EXCLUDE = [
-        # 4,  # Terminated
-        # 5,  # Shared
         7,  # Volunteer
         1,  # Alumni
-        # 9,  # Role-based
-        # 10,  # System
-        # 11,  # Room
-        # 12,  # Equipment
+        9,  # Role-based
         14,  # Unknown, disabled
-        # 16,  # Unknown, active
-    ]
-    # The following is a list of user account types for individual staff/vendors,
-    # i.e. no shared or role-based account types.
-    # NOTE: it may not necessarily be the inverse of the previous list.
-    ACCOUNT_TYPE_USER = [
-        2,  # Permanent
-        # 3,  # Agency contract
-        0,  # Contract
-        8,  # Seasonal
-        6,  # Vendor
-        7,  # Volunteer
-        1,  # Other/alumni
-    ]
-    # The following is a list of user account types where it may be reasonable for there to be
-    # an active Azure AD account without the user also having a current Ascender job.
-    ACCOUNT_TYPE_NONSTAFF = [
-        8,  # Seasonal
-        6,  # Vendor
-        7,  # Volunteer
-        1,  # Other/alumni
     ]
 
     date_created = models.DateTimeField(auto_now_add=True)
@@ -182,6 +147,15 @@ class DepartmentUser(models.Model):
         editable=False,
         help_text="Timestamp of when Ascender data was last updated for this user",
     )
+    position_no = models.CharField(
+        max_length=128,
+        null=True,
+        unique=True,
+        blank=True,
+        verbose_name="position no.",
+        help_text="Optional Ascender position number to specify the user's current active job",
+    )
+
     # On-premise AD data
     ad_guid = models.CharField(
         max_length=48,
@@ -199,6 +173,7 @@ class DepartmentUser(models.Model):
         help_text="Cache of on-premise AD data",
     )
     ad_data_updated = models.DateTimeField(null=True, editable=False)
+
     # Azure Entra ID data
     azure_guid = models.CharField(
         max_length=48,
@@ -1364,7 +1339,7 @@ class DepartmentUser(models.Model):
         if "accountEnabled" in self.azure_ad_data and self.azure_ad_data["accountEnabled"] != self.active:
             self.active = self.azure_ad_data["accountEnabled"]
             LOGGER.info(f"AZURE AD SYNC: {self} active changed to {self.active}")
-        if "mail" in self.azure_ad_data and self.azure_ad_data["mail"] != self.email:
+        if "mail" in self.azure_ad_data and self.azure_ad_data["mail"] and self.azure_ad_data["mail"] != self.email:
             LOGGER.info(f"AZURE AD SYNC: {self} email changed to {self.azure_ad_data['mail']}")
             self.email = self.azure_ad_data["mail"]
         if "onPremisesSyncEnabled" in self.azure_ad_data:

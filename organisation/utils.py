@@ -161,12 +161,10 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
     entra_users = []
 
     for user in users:
-        if not user["mail"] or not user["mail"].lower().endswith("@dbca.wa.gov.au"):
-            continue
         user_data = {
             "objectId": user["id"],
-            "mail": user["mail"].lower(),
-            "userPrincipalName": user["userPrincipalName"],
+            "userPrincipalName": user["userPrincipalName"].lower(),
+            "mail": user["mail"].lower() if user["mail"] else None,
             "displayName": user["displayName"] if user["displayName"] else None,
             "givenName": user["givenName"] if user["givenName"] else None,
             "surname": user["surname"] if user["surname"] else None,

@@ -425,13 +425,39 @@ def ascender_user_import_all():
     token = ms_graph_client_token()
     employee_records = ascender_employees_fetch_all()
 
+    # First, check for any invalid/outdated Ascender cached on user records.
+    valid_employee_ids = [employee_id for employee_id in employee_records.keys()]
+    cached_employee_ids = DepartmentUser.objects.filter(employee_id__isnull=False).values_list("employee_id", flat=True)
+    for eid in cached_employee_ids:
+        if eid not in valid_employee_ids:
+            du = DepartmentUser.objects.get(employee_id=eid)
+            du.employee_id = None
+            du.save()
+            LOGGER.info(f"Removed invalid Ascender employee ID {eid} from department user {du}")
+
     for employee_id, jobs in employee_records.items():
+        # If we have no jobs data from Ascender for this employee, skip them.
         if not jobs:
             continue
-        # BUSINESS RULE: the "first" object in the list of Ascender jobs for each user is the current one.
-        # Jobs are sorted via the `ascender_job_sort_key` function.
+
+        # BUSINESS RULE: the first object in the list of Ascender jobs for each user
+        # is normally the "current"" one, however this can be manually overridden by
+        # specifying a `position_no` value on the DepartmentUser object.
+        # The list of jobs from Ascender is sorted via the `ascender_job_sort_key` function.
+        # This override is only possible for existing user accounts, not for new ones.
+        # By default, use the first job in the sorted list (ensures that we have a job record).
         job = jobs[0]
-        # Only look at non-FPC users.
+        # For an existing matched DepartmentUser record where a position_no value is recorded,
+        # attempt to select that job from the list instead.
+        if DepartmentUser.objects.filter(employee_id=employee_id, position_no__isnull=False).exists():
+            user = DepartmentUser.objects.get(employee_id=employee_id)
+            position_no = user.position_no
+            for j in jobs:
+                if j["position_no"] == position_no:
+                    job = j
+                    LOGGER.info(f"Using position no {position_no} for {user} job (override)")
+
+        # Skip FPC users.
         if "clevel1_id" in job and job["clevel1_id"] == "FPC":
             continue
 

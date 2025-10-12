@@ -205,12 +205,3 @@ spec:
                 secretKeyRef:
                   name: itassets-env-uat
                   key: API_RESPONSE_CACHE_SECONDS
-      tolerations:
-        - effect: NoSchedule
-          key: kubernetes.azure.com/scalesetpriority
-          operator: Equal
-          value: spot
-        - key: arch
-          operator: Equal
-          value: arm64
-          effect: NoSchedule

@@ -36,7 +36,7 @@ class AddressBook(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = (
-            DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
+            DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
             .select_related(
                 "cost_centre",
@@ -61,9 +61,7 @@ class AddressBook(LoginRequiredMixin, ListView):
 
 
 class UserAccounts(LoginRequiredMixin, ListView):
-    """A custom view to return a subset of DepartmentUser objects having licensed AD accounts
-    (though not necessarily enabled) as well as a 'current' job in Ascender (i.e. past its end date).
-    """
+    """A custom view to return a subset of DepartmentUser objects having licensed Entra ID accounts."""
 
     template_name = "organisation/user_accounts.html"
     model = DepartmentUser
@@ -71,7 +69,8 @@ class UserAccounts(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = (
-            DepartmentUser.objects.filter(
+            DepartmentUser.objects.filter(azure_guid__isnull=False)
+            .filter(
                 Q(assigned_licences__contains=["MICROSOFT 365 E5"])
                 | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])
@@ -87,17 +86,6 @@ class UserAccounts(LoginRequiredMixin, ListView):
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             queryset = queryset.filter(Q(name__icontains=query_str) | Q(cost_centre__code__icontains=query_str))
-
-        # Last filter: Ascender job_end_date value is not in the past, or is absent.
-        # We need to turn our queryset into a list comprehension to use the model property for filtering.
-        queryset = [
-            du
-            for du in queryset
-            if (
-                (not du.get_job_end_date() or du.get_job_end_date() >= date.today())
-                and (not du.get_job_start_date() or du.get_job_start_date() <= date.today())
-            )
-        ]
 
         return queryset
 
@@ -133,7 +121,7 @@ class DepartmentUserAPIResource(View):
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = (
-            DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER)
+            DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
             .select_related(
                 "manager",
@@ -283,9 +271,7 @@ class DepartmentUserExport(View):
         if "all" in request.GET:  # Return all objects.
             users = DepartmentUser.objects.all()
         else:  # Default to active users only.
-            users = DepartmentUser.objects.filter(**DepartmentUser.ACTIVE_FILTER).exclude(
-                account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE
-            )
+            users = DepartmentUser.objects.filter(active=True).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
 
         response = department_user_export(response, users)
         return response

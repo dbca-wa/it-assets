@@ -31,7 +31,7 @@ class DepartmentUserForm(forms.ModelForm):
 class DepartmentUserAdminForm(forms.ModelForm):
     class Meta:
         model = DepartmentUser
-        fields = ("employee_id", "maiden_name", "cost_centre", "ad_guid", "azure_guid")
+        fields = ("employee_id", "position_no", "maiden_name", "cost_centre", "ad_guid", "azure_guid")
 
 
 @register(DepartmentUser)
@@ -272,6 +272,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 {
                     "fields": (
                         "employee_id",
+                        "position_no",
                         "maiden_name",
                         "cost_centre",
                         "ad_guid",

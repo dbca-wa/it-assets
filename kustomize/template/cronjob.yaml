@@ -39,3 +39,8 @@ spec:
               emptyDir:
                 medium: 'Memory'
           automountServiceAccountToken: false
+          tolerations:
+            - key: arch
+              operator: Equal
+              value: arm64
+              effect: NoSchedule
