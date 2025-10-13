@@ -497,9 +497,10 @@ class DepartmentUser(models.Model):
         if self.active and self.get_licence() and self.get_account_dormant():
             # Where a user has an active licenced account that is considered dormant, deactivate the account.
             # Log the action
-            log = f"{self} account is considered to be dormant; deactivating the {acct} account"
-            AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.azure_ad_data)
-            LOGGER.info(log)
+            if not log_only and settings.DORMANT_ACCOUNT_DEACTIVATE:
+                log = f"{self} account is considered to be dormant; deactivating the {acct} account"
+                AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.azure_ad_data)
+                LOGGER.info(log)
 
             # Onprem AD users.
             if self.dir_sync_enabled and self.ad_guid and self.ad_data:
