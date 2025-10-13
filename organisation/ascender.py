@@ -1002,14 +1002,3 @@ def ascender_cc_manager_fetch():
         records.append(row)
 
     return records
-
-
-def update_cc_managers():
-    """Queries cc_manager_view and updates the cost centre manager for each."""
-    records = ascender_cc_manager_fetch()
-    for r in records:
-        if CostCentre.objects.filter(ascender_code=r[1]).exists():
-            cc = CostCentre.objects.get(ascender_code=r[1])
-            if DepartmentUser.objects.filter(employee_id=r[6]).exists():
-                cc.manager = DepartmentUser.objects.get(employee_id=r[6])
-                cc.save()
