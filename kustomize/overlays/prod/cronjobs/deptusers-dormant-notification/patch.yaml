@@ -11,12 +11,7 @@ spec:
         spec:
           containers:
             - name: itassets-cronjob
-              args:
-                [
-                  'manage.py',
-                  'department_users_dormant_account_notificationsdepartment_users_dormant_account_notifications',
-                  '--send-email',
-                ]
+              args: ['manage.py', 'department_users_dormant_account_notifications', '--send-email']
               env:
                 - name: DATABASE_URL
                   valueFrom:
