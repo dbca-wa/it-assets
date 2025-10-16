@@ -218,6 +218,11 @@ class DepartmentUser(models.Model):
                 self.account_type = 0  # Contract
             elif self.ascender_data["emp_status"] in ["PFA", "PFAS", "PFT", "PPA", "PPT"]:
                 self.account_type = 2  # Permanent
+        # Strip any invisible trailing carriage return characters from copy-pasted telephone numbers:
+        if self.telephone:
+            self.telephone = self.telephone.strip()
+        if self.mobile_phone:
+            self.mobile_phone = self.mobile_phone.strip()
         super(DepartmentUser, self).save(*args, **kwargs)
 
     def get_licence(self) -> Optional[str]:
