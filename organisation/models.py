@@ -1369,14 +1369,15 @@ class DepartmentUser(models.Model):
                 if not match:
                     self.assigned_licences.append(sku)
 
-        # last_signin
+        # last_signin (last successful sign-in event for an account)
+        # Reference: https://learn.microsoft.com/en-us/graph/api/resources/signinactivity
         if (
             "signInActivity" in self.azure_ad_data
             and self.azure_ad_data["signInActivity"]
-            and "lastSignInDateTime" in self.azure_ad_data["signInActivity"]
-            and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]
+            and "lastSuccessfulSignInDateTime" in self.azure_ad_data["signInActivity"]
+            and self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]
         ):
-            self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
+            self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]).astimezone(settings.TZ)
 
         # last_password_change
         if self.get_pw_last_change():
