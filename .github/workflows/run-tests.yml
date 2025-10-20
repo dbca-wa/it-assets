@@ -45,9 +45,10 @@ jobs:
       #----------------------------------------------
       # Install & configure uv
       #----------------------------------------------
-      - name: Install the latest version of uv
+      - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          python-version: '3.13'
           enable-cache: true
       #----------------------------------------------
       # Install project dependencies

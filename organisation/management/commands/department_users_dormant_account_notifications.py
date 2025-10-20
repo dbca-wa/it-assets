@@ -78,7 +78,7 @@ class Command(BaseCommand):
 
                     if recipient:
                         if options["send_email"]:
-                            logger.info(f"Sending {day}-day notification to {recipient.email}")
+                            logger.info(f"Sending {day}-day notification to {recipient.email} regarding {du.email}")
                             text_content = f"""Hi {recipient.given_name},\n
 This is an automated notification email to let you know that the Microsoft 365 account below has not been logged into for {last_signin_days_ago} days.
 OIM will automatically deactivate accounts that have not been logged into for {dormant_account_days} days, which may impact business processes.\n

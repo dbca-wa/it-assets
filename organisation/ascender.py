@@ -504,7 +504,6 @@ def ascender_user_import_all():
             user.ascender_data = job
             user.ascender_data_updated = timezone.localtime()
             user.update_from_ascender_data()  # This method calls save()
-            LOGGER.info(f"Updated existing user {user}")
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
             # Azure AD account and DepartmentUser instance for them.
@@ -1002,14 +1001,3 @@ def ascender_cc_manager_fetch():
         records.append(row)
 
     return records
-
-
-def update_cc_managers():
-    """Queries cc_manager_view and updates the cost centre manager for each."""
-    records = ascender_cc_manager_fetch()
-    for r in records:
-        if CostCentre.objects.filter(ascender_code=r[1]).exists():
-            cc = CostCentre.objects.get(ascender_code=r[1])
-            if DepartmentUser.objects.filter(employee_id=r[6]).exists():
-                cc.manager = DepartmentUser.objects.get(employee_id=r[6])
-                cc.save()

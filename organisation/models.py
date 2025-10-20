@@ -218,6 +218,11 @@ class DepartmentUser(models.Model):
                 self.account_type = 0  # Contract
             elif self.ascender_data["emp_status"] in ["PFA", "PFAS", "PFT", "PPA", "PPT"]:
                 self.account_type = 2  # Permanent
+        # Strip any invisible trailing carriage return characters from copy-pasted telephone numbers:
+        if self.telephone:
+            self.telephone = self.telephone.strip()
+        if self.mobile_phone:
+            self.mobile_phone = self.mobile_phone.strip()
         super(DepartmentUser, self).save(*args, **kwargs)
 
     def get_licence(self) -> Optional[str]:
@@ -1364,14 +1369,15 @@ class DepartmentUser(models.Model):
                 if not match:
                     self.assigned_licences.append(sku)
 
-        # last_signin
+        # last_signin (last successful sign-in event for an account)
+        # Reference: https://learn.microsoft.com/en-us/graph/api/resources/signinactivity
         if (
             "signInActivity" in self.azure_ad_data
             and self.azure_ad_data["signInActivity"]
-            and "lastSignInDateTime" in self.azure_ad_data["signInActivity"]
-            and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]
+            and "lastSuccessfulSignInDateTime" in self.azure_ad_data["signInActivity"]
+            and self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]
         ):
-            self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
+            self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]).astimezone(settings.TZ)
 
         # last_password_change
         if self.get_pw_last_change():
