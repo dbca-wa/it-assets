@@ -1371,13 +1371,18 @@ class DepartmentUser(models.Model):
 
         # last_signin (last successful sign-in event for an account)
         # Reference: https://learn.microsoft.com/en-us/graph/api/resources/signinactivity
-        if (
-            "signInActivity" in self.azure_ad_data
-            and self.azure_ad_data["signInActivity"]
-            and "lastSuccessfulSignInDateTime" in self.azure_ad_data["signInActivity"]
-            and self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]
-        ):
-            self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]).astimezone(settings.TZ)
+        if "signInActivity" in self.azure_ad_data and self.azure_ad_data["signInActivity"]:
+            # First, check the lastSuccessfulSignInDateTime value (might be null).
+            if (
+                "lastSuccessfulSignInDateTime" in self.azure_ad_data["signInActivity"]
+                and self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]
+            ):
+                self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]).astimezone(settings.TZ)
+            # Alternatively, check lastSignInDateTime (will always have a value).
+            elif (
+                "lastSignInDateTime" in self.azure_ad_data["signInActivity"] and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]
+            ):
+                self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
 
         # last_password_change
         if self.get_pw_last_change():
