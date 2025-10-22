@@ -494,6 +494,10 @@ class DepartmentUser(models.Model):
                         if not log_only and settings.ASCENDER_DEACTIVATE_EXPIRED:
                             requests.patch(url, headers=headers, json=data)
                             LOGGER.info(f"AZURE SYNC: {self} Entra ID account accountEnabled set to False")
+                            # Revoke cloud user sessions.
+                            revoke_url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}/revokeSignInSessions"
+                            requests.post(revoke_url, headers=headers)
+                            LOGGER.info(f"AZURE SYNC: {self} Entra ID account user sessions revoked")
                         else:
                             LOGGER.info("NO ACTION (log only)")
 
@@ -536,6 +540,10 @@ class DepartmentUser(models.Model):
                     if not log_only and settings.DORMANT_ACCOUNT_DEACTIVATE:
                         requests.patch(url, headers=headers, json=data)
                         LOGGER.info(f"AZURE SYNC: {self} Entra ID account accountEnabled set to False")
+                        # Revoke cloud user sessions.
+                        revoke_url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}/revokeSignInSessions"
+                        requests.post(revoke_url, headers=headers)
+                        LOGGER.info(f"AZURE SYNC: {self} Entra ID account user sessions revoked")
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
