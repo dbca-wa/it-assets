@@ -11,7 +11,7 @@ from django.views.generic import ListView, View
 
 from itassets.utils import get_next_pages, get_previous_pages
 
-from .models import DepartmentUser, Location
+from .models import CostCentre, DepartmentUser, Location
 from .reports import department_user_export, user_account_export
 
 
@@ -275,3 +275,40 @@ class DepartmentUserExport(View):
 
         response = department_user_export(response, users)
         return response
+
+
+class CostCentreAPIResource(View):
+    """An API view that returns JSON of active cost centres."""
+
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
+    def get(self, request, *args, **kwargs):
+        queryset = CostCentre.objects.filter(active=True).select_related("manager").order_by("code")
+
+        # Queryset filtering.
+        if "pk" in kwargs and kwargs["pk"]:  # Allow filtering by object PK.
+            queryset = queryset.filter(pk=kwargs["pk"])
+        if "q" in self.request.GET:  # Allow basic filtering on CC code.
+            queryset = queryset.filter(code__icontains=self.request.GET["q"])
+
+        # Tailor the API response.
+        if "selectlist" in request.GET:  # Smaller response, for use in HTML select lists.
+            cost_centres = [{"id": cc.pk, "text": cc.code} for cc in queryset]
+        else:
+            cost_centres = [
+                {
+                    "id": cc.pk,
+                    "code": cc.code,
+                    "chart_acct_name": cc.chart_acct_name,
+                    "division": cc.division_name,
+                    "manager": {
+                        "id": cc.manager.pk,
+                        "name": cc.manager.name,
+                        "email": cc.manager.email,
+                    }
+                    if cc.manager
+                    else {},
+                }
+                for cc in queryset
+            ]
+
+        return JsonResponse(cost_centres, safe=False)

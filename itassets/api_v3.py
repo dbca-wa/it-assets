@@ -1,6 +1,6 @@
 from django.urls import path
 
-from organisation.views import DepartmentUserAPIResource, LicenseAPIResource, LocationAPIResource
+from organisation.views import CostCentreAPIResource, DepartmentUserAPIResource, LicenseAPIResource, LocationAPIResource
 from registers.views import ITSystemAPIResource
 
 urlpatterns = [
@@ -12,4 +12,6 @@ urlpatterns = [
     path("license/<int:pk>/", LicenseAPIResource.as_view(), name="license_api_resource"),
     path("itsystem/", ITSystemAPIResource.as_view(), name="it_system_api_resource"),
     path("itsystem/<int:pk>/", ITSystemAPIResource.as_view(), name="it_system_api_resource"),
+    path("costcentre/", CostCentreAPIResource.as_view(), name="cost_centre_api_resource"),
+    path("costcentre/<int:pk>/", CostCentreAPIResource.as_view(), name="cost_centre_api_resource"),
 ]
