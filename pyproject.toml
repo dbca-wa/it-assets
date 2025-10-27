@@ -10,10 +10,10 @@ license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
   "django==5.2.7",
-  "psycopg[binary,pool]==3.2.11",
+  "psycopg[binary,pool]==3.2.12",
   "dbca-utils==2.1.4",
   "django-extensions==4.1",
-  "python-dotenv==1.1.1",
+  "python-dotenv==1.2.1",
   "dj-database-url==3.0.1",
   "gunicorn==23.0.0",
   "unicodecsv==0.14.1",
@@ -24,7 +24,7 @@ dependencies = [
   "whitenoise[brotli]==6.11.0",
   "xlsxwriter==3.2.9",
   "sentry-sdk[django]==2.42.1",
-  "redis==6.4.0",
+  "redis==7.0.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",
 ]
