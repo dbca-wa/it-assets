@@ -13,7 +13,7 @@ dependencies = [
   "psycopg[binary,pool]==3.2.11",
   "dbca-utils==2.1.4",
   "django-extensions==4.1",
-  "python-dotenv==1.1.1",
+  "python-dotenv==1.2.1",
   "dj-database-url==3.0.1",
   "gunicorn==23.0.0",
   "unicodecsv==0.14.1",
