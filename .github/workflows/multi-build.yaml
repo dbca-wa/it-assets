@@ -184,7 +184,7 @@ jobs:
         # This step downloads the digest files uploaded in the build job.
         # It uses the actions/download-artifact action to download the artifacts with the pattern digests-*.
         # The downloaded files are merged into the /tmp/digests directory.
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: /tmp/digests
           pattern: digests-*
