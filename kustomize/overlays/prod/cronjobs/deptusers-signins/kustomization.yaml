@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../template
+nameSuffix: -deptusers-signins
+patches:
+  - target:
+      kind: CronJob
+      name: itassets-cronjob
+    path: patch.yaml
+  - target:
+      kind: CronJob
+      name: itassets-cronjob
+    options:
+      allowNameChange: true
+    patch: |-
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/name
+        value: itassets-cronjob-user-signins

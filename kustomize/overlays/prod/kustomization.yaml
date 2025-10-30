@@ -12,6 +12,7 @@ resources:
   - cronjobs/deptusers-check-cached
   - cronjobs/deptusers-check-onprem
   - cronjobs/deptusers-dormant-notification
+  - cronjobs/deptusers-signins
   - cronjobs/deptusers-sync-ad
   - cronjobs/m365-licence-check
   - cronjobs/storage-usage
