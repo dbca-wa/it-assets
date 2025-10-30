@@ -11,7 +11,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger = logging.getLogger("organisation")
-        logger.info("Checking currently-recorded emails for department users against Azure AD")
+        logger.info("Checking currently-recorded emails for department users against Entra ID")
         entra_users = ms_graph_list_users()
         entra_emails = [i["mail"].lower() for i in entra_users if i["mail"]]
         du_emails = [

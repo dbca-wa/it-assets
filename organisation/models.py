@@ -188,7 +188,7 @@ class DepartmentUser(models.Model):
         null=True,
         blank=True,
         editable=False,
-        help_text="Cache of Azure AD data",
+        help_text="Cache of Entra ID data",
     )
     azure_ad_data_updated = models.DateTimeField(null=True, editable=False)
     dir_sync_enabled = models.BooleanField(null=True, default=None, help_text="Entra ID account is synced to on-prem Active Directory")
@@ -436,7 +436,7 @@ class DepartmentUser(models.Model):
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
-        and external AD databases (Azure AD, onprem AD).
+        and external AD databases (Entra ID, onprem AD).
         Each field has a 'source of truth'. In each case, check the source of truth and make changes
         to the required databases.
         If `log_only` is True, do not schedule changes to AD databases (output logs only).
@@ -548,7 +548,7 @@ class DepartmentUser(models.Model):
                         LOGGER.info("NO ACTION (log only)")
 
         # expiry date (source of truth: Ascender).
-        # Note that this is for onprem AD only; Azure AD has no concept of "expiry date".
+        # Note that this is for onprem AD only; Entra ID has no concept of "expiry date".
         # SCENARIO 1: the user has a job end date value set in Ascender.
         if (
             self.employee_id
@@ -683,7 +683,7 @@ class DepartmentUser(models.Model):
                 data = {"displayName": self.name}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account displayName set to {self.name}")
+                    LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account displayName set to {self.name}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -736,7 +736,7 @@ class DepartmentUser(models.Model):
                 data = {"givenName": given_name}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account givenName set to {given_name}")
+                    LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account givenName set to {given_name}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -780,7 +780,7 @@ class DepartmentUser(models.Model):
                 data = {"surname": self.surname}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account surname set to {self.surname}")
+                    LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account surname set to {self.surname}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -827,7 +827,7 @@ class DepartmentUser(models.Model):
                 data = {"companyName": self.cost_centre.code}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE SYNC: {self} Azure AD account companyName set to {self.cost_centre.code}")
+                    LOGGER.info(f"AZURE SYNC: {self} Entra ID account companyName set to {self.cost_centre.code}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -873,7 +873,7 @@ class DepartmentUser(models.Model):
                 data = {"department": self.get_business_unit()}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE SYNC: {self} Azure AD account department set to {self.get_business_unit()}")
+                    LOGGER.info(f"AZURE SYNC: {self} Entra ID account department set to {self.get_business_unit()}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -911,7 +911,7 @@ class DepartmentUser(models.Model):
                 data = {"jobTitle": self.title}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account jobTitle set to {self.title}")
+                    LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account jobTitle set to {self.title}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -949,7 +949,7 @@ class DepartmentUser(models.Model):
                     data = {"businessPhones": [self.telephone if self.telephone else " "]}
                     if not log_only:
                         requests.patch(url, headers=headers, json=data)
-                        LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account telephoneNumber set to {self.telephone}")
+                        LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account telephoneNumber set to {self.telephone}")
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
@@ -987,7 +987,7 @@ class DepartmentUser(models.Model):
                     data = {"mobilePhone": self.mobile_phone}
                     if not log_only:
                         requests.patch(url, headers=headers, json=data)
-                        LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account mobilePhone set to {self.mobile_phone}")
+                        LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account mobilePhone set to {self.mobile_phone}")
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
@@ -1031,7 +1031,7 @@ class DepartmentUser(models.Model):
                 data = {"employeeId": self.employee_id}
                 if not log_only:
                     requests.patch(url, headers=headers, json=data)
-                    LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account employeeId set to {self.employee_id}")
+                    LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account employeeId set to {self.employee_id}")
                 else:
                     LOGGER.info("NO ACTION (log only)")
 
@@ -1086,7 +1086,7 @@ class DepartmentUser(models.Model):
                     data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{self.manager.azure_guid}"}
                     if not log_only:
                         requests.put(manager_url, headers=headers, json=data)
-                        LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account manager set to {self.manager}")
+                        LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account manager set to {self.manager}")
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
@@ -1163,7 +1163,7 @@ class DepartmentUser(models.Model):
                 ad_location = None
             # Only update if we matched a physical location from Ascender.
             if ascender_location and ascender_location != ad_location:
-                # Update both officeLocation and streetAddress in Azure AD.
+                # Update both officeLocation and streetAddress in Entra ID.
                 if token:
                     headers = {
                         "Authorization": f"Bearer {token['access_token']}",
@@ -1175,8 +1175,8 @@ class DepartmentUser(models.Model):
                     }
                     if not log_only:
                         requests.patch(url, headers=headers, json=data)
-                        LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account officeLocation set to {ascender_location.name}")
-                        LOGGER.info(f"AZURE AD SYNC: {self} Azure AD account streetAddress set to {ascender_location.address}")
+                        LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account officeLocation set to {ascender_location.name}")
+                        LOGGER.info(f"ENTRA ID SYNC: {self} Entra ID account streetAddress set to {ascender_location.address}")
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
@@ -1352,9 +1352,9 @@ class DepartmentUser(models.Model):
 
         if "accountEnabled" in self.azure_ad_data and self.azure_ad_data["accountEnabled"] != self.active:
             self.active = self.azure_ad_data["accountEnabled"]
-            LOGGER.info(f"AZURE AD SYNC: {self} active changed to {self.active}")
+            LOGGER.info(f"ENTRA ID SYNC: {self} active changed to {self.active}")
         if "mail" in self.azure_ad_data and self.azure_ad_data["mail"] and self.azure_ad_data["mail"] != self.email:
-            LOGGER.info(f"AZURE AD SYNC: {self} email changed to {self.azure_ad_data['mail']}")
+            LOGGER.info(f"ENTRA ID SYNC: {self} email changed to {self.azure_ad_data['mail']}")
             self.email = self.azure_ad_data["mail"]
         if "onPremisesSyncEnabled" in self.azure_ad_data:
             if not self.azure_ad_data["onPremisesSyncEnabled"]:  # False/None
