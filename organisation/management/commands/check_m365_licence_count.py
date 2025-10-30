@@ -1,11 +1,12 @@
+import logging
+
 from django.conf import settings
 from django.core import mail
 from django.core.management.base import BaseCommand, CommandError
-import logging
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
-from organisation.utils import ms_graph_subscribed_sku
+from organisation.utils import ms_graph_get_subscribed_sku
 
 
 class Command(BaseCommand):
@@ -62,7 +63,7 @@ class Command(BaseCommand):
         logger.info("Checking Microsoft 365 license availability")
         token = ms_graph_client_token()
 
-        e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
+        e5_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
         e5_consumed = e5_sku["consumedUnits"]
         e5_assignable = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["warning"]
         e5_available = e5_assignable - e5_consumed
@@ -71,7 +72,7 @@ class Command(BaseCommand):
         if e5_available < 0:
             e5_available = 0
 
-        f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
+        f3_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
         f3_consumed = f3_sku["consumedUnits"]
         f3_assignable = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["warning"]
         f3_available = f3_assignable - f3_consumed
@@ -80,7 +81,7 @@ class Command(BaseCommand):
         if f3_available < 0:
             f3_available = 0
 
-        eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
+        eo_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
         eo_consumed = eo_sku["consumedUnits"]
         eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
         eo_available = eo_assignable - eo_consumed
@@ -89,7 +90,7 @@ class Command(BaseCommand):
         if eo_available < 0:
             eo_available = 0
 
-        sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
+        sec_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
         sec_consumed = sec_sku["consumedUnits"]
         sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
         sec_available = sec_assignable - sec_consumed

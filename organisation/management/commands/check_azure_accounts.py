@@ -9,7 +9,7 @@ from sentry_sdk.crons import monitor
 
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import CostCentre, DepartmentUser, Location
-from organisation.utils import ms_graph_users
+from organisation.utils import ms_graph_list_users
 
 
 class Command(BaseCommand):
@@ -32,7 +32,7 @@ class Command(BaseCommand):
         """Separate the body of this management command to allow running it in context with
         the Sentry monitor process.
         """
-        azure_users = ms_graph_users()
+        azure_users = ms_graph_list_users()
 
         if not azure_users:
             logger.error("Microsoft Graph API returned no data")

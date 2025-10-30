@@ -1,17 +1,19 @@
 import logging
 import secrets
+from collections.abc import Iterator
 from datetime import date, datetime
+from typing import List, Literal, Optional
 
 import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-from psycopg import connect, sql
+from psycopg import Connection, connect, sql
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import AscenderActionLog, CostCentre, DepartmentUser, DepartmentUserLog, Location
-from organisation.utils import ms_graph_subscribed_sku, ms_graph_validate_password, title_except
+from organisation.utils import ms_graph_get_subscribed_sku, ms_graph_validate_password, title_except
 
 LOGGER = logging.getLogger("organisation")
 DATE_MAX = date(2049, 12, 31)
@@ -152,7 +154,7 @@ EMP_STATUS_MAP = {
 }
 
 
-def get_ascender_connection():
+def get_ascender_db_connection() -> Connection:
     """Returns a database connection to the Ascender database."""
     return connect(
         host=settings.FOREIGN_DB_HOST,
@@ -185,7 +187,7 @@ def row_to_python(row):
     return record
 
 
-def ascender_db_fetch(employee_id=None):
+def ascender_db_fetch(employee_id: Optional[str] = None) -> Iterator:
     """Returns an iterator which yields all rows from the Ascender database query.
     Optionally pass employee_id to filter on a single employee.
     """
@@ -196,7 +198,7 @@ def ascender_db_fetch(employee_id=None):
         except ValueError:
             raise ValueError("Invalid employee ID value")
 
-    conn = get_ascender_connection()
+    conn = get_ascender_db_connection()
     cur = conn.cursor()
     columns = sql.SQL(",").join(sql.Identifier(f[0]) if isinstance(f, (list, tuple)) else sql.Identifier(f) for f in FOREIGN_TABLE_FIELDS)
     schema = sql.Identifier(settings.FOREIGN_SCHEMA)
@@ -220,7 +222,7 @@ def ascender_db_fetch(employee_id=None):
         yield record
 
 
-def ascender_job_sort_key(record):
+def ascender_job_sort_key(record: dict) -> int:
     """
     Returns an integer value to "sort" a job, based on job end date.
     Jobs with an end date in the future will be preferenced over jobs with no end date, which will be
@@ -257,7 +259,7 @@ def ascender_employee_fetch(employee_id) -> tuple:
     return (employee_id, jobs)
 
 
-def ascender_employees_fetch_all():
+def ascender_employees_fetch_all() -> dict:
     """Returns a dict: {'<employee_id>': [sorted employee jobs], ...}"""
     ascender_records = ascender_db_fetch()
     records = {}
@@ -276,9 +278,11 @@ def ascender_employees_fetch_all():
     return records
 
 
-def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manager_override_email=None, logging=False):
+def validate_ascender_user_account_rules(
+    job: dict, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, logging: bool = False
+) -> tuple | Literal[False]:
     """Given a passed-in Ascender record and any qualifiers, determine
-    whether a new Azure AD account can be provisioned for that user.
+    whether a new Entra ID account can be provisioned for that user.
     The 'job start date' rule can be optionally bypassed.
     Returns either a tuple of values required to provision the new account, or False.
     """
@@ -359,12 +363,12 @@ def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manag
                 code=job["paypoint"],
                 ascender_code=job["paypoint"],
             )
-            log = f"New Azure AD account process generated new cost centre, code {job['paypoint']}"
+            log = f"New Entra ID account process generated new cost centre, code {job['paypoint']}"
             AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
             LOGGER.info(log)
         except:
             # In the event of an error (probably due to a duplicate code), fail gracefully and log the error.
-            log = f"Exception during creation of new cost centre in new Azure AD account process, code {job['paypoint']}"
+            log = f"Exception during creation of new cost centre in new Entra ID account process, code {job['paypoint']}"
             LOGGER.exception(log)
             return False
 
@@ -388,7 +392,7 @@ def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manag
             return False
 
     # Rule: we set a limit for the number of days ahead of their starting date which we
-    # allow to create an Azure AD account. If this value is not set (False/None), assume that there is
+    # allow to create an Entra ID account. If this value is not set (False/None), assume that there is
     # no limit.
     if job_start_date and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS and settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS > 0:
         diff = job_start_date - today
@@ -418,7 +422,7 @@ def validate_ascender_user_account_rules(job, ignore_job_start_date=False, manag
 
 def ascender_user_import_all():
     """A utility function to cache data from Ascender to matching DepartmentUser objects.
-    On no match, create a new Azure AD account and DepartmentUser based on Ascender data,
+    On no match, create a new Entra ID account and DepartmentUser based on Ascender data,
     assuming it meets all the business rules for new account provisioning.
     """
     LOGGER.info("Querying Ascender database for employee information")
@@ -474,12 +478,12 @@ def ascender_user_import_all():
                     ascender_desc=job["geo_location_desc"],
                     address=job["geo_location_desc"],
                 )
-                log = f"Creation of new Azure AD account process generated new location, description {job['geo_location_desc']}"
+                log = f"Creation of new Entra ID account process generated new location, description {job['geo_location_desc']}"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)
                 LOGGER.info(log)
             except:
                 # In the event of an error (probably due to a duplicate name), fail gracefully and log the error.
-                log = f"ASCENDER SYNC: exception during creation of new location in new Azure AD account process, description {job['geo_location_desc']}"
+                log = f"ASCENDER SYNC: exception during creation of new location in new Entra ID account process, description {job['geo_location_desc']}"
                 LOGGER.error(log)
 
         if DepartmentUser.objects.filter(employee_id=employee_id).exists():
@@ -506,11 +510,12 @@ def ascender_user_import_all():
             user.update_from_ascender_data()  # This method calls save()
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
-            # Azure AD account and DepartmentUser instance for them.
+            # Entra ID account and DepartmentUser instance for them.
             # In this bulk check/create function, we do not ignore any account creation rules.
             rules_passed = validate_ascender_user_account_rules(job, logging=False)
 
             if not rules_passed:
+                # This DepartmentUser does not exist but has not passed all rules to generate a new Entra ID user account.
                 continue
 
             # Unpack the required values.
@@ -518,14 +523,15 @@ def ascender_user_import_all():
 
             if cc and job_start_date and licence_type and manager and location:
                 LOGGER.info(f"Ascender employee ID {employee_id} does not exist and passed all rules; provisioning new account")
-                create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, token)
+                _ = create_entra_id_user(job, cc, job_start_date, manager, location, token)
 
 
-def ascender_user_import(employee_id, ignore_job_start_date=False, manager_override_email=None):
+def ascender_user_import(
+    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None
+) -> DepartmentUser | None:
     """A convenience function to import a single Ascender employee and create an AD account for them.
     This is to allow easier manual intervention where a record goes in after the start date, or an
     old employee returns to work and needs a new account created.
-    Returns a DepartmentUser instance, or None.
     """
     LOGGER.info("Querying Ascender database for employee information")
     employee_id, jobs = ascender_employee_fetch(employee_id)
@@ -542,19 +548,24 @@ def ascender_user_import(employee_id, ignore_job_start_date=False, manager_overr
     # Unpack the required values.
     job, cc, job_start_date, licence_type, manager, location = rules_passed
     token = ms_graph_client_token()
-    user = create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, token)
-
-    return user
+    return create_entra_id_user(job, cc, job_start_date, manager, location, token)
 
 
-def create_ad_user_account(job, cc, job_start_date, licence_type, manager, location, token=None):
-    """Function to create new Azure/onprem AD user accounts, based on passed-in user info.
+def create_entra_id_user(
+    job: dict, cc: CostCentre, job_start_date: datetime, manager: DepartmentUser, location: Location, token=None
+) -> DepartmentUser | None:
+    """Function to create a new Entra ID user accounts based on passed-in user info.
     Returns the associated DepartmentUser object, or None.
 
     This function is safe to run if settings.ASCENDER_CREATE_AZURE_AD == False or settings.DEBUG == True.
     """
     if not token:
         token = ms_graph_client_token()
+
+    # Short-circuit: only generate a new user account where the assigned manager already has one.
+    if not manager.azure_guid:
+        LOGGER.warning(f"Creation of new Entra ID account aborted, manager does not have Entra ID account ({manager})")
+        return
 
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     job_end_date = None
@@ -581,12 +592,12 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
 
     # Rule: we require values for surname plus first_name and/or preferred_name.
     if not surname:
-        log = f"Creation of new Azure AD account aborted, surname absent ({ascender_record})"
+        log = f"Creation of new Entra ID account aborted, surname absent ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
         LOGGER.warning(log)
         return
     if not preferred_name and not first_name:
-        log = f"Creation of new Azure AD account aborted, first and preferred name both absent ({ascender_record})"
+        log = f"Creation of new Entra ID account aborted, first and preferred name both absent ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
         LOGGER.warning(log)
         return
@@ -596,7 +607,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
 
     if not (email and mail_nickname):
         # We can't generate a unique email with the supplied information; abort.
-        log = f"Creation of new Azure AD account aborted at email step, unable to generate unique email ({ascender_record})"
+        log = f"Creation of new Entra ID account aborted at email step, unable to generate unique email ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
         LOGGER.warning(log)
         return
@@ -607,7 +618,7 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     elif job["first_name"] and job["surname"]:
         display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
     else:  # No preferred/first name recorded.
-        log = f"Creation of new Azure AD account aborted, first/preferred name absent ({ascender_record})"
+        log = f"Creation of new Entra ID account aborted, first/preferred name absent ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
         LOGGER.warning(log)
         return
@@ -626,60 +637,79 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     # - https://learn.microsoft.com/en-us/graph/api/resources/licenseunitsdetail?view=graph-rest-1.0
     # - https://github.com/microsoftgraph/microsoft-graph-docs-contrib/issues/2337
 
-    e5_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
-    e5_consumed = e5_sku["consumedUnits"]
-    e5_assignable = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["warning"]
-    f3_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
-    f3_consumed = f3_sku["consumedUnits"]
-    f3_assignable = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["warning"]
-    eo_sku = ms_graph_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
-    eo_consumed = eo_sku["consumedUnits"]
-    eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
-    sec_sku = ms_graph_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
-    sec_consumed = sec_sku["consumedUnits"]
-    sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
-
     if job["licence_type"] == "ONPUL":
         licence_type = "On-premise"
-        # Short circuit: no available licences, abort.
+
+        e5_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
+        if not e5_sku:
+            LOGGER.warning(f"Graph API E5 SKU query returned no data ({ascender_record})")
+            return
+        e5_consumed = e5_sku["consumedUnits"]
+        e5_assignable = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["warning"]
+
         if e5_assignable - e5_consumed <= 0:
-            LOGGER.warning(f"Creation of new Azure AD account aborted, no E5 licences available ({ascender_record})")
-            return
-    elif job["licence_type"] == "CLDUL":
-        licence_type = "Cloud"
-        # Short circuit: no available licences, abort.
-        if f3_assignable - f3_consumed <= 0:
-            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud F3 licences available ({ascender_record})")
-            return
-        if eo_assignable - eo_consumed <= 0:
-            LOGGER.warning(f"Creation of new Azure AD account aborted, no Cloud Exchange Online licences available ({ascender_record})")
-            return
-        if sec_assignable - sec_consumed <= 0:
-            LOGGER.warning(
-                f"Creation of new Azure AD account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
-            )
+            LOGGER.warning(f"Creation of new Entra ID account aborted, no E5 licences available ({ascender_record})")
             return
 
-    LOGGER.info(f"Creating new Azure AD account: {display_name}, {email}, {licence_type} account")
+    elif job["licence_type"] == "CLDUL":
+        licence_type = "Cloud"
+
+        f3_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
+        if not f3_sku:
+            LOGGER.warning(f"Graph API F3 SKU query returned no data ({ascender_record})")
+            return
+        f3_consumed = f3_sku["consumedUnits"]
+        f3_assignable = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["warning"]
+        if f3_assignable - f3_consumed <= 0:
+            LOGGER.warning(f"Creation of new Entra ID account aborted, no Cloud F3 licences available ({ascender_record})")
+            return
+
+        eo_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
+        if not eo_sku:
+            LOGGER.warning(f"Graph API Exchange Online (Plan 2) SKU query returned no data ({ascender_record})")
+            return
+        eo_consumed = eo_sku["consumedUnits"]
+        eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
+        if eo_assignable - eo_consumed <= 0:
+            LOGGER.warning(f"Creation of new Entra ID account aborted, no Cloud Exchange Online licences available ({ascender_record})")
+            return
+
+        sec_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
+        if not sec_sku:
+            LOGGER.warning(f"Graph API F5 Security Addon SKU query returned no data ({ascender_record})")
+            return
+        sec_consumed = sec_sku["consumedUnits"]
+        sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
+        if sec_assignable - sec_consumed <= 0:
+            LOGGER.warning(
+                f"Creation of new Entra ID account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
+            )
+            return
+    else:
+        LOGGER.warning(f"Creation of new Entra ID account aborted, invalid license type ({ascender_record})")
+        return
+
+    LOGGER.info(f"Creating new Entra ID account: {display_name}, {email}, {licence_type} account")
 
     # Generate an account password and validate its complexity.
     # Reference: https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
     password = None
     while password is None:
         password = secrets.token_urlsafe(20)
-        resp = ms_graph_validate_password(password)
-        if not resp.json()["isValid"]:
+        # Validate the generated password, and keep doing so until we get one that validates.
+        # This should only take one try, but you never know.
+        if ms_graph_validate_password(password):
             password = None
 
     # Configuration setting to explicitly allow creation of new AD users.
     if not settings.ASCENDER_CREATE_AZURE_AD:
-        LOGGER.info(f"Skipping creation of new Azure AD account: {ascender_record} (ASCENDER_CREATE_AZURE_AD == False)")
+        LOGGER.info(f"Skipping creation of new Entra ID account: {ascender_record} (ASCENDER_CREATE_AZURE_AD == False)")
         return
 
     # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
-    # After this point, we begin making changes to Azure AD.
+    # After this point, we begin making changes to Entra ID.
     if settings.DEBUG:
-        LOGGER.info(f"Skipping creation of new Azure AD account for emp ID {ascender_record} (DEBUG)")
+        LOGGER.info(f"Skipping creation of new Entra ID account for emp ID {ascender_record} (DEBUG)")
         return
 
     headers = {
@@ -699,13 +729,13 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
             "password": password,
         },
     }
+    resp = requests.post(url, headers=headers, json=data)
     try:
-        resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
         resp_json = resp.json()
         guid = resp_json["id"]
     except:
-        log = f"Create new Azure AD user failed at account creation step for {email}, most likely duplicate email account exists ({ascender_record})"
+        log = f"Create new Entra ID user failed at account creation step for {email}, most likely duplicate email account exists ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
         text_content = f"""Ascender record:\n
@@ -741,11 +771,11 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         "country": "Australia",
         "usageLocation": "AU",
     }
+    resp = requests.patch(url, headers=headers, json=data)
     try:
-        resp = requests.patch(url, headers=headers, json=data)
         resp.raise_for_status()
     except:
-        log = f"Create new Azure AD user failed at account update step for {email}, ask administrator to investigate ({ascender_record})"
+        log = f"Create new Entra ID user failed at account update step for {email}, ask administrator to investigate ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
         text_content = f"""Ascender record:\n
@@ -768,11 +798,11 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     # Next, set the user manager.
     manager_url = f"https://graph.microsoft.com/v1.0/users/{guid}/manager/$ref"
     data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{manager.azure_guid}"}
+    resp = requests.put(manager_url, headers=headers, json=data)
     try:
-        resp = requests.put(manager_url, headers=headers, json=data)
         resp.raise_for_status()
     except:
-        log = f"Create new Azure AD user failed at assign manager update step for {email}, manager may not have AD account ({ascender_record})"
+        log = f"Create new Entra ID user failed at assign manager update step for {email} (manager {manager})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
         text_content = f"""Ascender record:\n
@@ -823,11 +853,11 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
             ],
             "removeLicenses": [],
         }
+    resp = requests.post(url, headers=headers, json=data)
     try:
-        resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
     except:
-        log = f"Create new Azure AD user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
+        log = f"Create new Entra ID user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
         text_content = f"""Ascender record:\n
@@ -847,9 +877,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
         msg.send(fail_silently=True)
         return
 
-    LOGGER.info(f"New Azure AD account created from Ascender data ({email})")
+    LOGGER.info(f"New Entra ID account created from Ascender data ({email})")
 
-    # Next, create a new DepartmentUser that is linked to the Ascender record and the Azure AD account.
+    # Next, create a new DepartmentUser that is linked to the Ascender record and the Entra ID account.
     new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager)
 
     # Email the new account's manager the checklist to finish account provision.
@@ -859,7 +889,9 @@ def create_ad_user_account(job, cc, job_start_date, licence_type, manager, locat
     return new_user
 
 
-def generate_valid_dbca_email(surname, preferred_name="", first_name="", second_name=""):
+def generate_valid_dbca_email(
+    surname: str, preferred_name: str = "", first_name: str = "", second_name: str = ""
+) -> tuple[str, str] | tuple[None, None]:
     # New DBCA email address generation.
     # Make no assumption about names (presence or absence) other than surname.
     # Email patterns in order of preference:
@@ -878,7 +910,7 @@ def generate_valid_dbca_email(surname, preferred_name="", first_name="", second_
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
-                return email.lower(), mail_nickname.lower()
+                return (email.lower(), mail_nickname.lower())
     elif first_name and surname:
         email_patterns = [
             f"{first_name}.{surname}@dbca.wa.gov.au",
@@ -888,16 +920,18 @@ def generate_valid_dbca_email(surname, preferred_name="", first_name="", second_
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
-                return email.lower(), mail_nickname.lower()
+                return (email.lower(), mail_nickname.lower())
 
-    return None, None
+    return (None, None)
 
 
-def department_user_create(job, guid, email, display_name, title, cc, location, manager):
+def department_user_create(
+    job: dict, azure_guid: str, email: str, display_name: str, title: str, cc: CostCentre, location: Location, manager: DepartmentUser
+) -> DepartmentUser:
     """This create function is split from the Entra ID/AD 'create' function to allow for unit testing."""
     given_name = job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip()
     new_user = DepartmentUser.objects.create(
-        azure_guid=guid,
+        azure_guid=azure_guid,
         active=False,
         email=email,
         name=display_name,
@@ -984,20 +1018,12 @@ OIM Service Desk\n"""
     msg.send(fail_silently=False)
 
 
-def ascender_cc_manager_fetch():
+def ascender_cc_manager_fetch() -> List[tuple]:
     """Returns all records from cc_manager_view."""
-    conn = get_ascender_connection()
+    conn = get_ascender_db_connection()
     cursor = conn.cursor()
     schema = sql.Identifier(settings.FOREIGN_SCHEMA)
     table = sql.Identifier(settings.FOREIGN_TABLE_CC_MANAGER)
     query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
     cursor.execute(query)
-    records = []
-
-    while True:
-        row = cursor.fetchone()
-        if row is None:
-            break
-        records.append(row)
-
-    return records
+    return cursor.fetchall()

@@ -2,22 +2,18 @@ import os
 import re
 from datetime import datetime, timedelta
 from io import BytesIO
-from typing import AnyStr, Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 import requests
 import unicodecsv as csv
-from dateutil.parser import parse
 from django.conf import settings
-from django.utils import timezone
 
 from itassets.utils import ms_graph_client_token, upload_blob
-
-from .microsoft_products import MS_PRODUCTS
 
 FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, "X")
 
 
-def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: Optional[Iterable[str]] = None) -> AnyStr:
+def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: Optional[Iterable[str]] = None) -> str:
     """Utility function to title-case words in a job title, except for all the exceptions and edge cases."""
     if not exceptions:
         exceptions = ("the", "of", "for", "and", "or")
@@ -89,8 +85,8 @@ def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: O
     return " ".join(words_title)
 
 
-def ms_graph_subscribed_skus(token: Optional[dict] = None) -> List[Dict] | None:
-    """Query the Microsoft Graph REST API for a list of commercial licence subscriptions.
+def ms_graph_list_subscribed_skus(token: Optional[dict] = None) -> List[Dict] | None:
+    """Query the Microsoft Graph API for a list of commercial licence subscriptions.
     To map licence names against skuId, reference:
     https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/licensing-service-plan-reference
     """
@@ -116,7 +112,10 @@ def ms_graph_subscribed_skus(token: Optional[dict] = None) -> List[Dict] | None:
     return skus
 
 
-def ms_graph_subscribed_sku(sku_id: str, token: Optional[dict] = None) -> Dict | None:
+def ms_graph_get_subscribed_sku(sku_id: str, token: Optional[dict] = None) -> Dict | None:
+    """Query the Microsoft Graph API for a specific subscription in our tenant.
+    Reference: https://learn.microsoft.com/en-us/graph/api/subscribedsku-get
+    """
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails.
@@ -130,11 +129,10 @@ def ms_graph_subscribed_sku(sku_id: str, token: Optional[dict] = None) -> Dict |
     return resp.json()
 
 
-def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
-    """Query the Microsoft Graph REST API for Azure AD user accounts in our tenancy.
-    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
-    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
-    Returns a list of Azure AD user objects (dicts).
+def ms_graph_list_users(licensed: bool = False, token: Optional[dict] = None) -> List[Dict] | None:
+    """Query the Microsoft Graph API for Entra ID user accounts in our tenancy.
+    Passing `licensed=True` will return only those users having >0 licenses assigned.
+    Reference: https://learn.microsoft.com/en-us/graph/api/user-list
     """
     if not token:
         token = ms_graph_client_token()
@@ -145,11 +143,15 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
         "Authorization": f"Bearer {token['access_token']}",
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,signInActivity,assignedLicenses,createdDateTime&$expand=manager($select=id,mail)"
-    users = []
-    resp = requests.get(url, headers=headers)
+    params = {
+        "$select": "id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses,createdDateTime",
+        "$expand": "manager($select=id,mail)",
+    }
+    url = "https://graph.microsoft.com/v1.0/users"
+    resp = requests.get(url, headers=headers, params=params)
     resp.raise_for_status()
     j = resp.json()
+    users = []
 
     while "@odata.nextLink" in j:
         users = users + j["value"]
@@ -160,6 +162,7 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
     users = users + j["value"]  # Final page
     entra_users = []
 
+    # Transform the returned data.
     for user in users:
         user_data = {
             "objectId": user["id"],
@@ -181,13 +184,10 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
             "onPremisesSyncEnabled": user["onPremisesSyncEnabled"],
             "onPremisesSamAccountName": user["onPremisesSamAccountName"],
             "lastPasswordChangeDateTime": user["lastPasswordChangeDateTime"],
-            "signInActivity": None,
             "createdDateTime": user["createdDateTime"],
             "assignedLicenses": [i["skuId"] for i in user["assignedLicenses"]],
             "manager": {"id": user["manager"]["id"], "mail": user["manager"]["mail"]} if "manager" in user else None,
         }
-        if "signInActivity" in user:
-            user_data["signInActivity"] = user["signInActivity"]
 
         entra_users.append(user_data)
 
@@ -197,114 +197,28 @@ def ms_graph_users(licensed: bool = False, token: Optional[dict] = None):
         return entra_users
 
 
-def ms_graph_users_signinactivity(licensed=False, token=None):
-    """Query the MS Graph API for a list of Azure AD account with sign-in activity.
-    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
-    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au.
-    Returns a list of Azure AD user objects (dicts).
-    """
+def ms_graph_get_user(azure_guid: str, token: Optional[dict] = None) -> Dict | None:
+    """Query the Microsoft Graph API for details of a single Entra ID user account in our tenancy."""
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails and returns None.
         return None
-
     headers = {
         "Authorization": f"Bearer {token['access_token']}",
-        "Content-Type": "application/json",
         "ConsistencyLevel": "eventual",
     }
-    url = "https://graph.microsoft.com/v1.0/users?$select=id,mail,userPrincipalName,accountEnabled,assignedLicenses,signInActivity&$filter=endswith(mail,'@dbca.wa.gov.au')&$count=true"
-    users = []
-    resp = requests.get(url, headers=headers)
-    j = resp.json()
-
-    while "@odata.nextLink" in j:
-        users = users + j["value"]
-        resp = requests.get(j["@odata.nextLink"], headers=headers)
-        resp.raise_for_status()
-        j = resp.json()
-
-    users = users + j["value"]  # Final page
-    user_signins = []
-
-    for user in users:
-        if licensed:
-            if "signInActivity" in user and user["signInActivity"] and user["assignedLicenses"]:
-                user_signins.append(user)
-        else:
-            if "signInActivity" in user and user["signInActivity"]:
-                user_signins.append(user)
-
-    return user_signins
-
-
-def ms_graph_dormant_accounts(days=90, licensed=False, token=None):
-    """Query the MS Graph API for a list of Azure AD accounts which haven't had a login event
-    within the defined number of ``days``.
-    Passing ``licensed=True`` will return only those users having >0 licenses assigned.
-    Note that accounts are filtered to return only those with email *@dbca.wa.gov.au, and that
-    we classify 'dormant' accounts as though having no logins for ``days``.
-
-    Returns a list of Azure AD account objects (dicts).
-    """
-    if not token:
-        token = ms_graph_client_token()
-    if not token:  # The call to the MS API occasionally fails and returns None.
-        return None
-
-    user_signins = ms_graph_users_signinactivity(licensed, token)
-    if not user_signins:
-        return None
-
-    then = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
-    accounts = []
-    for user in user_signins:
-        accounts.append(
-            {
-                "mail": user["mail"],
-                "userPrincipalName": user["userPrincipalName"],
-                "id": user["id"],
-                "accountEnabled": user["accountEnabled"],
-                "assignedLicenses": user["assignedLicenses"],
-                "lastSignInDateTime": parse(user["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
-                if user["signInActivity"]["lastSignInDateTime"]
-                else None,
-            }
-        )
-
-    # Excludes accounts with no 'last signed in' value.
-    dormant_accounts = [i for i in accounts if i["lastSignInDateTime"]]
-    # Determine the list of AD accounts not having been signed into for the last number of `days`.
-    dormant_accounts = [i for i in dormant_accounts if i["lastSignInDateTime"] <= then]
-
-    if licensed:  # Filter the list to accounts having an E5/F3 license assigned.
-        inactive_licensed = []
-        for i in dormant_accounts:
-            for license in i["assignedLicenses"]:
-                if license["skuId"] in [MS_PRODUCTS["MICROSOFT 365 E5"], MS_PRODUCTS["MICROSOFT 365 F3"]]:
-                    inactive_licensed.append(i)
-        return inactive_licensed
-    else:
-        return dormant_accounts
-
-
-def ms_graph_user(azure_guid, token=None):
-    """Query the Microsoft Graph REST API details of a signle Azure AD user account in our tenancy."""
-    if not token:
-        token = ms_graph_client_token()
-    if not token:  # The call to the MS API occasionally fails and returns None.
-        return None
-    headers = {
-        "Authorization": f"Bearer {token['access_token']}",
-        "ConsistencyLevel": "eventual",
+    params = {
+        "$select": "id,mail,userPrincipalName,displayName,givenName,surname,employeeId,employeeType,jobTitle,businessPhones,mobilePhone,department,companyName,officeLocation,proxyAddresses,accountEnabled,onPremisesSyncEnabled,onPremisesSamAccountName,lastPasswordChangeDateTime,assignedLicenses,createdDateTime",
+        "$expand": "manager($select=id,mail)",
     }
     url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}"
-    resp = requests.get(url, headers=headers)
-    return resp
+    resp = requests.get(url, headers=headers, params=params)
+    resp.raise_for_status()
+    return resp.json()
 
 
-def ms_graph_validate_password(password, token=None):
-    """Query the Microsoft Graph REST API (beta) if a given password string validates complexity requirements."""
+def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> Dict | None:
+    """Query the Microsoft Graph API (beta) if a given password string validates complexity requirements."""
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails and returns None.
@@ -314,11 +228,12 @@ def ms_graph_validate_password(password, token=None):
     }
     url = "https://graph.microsoft.com/beta/users/validatePassword"
     resp = requests.post(url, headers=headers, json={"password": password})
-    return resp
+    res = resp.json()
+    return res["isValid"]
 
 
-def ms_graph_sites(team_sites=True, token=None):
-    """Query the Microsoft Graph REST API for details about SharePoint Sites.
+def ms_graph_list_sites(team_sites: bool = True, token: Optional[dict] = None) -> List[Dict] | None:
+    """Query the Microsoft Graph API for details about SharePoint Sites.
     Reference: https://learn.microsoft.com/en-us/graph/api/site-list
     """
     if not token:
@@ -348,7 +263,7 @@ def ms_graph_sites(team_sites=True, token=None):
     return sites
 
 
-def ms_graph_site_detail(site_id, token=None):
+def ms_graph_get_site(site_id: str, token: Optional[Dict] = None) -> Dict | None:
     """Query the MS Graph API for details of a single Sharepoint site.
     Ref: https://learn.microsoft.com/en-us/graph/api/site-get
     """
@@ -366,7 +281,7 @@ def ms_graph_site_detail(site_id, token=None):
     return resp.json()
 
 
-def ms_graph_site_storage_usage(period_value="D7", token=None):
+def ms_graph_site_storage_usage(period_value: str = "D7", token: Optional[Dict] = None) -> bytes | None:
     """Query the MS Graph API to get the storage allocated and consumed by SharePoint sites.
     `period_value` is one of D7 (default), D30, D90 or D180. Returns the endpoint response content,
     which is a CSV report of all sites.
@@ -388,7 +303,7 @@ def ms_graph_site_storage_usage(period_value="D7", token=None):
     return resp.content
 
 
-def ms_graph_site_storage_summary(ds=None, token=None):
+def ms_graph_site_storage_summary(ds: Optional[str] = None, token: Optional[Dict] = None):
     """Parses the current SharePoint site usage report, and returns a subset of storage usage data."""
     if not token:
         token = ms_graph_client_token()
@@ -396,6 +311,8 @@ def ms_graph_site_storage_summary(ds=None, token=None):
         return None
 
     storage_usage = ms_graph_site_storage_usage(token=token)
+    if not storage_usage:
+        return
     storage_csv = storage_usage.splitlines()
     header_row = storage_csv[0].split(b",")
     header_row = [h.decode("utf-8-sig") for h in header_row]  # Decode without byte order mark.
@@ -405,6 +322,7 @@ def ms_graph_site_storage_summary(ds=None, token=None):
     f = BytesIO()
     writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
     writer.writerow([header_row[0], header_row[2], header_row[5], header_row[6], header_row[10]])
+
     for row in storage_csv[1:]:
         row = row.decode()
         row = row.split(",")
@@ -415,7 +333,7 @@ def ms_graph_site_storage_summary(ds=None, token=None):
             # Ref: https://stackoverflow.com/a/77550299/14508
             site_id = row[1]
             try:
-                site_json = ms_graph_site_detail(site_id, token)
+                site_json = ms_graph_get_site(site_id, token)
                 site_url = site_json["webUrl"].replace("https://dpaw.sharepoint.com", "")
             except:
                 site_url = ""
@@ -424,6 +342,29 @@ def ms_graph_site_storage_summary(ds=None, token=None):
     f.seek(0)
     blob_name = f"storage/site_storage_usage_{ds}.csv"
     upload_blob(in_file=f, container="analytics", blob=blob_name)
+
+
+def ms_graph_list_signins_user(azure_guid: str, top: int = 5, token: dict | None = None) -> List[Dict]:
+    """Query the Microsoft Graph API for most-recent interactive sign-in events for an Entra ID user account.
+    Reference: https://learn.microsoft.com/en-us/graph/api/resources/signin
+    """
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+    }
+    params = {
+        "$orderby": "createdDateTime desc",
+        "$top": top,
+        "$filter": f"(userId eq '{azure_guid}' and isInteractive eq true)",
+    }
+    url = "https://graph.microsoft.com/v1.0/auditLogs/signIns"
+    resp = requests.get(url, headers=headers, params=params)
+    resp.raise_for_status()
+    j = resp.json()
+    return j["value"]
 
 
 def compare_values(a, b) -> bool:

@@ -47,9 +47,11 @@ class Command(BaseCommand):
             manager_override_email = options["manager_override_email"]
             logger.info(f"Overriding manager, using email {manager_override_email}")
 
-        user = ascender_user_import(employee_id, ignore_job_start_date=ignore_job_start_date, manager_override_email=manager_override_email)
+        new_user = ascender_user_import(
+            employee_id, ignore_job_start_date=ignore_job_start_date, manager_override_email=manager_override_email
+        )
 
-        if user:
+        if new_user:
             logger.info(f"Azure user account for {user.email} provisioned")
         else:
             logger.info("Azure user account not provisioned")

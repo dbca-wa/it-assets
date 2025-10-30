@@ -99,6 +99,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
             queryset = self.get_queryset()
             response = user_account_export(response, queryset)
             return response
+
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -112,6 +113,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
+
         return context
 
 
