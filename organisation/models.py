@@ -13,7 +13,7 @@ from django.contrib.postgres.fields import ArrayField
 from itassets.utils import ms_graph_client_token, smart_truncate, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
-from .utils import compare_values, parse_ad_pwd_last_set, parse_windows_ts, title_except
+from .utils import compare_values, ms_graph_get_user, parse_ad_pwd_last_set, parse_windows_ts, title_except
 
 LOGGER = logging.getLogger("organisation")
 
@@ -1378,19 +1378,8 @@ class DepartmentUser(models.Model):
                     self.assigned_licences.append(sku)
 
         # last_signin (last successful sign-in event for an account)
-        # Reference: https://learn.microsoft.com/en-us/graph/api/resources/signinactivity
-        if "signInActivity" in self.azure_ad_data and self.azure_ad_data["signInActivity"]:
-            # First, check the lastSuccessfulSignInDateTime value (might be null).
-            if (
-                "lastSuccessfulSignInDateTime" in self.azure_ad_data["signInActivity"]
-                and self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]
-            ):
-                self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSuccessfulSignInDateTime"]).astimezone(settings.TZ)
-            # Alternatively, check lastSignInDateTime (will always have a value).
-            elif (
-                "lastSignInDateTime" in self.azure_ad_data["signInActivity"] and self.azure_ad_data["signInActivity"]["lastSignInDateTime"]
-            ):
-                self.last_signin = parse(self.azure_ad_data["signInActivity"]["lastSignInDateTime"]).astimezone(settings.TZ)
+        # NOTE: the signInActivity dict returned on the user object from Graph API is inaccurate,
+        # being 'eventually consistent'. We use alternative means to update this property.
 
         # last_password_change
         if self.get_pw_last_change():
@@ -1433,6 +1422,13 @@ class DepartmentUser(models.Model):
             return d
 
         return None
+
+    def get_graph_user(self) -> Optional[dict]:
+        """Query the Graph API for this user's account."""
+        if self.azure_guid:
+            return ms_graph_get_user(self.azure_guid)
+        else:
+            return None
 
 
 class DepartmentUserLog(models.Model):

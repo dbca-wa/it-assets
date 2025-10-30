@@ -12,6 +12,7 @@ resources:
   - cronjobs/deptusers-check-cached
   - cronjobs/deptusers-check-onprem
   - cronjobs/deptusers-dormant-notification
+  - cronjobs/deptusers-signins
   - cronjobs/deptusers-sync-ad
   - cronjobs/m365-licence-check
   - cronjobs/storage-usage
@@ -37,4 +38,4 @@ patches:
   - path: postgres_fdw_service_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.51
+    newTag: 2.4.52

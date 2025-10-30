@@ -72,7 +72,7 @@ class AscenderTestCase(TestCase):
     def create_new_user(self):
         return department_user_create(
             job=self.ascender_data,
-            guid=str(uuid4()),
+            azure_guid=str(uuid4()),
             email=self.email,
             display_name=self.display_name,
             title=self.title,
@@ -168,7 +168,7 @@ class AscenderTestCase(TestCase):
         self.assertTrue(
             department_user_create(
                 job=self.ascender_data,
-                guid=str(uuid4()),
+                azure_guid=str(uuid4()),
                 email=self.email,
                 display_name=self.display_name,
                 title=self.title,

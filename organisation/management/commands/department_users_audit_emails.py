@@ -3,7 +3,7 @@ import logging
 from django.core.management.base import BaseCommand
 
 from organisation.models import DepartmentUser
-from organisation.utils import ms_graph_users
+from organisation.utils import ms_graph_list_users
 
 
 class Command(BaseCommand):
@@ -12,7 +12,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger("organisation")
         logger.info("Checking currently-recorded emails for department users against Azure AD")
-        entra_users = ms_graph_users()
+        entra_users = ms_graph_list_users()
         entra_emails = [i["mail"].lower() for i in entra_users if i["mail"]]
         du_emails = [
             i.lower()
