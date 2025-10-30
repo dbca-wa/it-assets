@@ -16,20 +16,20 @@ spec:
                 - name: DATABASE_URL
                   valueFrom:
                     secretKeyRef:
-                      name: itassets-env-uat
+                      name: itassets-env-prod
                       key: DATABASE_URL
                 - name: AZURE_TENANT_ID
                   valueFrom:
                     secretKeyRef:
-                      name: itassets-env-uat
+                      name: itassets-env-prod
                       key: AZURE_TENANT_ID
                 - name: MS_GRAPH_API_CLIENT_ID
                   valueFrom:
                     secretKeyRef:
-                      name: itassets-env-uat
+                      name: itassets-env-prod
                       key: MS_GRAPH_API_CLIENT_ID
                 - name: MS_GRAPH_API_CLIENT_SECRET
                   valueFrom:
                     secretKeyRef:
-                      name: itassets-env-uat
+                      name: itassets-env-prod
                       key: MS_GRAPH_API_CLIENT_SECRET
