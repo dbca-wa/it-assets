@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.4.52"
+version = "2.4.53"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -11,7 +11,7 @@ requires-python = ">=3.13,<4.0"
 dependencies = [
   "django==5.2.7",
   "psycopg[binary,pool]==3.2.12",
-  "dbca-utils==2.1.4",
+  "dbca-utils==2.1.5",
   "django-extensions==4.1",
   "python-dotenv==1.2.1",
   "dj-database-url==3.0.1",

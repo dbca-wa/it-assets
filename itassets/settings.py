@@ -147,10 +147,10 @@ VERSION_NO = project["project"]["version"]
 # Threshold value below which to warn Service Desk about available Microsoft licenses.
 LICENCE_NOTIFY_THRESHOLD = env("LICENCE_NOTIFY_THRESHOLD", 5)
 
-# Flag to control whether Azure AD accounts should be deactivated during sync
+# Flag to control whether Entra ID accounts should be deactivated during sync
 # processes if their associated job in Ascender has a termination date in the past.
 ASCENDER_DEACTIVATE_EXPIRED = env("ASCENDER_DEACTIVATE_EXPIRED", False)
-# Flag to control whether new Azure AD accounts should be created during sync.
+# Flag to control whether new Entra ID accounts should be created during sync.
 ASCENDER_CREATE_AZURE_AD = env("ASCENDER_CREATE_AZURE_AD", False)
 # Flag to set how many days ahead of their start date a new AD account should be created.
 # False == no limit. Value should be a positive integer value.

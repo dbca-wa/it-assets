@@ -232,9 +232,9 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         else:
             return ""
 
-    ad_data_pprint.short_description = "AD data"
+    ad_data_pprint.short_description = "Onprem AD data"
 
-    def azure_ad_data_pprint(self, obj=None):
+    def entra_id_data_pprint(self, obj=None):
         if obj and obj.azure_ad_data:
             result = json.dumps(obj.azure_ad_data, indent=4, sort_keys=True)
             result = f"<pre>{result}</pre>"
@@ -242,7 +242,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         else:
             return ""
 
-    azure_ad_data_pprint.short_description = "Azure AD data"
+    entra_id_data_pprint.short_description = "Entra ID data"
 
     def ascender_data_pprint(self, obj=None):
         if obj and obj.ascender_data:
@@ -265,7 +265,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         obj = self.get_object(request, unquote(object_id))
         add = False
         change = True
-        readonly_fields = ("ad_data_pprint", "azure_ad_data_pprint", "ascender_data_pprint")
+        readonly_fields = ("ad_data_pprint", "entra_id_data_pprint", "ascender_data_pprint")
         fieldsets = (
             (
                 "Employee information",
@@ -278,7 +278,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                         "ad_guid",
                         "azure_guid",
                         "ad_data_pprint",
-                        "azure_ad_data_pprint",
+                        "entra_id_data_pprint",
                         "ascender_data_pprint",
                     ),
                 },
