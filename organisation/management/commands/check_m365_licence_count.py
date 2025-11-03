@@ -104,14 +104,14 @@ class Command(BaseCommand):
         Microsoft 365 E5 (On-premise): {e5_consumed} assigned, {e5_available} available\n\n
         Microsoft 365 F3 (Cloud): {f3_consumed} assigned, {f3_available} available\n
         Exchange Online (Plan 2): {eo_consumed} assigned, {eo_available} available\n
-        Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} assigned, {sec_available} available\n
+        Microsoft Defender + Purview Suite Add-on for FLW (Microsoft 365 F5 Security + Compliance Add-on): {sec_consumed} assigned, {sec_available} available\n
         """
         html_message = f"""<p>This is an automated notification regarding low Microsoft 365 licence availability:</p>
         <ul>
         <li>Microsoft 365 E5 (On-premise): {e5_consumed} assigned, {e5_available} available</li>
         <li>Microsoft 365 F3 (Cloud): {f3_consumed} assigned, {f3_available} available</li>
         <li>Exchange Online (Plan 2): {eo_consumed} assigned, {eo_available} available</li>
-        <li>Microsoft 365 Security and Compliance for Firstline Workers: {sec_consumed} assigned, {sec_available} available</li>
+        <li>Microsoft Defender + Purview Suite Add-on for FLW (Microsoft 365 F5 Security + Compliance Add-on): {sec_consumed} assigned, {sec_available} available</li>
         </ul>"""
 
         if send_notification:
