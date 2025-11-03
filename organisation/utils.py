@@ -1,5 +1,7 @@
 import os
+import random
 import re
+import string
 from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Dict, Iterable, List, Optional
@@ -83,6 +85,17 @@ def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: O
         words_title.append(pre + word + post)
 
     return " ".join(words_title)
+
+
+def generate_password() -> str:
+    """Utility function to generate a random string that meets DBCA password requirements.
+    16+ characters, 1+ symbol, 1+ number, 1+ uppercase and 1+ lowercase alphanumeric character."""
+    number = str(random.randint(0, 999999)).zfill(5)
+    upper = "".join(random.choices(string.ascii_uppercase, k=6))
+    lower = "".join(random.choices(string.ascii_lowercase, k=6))
+    password = [i for i in f"{number}_{upper}_{lower}"]
+    random.shuffle(password)
+    return "".join(password)
 
 
 def ms_graph_list_subscribed_skus(token: Optional[dict] = None) -> List[Dict] | None:
@@ -217,7 +230,7 @@ def ms_graph_get_user(azure_guid: str, token: Optional[dict] = None) -> Dict | N
     return resp.json()
 
 
-def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> Dict | None:
+def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> bool | None:
     """Query the Microsoft Graph API (beta) if a given password string validates complexity requirements."""
     if not token:
         token = ms_graph_client_token()

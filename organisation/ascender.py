@@ -1,5 +1,4 @@
 import logging
-import secrets
 from collections.abc import Iterator
 from datetime import date, datetime
 from typing import List, Literal, Optional
@@ -13,7 +12,7 @@ from psycopg import Connection, connect, sql
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import AscenderActionLog, CostCentre, DepartmentUser, DepartmentUserLog, Location
-from organisation.utils import ms_graph_get_subscribed_sku, ms_graph_validate_password, title_except
+from organisation.utils import generate_password, ms_graph_get_subscribed_sku, ms_graph_validate_password, title_except
 
 LOGGER = logging.getLogger("organisation")
 DATE_MAX = date(2049, 12, 31)
@@ -693,13 +692,17 @@ def create_entra_id_user(
 
     # Generate an account password and validate its complexity.
     # Reference: https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
-    password = None
-    while password is None:
-        password = secrets.token_urlsafe(20)
+    password = ""
+    password_valid = False
+
+    while password_valid is False:
+        # Generate a randow string with sufficient complexity to meet our requirements.
+        # We may need to tweak this method over time.
+        password = generate_password()
         # Validate the generated password, and keep doing so until we get one that validates.
-        # This should only take one try, but you never know.
-        if ms_graph_validate_password(password):
-            password = None
+        password_valid = ms_graph_validate_password(password)
+        if not password_valid:
+            LOGGER.info("Generated password did not meet complexity requirements, retrying")
 
     # Configuration setting to explicitly allow creation of new AD users.
     if not settings.ASCENDER_CREATE_AZURE_AD:
