@@ -12,26 +12,6 @@ spec:
           containers:
             - name: itassets-cronjob
               args: ['manage.py', 'check_department_users']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DATABASE_URL
-                - name: EMAIL_HOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_HOST
-                - name: EMAIL_PORT
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_PORT
-                - name: SENTRY_DSN
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: SENTRY_DSN
-                - name: SENTRY_ENVIRONMENT
-                  value: 'prod'
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

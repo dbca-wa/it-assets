@@ -32,6 +32,7 @@ spec:
             capabilities:
               drop:
                 - ALL
+                # NOTE: Postgres pod will not run with a read-only root filesystem.
             readOnlyRootFilesystem: false
       restartPolicy: Always
       automountServiceAccountToken: false

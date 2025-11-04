@@ -12,51 +12,6 @@ spec:
           containers:
             - name: itassets-cronjob
               args: ['manage.py', 'check_azure_accounts']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DATABASE_URL
-                - name: EMAIL_HOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_HOST
-                - name: EMAIL_PORT
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_PORT
-                - name: AZURE_TENANT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: AZURE_TENANT_ID
-                - name: MS_GRAPH_API_CLIENT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: MS_GRAPH_API_CLIENT_ID
-                - name: MS_GRAPH_API_CLIENT_SECRET
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: MS_GRAPH_API_CLIENT_SECRET
-                - name: AZURE_CONNECTION_STRING
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: AZURE_CONNECTION_STRING
-                - name: SENTRY_DSN
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: SENTRY_DSN
-                - name: SENTRY_ENVIRONMENT
-                  value: 'prod'
-                - name: SENTRY_CRON_CHECK_AZURE
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: SENTRY_CRON_CHECK_AZURE
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

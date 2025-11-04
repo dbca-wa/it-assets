@@ -12,19 +12,6 @@ spec:
           containers:
             - name: itassets-cronjob
               args: ['manage.py', 'department_users_changes_report', '--emails', 'kmsupport@dbca.wa.gov.au']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DATABASE_URL
-                - name: EMAIL_HOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_HOST
-                - name: EMAIL_PORT
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_PORT
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

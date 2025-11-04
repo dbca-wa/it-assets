@@ -12,44 +12,6 @@ spec:
           containers:
             - name: itassets-cronjob
               args: ['manage.py', 'department_users_sync_ad_data']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DATABASE_URL
-                - name: ASCENDER_DEACTIVATE_EXPIRED
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: ASCENDER_DEACTIVATE_EXPIRED
-                - name: DORMANT_ACCOUNT_DAYS
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DORMANT_ACCOUNT_DAYS
-                - name: DORMANT_ACCOUNT_DEACTIVATE
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DORMANT_ACCOUNT_DEACTIVATE
-                - name: AZURE_TENANT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: AZURE_TENANT_ID
-                - name: MS_GRAPH_API_CLIENT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: MS_GRAPH_API_CLIENT_ID
-                - name: MS_GRAPH_API_CLIENT_SECRET
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: MS_GRAPH_API_CLIENT_SECRET
-                - name: AZURE_CONNECTION_STRING
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: AZURE_CONNECTION_STRING
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

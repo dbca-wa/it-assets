@@ -12,34 +12,6 @@ spec:
           containers:
             - name: itassets-cronjob
               args: ['manage.py', 'department_users_upload_ascender_sftp']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DATABASE_URL
-                - name: ASCENDER_SFTP_HOSTNAME
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: ASCENDER_SFTP_HOSTNAME
-                - name: ASCENDER_SFTP_PORT
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: ASCENDER_SFTP_PORT
-                - name: ASCENDER_SFTP_USERNAME
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: ASCENDER_SFTP_USERNAME
-                - name: ASCENDER_SFTP_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: ASCENDER_SFTP_PASSWORD
-                - name: ASCENDER_SFTP_DIRECTORY
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: ASCENDER_SFTP_DIRECTORY
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod
