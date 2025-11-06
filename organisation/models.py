@@ -505,7 +505,7 @@ class DepartmentUser(models.Model):
         # Source of truth: Entra ID last interactive sign-in timestamp.
         if self.active and self.get_licence() and self.get_account_dormant():
             # Where a user has an active licenced account that is considered dormant, deactivate the account.
-            # Log the action
+            # Log the action.
             if not log_only and settings.DORMANT_ACCOUNT_DEACTIVATE:
                 log = f"{self} account is considered to be dormant; deactivating the {acct} account"
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.azure_ad_data)
@@ -1388,19 +1388,24 @@ class DepartmentUser(models.Model):
         self.save()
 
     def get_account_dormant(self, dormant_account_days: Optional[int] = None) -> Optional[bool]:
-        """Returns boolean if the last_signin date is within the threshold, or None if unknown."""
+        """Returns boolean if the last_signin or last_password_change dates are within the threshold, or None if unknown."""
         # If we don't have the account object GUID, cached account data or the timestamp of the last sign-in, return None.
         if not self.azure_guid:
             return None
         elif not self.azure_ad_data:
             return None
-        elif not self.last_signin:
+        elif not self.last_signin and not self.last_password_change:
             return None
 
         if not dormant_account_days:
             dormant_account_days = settings.DORMANT_ACCOUNT_DAYS
 
-        delta = datetime.now(settings.TZ) - self.last_signin
+        # Use last_signin value if present.
+        if self.last_signin:
+            delta = datetime.now(settings.TZ) - self.last_signin
+        else:
+            delta = datetime.now(settings.TZ) - self.last_password_change
+
         if delta.days >= dormant_account_days:
             return True
         else:
