@@ -69,8 +69,6 @@ class Command(BaseCommand):
         e5_available = e5_assignable - e5_consumed
         if e5_available <= threshold:
             send_notification = True
-        if e5_available < 0:
-            e5_available = 0
 
         f3_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
         f3_consumed = f3_sku["consumedUnits"]
@@ -78,8 +76,6 @@ class Command(BaseCommand):
         f3_available = f3_assignable - f3_consumed
         if f3_available <= threshold:
             send_notification = True
-        if f3_available < 0:
-            f3_available = 0
 
         eo_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
         eo_consumed = eo_sku["consumedUnits"]
@@ -87,8 +83,6 @@ class Command(BaseCommand):
         eo_available = eo_assignable - eo_consumed
         if eo_available <= threshold:
             send_notification = True
-        if eo_available < 0:
-            eo_available = 0
 
         sec_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
         sec_consumed = sec_sku["consumedUnits"]
@@ -96,8 +90,6 @@ class Command(BaseCommand):
         sec_available = sec_assignable - sec_consumed
         if sec_available <= threshold:
             send_notification = True
-        if sec_available < 0:
-            sec_available = 0
 
         subject = f"Notification - Microsoft M365 licence availability has reached warning threshold ({threshold})"
         message = f"""This is an automated notification regarding low Microsoft 365 licence availability:\n\n
