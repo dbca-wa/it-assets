@@ -46,6 +46,11 @@ class Command(BaseCommand):
 
         # Get a list of active, licenced accounts for which we have a 'last sign-in' value.
         active_users = [du for du in DepartmentUser.objects.filter(active=True, last_signin__isnull=False) if du.get_licence()]
+        active_users_without_signin = [
+            du
+            for du in DepartmentUser.objects.filter(active=True, last_signin__isnull=True, last_password_change__isnull=False)
+            if du.get_licence()
+        ]
         now = timezone.localtime()
 
         # Parse the days_prior list values.
@@ -62,9 +67,11 @@ class Command(BaseCommand):
 
         logger.info(f"Reviewing department users for dormant licenced accounts ({dormant_account_days} days without sign-in)")
 
-        # Send warning notification emails to the manager 14 and 7 days prior to the account becoming dormant.
+        # Send warning notification emails to the manager n days prior to the account becoming dormant.
         for day in days_prior:
             days_before_dormant = dormant_account_days - day
+
+            # Check users with sign-in data.
             for du in active_users:
                 last_signin_days_ago = (now - du.last_signin).days
                 deadline = date.today() + timedelta(days=day)
@@ -78,8 +85,41 @@ class Command(BaseCommand):
 
                     if recipient:
                         if options["send_email"]:
-                            logger.info(f"Sending {day}-day notification to {recipient.email} regarding {du.email}")
-                            text_content = f"""Hi {recipient.given_name},\n
+                            logger.info(f"Sending {day}-day notification email to {recipient.email} regarding {du.email}")
+                            self.send_notification_email(recipient, du, last_signin_days_ago, dormant_account_days, deadline)
+                        else:
+                            logger.info(f"{day}-day notification email to {recipient.email} regarding {du.email} not sent")
+                    else:
+                        logger.warning(
+                            f"No manager/CCM recipient recorded for {du.email} ({du.cost_centre.code}), {day}-day notification email not sent"
+                        )
+
+            # Check users without sign-in data (use password last change date).
+            for du in active_users_without_signin:
+                last_signin_days_ago = (now - du.last_password_change).days
+                deadline = date.today() + timedelta(days=day)
+                if last_signin_days_ago == days_before_dormant:
+                    if du.manager:
+                        recipient = du.manager
+                    elif du.cost_centre and du.cost_centre.manager:
+                        recipient = du.cost_centre.manager
+                    else:
+                        recipient = None
+
+                    if recipient:
+                        if options["send_email"]:
+                            logger.info(f"Sending {day}-day notification email to {recipient.email} regarding {du.email}")
+                            self.send_notification_email(recipient, du, last_signin_days_ago, dormant_account_days, deadline)
+                        else:
+                            logger.info(f"{day}-day notification email to {recipient.email} regarding {du.email} not sent")
+                    else:
+                        logger.warning(
+                            f"No manager/CCM recipient recorded for {du.email} ({du.cost_centre.code}), {day}-day notification email not sent"
+                        )
+        logger.info("Complete")
+
+    def send_notification_email(self, recipient, du, last_signin_days_ago, dormant_account_days, deadline):
+        text_content = f"""Hi {recipient.given_name},\n
 This is an automated notification email to let you know that the Microsoft 365 account below has not been logged into for {last_signin_days_ago} days.
 OIM will automatically deactivate accounts that have not been logged into for {dormant_account_days} days, which may impact business processes.\n
 Name: {du.name}
@@ -90,7 +130,7 @@ Manager: {du.manager.name if du.manager else ''}\n
 If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.\n
 Regards,
 OIM Service Desk\n"""
-                            html_content = f"""<p>Hi {recipient.given_name},</p>
+        html_content = f"""<p>Hi {recipient.given_name},</p>
 <p>This is an automated notification email to let you know that the Microsoft 365 account below has not been logged into for {last_signin_days_ago} days.
 OIM will automatically deactivate accounts that have not been logged into for {dormant_account_days} days, which may impact business processes.</p>
 <ul>
@@ -103,19 +143,13 @@ OIM will automatically deactivate accounts that have not been logged into for {d
 <p>If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.</p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
-                            subject = f"Dormant account notification - {du.name}"
-                            msg = EmailMultiAlternatives(
-                                subject=subject,
-                                body=text_content,
-                                from_email=settings.NOREPLY_EMAIL,
-                                to=[recipient.email],
-                            )
-                            msg.attach_alternative(html_content, "text/html")
-                            msg.send(fail_silently=False)
-                        else:
-                            logger.info(f"{day}-day notification to {recipient.email} not sent")
-                    else:
-                        logger.warning(
-                            f"No manager/CCM recipient recorded for {du.email} ({du.cost_centre.code}), {day}-day notification not sent"
-                        )
-        logger.info("Complete")
+        subject = f"Dormant account notification - {du.name}"
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.NOREPLY_EMAIL,
+            to=[recipient.email],
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send(fail_silently=False)
+        return
