@@ -149,6 +149,7 @@ OIM will automatically deactivate accounts that have not been logged into for {d
             body=text_content,
             from_email=settings.NOREPLY_EMAIL,
             to=[recipient.email],
+            bcc=[settings.SECURITY_EMAIL],
         )
         msg.attach_alternative(html_content, "text/html")
         msg.send(fail_silently=False)
