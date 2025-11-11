@@ -54,22 +54,25 @@ class Command(BaseCommand):
 
         logger.info("Comparing Department Users to on-prem AD user accounts")
         for ad in ad_users:
-            # Only AD accounts which have an email address.
-            if "EmailAddress" in ad and ad["EmailAddress"]:
-                if "-admin" in ad["EmailAddress"]:  # Skip admin users.
-                    continue
-                if not DepartmentUser.objects.filter(ad_guid=ad["ObjectGUID"]).exists():
-                    # No current link to this onprem AD user; try to find a match by email and link it.
-                    if DepartmentUser.objects.filter(ad_guid__isnull=True, email__istartswith=ad["EmailAddress"]).exists():
-                        du = DepartmentUser.objects.get(email=ad["EmailAddress"].lower())
-                        du.ad_guid = ad["ObjectGUID"]
-                        du.ad_data = ad
-                        du.ad_data_updated = datetime.now(timezone.utc)
-                        du.save()
-                        logger.info(f"Linked existing department user {du} with onprem AD object {ad['ObjectGUID']}")
-                else:
-                    # An existing department user is linked to this onprem AD user.
-                    du = DepartmentUser.objects.get(ad_guid=ad["ObjectGUID"])
+            # Skip admin accounts
+            if "EmailAddress" in ad and ad["EmailAddress"] and "-admin" in ad["EmailAddress"]:  # Skip admin users.
+                continue
+            if not DepartmentUser.objects.filter(ad_guid=ad["ObjectGUID"]).exists():
+                # No current link to this onprem AD user; try to find a match by email and link it.
+                if (
+                    "EmailAddress" in ad
+                    and ad["EmailAddress"]
+                    and DepartmentUser.objects.filter(ad_guid__isnull=True, email__istartswith=ad["EmailAddress"]).exists()
+                ):
+                    du = DepartmentUser.objects.get(email=ad["EmailAddress"].lower())
+                    du.ad_guid = ad["ObjectGUID"]
                     du.ad_data = ad
                     du.ad_data_updated = datetime.now(timezone.utc)
                     du.save()
+                    logger.info(f"Linked existing department user {du} with onprem AD object {ad['ObjectGUID']}")
+            else:
+                # An existing department user is linked to this onprem AD user.
+                du = DepartmentUser.objects.get(ad_guid=ad["ObjectGUID"])
+                du.ad_data = ad
+                du.ad_data_updated = datetime.now(timezone.utc)
+                du.save()
