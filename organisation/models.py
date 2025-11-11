@@ -386,7 +386,7 @@ class DepartmentUser(models.Model):
         if self.ascender_data and "paypoint" in self.ascender_data and self.ascender_data["paypoint"]:
             return self.ascender_data["paypoint"]
 
-        return ""
+        return None
 
     def get_geo_location_desc(self) -> Optional[str]:
         """From Ascender data, return the user's geographical location description."""
