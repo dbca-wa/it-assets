@@ -35,7 +35,6 @@ patches:
   - path: deployment_hpa_patch.yaml
   - path: pdb_patch.yaml
   - path: postgres_fdw_patch.yaml
-  - path: postgres_fdw_service_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.4.54
+    newTag: 2.4.55

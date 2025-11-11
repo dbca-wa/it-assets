@@ -7,3 +7,12 @@ spec:
   selector:
     app: itassets-deployment
     variant: prod
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: itassets-postgres-fdw
+spec:
+  selector:
+    app: itassets-postgres-fdw
+    variant: prod

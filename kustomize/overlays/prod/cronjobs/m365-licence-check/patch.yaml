@@ -20,34 +20,6 @@ spec:
                   '--emails',
                   'oim.servicedesk@dbca.wa.gov.au,cyber@dbca.wa.gov.au,oiminfrastructure@dbca.wa.gov.au',
                 ]
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: DATABASE_URL
-                - name: EMAIL_HOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_HOST
-                - name: EMAIL_PORT
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: EMAIL_PORT
-                - name: AZURE_TENANT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: AZURE_TENANT_ID
-                - name: MS_GRAPH_API_CLIENT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: MS_GRAPH_API_CLIENT_ID
-                - name: MS_GRAPH_API_CLIENT_SECRET
-                  valueFrom:
-                    secretKeyRef:
-                      name: itassets-env-prod
-                      key: MS_GRAPH_API_CLIENT_SECRET
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

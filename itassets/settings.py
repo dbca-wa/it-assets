@@ -133,8 +133,6 @@ else:
 API_RESPONSE_CACHE_SECONDS = env("API_RESPONSE_CACHE_SECONDS", 60)
 CACHE_MIDDLEWARE_SECONDS = env("CACHE_MIDDLEWARE_SECONDS", 60)
 
-ADMIN_EMAILS = env("ADMIN_EMAILS", "asi@dbca.wa.gov.au").split(",")
-SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "oim.servicedesk@dbca.wa.gov.au")
 SITE_ID = 1
 ENVIRONMENT_NAME = env("ENVIRONMENT_NAME", "")
 ENVIRONMENT_COLOUR = env("ENVIRONMENT_COLOUR", "")
@@ -229,6 +227,9 @@ DATETIME_INPUT_FORMATS = (
 EMAIL_HOST = env("EMAIL_HOST", "email.host")
 EMAIL_PORT = env("EMAIL_PORT", 25)
 NOREPLY_EMAIL = env("NOREPLY_EMAIL", "noreply@dbca.wa.gov.au")
+ADMIN_EMAILS = env("ADMIN_EMAILS", "admin@dbca.wa.gov.au").split(",")  # Comma-separated list of email addresses
+SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "helpdesk@dbca.wa.gov.au")
+SECURITY_EMAIL = env("SECURITY_EMAIL", "security@dbca.wa.gov.au")
 
 
 # Logging settings - log to stdout/stderr
