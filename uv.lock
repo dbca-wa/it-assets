@@ -585,7 +585,7 @@ wheels = [
 
 [[package]]
 name = "itassets"
-version = "2.4.55"
+version = "2.4.56"
 source = { virtual = "." }
 dependencies = [
     { name = "dbca-utils" },
