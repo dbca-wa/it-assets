@@ -887,8 +887,12 @@ def create_entra_id_user(
     new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager)
 
     # Email the new account's manager the checklist to finish account provision.
-    new_user_creation_email(new_user, licence_type, job_start_date, job_end_date)
-    LOGGER.info(f"ASCENDER SYNC: Emailed {new_user.manager.email} about new user account creation")
+    email_sent = new_user_creation_email(new_user, manager, licence_type, job_start_date, job_end_date)
+    if email_sent:
+        LOGGER.info(f"ASCENDER SYNC: Emailed {manager.email} about new user account creation")
+    else:
+        # This branch should never happen.
+        LOGGER.error("ASCENDER SYNC: no email sent regarding new user account creation")
 
     return new_user
 
@@ -958,7 +962,13 @@ def department_user_create(
     return new_user
 
 
-def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date=None):
+def new_user_creation_email(
+    new_user: DepartmentUser,
+    manager: DepartmentUser,
+    licence_type: str,
+    job_start_date: datetime,
+    job_end_date: Optional[datetime] = None,
+) -> bool:
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
     We also require the user's job start and end dates (end date may be None).
@@ -969,7 +979,7 @@ def new_user_creation_email(new_user, licence_type, job_start_date, job_end_date
     else:
         unit = ""
     subject = f"New user account creation details - {new_user.name}"
-    text_content = f"""Hi {new_user.manager.given_name},\n\n
+    text_content = f"""Hi {manager.given_name},\n\n
 This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:\n\n
 Name: {new_user.name}\n
 Employee ID: {new_user.employee_id}\n
@@ -989,7 +999,7 @@ Cost centre manager: {new_user.cost_centre.manager.name if new_user.cost_centre.
 OIM Service Desk will now complete the new account and provide you with confirmation and instructions for the new user.\n\n
 Regards,\n\n
 OIM Service Desk\n"""
-    html_content = f"""<p>Hi {new_user.manager.given_name},</p>
+    html_content = f"""<p>Hi {manager.given_name},</p>
 <p>This is an automated email to confirm that a new user account has been created, using the information that was provided in Ascender. The details are:</p>
 <ul>
 <li>Name: {new_user.name}</li>
@@ -1015,11 +1025,13 @@ OIM Service Desk\n"""
         subject=subject,
         body=text_content,
         from_email=settings.NOREPLY_EMAIL,
-        to=[new_user.manager.email],
+        to=[manager.email],
         cc=[settings.SERVICE_DESK_EMAIL],
     )
     msg.attach_alternative(html_content, "text/html")
     msg.send(fail_silently=False)
+
+    return True
 
 
 def ascender_cc_manager_fetch() -> List[tuple]:
