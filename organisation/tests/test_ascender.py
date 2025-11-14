@@ -82,13 +82,16 @@ class AscenderTestCase(TestCase):
         )
 
     def test_validate_ascender_user_account_rules(self):
+        """Test the validate_ascender_user_account_rules function"""
         self.assertTrue(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_fpc(self):
+        """Test the validate_ascender_user_account_rules function for an FPC record"""
         self.ascender_data["clevel1_id"] = "FPC"
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_user_exists(self):
+        """Test the validate_ascender_user_account_rules function where a user already exists"""
         mixer.blend(
             DepartmentUser,
             active=True,
@@ -100,70 +103,85 @@ class AscenderTestCase(TestCase):
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_job_ended(self):
+        """Test the validate_ascender_user_account_rules function where a user's job end date is past"""
         last_week = date.today() - timedelta(days=7)
         self.ascender_data["job_end_date"] = last_week.strftime("%Y-%m-%d")
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_no_licence(self):
+        """Test the validate_ascender_user_account_rules function where no M365 licence is assigned"""
         self.ascender_data["licence_type"] = None
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_licence_invalid(self):
+        """Test the validate_ascender_user_account_rules function where an invalid licence type is assigned"""
         self.ascender_data["licence_type"] = "FOOBAR"
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_no_manager(self):
+        """Test the validate_ascender_user_account_rules function where no known manager is assigned"""
         self.ascender_data["manager_emp_no"] = None
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
         self.ascender_data["manager_emp_no"] = "000001"
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_new_cc(self):
+        """Test the validate_ascender_user_account_rules function isn't blocked by a missing Cost Centre"""
         initial_count = CostCentre.objects.count()
         self.ascender_data["paypoint"] = "001"
         self.assertTrue(validate_ascender_user_account_rules(self.ascender_data))
         self.assertTrue(CostCentre.objects.count() > initial_count)
 
     def test_validate_ascender_user_account_rules_no_job_start(self):
+        """Test the validate_ascender_user_account_rules function where no job start date is recorded"""
         self.ascender_data["job_start_date"] = None
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_job_start_passed(self):
+        """Test the validate_ascender_user_account_rules function where a user's job start date is past"""
         last_week = date.today() - timedelta(days=7)
         self.ascender_data["job_start_date"] = last_week.strftime("%Y-%m-%d")
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_skip_job_start_passed(self):
+        """Test the validate_ascender_user_account_rules function is capable of ignoring if a user's job start date is past"""
         last_week = date.today() - timedelta(days=7)
         self.ascender_data["job_start_date"] = last_week.strftime("%Y-%m-%d")
         self.assertTrue(validate_ascender_user_account_rules(self.ascender_data, ignore_job_start_date=True))
 
     def test_validate_ascender_user_account_rules_job_start_distant(self):
+        """Test the validate_ascender_user_account_rules function where a user's job start date is too far in the future"""
         next_month = date.today() + timedelta(days=31)
         self.ascender_data["job_start_date"] = next_month.strftime("%Y-%m-%d")
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_no_physical_location(self):
+        """Test the validate_ascender_user_account_rules function where a user has no physical work location recorded"""
         self.ascender_data["geo_location_desc"] = None
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_validate_ascender_user_account_rules_physical_location_invalid(self):
+        """Test the validate_ascender_user_account_rules function where a user has a nonsense work location recorded"""
         self.ascender_data["geo_location_desc"] = "42 Everything Way, THE MOON"
         self.assertFalse(validate_ascender_user_account_rules(self.ascender_data))
 
     def test_generate_valid_dbca_email(self):
+        """Test that generate_valid_dbca_email function works with preferred name"""
         email, mail_nickname = generate_valid_dbca_email(surname=mixer.faker.last_name(), preferred_name=mixer.faker.first_name())
         self.assertTrue(email and mail_nickname)
 
     def test_generate_valid_dbca_email_first_name(self):
+        """Test that generate_valid_dbca_email function works with first name"""
         email, mail_nickname = generate_valid_dbca_email(surname=mixer.faker.last_name(), first_name=mixer.faker.first_name())
         self.assertTrue(email and mail_nickname)
 
     def test_generate_valid_dbca_email_missing_name(self):
+        """Test the generate_valid_dbca_email function fails with a missing surname"""
         email, mail_nickname = generate_valid_dbca_email(surname=mixer.faker.last_name())
         self.assertFalse(email and mail_nickname)
 
     def test_department_user_create(self):
+        """Test the department_user_create function"""
         initial_count = DepartmentUser.objects.count()
         self.assertTrue(
             department_user_create(
@@ -180,13 +198,16 @@ class AscenderTestCase(TestCase):
         self.assertTrue(DepartmentUser.objects.count() > initial_count)
 
     def test_new_user_creation_email_sends(self):
+        """Test the new_user_creation_email function"""
         new_user = self.create_new_user()
         licence_type = "On-premise"
-        new_user_creation_email(new_user, licence_type, job_start_date=self.next_week)
+        email_sent = new_user_creation_email(new_user, self.manager, licence_type, self.next_week)
+        self.assertTrue(email_sent)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"New user account creation details - {new_user.name}")
 
     def test_department_user_ascender_methods(self):
+        """Test the Ascender-related methods on DepartmentUser class"""
         new_user = self.create_new_user()
         self.assertTrue(new_user.get_ascender_org_path())
         self.assertTrue(new_user.get_employment_status())
@@ -199,11 +220,13 @@ class AscenderTestCase(TestCase):
         self.assertTrue(new_user.get_job_start_date())
 
     def test_department_user_get_division(self):
+        """Test DepartmentUser.get_division method"""
         new_user = self.create_new_user()
         self.assertTrue(new_user.get_division())
         self.assertEqual(new_user.get_division(), "Strategy and Governance")
 
     def test_department_user_get_business_unit(self):
+        """Test DepartmentUser.get_business_unit method"""
         new_user = self.create_new_user()
         self.assertTrue(new_user.get_business_unit())
         self.assertEqual(new_user.get_business_unit(), "Office of Expectation Management")
