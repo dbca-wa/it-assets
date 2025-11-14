@@ -125,7 +125,7 @@ OIM will automatically deactivate accounts that have not been logged into for {d
 Name: {du.name}
 Email: {du.email}
 Title: {du.title}
-Last sign-in: {du.last_signin.strftime('%d/%b/%Y')}
+Last sign-in: {du.last_signin.strftime('%d/%b/%Y') if du.last_signin else 'Unknown'}
 Manager: {du.manager.name if du.manager else ''}\n
 If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.\n
 Regards,
@@ -137,7 +137,7 @@ OIM will automatically deactivate accounts that have not been logged into for {d
 <li>Name: {du.name}</li>
 <li>Email: {du.email}</li>
 <li>Title: {du.title}</li>
-<li>Last sign-in: {du.last_signin.strftime('%d/%b/%Y')}</li>
+<li>Last sign-in: {du.last_signin.strftime('%d/%b/%Y') if du.last_signin else 'Unknown'}</li>
 <li>Manager: {du.manager.name if du.manager else ''}</li>
 </ul>
 <p>If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.</p>

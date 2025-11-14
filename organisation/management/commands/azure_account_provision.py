@@ -52,6 +52,6 @@ class Command(BaseCommand):
         )
 
         if new_user:
-            logger.info(f"Azure user account for {user.email} provisioned")
+            logger.info(f"Azure user account for {new_user.email} provisioned")
         else:
             logger.info("Azure user account not provisioned")
