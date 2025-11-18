@@ -18,15 +18,8 @@ spec:
       containers:
         - name: itassets
           image: ghcr.io/dbca-wa/it-assets
+          imagePullPolicy: Always
           env:
-            - name: ALLOWED_HOSTS
-              value: '.dbca.wa.gov.au'
-            - name: CSRF_TRUSTED_ORIGINS
-              value: 'https://*.dbca.wa.gov.au'
-            - name: CSRF_COOKIE_SECURE
-              value: 'True'
-            - name: SESSION_COOKIE_SECURE
-              value: 'True'
             - name: TZ
               value: 'Australia/Perth'
           resources:
@@ -90,3 +83,23 @@ spec:
           operator: Equal
           value: arm64
           effect: NoSchedule
+      affinity:
+        # Set a node affinity to favour ARM64-based nodes (preference only).
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: arch
+                    operator: In
+                    values:
+                      - arm64
+        # Set a pod anti-affinity to spread workload pods between nodes (preference only).
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: itassets-deployment
+                topologyKey: kubernetes.io/hostname
