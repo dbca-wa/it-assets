@@ -5,6 +5,7 @@ metadata:
 spec:
   # AWST: 21:01, Mon-Fri
   schedule: '1 13 * * 1-5'
+  suspend: true # Remove after new cluster is whitelisted.
   jobTemplate:
     spec:
       template:

@@ -7,7 +7,6 @@ spec:
     spec:
       containers:
         - name: itassets
-          imagePullPolicy: Always
           envFrom:
             - secretRef:
                 name: itassets-env-uat
