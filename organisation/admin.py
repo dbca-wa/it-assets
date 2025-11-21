@@ -98,6 +98,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "ascender_data_updated",
         "manager_name",
         "extended_leave",
+        "term_reason",
         "employee_id",
         "maiden_name",
     )
@@ -120,6 +121,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "job_start_date",
                     "job_end_date",
                     "extended_leave",
+                    "term_reason",
                     "ascender_data_updated",
                 ),
             },
@@ -214,6 +216,11 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
 
     def job_end_date(self, instance):
         return instance.get_job_end_date().strftime("%d-%B-%Y") or ""
+
+    def term_reason(self, instance):
+        return instance.get_term_reason() or ""
+
+    term_reason.short_description = "Job termination reason"
 
     def manager_name(self, instance):
         return instance.get_manager_name() or ""

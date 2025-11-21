@@ -230,3 +230,10 @@ class AscenderTestCase(TestCase):
         new_user = self.create_new_user()
         self.assertTrue(new_user.get_business_unit())
         self.assertEqual(new_user.get_business_unit(), "Office of Expectation Management")
+
+    def test_department_user_get_term_reason(self):
+        new_user = self.create_new_user()
+        self.assertIsNone(new_user.get_term_reason())
+        new_user.ascender_data["term_reason"] = "RE"
+        new_user.save()
+        self.assertTrue(new_user.get_term_reason())
