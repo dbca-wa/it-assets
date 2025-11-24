@@ -29,7 +29,7 @@ jobs:
       # Checkout repo
       #----------------------------------------------
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         id: checkout-repo
         with:
           fetch-depth: 0
