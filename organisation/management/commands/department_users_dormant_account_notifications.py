@@ -127,8 +127,9 @@ Email: {du.email}
 Title: {du.title}
 Last sign-in: {du.last_signin.strftime('%d/%b/%Y') if du.last_signin else 'Unknown'}
 Manager: {du.manager.name if du.manager else ''}\n
-If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.\n
-Regards,
+Please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}. Staff members (or their manager) will need to contact
+OIM Service Desk to manually reactivate the account after that date upon a return to work.\n
+Regards,\n
 OIM Service Desk\n"""
         html_content = f"""<p>Hi {recipient.given_name},</p>
 <p>This is an automated notification email to let you know that the Microsoft 365 account below has not been logged into for {last_signin_days_ago} days.
@@ -140,7 +141,8 @@ OIM will automatically deactivate accounts that have not been logged into for {d
 <li>Last sign-in: {du.last_signin.strftime('%d/%b/%Y') if du.last_signin else 'Unknown'}</li>
 <li>Manager: {du.manager.name if du.manager else ''}</li>
 </ul>
-<p>If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.</p>
+<p>Please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}. Staff members (or their manager) will need to contact
+OIM Service Desk to manually reactivate the account after that date upon a return to work.</p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
         subject = f"Dormant account notification - {du.name}"
