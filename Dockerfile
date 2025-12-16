@@ -19,13 +19,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /bin/
 # Since there's no point in shipping lock files, we move them
 # into a directory that is NOT copied into the runtime image.
 # The trailing slash makes COPY create `/_lock/` automagically.
+WORKDIR /_lock
 COPY pyproject.toml uv.lock /_lock/
 
 # Synchronize dependencies.
 # This layer is cached until uv.lock or pyproject.toml change.
-RUN --mount=type=cache,target=/root/.cache \
-  cd /_lock && \
-  uv sync --frozen --no-group dev
+RUN --mount=type=cache,target=/root/.cache uv sync --frozen --no-group dev
 
 ##################################################################################
 
@@ -33,7 +32,7 @@ FROM python:3.13-slim-bookworm
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
-# Install OS packages
+# Install OS updates & packages.
 RUN apt-get update -y \
   && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends gdal-bin proj-bin libmagic-dev \
@@ -43,19 +42,20 @@ RUN apt-get update -y \
 RUN groupadd -r -g 1000 app \
   && useradd -r -u 1000 -d /app -g app -N app
 
+# Install the project.
+WORKDIR /app
 COPY --from=builder_base --chown=app:app /app /app
 # Make sure we use the virtualenv by default
 # Run Python unbuffered
 ENV PATH="/app/.venv/bin:$PATH" \
   PYTHONUNBUFFERED=1
 
-# Install the project.
-WORKDIR /app
 COPY gunicorn.py manage.py pyproject.toml ./
 COPY itassets ./itassets
-COPY registers ./registers
 COPY organisation ./organisation
-RUN python manage.py collectstatic --noinput
+COPY registers ./registers
+RUN python -m compileall manage.py itassets organisation registers \
+  && python manage.py collectstatic --noinput
 USER app
 EXPOSE 8080
 CMD ["gunicorn", "itassets.wsgi", "--config", "gunicorn.py"]
