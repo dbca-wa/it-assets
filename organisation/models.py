@@ -434,6 +434,16 @@ class DepartmentUser(models.Model):
         jobs_data = ascender_employee_fetch(self.employee_id)  # ('<employee_id>', [<list of jobs>])
         return jobs_data[1]
 
+    def get_term_reason(self) -> Optional[str]:
+        """From Ascender data, return a reason for a job termination (if applicable)."""
+        if self.ascender_data and "term_reason" in self.ascender_data and self.ascender_data["term_reason"]:
+            from organisation.ascender import TERM_REASON_MAP  # Prevent circular import.
+
+            if self.ascender_data["term_reason"] in TERM_REASON_MAP:
+                return TERM_REASON_MAP[self.ascender_data["term_reason"]]
+
+        return None
+
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = None):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Entra ID, onprem AD).

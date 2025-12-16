@@ -151,6 +151,21 @@ EMP_STATUS_MAP = {
     "WWR": "WEEKEND WEATHER READER",
     "Z": "NON-RESIDENT",
 }
+# A (partial) map of codes in the `term_reason` field to descriptive text.
+TERM_REASON_MAP = {
+    "AE": "Left employment",
+    "CO": "Casual Officer",
+    "EC": "End of appointment",
+    "EP": "External promotion",
+    "OR": "Other reasons",
+    "RA": "Retirement",
+    "RE": "Retirement",
+    "RF": "Retirement",
+    "RH": "Retirement",
+    "RI": "Retirement",
+    "RS": "Resignation",
+    "TA": "Transfer to another agency",
+}
 
 
 def get_ascender_db_connection() -> Connection:

@@ -90,9 +90,7 @@ class Command(BaseCommand):
                         else:
                             logger.info(f"{day}-day notification email to {recipient.email} regarding {du.email} not sent")
                     else:
-                        logger.warning(
-                            f"No manager/CCM recipient recorded for {du.email} ({du.cost_centre.code}), {day}-day notification email not sent"
-                        )
+                        logger.warning(f"No manager/CCM recipient recorded for {du.email}, {day}-day notification email not sent")
 
             # Check users without sign-in data (use password last change date).
             for du in active_users_without_signin:
@@ -113,9 +111,7 @@ class Command(BaseCommand):
                         else:
                             logger.info(f"{day}-day notification email to {recipient.email} regarding {du.email} not sent")
                     else:
-                        logger.warning(
-                            f"No manager/CCM recipient recorded for {du.email} ({du.cost_centre.code}), {day}-day notification email not sent"
-                        )
+                        logger.warning(f"No manager/CCM recipient recorded for {du.email}, {day}-day notification email not sent")
         logger.info("Complete")
 
     def send_notification_email(self, recipient, du, last_signin_days_ago, dormant_account_days, deadline):
@@ -127,8 +123,9 @@ Email: {du.email}
 Title: {du.title}
 Last sign-in: {du.last_signin.strftime('%d/%b/%Y') if du.last_signin else 'Unknown'}
 Manager: {du.manager.name if du.manager else ''}\n
-If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.\n
-Regards,
+Please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}. Staff members (or their manager) will need to contact
+OIM Service Desk to manually reactivate the account after that date upon a return to work.\n
+Regards,\n
 OIM Service Desk\n"""
         html_content = f"""<p>Hi {recipient.given_name},</p>
 <p>This is an automated notification email to let you know that the Microsoft 365 account below has not been logged into for {last_signin_days_ago} days.
@@ -140,7 +137,8 @@ OIM will automatically deactivate accounts that have not been logged into for {d
 <li>Last sign-in: {du.last_signin.strftime('%d/%b/%Y') if du.last_signin else 'Unknown'}</li>
 <li>Manager: {du.manager.name if du.manager else ''}</li>
 </ul>
-<p>If the account is still required for business use, please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}.</p>
+<p>Please ensure that the staff member logs into the account prior to {deadline.strftime('%d/%b/%Y')}. Staff members (or their manager) will need to contact
+OIM Service Desk to manually reactivate the account after that date upon a return to work.</p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
         subject = f"Dormant account notification - {du.name}"
