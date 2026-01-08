@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - hardened_image
     tags:
       - '*'
 env:
