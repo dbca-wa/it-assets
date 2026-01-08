@@ -121,6 +121,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+      - name: Pull hardened image
+        run: |
+          docker pull dhi.io/python:3.13-debian13-dev
+
       - name: Build and push by digest
         # This step builds and pushes the Docker image using Buildx.
         # It uses the docker/build-push-action to build the image with the specified context and platforms.
