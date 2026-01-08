@@ -31,7 +31,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "ipython>=9.8.0",
+  "ipython>=9.9.0",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.5.1",
