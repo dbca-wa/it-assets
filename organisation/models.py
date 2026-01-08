@@ -150,7 +150,6 @@ class DepartmentUser(models.Model):
     position_no = models.CharField(
         max_length=128,
         null=True,
-        unique=True,
         blank=True,
         verbose_name="position no.",
         help_text="Optional Ascender position number to specify the user's current active job",

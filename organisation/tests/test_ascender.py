@@ -183,19 +183,34 @@ class AscenderTestCase(TestCase):
     def test_department_user_create(self):
         """Test the department_user_create function"""
         initial_count = DepartmentUser.objects.count()
-        self.assertTrue(
-            department_user_create(
-                job=self.ascender_data,
-                azure_guid=str(uuid4()),
-                email=self.email,
-                display_name=self.display_name,
-                title=self.title,
-                cc=self.cc,
-                location=self.location,
-                manager=self.manager,
-            )
+        new_user = department_user_create(
+            job=self.ascender_data,
+            azure_guid=str(uuid4()),
+            email=self.email,
+            display_name=self.display_name,
+            title=self.title,
+            cc=self.cc,
+            location=self.location,
+            manager=self.manager,
         )
+        self.assertTrue(isinstance(new_user, DepartmentUser))
+        self.assertIsNone(new_user.position_no)
         self.assertTrue(DepartmentUser.objects.count() > initial_count)
+
+    def test_department_user_create_position_no(self):
+        """Test the department_user_create function"""
+        new_user = department_user_create(
+            job=self.ascender_data,
+            azure_guid=str(uuid4()),
+            email=self.email,
+            display_name=self.display_name,
+            title=self.title,
+            cc=self.cc,
+            location=self.location,
+            manager=self.manager,
+            position_no="0000000001",
+        )
+        self.assertEqual(new_user.position_no, "0000000001")
 
     def test_new_user_creation_email_sends(self):
         """Test the new_user_creation_email function"""
