@@ -539,7 +539,7 @@ def ascender_user_import(
     We can also manually specify the job position number to use for the new account, in order to
     bypass the default job sort order.
     """
-    LOGGER.info("Querying Ascender database for employee information")
+    LOGGER.info("Querying Ascender database for employee record")
     employee_id, jobs = ascender_employee_fetch(employee_id)
     if not jobs:
         LOGGER.warning(f"Ascender employee ID {employee_id} import did not return jobs data")
@@ -552,9 +552,9 @@ def ascender_user_import(
             if record["position_no"] == position_no:
                 job = record
                 break
-        # If we didn't match a position_no, abort.
+        # If we didn't match a position_no returned in the Ascender jobs, abort.
         if not job:
-            LOGGER.warning(f"Position no. {position_no} did not match any jobs in the employee information")
+            LOGGER.warning(f"Position no. {position_no} did not match any jobs in the Ascender employee record")
             return None
     else:
         job = jobs[0]

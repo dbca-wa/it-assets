@@ -31,7 +31,7 @@ class Command(BaseCommand):
             help="Override the manager in Ascender in favour of using the supplied email",
         )
         parser.add_argument(
-            "--postition-no",
+            "--position-no",
             action="store",
             type=str,
             dest="position_no",
@@ -55,7 +55,7 @@ class Command(BaseCommand):
             manager_override_email = options["manager_override_email"]
             logger.info(f"Overriding manager, using email {manager_override_email}")
 
-        if "postition_no" in options and options["postition_no"]:
+        if "position_no" in options and options["position_no"]:
             position_no = options["position_no"]
             logger.info(f"Using position number {position_no}")
 
