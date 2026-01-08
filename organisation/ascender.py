@@ -443,17 +443,6 @@ def ascender_user_import_all():
     token = ms_graph_client_token()
     employee_records = ascender_employees_fetch_all()
 
-    # FIXME: the section below has been commented out temporarily, as a 'null' database reponse caused all values to be removed in bulk.
-    # First, check for any invalid/outdated Ascender cached on user records.
-    # valid_employee_ids = [employee_id for employee_id in employee_records.keys()]
-    # cached_employee_ids = DepartmentUser.objects.filter(employee_id__isnull=False).values_list("employee_id", flat=True)
-    # for eid in cached_employee_ids:
-    #     if eid not in valid_employee_ids:
-    #         du = DepartmentUser.objects.get(employee_id=eid)
-    #         du.employee_id = None
-    #         du.save()
-    #         LOGGER.info(f"Removed invalid Ascender employee ID {eid} from department user {du}")
-
     for employee_id, jobs in employee_records.items():
         # If we have no jobs data from Ascender for this employee, skip them.
         if not jobs:
@@ -542,18 +531,33 @@ def ascender_user_import_all():
 
 
 def ascender_user_import(
-    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None
+    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, position_no: Optional[str] = None
 ) -> DepartmentUser | None:
     """A convenience function to import a single Ascender employee and create an AD account for them.
     This is to allow easier manual intervention where a record goes in after the start date, or an
     old employee returns to work and needs a new account created.
+    We can also manually specify the job position number to use for the new account, in order to
+    bypass the default job sort order.
     """
     LOGGER.info("Querying Ascender database for employee information")
     employee_id, jobs = ascender_employee_fetch(employee_id)
     if not jobs:
         LOGGER.warning(f"Ascender employee ID {employee_id} import did not return jobs data")
         return None
-    job = jobs[0]
+
+    if position_no:
+        # Don't use the default sort order of the jobs, instead use the supplied position_no value.
+        job = None
+        for record in jobs:
+            if record["position_no"] == position_no:
+                job = record
+                break
+        # If we didn't match a position_no, abort.
+        if not job:
+            LOGGER.warning(f"Position no. {position_no} did not match any jobs in the employee information")
+            return None
+    else:
+        job = jobs[0]
 
     rules_passed = validate_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True)
     if not rules_passed:
@@ -563,11 +567,17 @@ def ascender_user_import(
     # Unpack the required values.
     job, cc, job_start_date, licence_type, manager, location = rules_passed
     token = ms_graph_client_token()
-    return create_entra_id_user(job, cc, job_start_date, manager, location, token)
+    return create_entra_id_user(job, cc, job_start_date, manager, location, token, position_no)
 
 
 def create_entra_id_user(
-    job: dict, cc: CostCentre, job_start_date: datetime, manager: DepartmentUser, location: Location, token=None
+    job: dict,
+    cc: CostCentre,
+    job_start_date: datetime,
+    manager: DepartmentUser,
+    location: Location,
+    token: Optional[dict] = None,
+    position_no: Optional[str] = None,
 ) -> DepartmentUser | None:
     """Function to create a new Entra ID user accounts based on passed-in user info.
     Returns the associated DepartmentUser object, or None.
@@ -899,7 +909,7 @@ def create_entra_id_user(
     LOGGER.info(f"New Entra ID account created from Ascender data ({email})")
 
     # Next, create a new DepartmentUser that is linked to the Ascender record and the Entra ID account.
-    new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager)
+    new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager, position_no)
 
     # Email the new account's manager the checklist to finish account provision.
     email_sent = new_user_creation_email(new_user, manager, licence_type, job_start_date, job_end_date)
@@ -949,7 +959,15 @@ def generate_valid_dbca_email(
 
 
 def department_user_create(
-    job: dict, azure_guid: str, email: str, display_name: str, title: str, cc: CostCentre, location: Location, manager: DepartmentUser
+    job: dict,
+    azure_guid: str,
+    email: str,
+    display_name: str,
+    title: str,
+    cc: CostCentre,
+    location: Location,
+    manager: DepartmentUser,
+    position_no: Optional[str] = None,
 ) -> DepartmentUser:
     """This create function is split from the Entra ID/AD 'create' function to allow for unit testing."""
     given_name = job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip()
@@ -968,6 +986,7 @@ def department_user_create(
         manager=manager,
         ascender_data=job,
         ascender_data_updated=timezone.localtime(),
+        position_no=position_no,
     )
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     log = f"Created new department user {new_user} ({ascender_record})"

@@ -30,6 +30,13 @@ class Command(BaseCommand):
             dest="manager_override_email",
             help="Override the manager in Ascender in favour of using the supplied email",
         )
+        parser.add_argument(
+            "--postition-no",
+            action="store",
+            type=str,
+            dest="position_no",
+            help="Manually define the position number to which the employee belongs",
+        )
 
     def handle(self, *args, **options):
         logger = logging.getLogger("organisation")
@@ -38,6 +45,7 @@ class Command(BaseCommand):
         employee_id = options["employee_id"]
         ignore_job_start_date = False
         manager_override_email = None
+        position_no = None
 
         if "ignore_job_start_date" in options and options["ignore_job_start_date"]:
             ignore_job_start_date = True
@@ -47,8 +55,12 @@ class Command(BaseCommand):
             manager_override_email = options["manager_override_email"]
             logger.info(f"Overriding manager, using email {manager_override_email}")
 
+        if "postition_no" in options and options["postition_no"]:
+            position_no = options["position_no"]
+            logger.info(f"Using position number {position_no}")
+
         new_user = ascender_user_import(
-            employee_id, ignore_job_start_date=ignore_job_start_date, manager_override_email=manager_override_email
+            employee_id, ignore_job_start_date=ignore_job_start_date, manager_override_email=manager_override_email, position_no=position_no
         )
 
         if new_user:
