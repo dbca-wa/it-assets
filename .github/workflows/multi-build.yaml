@@ -122,10 +122,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Pull hardened image
-        run: |
-          docker pull dhi.io/python:3.13-debian13-dev
-
       - name: Build and push by digest
         # This step builds and pushes the Docker image using Buildx.
         # It uses the docker/build-push-action to build the image with the specified context and platforms.
@@ -213,8 +209,12 @@ jobs:
           images: ${{ env.GHCR_IMAGE }}
           annotations: |
             type=org.opencontainers.image.description,value=${{ github.event.repository.description || 'No description provided' }}
+          # Image tag will be 'latest' for the master/hardened_image branches,
+          # or else will match the Git tag (semver).
+          # https://github.com/docker/metadata-action?tab=readme-ov-file#typesemver
           tags: |
             type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+            type=raw,value=latest,enable=${{ github.ref_name == 'hardened_image' }}
             type=semver,pattern={{version}}
 
       - name: Set up Docker Buildx
