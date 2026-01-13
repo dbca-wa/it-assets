@@ -61,6 +61,10 @@ To build a new Docker image from the `Dockerfile`:
 
     docker image build -t ghcr.io/dbca-wa/it-assets .
 
+Run the image locally in a container like so:
+
+    docker container run --rm --env-file .env -v ${PWD}/media:/app/media ghcr.io/dbca-wa/it-assets
+
 ## Pre-commit hooks
 
 This project includes the following pre-commit hooks:

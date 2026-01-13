@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+      - hardened_image
     tags:
       - '*'
 env:
@@ -208,8 +209,12 @@ jobs:
           images: ${{ env.GHCR_IMAGE }}
           annotations: |
             type=org.opencontainers.image.description,value=${{ github.event.repository.description || 'No description provided' }}
+          # Image tag will be 'latest' for the master/hardened_image branches,
+          # or else will match the Git tag (semver).
+          # https://github.com/docker/metadata-action?tab=readme-ov-file#typesemver
           tags: |
             type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+            type=raw,value=latest,enable=${{ github.ref_name == 'hardened_image' }}
             type=semver,pattern={{version}}
 
       - name: Set up Docker Buildx
