@@ -12,6 +12,7 @@ from organisation.ascender import (
     department_user_create,
     generate_valid_dbca_email,
     new_user_creation_email,
+    sanitise_name_values,
     validate_ascender_user_account_rules,
 )
 from organisation.models import CostCentre, DepartmentUser, Location
@@ -252,3 +253,15 @@ class AscenderTestCase(TestCase):
         new_user.ascender_data["term_reason"] = "RE"
         new_user.save()
         self.assertTrue(new_user.get_term_reason())
+
+    def test_sanitise_name_values(self):
+        """Test the sanitise_name_values function"""
+        first_name = "Joseph123"
+        second_name = "O'Malley"
+        surname = "Raphael Smith"
+        preferred_name = "Joe-Bob"
+        first_name, second_name, surname, preferred_name = sanitise_name_values(first_name, second_name, surname, preferred_name)
+        self.assertEqual(first_name, "Joseph")
+        self.assertEqual(second_name, "OMalley")
+        self.assertEqual(surname, "RaphaelSmith")
+        self.assertEqual(preferred_name, "Joe-Bob")
