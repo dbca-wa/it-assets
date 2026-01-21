@@ -643,7 +643,7 @@ def create_entra_id_user(
     # New email address generation.
     email, mail_nickname = generate_valid_dbca_email(surname, preferred_name, first_name, second_name)
 
-    if not (email and mail_nickname):
+    if not email:
         # We can't generate a unique email with the supplied information; abort.
         log = f"Creation of new Entra ID account aborted at email step, unable to generate unique email ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
@@ -947,6 +947,12 @@ def generate_valid_dbca_email(
     # 4. {first_name}{second_name}.{surname}@dbca.wa.gov.au
     # If we can't make a new unique (according to current records) email, return a null result.
 
+    # First, lowercase any supplied name values.
+    surname = surname.lower()
+    preferred_name = preferred_name.lower()
+    first_name = first_name.lower()
+    second_name = second_name.lower()
+
     if preferred_name and surname:
         email_patterns = [
             f"{preferred_name}.{surname}@dbca.wa.gov.au",
@@ -956,7 +962,7 @@ def generate_valid_dbca_email(
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
-                return (email.lower(), mail_nickname.lower())
+                return (email, mail_nickname)
     elif first_name and surname:
         email_patterns = [
             f"{first_name}.{surname}@dbca.wa.gov.au",
@@ -966,7 +972,7 @@ def generate_valid_dbca_email(
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
-                return (email.lower(), mail_nickname.lower())
+                return (email, mail_nickname)
 
     return (None, None)
 

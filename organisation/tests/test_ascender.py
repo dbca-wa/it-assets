@@ -177,7 +177,7 @@ class AscenderTestCase(TestCase):
         self.assertTrue(email and mail_nickname)
 
     def test_generate_valid_dbca_email_missing_name(self):
-        """Test the generate_valid_dbca_email function fails with a missing surname"""
+        """Test the generate_valid_dbca_email function fails with a missing name"""
         email, mail_nickname = generate_valid_dbca_email(surname=mixer.faker.last_name())
         self.assertFalse(email and mail_nickname)
 
