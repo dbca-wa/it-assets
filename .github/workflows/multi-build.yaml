@@ -3,6 +3,9 @@
 name: Build multi-architecture Docker Image with separate GitHub Runners and run vulnerability scan
 
 on:
+  schedule:
+    # 0505 AWST (2105 UTC), Mon-Fri
+    - cron: '5 21 * * 1-5'
   push:
     branches:
       - master
@@ -113,6 +116,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hardened Images Registry
+        # This step logs into the Docker Hardened Images Registry in order to download the required images.
+        uses: docker/login-action@v3
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Build and push by digest
         # This step builds and pushes the Docker image using Buildx.
         # It uses the docker/build-push-action to build the image with the specified context and platforms.
@@ -200,6 +211,9 @@ jobs:
           images: ${{ env.GHCR_IMAGE }}
           annotations: |
             type=org.opencontainers.image.description,value=${{ github.event.repository.description || 'No description provided' }}
+          # Image tag will be 'latest' for the master branch,
+          # or else will match the Git tag (semver).
+          # https://github.com/docker/metadata-action?tab=readme-ov-file#typesemver
           tags: |
             type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
             type=semver,pattern={{version}}

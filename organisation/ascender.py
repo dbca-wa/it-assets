@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Iterator
 from datetime import date, datetime
 from typing import List, Literal, Optional
@@ -570,6 +571,17 @@ def ascender_user_import(
     return create_entra_id_user(job, cc, job_start_date, manager, location, token, position_no)
 
 
+def sanitise_name_values(first_name: str = "", second_name: str = "", surname: str = "", preferred_name: str = ""):
+    """Takes in string name values and returns them stripped of non-alphabetic characters, except hyphens ("-").
+    This function is used for generating email-friendly values."""
+    pattern = r"[^A-Za-z\-]"
+    first_name = re.sub(pattern, "", first_name)
+    second_name = re.sub(pattern, "", second_name)
+    surname = re.sub(pattern, "", surname)
+    preferred_name = re.sub(pattern, "", preferred_name)
+    return first_name, second_name, surname, preferred_name
+
+
 def create_entra_id_user(
     job: dict,
     cc: CostCentre,
@@ -597,23 +609,24 @@ def create_entra_id_user(
     if job["job_end_date"] and datetime.strptime(job["job_end_date"], "%Y-%m-%d").date() != DATE_MAX:
         job_end_date = datetime.strptime(job["job_end_date"], "%Y-%m-%d").date()
 
-    # Remove all non-alphanumeric characters from all four name fields.
+    # Take the all supplied name values and ensure that they are suitable for generating an email address.
     if job["first_name"]:
-        first_name = "".join([i.lower() for i in job["first_name"] if i.isalnum()])
+        first_name = job["first_name"]
     else:
         first_name = ""
     if job["preferred_name"]:
-        preferred_name = "".join([i.lower() for i in job["preferred_name"] if i.isalnum()])
+        preferred_name = job["preferred_name"]
     else:
         preferred_name = ""
     if job["surname"]:
-        surname = "".join([i.lower() for i in job["surname"] if i.isalnum()])
+        surname = job["surname"]
     else:
         surname = ""
     if job["second_name"]:
-        second_name = "".join([i.lower() for i in job["second_name"] if i.isalnum()])
+        second_name = job["second_name"]
     else:
         second_name = ""
+    first_name, second_name, surname, preferred_name = sanitise_name_values(first_name, second_name, surname, preferred_name)
 
     # Rule: we require values for surname plus first_name and/or preferred_name.
     if not surname:
@@ -630,7 +643,7 @@ def create_entra_id_user(
     # New email address generation.
     email, mail_nickname = generate_valid_dbca_email(surname, preferred_name, first_name, second_name)
 
-    if not (email and mail_nickname):
+    if not email:
         # We can't generate a unique email with the supplied information; abort.
         log = f"Creation of new Entra ID account aborted at email step, unable to generate unique email ({ascender_record})"
         AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
@@ -934,6 +947,12 @@ def generate_valid_dbca_email(
     # 4. {first_name}{second_name}.{surname}@dbca.wa.gov.au
     # If we can't make a new unique (according to current records) email, return a null result.
 
+    # First, lowercase any supplied name values.
+    surname = surname.lower()
+    preferred_name = preferred_name.lower()
+    first_name = first_name.lower()
+    second_name = second_name.lower()
+
     if preferred_name and surname:
         email_patterns = [
             f"{preferred_name}.{surname}@dbca.wa.gov.au",
@@ -943,7 +962,7 @@ def generate_valid_dbca_email(
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
-                return (email.lower(), mail_nickname.lower())
+                return (email, mail_nickname)
     elif first_name and surname:
         email_patterns = [
             f"{first_name}.{surname}@dbca.wa.gov.au",
@@ -953,7 +972,7 @@ def generate_valid_dbca_email(
             if not DepartmentUser.objects.filter(email=pattern).exists():
                 email = pattern
                 mail_nickname = pattern.split("@")[0]
-                return (email.lower(), mail_nickname.lower())
+                return (email, mail_nickname)
 
     return (None, None)
 
