@@ -86,7 +86,7 @@ jobs:
         # The metadata includes information such as the image name, tags, and labels.
         # The metadata will be used later in the workflow to build and push the Docker image.
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.GHCR_IMAGE }}
 
@@ -206,7 +206,7 @@ jobs:
         # It uses the docker/metadata-action to create metadata based on the repository information.
         # The metadata includes information such as the image name, tags, and labels.
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.GHCR_IMAGE }}
           annotations: |
