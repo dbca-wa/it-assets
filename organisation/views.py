@@ -69,7 +69,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = (
-            DepartmentUser.objects.filter(azure_guid__isnull=False)
+            DepartmentUser.objects.filter(azure_guid__isnull=False, active=True)
             .filter(
                 Q(assigned_licences__contains=["MICROSOFT 365 E5"])
                 | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
