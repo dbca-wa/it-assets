@@ -66,10 +66,12 @@ class UserAccounts(LoginRequiredMixin, ListView):
     template_name = "organisation/user_accounts.html"
     model = DepartmentUser
     paginate_by = 50
+    admin_view = False  # Custom argument for whether to display inactive accounts or not in the view.
 
     def get_queryset(self):
+        # Initial queryset: accounts associated with a M365 account, having an appropriate license assigned.
         queryset = (
-            DepartmentUser.objects.filter(azure_guid__isnull=False, active=True)
+            DepartmentUser.objects.filter(azure_guid__isnull=False)
             .filter(
                 Q(assigned_licences__contains=["MICROSOFT 365 E5"])
                 | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
@@ -82,7 +84,10 @@ class UserAccounts(LoginRequiredMixin, ListView):
             .order_by("name")
         )
 
-        # Filter the queryset
+        if not self.admin_view:  # Filter non-active user accounts from the queryset.
+            queryset = queryset.filter(active=True)
+
+        # Filter the queryset by search terms.
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             queryset = queryset.filter(Q(name__icontains=query_str) | Q(cost_centre__code__icontains=query_str))
@@ -113,6 +118,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
+        context["admin_view"] = self.admin_view
 
         return context
 

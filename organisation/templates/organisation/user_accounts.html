@@ -20,8 +20,13 @@
                                    value="{{ query_string }}">
                         </div>
                         <div class="col-xs-12 col-sm-5 col-md-4">
-                            <a href="{% url 'user_accounts' %}?q={{ query_string }}&export=true"
-                               class="btn btn-info"><i class="fas fa-file-export"></i> Export</a>
+                            {% if admin_view %}
+                                <a href="{% url 'user_accounts_admin' %}?q={{ query_string }}&export=true"
+                                   class="btn btn-info"><i class="fas fa-file-export"></i> Export</a>
+                            {% else %}
+                                <a href="{% url 'user_accounts' %}?q={{ query_string }}&export=true"
+                                   class="btn btn-info"><i class="fas fa-file-export"></i> Export</a>
+                            {% endif %}
                         </div>
                     </div>
                 </form>
@@ -35,6 +40,7 @@
                                 <th>Name</th>
                                 <th>Cost centre</th>
                                 <th>Microsoft 365 licence</th>
+                                {% if admin_view %}<th>Account active?</th>{% endif %}
                                 <th>Last sign-in</th>
                             </tr>
                         </thead>
@@ -44,6 +50,7 @@
                                     <td>{{ obj.name }}</td>
                                     <td>{{ obj.cost_centre.code }}</td>
                                     <td>{{ obj.get_licence }}</td>
+                                    {% if admin_view %}<td>{{ obj.active|yesno|capfirst }}</td>{% endif %}
                                     <td>{{ obj.last_signin|default_if_none:"" }}</td>
                                 </tr>
                             {% endfor %}
