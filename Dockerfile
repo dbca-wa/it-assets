@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
 # Install system packages required to run the project
 RUN apt-get update -y \
-  && apt-get install -y --no-install-recommends gdal-bin proj-bin \
+  && apt-get install -y --no-install-recommends gdal-bin proj-bin libgdal36 \
   # Run shared library linker after installing packages
   && ldconfig \
   && rm -rf /var/lib/apt/lists/*

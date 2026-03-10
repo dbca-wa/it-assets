@@ -354,7 +354,8 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
 @register(Location)
 class LocationAdmin(ModelAdmin):
     fields = ("name", "phone", "ascender_desc")
-    list_display = ("name", "phone", "ascender_desc")
+    list_display = ("name", "phone", "ascender_desc", "active")
+    list_filter = ("active",)
     readonly_fields = ("ascender_desc",)
     search_fields = ("name", "ascender_desc")
 
