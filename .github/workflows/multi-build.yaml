@@ -102,7 +102,7 @@ jobs:
         # This step sets up Docker Buildx, which is a Docker CLI plugin for extended build capabilities with BuildKit.
         # It uses the docker/setup-buildx-action to configure Buildx with the specified context and platforms.
         # The platforms are specified in the matrix and will be used for building the Docker image.
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           endpoint: builders
           platforms: ${{ matrix.platform }}
@@ -219,7 +219,7 @@ jobs:
             type=semver,pattern={{version}}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         # This step sets up Docker Buildx, which is a Docker CLI plugin for extended build capabilities with BuildKit.
         with:
           driver-opts: |
