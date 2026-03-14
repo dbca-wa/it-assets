@@ -132,7 +132,7 @@ jobs:
         # The cache-from and cache-to options are used to enable caching for the build process.
         # The cache is stored in GitHub Actions cache and is scoped to the repository, branch, and platform.
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
           DOCKER_BUILDKIT: 1
         with:
