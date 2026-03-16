@@ -20,13 +20,15 @@ RUN uv sync --no-group dev --link-mode=copy --compile-bytecode --no-python-downl
   && rm -rf /bin/uv \
   && rm uv.lock
 
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/.venv/bin:$PATH"
+
 # Copy the remaining project files to finish building the project
 COPY gunicorn.py manage.py pyproject.toml ./
 COPY itassets ./itassets
 COPY organisation ./organisation
 COPY registers ./registers
-ENV PYTHONUNBUFFERED=1
-ENV PATH="/app/.venv/bin:$PATH"
 # Compile scripts and collect static files
 RUN python -m compileall manage.py itassets organisation registers \
   && python manage.py collectstatic --noinput
