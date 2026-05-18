@@ -11,6 +11,12 @@ class CommandsTestCase(TestCase):
         """
         Tests that the audit captures and displays all users with invalid statuses and missing users from mandatory fields, and ignores users who are not a concern.
         """
+        cmd = Command()
+
+        # ensures that no valid records result in no message being sent
+        msg = cmd.handle(send_email=True, return_msg=True)
+        self.assertEqual(msg, None)
+
         # Create records & users - all users default to status: unknown, and as such by default will be picked up by the audit.
         record1 = create_random_record()
         record2 = create_random_record()
@@ -30,17 +36,17 @@ class CommandsTestCase(TestCase):
         record1.information_custodian.save()
 
         # Record 2: Removes a mandatory contact and a non-mandatory contact, and makes the rest valid
-        record2.business_service_owner.delete()
+        record2.business_service_owner = None
         record2.system_owner.account_type = 2
         record2.system_owner.save()
         record2.technology_custodian.account_type = 2
         record2.technology_custodian.save()
-        record2.information_custodian.delete()
+        record2.information_custodian = None
+        record2.save()
 
         # Record 3: Keeps all invalid
 
-        # Runs audit function
-        cmd = Command()
+        # runs the audit function
         msg = cmd.handle(send_email=True, return_msg=True)
 
         # ensures that all contacts in record 3 are reported
@@ -55,3 +61,20 @@ class CommandsTestCase(TestCase):
 
         # ensures that record 1 isn't present at all
         self.assertNotIn(str(record1), msg.body)
+
+        # Record 3: make all valid
+        record3.business_service_owner.account_type = 2
+        record3.business_service_owner.save()
+        record3.system_owner.account_type = 2
+        record3.system_owner.save()
+        record3.technology_custodian.account_type = 2
+        record3.technology_custodian.save()
+        record3.information_custodian.account_type = 2
+        record3.information_custodian.save()
+
+        # Record 2: make all valid
+        record2.business_service_owner = record2.system_owner
+        record2.save()
+
+        msg = cmd.handle(send_email=True, return_msg=True)
+        self.assertEqual(msg, None)

@@ -16,7 +16,7 @@ class Command(BaseCommand):
             "--send-email",
             action="store_true",
             dest="send_email",
-            help="(Optional) Flag to send notification emails to managers (default behaviour is logging only)",
+            help="(Optional) Flag to send notification emails to ITPnP Mailbox (default behaviour is logging only)",
         )
 
     def handle(self, *args, **options):
@@ -26,7 +26,6 @@ class Command(BaseCommand):
         logger = logging.getLogger("it_systems_register")
         logger.info("Contact audit operation started")
 
-        # Get a list of active, licenced accounts for which we have a 'last sign-in' value.
         register = ITSystemRecord.objects.all()
 
         flagged_users = []
