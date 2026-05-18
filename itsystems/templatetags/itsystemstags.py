@@ -3,6 +3,7 @@ from django.utils.html import format_html
 
 register = template.Library()
 
+
 @register.simple_block_tag(takes_context=True)
 def renderButtons(context, content):
     format_kwargs = {
@@ -35,8 +36,18 @@ def renderButtons(context, content):
 
     return format_html(result, **format_kwargs)
 
+
 def renderButton(filter, field_name, verbose_name):
-    return """<button type="button" class="btn btn-outline-secondary" onClick="clearField('""" + field_name + """')">""" + verbose_name + """ | """ + filter + """  ✕</button>"""
+    return (
+        """<button type="button" class="btn btn-outline-secondary" onClick="clearField('"""
+        + field_name
+        + """')">"""
+        + verbose_name
+        + """ | """
+        + filter
+        + """  ✕</button>"""
+    )
+
 
 @register.simple_block_tag(takes_context=True)
 def renderSelect(context, content, id, filter, list_name):
@@ -51,13 +62,13 @@ def renderSelect(context, content, id, filter, list_name):
     if filter:
         for option in context[list_name]:
             if option.id == filter.id:
-                    result += """<option selected="selected" value = """ + str(option.id) + """>""" + str(option) + """</option>"""
+                result += """<option selected="selected" value = """ + str(option.id) + """>""" + str(option) + """</option>"""
             else:
-                result += """<option value = """ +  str(option.id) + """>""" + str(option) + """</option>"""
+                result += """<option value = """ + str(option.id) + """>""" + str(option) + """</option>"""
     else:
         result += """<option disabled selected value></option>"""
         for option in context[list_name]:
-            result += """<option value = """ +  str(option.id) + """>""" + str(option) + """</option>"""
+            result += """<option value = """ + str(option.id) + """>""" + str(option) + """</option>"""
 
     result += "</select>"
     return format_html(result, **format_kwargs)

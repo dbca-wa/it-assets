@@ -233,6 +233,7 @@ NOREPLY_EMAIL = env("NOREPLY_EMAIL", "noreply@dbca.wa.gov.au")
 ADMIN_EMAILS = env("ADMIN_EMAILS", "admin@dbca.wa.gov.au").split(",")  # Comma-separated list of email addresses
 SERVICE_DESK_EMAIL = env("SERVICE_DESK_EMAIL", "helpdesk@dbca.wa.gov.au")
 SECURITY_EMAIL = env("SECURITY_EMAIL", "security@dbca.wa.gov.au")
+IT_SYSTEMS_REGISTER_EMAIL = env("IT_SYSTEMS_REGISTER_EMAIL", "itprogramsprojects@dbca.wa.gov.au")
 
 
 # Logging settings - log to stdout/stderr

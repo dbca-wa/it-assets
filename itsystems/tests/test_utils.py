@@ -12,7 +12,7 @@ from itsystems.utils import export_csv, import_csv
 from .test_model import create_random_record
 
 
-class UtilsTests(TestCase):
+class UtilsTestCase(TestCase):
     class FauxCSVFile:
         def __init__(self, name, is_multiple_chunks, raw_text):
             self.raw_text = raw_text
@@ -45,16 +45,16 @@ class UtilsTests(TestCase):
         A file is valid if it's a csv, is under 2mb, and matches the required headers.
         """
 
-        not_csv = UtilsTests.FauxCSVFile(name="test.txt", is_multiple_chunks=None, raw_text=None)
-        above_2mb = UtilsTests.FauxCSVFile(name="test.csv", is_multiple_chunks=True, raw_text=None)
+        not_csv = UtilsTestCase.FauxCSVFile(name="test.txt", is_multiple_chunks=None, raw_text=None)
+        above_2mb = UtilsTestCase.FauxCSVFile(name="test.csv", is_multiple_chunks=True, raw_text=None)
 
         incorrect_header_fields = ITSystemRecord._meta.get_fields()
-        incorrect_csv_text = (",".join(get_field_names(incorrect_header_fields)) + "\r\n").replace("description","non-existent-field")
-        incorrect_headers = UtilsTests.FauxCSVFile(name="test.csv", is_multiple_chunks=False, raw_text=incorrect_csv_text)
+        incorrect_csv_text = (",".join(get_field_names(incorrect_header_fields)) + "\r\n").replace("description", "non-existent-field")
+        incorrect_headers = UtilsTestCase.FauxCSVFile(name="test.csv", is_multiple_chunks=False, raw_text=incorrect_csv_text)
 
         correct_header_fields = ITSystemRecord._meta.get_fields()[1:-4]
         csv_text = ",".join(get_field_names(correct_header_fields)) + "\r\nrandomtext"
-        correct_headers = UtilsTests.FauxCSVFile(name="test.csv", is_multiple_chunks=False, raw_text=csv_text)
+        correct_headers = UtilsTestCase.FauxCSVFile(name="test.csv", is_multiple_chunks=False, raw_text=csv_text)
 
         self.assertIs(validate(not_csv)["valid"], False)
         self.assertIs(validate(above_2mb)["valid"], False)
@@ -144,7 +144,7 @@ def get_field_names(field_list):
 def get_faux_post(user):
     faux_response = HttpResponse()
     export_csv(faux_response)
-    faux_file = UtilsTests.FauxCSVFile(
+    faux_file = UtilsTestCase.FauxCSVFile(
         name="test.csv", is_multiple_chunks=False, raw_text=faux_response.content.decode(encoding="utf-8", errors="replace")
     )
-    return UtilsTests.FauxPOST(faux_file, user)
+    return UtilsTestCase.FauxPOST(faux_file, user)

@@ -45,22 +45,14 @@ class ViewsTestCase(ApiTestCase):
         record2.save()
 
         # Tests Search
-        url = (
-            reverse("it_systems_register")
-            + "?q="
-            + str(record1.system_id)
-        )
+        url = reverse("it_systems_register") + "?q=" + str(record1.system_id)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, record1.system_id)
         self.assertNotContains(resp, record2.system_id)
 
         # Tests fk choice field filtering
-        url = (
-            reverse("it_systems_register")
-            + "?division="
-            + str(record2.division.id)
-        )
+        url = reverse("it_systems_register") + "?division=" + str(record2.division.id)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, record1.system_id)
@@ -71,35 +63,21 @@ class ViewsTestCase(ApiTestCase):
         record2.vital_records = False
         record1.save()
         record2.save()
-        url = (
-            reverse("it_systems_register")
-            + "?vital_records="
-            + str(record1.vital_records)
-        )
+        url = reverse("it_systems_register") + "?vital_records=" + str(record1.vital_records)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, record1.system_id)
         self.assertNotContains(resp, record2.system_id)
 
         # Tests filtering by contacts
-        url = (
-            reverse("it_systems_register")
-            + "?system_owner="
-            + str(record1.system_owner.id)
-        )
+        url = reverse("it_systems_register") + "?system_owner=" + str(record1.system_owner.id)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, record1.system_id)
         self.assertNotContains(resp, record2.system_id)
 
         # Tests failure to find from mismatch
-        url = (
-            reverse("it_systems_register")
-            + "?q="
-            + str(record2.name)
-            + "&vital_records="
-            + str(record1.vital_records)
-        )
+        url = reverse("it_systems_register") + "?q=" + str(record2.name) + "&vital_records=" + str(record1.vital_records)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "No results found")

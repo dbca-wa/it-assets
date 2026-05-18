@@ -42,7 +42,6 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["technology_custodians"] = get_unique_users("technology_custodian")
         context["information_custodians"] = get_unique_users("information_custodian")
 
-
         # Pass in any search & filtering data
         if "q" in self.request.GET:
             context["query_string"] = self.request.GET["q"]
@@ -68,7 +67,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             context["technology_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["technology_custodian"])
         if "information_custodian" in self.request.GET:
             context["information_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["information_custodian"])
-            
+
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
@@ -182,7 +181,7 @@ class ITSystemRecordAPIResource(View):
         """An API view that allows users to update a record or a contact"""
 
         response = None
-        
+
         if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
             try:
                 old_record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])

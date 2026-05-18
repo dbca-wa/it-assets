@@ -179,7 +179,7 @@ def edit_record_from_dict(record, dict, user):
     incoming.update(dict)
     incoming_rec = ITSystemRecord()
     incoming_rec.set_from_dict(incoming)
-    if len(record.compare(incoming_rec))>0:
+    if len(record.compare(incoming_rec)) > 0:
         with reversion.create_revision():
             # updated record
             record.set_from_dict(dict=incoming, plain_text=True, force=False)
@@ -198,9 +198,10 @@ def edit_record_from_dict(record, dict, user):
             reversion.set_comment(comment)
     return record.to_dict()
 
+
 def get_unique_users(field):
     unique_vals = ITSystemRecord.objects.values_list(field, flat=True).distinct()
-    return DepartmentUser.objects.filter(pk__in=unique_vals).order_by('email')
+    return DepartmentUser.objects.filter(pk__in=unique_vals).order_by("email")
 
 
 def __validate_csv(csv_file):
@@ -231,6 +232,7 @@ def __validate_csv(csv_file):
     else:
         msg = "The selected file isn't a CSV"
     return {"valid": valid, "message": msg, "raw_text": raw_text}
+
 
 def __get_model_fields():
     """
