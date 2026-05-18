@@ -739,7 +739,7 @@ def create_entra_id_user(
     password = ""
     password_valid = False
 
-    while password_valid is False:
+    while not password_valid:
         # Generate a randow string with sufficient complexity to meet our requirements.
         # We may need to tweak this method over time.
         password = generate_password()
@@ -782,7 +782,7 @@ def create_entra_id_user(
         resp.raise_for_status()
         resp_json = resp.json()
         guid = resp_json["id"]
-    except:
+    except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
         log = f"Create new Entra ID user failed at account creation step for {email}, most likely duplicate email account exists ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
@@ -821,7 +821,7 @@ def create_entra_id_user(
     resp = requests.patch(url, headers=headers, json=data)
     try:
         resp.raise_for_status()
-    except:
+    except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
         log = f"Create new Entra ID user failed at account update step for {email}, ask administrator to investigate ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
@@ -849,13 +849,13 @@ def create_entra_id_user(
     resp = requests.put(manager_url, headers=headers, json=data)
     try:
         resp.raise_for_status()
-    except:
+    except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
         log = f"Create new Entra ID user failed at assign manager update step for {email} (manager {manager})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
         text_content = f"""Ascender record:\n
         {job}\n
-        Request URL: {url}\n
+        Request URL: {manager_url}\n
         Request body:\n
         {data}\n
         Response code: {resp.status_code}\n
@@ -885,7 +885,7 @@ def create_entra_id_user(
         try:
             resp.raise_for_status()
             graph_user = resp.json()
-        except (requests.exceptions.HTTPError, requests.exceptions.RequestException) as exc:
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
             LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
 
         timestamp = datetime.now()
@@ -919,7 +919,11 @@ def create_entra_id_user(
         return
 
     # Assign the required license type via the Graph API.
+    # Retry several times, applying an exponential backoff between retries, up to a sane limit.
+    user_has_license = False
     url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
+    timestamp = datetime.now()
+    retry_delay = 1  # Delay in seconds between retries to MS Graph API.
     if licence_type == "On-premise":
         data = {
             "addLicenses": [
@@ -950,21 +954,34 @@ def create_entra_id_user(
             "removeLicenses": [],
         }
 
-    resp = requests.post(url, headers=headers, json=data)
-    try:
-        resp.raise_for_status()
-    except:
+    while retry_delay < 300:
+        resp = requests.post(url, headers=headers, json=data)
+        try:
+            resp.raise_for_status()
+            user_has_license = True
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
+            LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
+
+        timestamp = datetime.now()
+
+        # Our Graph API call returned a successful response
+        if user_has_license:
+            break
+        else:
+            LOGGER.info(f"User {guid} usageLocation not set; retrying in {retry_delay} seconds")
+            sleep(retry_delay)
+            retry_delay = retry_delay * 2
+
+    if not user_has_license:
+        # Abort the remaining workflow with an alert notification to admins.
         log = f"Create new Entra ID user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
-        AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
-        LOGGER.exception(log)
+        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
+        LOGGER.warning(log)
         text_content = f"""Ascender record:\n
         {job}\n
-        Request URL: {url}\n
-        Request body:\n
-        {data}\n
-        Response code: {resp.status_code}\n
-        Response content:\n
-        {resp.content}\n"""
+        Microsoft Graph API endpoint: {url}\n
+        Retry delay: {retry_delay}\n
+        Query timestamp: {timestamp.isoformat()}"""
         msg = EmailMultiAlternatives(
             subject=log,
             body=text_content,
@@ -972,17 +989,18 @@ def create_entra_id_user(
             to=settings.ADMIN_EMAILS,
         )
         msg.send(fail_silently=True)
+
         # Clean up the partially-provisioned account so it does not remain as an orphaned Entra ID user.
+        delete_url = f"https://graph.microsoft.com/v1.0/users/{guid}"
+        delete_resp = requests.delete(delete_url, headers=headers)
         try:
-            delete_url = f"https://graph.microsoft.com/v1.0/users/{guid}"
-            delete_resp = requests.delete(delete_url, headers=headers)
             delete_resp.raise_for_status()
             cleanup_log = (
                 f"Create new Entra ID user cleanup due to license assign failure: deleted orphaned Entra ID account {guid} ({email})"
             )
             AscenderActionLog.objects.create(level="INFO", log=cleanup_log, ascender_data=job)
             LOGGER.info(cleanup_log)
-        except:
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
             cleanup_log = f"Create new Entra ID user cleanup due to license assign failure: failed to delete orphaned Entra ID account {guid} ({email}), manual deletion required"
             AscenderActionLog.objects.create(level="WARNING", log=cleanup_log, ascender_data=job)
             LOGGER.exception(cleanup_log)
@@ -1077,15 +1095,19 @@ def department_user_create(
         position_no=position_no,
     )
     # Create an admin log entry for initial creation of the new user.
-    user = User.objects.order_by("pk").first()  # Admin user
-    LogEntry.objects.log_action(
-        user_id=user.pk,
-        content_type_id=ContentType.objects.get_for_model(DepartmentUser).pk,
-        object_id=new_user.pk,
-        object_repr=str(new_user),
-        action_flag=ADDITION,
-        change_message="System-generated initial version created",
-    )
+    try:
+        user = User.objects.order_by("pk").first()  # Admin user
+        LogEntry.objects.log_action(
+            user_id=user.pk,
+            content_type_id=ContentType.objects.get_for_model(DepartmentUser).pk,
+            object_id=new_user.pk,
+            object_repr=str(new_user),
+            action_flag=ADDITION,
+            change_message="System-generated initial version created",
+        )
+    except Exception:
+        # Handle the possibility of not have an admin user object.
+        pass
 
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     log = f"Created new department user {new_user} ({ascender_record})"
