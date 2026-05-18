@@ -90,7 +90,7 @@ class ITSystemRecordTestCase(TestCase):
         changes = record.compare(new_record)
         self.assertIs(len(changes), 0)
 
-    @override_settings(IT_SYSTEMS_REGISTER_EMAIL="invalid_email_address")
+    @override_settings(IT_SYSTEMS_REGISTER_EMAIL="invalid_email") # prevents sending emails during tests
     def test_null_on_delete(self):
         """
         Tests the ITSystemRecord SET_NULL_AND_NOTIFY delete function sets contact fields to null upon the fk objects deletion.
