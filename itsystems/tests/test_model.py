@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from mixer.backend.django import mixer
 from uuid import uuid1
 
@@ -89,6 +89,18 @@ class ITSystemRecordTestCase(TestCase):
         new_record.set_from_dict(record_dict, plain_text=True)
         changes = record.compare(new_record)
         self.assertIs(len(changes), 0)
+
+    @override_settings(IT_SYSTEMS_REGISTER_EMAIL="invalid_email")  # prevents sending emails during tests
+    def test_null_on_delete(self):
+        """
+        Tests the ITSystemRecord SET_NULL_AND_NOTIFY delete function sets contact fields to null upon the fk objects deletion.
+        Overrides the target email address for notifications so that this doesn't cause an email address to be sent.
+        """
+        pk = self.record.business_service_owner.pk
+        user = DepartmentUser.objects.get(pk=pk)
+        user.delete()
+        updated_record = ITSystemRecord.objects.get(pk=self.record.pk)
+        self.assertEqual(updated_record.business_service_owner, None)
 
 
 # Creates a DepartmentUser object for testing

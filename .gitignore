@@ -6,7 +6,7 @@ venv/
 build_image
 build_image.sh
 env
-.env.*
+.env*
 staticfiles/
 media/
 logs/

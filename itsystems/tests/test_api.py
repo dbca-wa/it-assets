@@ -55,7 +55,7 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
 
         # Tests changing the name of an existing record
         old_name = self.record1.name
-        new_name = old_name[:-1] + "added_string"
+        new_name = old_name[:-5] + "added_string"
 
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"name": new_name}), secure=False, content_type="application/json")
@@ -66,20 +66,19 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.assertEqual(self.record1.name, new_name)
 
         # confirms modified by behaviour
-        self.assertEqual(self.record1.modified_by,self.testuser.email)
-        self.assertNotEqual(self.record1.created_by,self.testuser.email)
+        self.assertEqual(self.record1.modified_by, self.testuser.email)
+        self.assertNotEqual(self.record1.created_by, self.testuser.email)
 
         # confirms that a new version was created
         versions = Version.objects.get_for_object(self.record1)
-        self.assertEqual(len(versions),1)
-        self.assertEqual(versions[0].field_dict["name"],new_name )
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0].field_dict["name"], new_name)
 
         # Tests changing an FK field of an existing record
         old_division = self.record1.division.name
         old_division_id = self.record1.division.id
         new_division = self.record2.division.name
         new_division_id = self.record2.division.id
-
 
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"division": new_division}), secure=False, content_type="application/json")
@@ -91,10 +90,9 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
 
         # confirms that a new version was created
         versions = Version.objects.get_for_object(self.record1)
-        self.assertEqual(len(versions),2)
-        self.assertEqual(versions[0].field_dict["division_id"],new_division_id)
-        self.assertEqual(versions[1].field_dict["division_id"],old_division_id)
-
+        self.assertEqual(len(versions), 2)
+        self.assertEqual(versions[0].field_dict["division_id"], new_division_id)
+        self.assertEqual(versions[1].field_dict["division_id"], old_division_id)
 
         # Tests changing the name of a record that doesn't exist
         old_name = self.record1.name
@@ -164,13 +162,13 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.assertEqual(target2.business_service_owner.email, new_contact)
 
         # confirms modified by behaviour
-        self.assertEqual(target1.modified_by,self.testuser.email)
-        self.assertNotEqual(target1.created_by,self.testuser.email)
+        self.assertEqual(target1.modified_by, self.testuser.email)
+        self.assertNotEqual(target1.created_by, self.testuser.email)
 
         # confirms that a new version was created
         versions = Version.objects.get_for_object(target1)
-        self.assertEqual(len(versions),1)
-        self.assertEqual(versions[0].field_dict["technology_custodian_id"],target2.business_service_owner.id )
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0].field_dict["technology_custodian_id"], target2.business_service_owner.id)
 
         # Tests replacing a user that doesn't exist
         existing_user = target2.business_service_owner.email
