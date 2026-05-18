@@ -19,15 +19,6 @@ class Command(BaseCommand):
             help="(Optional) Flag to send notification emails to ITPnP Mailbox (default behaviour is logging only)",
         )
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "-r",
-            "--return-msg",
-            action="store_true",
-            dest="return_msg",
-            help="(Optional) Flag to return the email message contents (default behaviour is logging only)",
-        )
-
     def handle(self, *args, **options):
         """
         Iterates throughout the IT Systems Register, flagging any user contact that doesn't appear on the addressbook, then sends an email to the ITPnP Mailbox to notify them of this issue.
