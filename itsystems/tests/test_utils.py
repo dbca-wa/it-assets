@@ -49,7 +49,7 @@ class UtilsTestCase(TestCase):
         above_2mb = UtilsTestCase.FauxCSVFile(name="test.csv", is_multiple_chunks=True, raw_text=None)
 
         incorrect_header_fields = ITSystemRecord._meta.get_fields()
-        incorrect_csv_text = (",".join(get_field_names(incorrect_header_fields)) + "\r\n").replace("description","non-existent-field")
+        incorrect_csv_text = (",".join(get_field_names(incorrect_header_fields)) + "\r\n").replace("description", "non-existent-field")
         incorrect_headers = UtilsTestCase.FauxCSVFile(name="test.csv", is_multiple_chunks=False, raw_text=incorrect_csv_text)
 
         correct_header_fields = ITSystemRecord._meta.get_fields()[1:-4]

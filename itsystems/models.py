@@ -3,16 +3,18 @@ from django.db import models
 from organisation.models import DepartmentUser
 from .notifications import send_user_deletion_email
 
+
 def SET_NULL_AND_NOTIFY(collector, field, sub_objs, using):
     """
-    Notifies the register 
+    Notifies the register
     """
     it_system = sub_objs[0]
     field_name = field.name
     field_name_verbose = field.verbose_name
-    value = str(getattr(it_system,field_name))
-    send_user_deletion_email(system_name=it_system,field_name=field_name_verbose, field_value=value)
+    value = str(getattr(it_system, field_name))
+    send_user_deletion_email(system_name=it_system, field_name=field_name_verbose, field_value=value)
     collector.add_field_update(field, None, sub_objs)
+
 
 class Division(models.Model):
     """
@@ -374,7 +376,7 @@ class ITSystemRecord(models.Model):
             "sensitivity": self.sensitivity.name if self.sensitivity else None,
             "system_type": self.system_type.name if self.system_type else None,
         }
-    
+
     def to_array(self):
         return self.to_dict().values()
 
