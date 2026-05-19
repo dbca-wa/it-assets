@@ -2,30 +2,27 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
 
-def send_user_deletion_email(systems, field_name, field_value):
+def send_user_deletion_email(systems, field_value):
     all_systems = ""
     all_systems_html = ""
+
     if len(systems) > 0:
         for system in systems:
-            all_systems += "\n - " + str(system)
-            all_systems_html += "<br> - " + str(system)
+            all_systems += "\n - " + system["system"] + ": " + system["field"]
+            all_systems_html += "<li>" + system["system"] + ": " + system["field"] + "</li>"
 
         text_content = f"""Hi,
 This is an automated email to notify you of the deletion of an IT System Register user contact.
 User: {field_value}
-Field: {field_name}
-Affected Systems: {all_systems}
+Affected Fields: {all_systems}
 
 Regards,
 OIM Service Desk"""
 
         html_content = f"""<p>Hi,</p>
 <p>This is an automated email to notify you of the deletion of an IT System Register user contact.</p>
-<ul>
-<li>User: {field_value}</li>
-<li>Field: {field_name}</li>
-<li>Affected Systems: {all_systems_html}</li>
-</ul>
+<p><ul>User: {field_value}<br>
+Affected Fields:{all_systems_html}</ul></p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
 
@@ -49,7 +46,6 @@ System: {flagged_user["system_name"]}
 Field: {flagged_user["field_name"]}
 User: {flagged_user["user_email"]}
 Status: {flagged_user["user_status"]}
-
 """
         html_content_body += f"""
 <ul>
@@ -58,7 +54,6 @@ Status: {flagged_user["user_status"]}
 <li>User: {flagged_user["user_email"]}</li>
 <li>Status: {flagged_user["user_status"]}</li>
 </ul>
-<br><br>
 """
     text_body = text_content_header + text_content_body + text_content_footer
     html_body = html_content_header + html_content_body + html_content_footer

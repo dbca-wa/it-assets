@@ -26,7 +26,7 @@ class Command(BaseCommand):
         logger = logging.getLogger("it_systems_register")
         logger.info("Contact audit operation started")
 
-        register = ITSystemRecord.objects.all()
+        register = ITSystemRecord.objects.all().exclude(status__name="Decommissioned")
 
         flagged_users = []
         for record in register:
