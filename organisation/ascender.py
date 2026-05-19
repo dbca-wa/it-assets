@@ -968,7 +968,7 @@ def create_entra_id_user(
         if user_has_license:
             break
         else:
-            LOGGER.info(f"User {guid} usageLocation not set; retrying in {retry_delay} seconds")
+            LOGGER.info(f"Licence assignment for user {guid} not yet successful; retrying in {retry_delay} seconds")
             sleep(retry_delay)
             retry_delay = retry_delay * 2
 
