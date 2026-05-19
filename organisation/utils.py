@@ -144,10 +144,10 @@ def ms_graph_get_subscribed_sku(sku_id: str, token: Optional[dict] = None) -> Di
     headers = {"Authorization": f"Bearer {token['access_token']}"}
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
     url = f"https://graph.microsoft.com/v1.0/subscribedSkus/{azure_tenant_id}_{sku_id}"
-    resp = requests.get(url, headers=headers)
     try:
+        resp = requests.get(url, headers=headers)
         resp.raise_for_status()
-    except (requests.exceptions.HTTPError, requests.exceptions.RequestException):
+    except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
         return None
     return resp.json()
 
