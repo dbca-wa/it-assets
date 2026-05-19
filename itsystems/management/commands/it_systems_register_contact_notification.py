@@ -86,10 +86,10 @@ def _process_contact(flagged_users, record, field_name, user, logger):
         user_str = str(user)
         status_str = user.get_account_type_display()
         flagged_users.append({"system_name": system_str, "field_name": field_name, "user_email": user_str, "user_status": status_str})
-        logger.info("User Flagged - {system_str} | {field_name} | {user_str} | {status_str}")
+        logger.info(f"User Flagged - {system_str} | {field_name} | {user_str} | {status_str}")
 
 
 def _process_null(flagged_users, record, field_name, logger):
     system_str = str(record)
     flagged_users.append({"system_name": system_str, "field_name": field_name, "user_email": "EMPTY", "user_status": "EMPTY"})
-    logger.info("User Flagged - {system_str} | {field_name} | EMPTY | EMPTY")
+    logger.info(f"User Flagged - {system_str} | {field_name} | EMPTY | EMPTY")

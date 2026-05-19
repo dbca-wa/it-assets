@@ -42,17 +42,15 @@ def send_daily_audit_email(flagged_users):
     html_content_body = ""
     for flagged_user in flagged_users:
         text_content_body += f"""
-System: {flagged_user["system_name"]}
-Field: {flagged_user["field_name"]}
-User: {flagged_user["user_email"]}
-Status: {flagged_user["user_status"]}
+{flagged_user["system_name"]}
+{flagged_user["field_name"]}: {flagged_user["user_email"]}
+Account status: {flagged_user["user_status"]}
 """
         html_content_body += f"""
 <ul>
-<li>System: {flagged_user["system_name"]}</li>
-<li>Field: {flagged_user["field_name"]}</li>
-<li>User: {flagged_user["user_email"]}</li>
-<li>Status: {flagged_user["user_status"]}</li>
+<li><b>{flagged_user["system_name"]}</b></li>
+<li>{flagged_user["field_name"]}: {flagged_user["user_email"]}</li>
+<li>Account status: {flagged_user["user_status"]}</li>
 </ul>
 """
     text_body = text_content_header + text_content_body + text_content_footer
