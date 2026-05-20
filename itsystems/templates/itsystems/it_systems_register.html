@@ -74,14 +74,24 @@
                                         placeholder="Search name or description"
                                         value="{{ query_string }}">
                             </div>
-                            <div class="d-none d-lg-block col-lg-3"> Viewing {{ object_count }} record(s)</div>
+                            <div class="d-none d-lg-block col-lg-3"> 
+                                {% if drafts_filter %}
+                                    <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()" checked>
+                                    <label for="show_drafts">Show Drafts</label>
+                                {% else %}
+                                    <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()">
+                                    <label for="show_drafts">Show Drafts</label>
+                                {% endif %}
+                            </div>
                         </div>
+                            <div class="d-none d-lg-block"> Viewing {{ object_count }} record(s)</div>
+
                     </form>
                 </div>
-                    <!-- Pagination -->
-                    <div class="col">
-                        <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
-                    </div>
+                <!-- Pagination -->
+                <div class="col">
+                    <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
+                </div>
             </div>
         </div>
         <div style="padding:10px">

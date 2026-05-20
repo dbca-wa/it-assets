@@ -11,16 +11,17 @@ class NotificationsTestCase(TestCase):
         Tests that the sending of deletion emails contains the correct values.
         """
         msg = send_user_deletion_email(
-            systems=["example_system1", "example_system2"], field_name="example_field", field_value="example_value"
+            systems=[{"system": "example_system1", "field": "example_field1"}, {"system": "example_system2", "field": "example_field2"}],
+            field_value="example_user",
         )
         self.assertIn("example_system1", msg.body)
         self.assertIn("example_system2", msg.body)
         self.assertIn("example_field", msg.body)
-        self.assertIn("example_value", msg.body)
+        self.assertIn("example_user", msg.body)
         self.assertIn("invalid_email", msg.to)
-        self.assertIn("example_value", msg.subject)
+        self.assertIn("example_user", msg.subject)
 
-        msg = send_user_deletion_email(systems=[], field_name="example_field", field_value="example_value")
+        msg = send_user_deletion_email(systems=[], field_value="example_user")
         self.assertEqual(msg, None)
 
     @override_settings(IT_SYSTEMS_REGISTER_EMAIL="invalid_email", EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
