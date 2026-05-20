@@ -30,16 +30,18 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["site_acronym"] = "OIM"
         context["page_title"] = "IT Systems Register"
 
-        # Retrieve all choice fields
-        if "show_drafts" in self.request.GET:
-            context["statuses"] = Status.objects.all()
-        else:
-            context["statuses"] = Status.objects.all().exclude(name="Draft")
-        context["divisions"] = Division.objects.all()
-        context["seasonalities"] = Seasonality.objects.all()
-        context["availabilities"] = Availability.objects.all()
-        context["sensitivities"] = Sensitivity.objects.all()
-        context["system_types"] = SystemType.objects.all()
+        # Filter out decommisioned and (if required) drafts
+        excluded = ["Decommissioned"]
+        if not "show_drafts" in self.request.GET:
+            excluded.append("Draft")
+
+        # retrieve choice fields
+        context["statuses"] = Status.objects.all().exclude(name__in=excluded).order_by("name")
+        context["divisions"] = Division.objects.all().order_by("name")
+        context["seasonalities"] = Seasonality.objects.all().order_by("name")
+        context["availabilities"] = Availability.objects.all().order_by("name")
+        context["sensitivities"] = Sensitivity.objects.all().order_by("name")
+        context["system_types"] = SystemType.objects.all().order_by("name")
         context["business_service_owners"] = get_unique_users("business_service_owner")
         context["system_owners"] = get_unique_users("system_owner")
         context["technology_custodians"] = get_unique_users("technology_custodian")
@@ -81,9 +83,13 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = ITSystemRecord.objects.all()
 
+        # Filter out decommisioned and (if required) drafts
+        excluded = ["Decommissioned"]
+        if not "show_drafts" in self.request.GET:
+            excluded.append("Draft")
+
         # Filters queryset by chosen search values and filter values
-        if not self.request.GET.get("show_drafts"):
-            queryset = queryset.exclude(status__name="Draft")
+        queryset = queryset.exclude(status__name__in=excluded)
         if self.request.GET.get("status"):
             queryset = queryset.filter(status__id=self.request.GET["status"])
         if self.request.GET.get("division"):
