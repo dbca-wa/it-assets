@@ -31,7 +31,10 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["page_title"] = "IT Systems Register"
 
         # Retrieve all choice fields
-        context["statuses"] = Status.objects.all()
+        if "show_drafts" in self.request.GET:
+            context["statuses"] = Status.objects.all()
+        else:
+            context["statuses"] = Status.objects.all().exclude(name="Draft")
         context["divisions"] = Division.objects.all()
         context["seasonalities"] = Seasonality.objects.all()
         context["availabilities"] = Availability.objects.all()
@@ -45,6 +48,8 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         # Pass in any search & filtering data
         if "q" in self.request.GET:
             context["query_string"] = self.request.GET["q"]
+        if "show_drafts" in self.request.GET:
+            context["drafts_filter"] = self.request.GET["show_drafts"]
         if "status" in self.request.GET:
             context["status_filter"] = retrieve(Status, self.request.GET["status"])
         if "division" in self.request.GET:
@@ -77,6 +82,8 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         queryset = ITSystemRecord.objects.all()
 
         # Filters queryset by chosen search values and filter values
+        if not self.request.GET.get("show_drafts"):
+            queryset = queryset.exclude(status__name="Draft")
         if self.request.GET.get("status"):
             queryset = queryset.filter(status__id=self.request.GET["status"])
         if self.request.GET.get("division"):
