@@ -777,8 +777,8 @@ def create_entra_id_user(
             "password": password,
         },
     }
-    resp = requests.post(url, headers=headers, json=data)
     try:
+        resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
         resp_json = resp.json()
         guid = resp_json["id"]
@@ -955,8 +955,8 @@ def create_entra_id_user(
         }
 
     while retry_delay < 300:
-        resp = requests.post(url, headers=headers, json=data)
         try:
+            resp = requests.post(url, headers=headers, json=data)
             resp.raise_for_status()
             user_has_license = True
         except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
@@ -981,7 +981,10 @@ def create_entra_id_user(
         {job}\n
         Microsoft Graph API endpoint: {url}\n
         Retry delay: {retry_delay}\n
-        Query timestamp: {timestamp.isoformat()}"""
+        Query timestamp: {timestamp.isoformat()}\n
+        Request body: {data}\n
+        Response code: {resp.status_code}\n
+        Response content: {resp.content}"""
         msg = EmailMultiAlternatives(
             subject=log,
             body=text_content,
@@ -992,8 +995,8 @@ def create_entra_id_user(
 
         # Clean up the partially-provisioned account so it does not remain as an orphaned Entra ID user.
         delete_url = f"https://graph.microsoft.com/v1.0/users/{guid}"
-        delete_resp = requests.delete(delete_url, headers=headers)
         try:
+            delete_resp = requests.delete(delete_url, headers=headers)
             delete_resp.raise_for_status()
             cleanup_log = (
                 f"Create new Entra ID user cleanup due to license assign failure: deleted orphaned Entra ID account {guid} ({email})"
@@ -1094,9 +1097,15 @@ def department_user_create(
         ascender_data_updated=timezone.localtime(),
         position_no=position_no,
     )
+
     # Create an admin log entry for initial creation of the new user.
     try:
         user = User.objects.order_by("pk").first()  # Admin user
+    except Exception:
+        # Handle the edge case of not having an admin user object available.
+        user = None
+
+    if user:
         LogEntry.objects.log_action(
             user_id=user.pk,
             content_type_id=ContentType.objects.get_for_model(DepartmentUser).pk,
@@ -1105,9 +1114,6 @@ def department_user_create(
             action_flag=ADDITION,
             change_message="System-generated initial version created",
         )
-    except Exception:
-        # Handle the possibility of not have an admin user object.
-        pass
 
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     log = f"Created new department user {new_user} ({ascender_record})"
