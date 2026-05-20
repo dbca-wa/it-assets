@@ -2,6 +2,7 @@ from django.urls import reverse
 
 from itassets.test_api import ApiTestCase
 from .test_model import create_random_record
+from itsystems.models import Status
 
 
 class ViewsTestCase(ApiTestCase):
@@ -83,3 +84,20 @@ class ViewsTestCase(ApiTestCase):
         self.assertContains(resp, "No results found")
         self.assertNotContains(resp, record1.system_id)
         self.assertNotContains(resp, record2.system_id)
+
+        # Tests draft filtering
+        draft_status = Status(name="Draft")
+        draft_status.save()
+        record1.status = draft_status
+        record1.save()
+        url = reverse("it_systems_register") + "?show_drafts=True"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, record1.system_id)
+        self.assertContains(resp, record2.system_id)
+
+        url = reverse("it_systems_register")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, record1.system_id)
+        self.assertContains(resp, record2.system_id)
