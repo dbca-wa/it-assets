@@ -2,6 +2,7 @@ from django.db import models
 
 from organisation.models import DepartmentUser
 
+
 class Division(models.Model):
     """
     Represents a division within DBCA.
@@ -291,7 +292,6 @@ class ITSystemRecord(models.Model):
             self.ubcs = None
 
         super(ITSystemRecord, self).save(*args, **kwargs)
-
 
     def set_from_dict(self, dict, plain_text=True, force=False):
         """

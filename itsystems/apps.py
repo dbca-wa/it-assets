@@ -7,4 +7,4 @@ class ItsystemsConfig(AppConfig):
     verbose_name = "IT Systems Register"
 
     def ready(self):
-        from . import signals
+        from . import signals  # noqa: F401

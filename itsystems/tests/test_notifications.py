@@ -11,7 +11,8 @@ class NotificationsTestCase(TestCase):
         Tests that the sending of deletion emails contains the correct values.
         """
         msg = send_user_deletion_email(
-            systems=[{"system": "example_system1","field":"example_field1"}, {"system": "example_system2","field":"example_field2"}], field_value="example_user"
+            systems=[{"system": "example_system1", "field": "example_field1"}, {"system": "example_system2", "field": "example_field2"}],
+            field_value="example_user",
         )
         self.assertIn("example_system1", msg.body)
         self.assertIn("example_system2", msg.body)
