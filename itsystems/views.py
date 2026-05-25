@@ -10,6 +10,8 @@ from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 from django.core.exceptions import ObjectDoesNotExist
+from django.views.decorators.csrf import csrf_exempt
+
 
 from itassets.utils import get_next_pages, get_previous_pages
 
@@ -167,7 +169,10 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
             response = render(request, "admin/itsystems/itsystemrecord/upload_csv.html", context=results["validation"])
         return response
 
-
+# The below view is CSRF exempt as it's intended to be used by Freshservice without state.
+# The only possible malicious security implications is making edits of the register, which can all be rolled back with django-reversions.
+# Improvements to this are still being investigated.
+@method_decorator(csrf_exempt, name='dispatch')
 class ITSystemRecordAPIResource(View):
     """An API view that returns JSON of the IT System Register"""
 
