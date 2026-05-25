@@ -10,6 +10,16 @@ IT Assets is a Django 5.2 web application built for the Department of Biodiversi
 
 The primary audience is the Office of Information Management (OIM) / Service Desk team, who use the Django admin and a suite of management commands to manage accounts and licences. An address book and REST API (`/api/v3/`) are also consumed by other DBCA services.
 
+## Python environment
+
+Always activate the local virtualenv before running any Python or Django commands:
+
+```sh
+source .venv/bin/activate
+```
+
+All `python`, `manage.py`, `ruff`, and `coverage` commands should be run inside this activated environment.
+
 ## Build, test, and lint commands
 
 ```sh
@@ -24,8 +34,8 @@ coverage run manage.py test --keepdb
 coverage report -m
 
 # Run a single test module or class
-python manage.py test organisation.tests.test_api
-python manage.py test organisation.tests.test_api.DepartmentUserAPIResourceTestCase
+python manage.py test organisation.tests.test_api --keepdb
+python manage.py test organisation.tests.test_api.DepartmentUserAPIResourceTestCase --keepdb
 
 # Lint with ruff
 ruff check .
