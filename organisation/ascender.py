@@ -9,7 +9,6 @@ import requests
 from django.conf import settings
 from django.contrib.admin.models import ADDITION, LogEntry
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from psycopg import Connection, connect, sql
@@ -1128,13 +1127,12 @@ def department_user_create(
         user = None
 
     if user:
-        LogEntry.objects.log_action(
+        LogEntry.objects.log_actions(
             user_id=user.pk,
-            content_type_id=ContentType.objects.get_for_model(DepartmentUser).pk,
-            object_id=new_user.pk,
-            object_repr=str(new_user),
+            queryset=DepartmentUser.objects.filter(pk=new_user.pk),
             action_flag=ADDITION,
             change_message="System-generated initial version created",
+            single_object=True,
         )
 
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
