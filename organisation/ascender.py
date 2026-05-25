@@ -587,6 +587,273 @@ def sanitise_name_values(first_name: str = "", second_name: str = "", surname: s
     return first_name, second_name, surname, preferred_name
 
 
+def _log_and_abort(message: str, job: dict, level: str = "WARNING") -> None:
+    """Record an abort message to both the AscenderActionLog and the Python logger.
+
+    Used as a shared helper for the early-exit paths in create_entra_id_user that need
+    both a persistent database audit record and a log line before returning None.
+    The `level` parameter controls both the AscenderActionLog level field and the
+    logger method called (e.g. "WARNING" → LOGGER.warning).
+    """
+    AscenderActionLog.objects.create(level=level, log=message, ascender_data=job)
+    getattr(LOGGER, level.lower())(message)
+
+
+def _send_admin_failure_email(subject: str, body: str) -> None:
+    """Send a failure notification email to the configured admin addresses.
+
+    Used to alert OIM admins when a step in the Entra ID account creation pipeline fails
+    in a way that may require manual investigation or remediation (e.g. a partially
+    provisioned account left in the directory, or a licence assignment that timed out).
+    """
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=body,
+        from_email=settings.NOREPLY_EMAIL,
+        to=settings.ADMIN_EMAILS,
+    )
+    msg.send(fail_silently=True)
+
+
+def _resolve_names(job: dict) -> tuple[str, str, str, str]:
+    """Extract and sanitise name fields from an Ascender job dict for email generation.
+
+    Reads first_name, second_name, surname, and preferred_name from the job dict,
+    treating missing/None values as empty strings, then passes them through
+    sanitise_name_values() to strip non-alphabetic characters (except hyphens).
+
+    Returns a (first_name, second_name, surname, preferred_name) tuple ready for
+    use in generate_valid_dbca_email().
+    """
+    first_name = job["first_name"] or ""
+    second_name = job["second_name"] or ""
+    surname = job["surname"] or ""
+    preferred_name = job["preferred_name"] or ""
+    return sanitise_name_values(first_name, second_name, surname, preferred_name)
+
+
+def _check_licence_availability(licence_type_code: str, token: dict, ascender_record: str) -> str | None:
+    """Check Microsoft 365 licence availability for the given Ascender licence type code.
+
+    Queries the MS Graph subscribedSku endpoint to verify that at least one licence
+    of each required SKU remains available for assignment. Returns the human-readable
+    licence type string ("On-premise" or "Cloud") if all required licences are available,
+    or None if the check fails or no licences remain.
+
+    Licence availability is calculated as prepaidUnits (enabled + warning) minus
+    consumedUnits. Only "enabled" and "warning" prepaid units can be assigned to new
+    users; suspended or locked-out units are excluded from the available count.
+
+    ONPUL maps to "On-premise" and requires: Microsoft 365 E5.
+    CLDUL maps to "Cloud" and requires: Microsoft 365 F3, Exchange Online (Plan 2),
+    and Microsoft 365 F5 Security + Compliance Add-on.
+
+    References:
+    - https://learn.microsoft.com/en-us/graph/api/resources/subscribedsku?view=graph-rest-1.0
+    - https://learn.microsoft.com/en-us/graph/api/resources/licenseunitsdetail?view=graph-rest-1.0
+    - https://github.com/microsoftgraph/microsoft-graph-docs-contrib/issues/2337
+    """
+    if licence_type_code == "ONPUL":
+        e5_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
+        if not e5_sku:
+            LOGGER.warning(f"Graph API E5 SKU query returned no data ({ascender_record})")
+            return None
+        e5_assignable = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["warning"]
+        if e5_assignable - e5_sku["consumedUnits"] <= 0:
+            LOGGER.warning(f"Creation of new Entra ID account aborted, no E5 licences available ({ascender_record})")
+            return None
+        return "On-premise"
+
+    elif licence_type_code == "CLDUL":
+        f3_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
+        if not f3_sku:
+            LOGGER.warning(f"Graph API F3 SKU query returned no data ({ascender_record})")
+            return None
+        f3_assignable = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["warning"]
+        if f3_assignable - f3_sku["consumedUnits"] <= 0:
+            LOGGER.warning(f"Creation of new Entra ID account aborted, no Cloud F3 licences available ({ascender_record})")
+            return None
+
+        eo_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
+        if not eo_sku:
+            LOGGER.warning(f"Graph API Exchange Online (Plan 2) SKU query returned no data ({ascender_record})")
+            return None
+        eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
+        if eo_assignable - eo_sku["consumedUnits"] <= 0:
+            LOGGER.warning(f"Creation of new Entra ID account aborted, no Cloud Exchange Online licences available ({ascender_record})")
+            return None
+
+        sec_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
+        if not sec_sku:
+            LOGGER.warning(f"Graph API F5 Security Addon SKU query returned no data ({ascender_record})")
+            return None
+        sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
+        if sec_assignable - sec_sku["consumedUnits"] <= 0:
+            LOGGER.warning(
+                f"Creation of new Entra ID account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
+            )
+            return None
+        return "Cloud"
+
+    else:
+        LOGGER.warning(f"Creation of new Entra ID account aborted, invalid license type ({ascender_record})")
+        return None
+
+
+def _build_licence_payload(licence_type: str) -> dict:
+    """Build the MS Graph assignLicense request payload for the given licence type string.
+
+    Returns a dict suitable for POSTing to the Graph API /users/{id}/assignLicense endpoint.
+
+    For "On-premise" (ONPUL): assigns Microsoft 365 E5 with no disabled plans.
+    For "Cloud" (CLDUL): assigns Microsoft 365 F3 (Exchange Online Kiosk disabled),
+    Exchange Online Plan 2, and the F5 Security + Compliance Add-on
+    (Exchange Online Archiving disabled).
+    """
+    if licence_type == "On-premise":
+        return {
+            "addLicenses": [
+                {"skuId": MS_PRODUCTS["MICROSOFT 365 E5"], "disabledPlans": []},
+            ],
+            "removeLicenses": [],
+        }
+    else:  # "Cloud"
+        return {
+            "addLicenses": [
+                {
+                    "skuId": MS_PRODUCTS["MICROSOFT 365 F3"],
+                    "disabledPlans": [MS_PRODUCTS["EXCHANGE ONLINE KIOSK"]],
+                },
+                {
+                    "skuId": MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"],
+                    "disabledPlans": [],
+                },
+                {
+                    "skuId": MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"],
+                    "disabledPlans": [MS_PRODUCTS["EXCHANGE ONLINE ARCHIVING"]],
+                },
+            ],
+            "removeLicenses": [],
+        }
+
+
+def _wait_for_usage_location(guid: str, headers: dict, job: dict, email: str) -> bool:
+    """Poll MS Graph until the user's usageLocation field is confirmed set to 'AU'.
+
+    Entra ID can take time to propagate newly-created user attributes, and the
+    assignLicense call will fail if usageLocation is absent. This function retries
+    with exponential backoff (starting at 1 s, doubling each attempt, up to a 300 s cap).
+
+    On success returns True. On timeout: logs a warning, creates an AscenderActionLog
+    entry, and emails admins before returning False.
+    """
+    user_has_usage_location = False
+    graph_user = None
+    timestamp = datetime.now()
+    retry_delay = 1
+    url = f"https://graph.microsoft.com/v1.0/users/{guid}"
+    params = {"$select": "id,usageLocation"}
+
+    while retry_delay < 300:
+        resp = requests.get(url, headers=headers, params=params)
+        try:
+            resp.raise_for_status()
+            graph_user = resp.json()
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
+            LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
+
+        timestamp = datetime.now()
+
+        if graph_user and graph_user.get("usageLocation") == "AU":
+            user_has_usage_location = True
+            break
+        else:
+            LOGGER.info(f"User {guid} usageLocation not set; retrying in {retry_delay} seconds")
+            sleep(retry_delay)
+            retry_delay = retry_delay * 2
+
+    if not user_has_usage_location:
+        log = f"Create new Entra ID user failed at assign license step for {email}, usageLocation field value not set"
+        _log_and_abort(log, job)
+        _send_admin_failure_email(
+            log,
+            f"Ascender record:\n{job}\nMicrosoft Graph API endpoint: {url}\nRetry delay: {retry_delay}\nQuery timestamp: {timestamp.isoformat()}",
+        )
+
+    return user_has_usage_location
+
+
+def _assign_licence_with_retry(
+    guid: str,
+    headers: dict,
+    licence_payload: dict,
+    job: dict,
+    email: str,
+    ascender_record: str,
+) -> bool:
+    """Assign M365 licences to a newly-created Entra ID user, retrying with exponential backoff.
+
+    Newly-created accounts can take time to become fully ready for licence assignment, so
+    this function retries the assignLicense Graph API call starting at 1 s, doubling each
+    attempt, up to a 300 s cap.
+
+    On permanent failure: logs a warning, creates an AscenderActionLog entry, emails admins,
+    and attempts to DELETE the orphaned Entra ID account to avoid leaving a half-provisioned
+    user in the directory. The cleanup result is itself logged regardless of outcome.
+
+    Returns True on successful licence assignment, False on failure.
+    """
+    user_has_license = False
+    url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
+    timestamp = datetime.now()
+    retry_delay = 1
+    resp = None
+
+    while retry_delay < 300:
+        try:
+            resp = requests.post(url, headers=headers, json=licence_payload)
+            resp.raise_for_status()
+            user_has_license = True
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
+            LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
+
+        timestamp = datetime.now()
+
+        if user_has_license:
+            break
+        else:
+            LOGGER.info(f"Licence assignment for user {guid} not yet successful; retrying in {retry_delay} seconds")
+            sleep(retry_delay)
+            retry_delay = retry_delay * 2
+
+    if not user_has_license:
+        log = f"Create new Entra ID user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
+        _log_and_abort(log, job)
+        resp_code = resp.status_code if resp is not None else "N/A"
+        resp_content = resp.content if resp is not None else "N/A"
+        _send_admin_failure_email(
+            log,
+            f"Ascender record:\n{job}\nMicrosoft Graph API endpoint: {url}\nRetry delay: {retry_delay}\nQuery timestamp: {timestamp.isoformat()}\nRequest body: {licence_payload}\nResponse code: {resp_code}\nResponse content: {resp_content}",
+        )
+
+        # Delete the partially-provisioned account to avoid an orphaned Entra ID user.
+        delete_url = f"https://graph.microsoft.com/v1.0/users/{guid}"
+        try:
+            delete_resp = requests.delete(delete_url, headers=headers)
+            delete_resp.raise_for_status()
+            cleanup_log = (
+                f"Create new Entra ID user cleanup due to license assign failure: deleted orphaned Entra ID account {guid} ({email})"
+            )
+            AscenderActionLog.objects.create(level="INFO", log=cleanup_log, ascender_data=job)
+            LOGGER.info(cleanup_log)
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
+            cleanup_log = f"Create new Entra ID user cleanup due to license assign failure: failed to delete orphaned Entra ID account {guid} ({email}), manual deletion required"
+            AscenderActionLog.objects.create(level="WARNING", log=cleanup_log, ascender_data=job)
+            LOGGER.exception(cleanup_log)
+
+    return user_has_license
+
+
 def create_entra_id_user(
     job: dict,
     cc: CostCentre,
@@ -596,175 +863,90 @@ def create_entra_id_user(
     token: Optional[dict] = None,
     position_no: Optional[str] = None,
 ) -> DepartmentUser | None:
-    """Function to create a new Entra ID user accounts based on passed-in user info.
-    Returns the associated DepartmentUser object, or None.
+    """Create a new Entra ID user account based on supplied Ascender job data.
 
-    This function is safe to run if settings.ASCENDER_CREATE_AZURE_AD == False or settings.DEBUG == True.
+    Validates names, generates a DBCA email address, checks M365 licence availability,
+    generates a compliant password, then (when not in dry-run mode) creates and configures
+    the Entra ID account via the MS Graph API. Also creates the corresponding DepartmentUser
+    record and emails the manager the provisioning checklist.
+
+    Returns the new DepartmentUser on success, or None if any validation or API step fails.
+
+    Safe to call with settings.ASCENDER_CREATE_AZURE_AD == False or settings.DEBUG == True;
+    in either case all validation runs but the function returns None before making any
+    mutating Graph API calls.
     """
     if not token:
         token = ms_graph_client_token()
 
-    # Short-circuit: only generate a new user account where the assigned manager already has one.
+    # Only create an account when the assigned manager already has one; the manager link
+    # is required and must be set before the new account is enabled.
     if not manager.azure_guid:
         LOGGER.warning(f"Creation of new Entra ID account aborted, manager does not have Entra ID account ({manager})")
-        return
+        return None
 
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     job_end_date = None
     if job["job_end_date"] and datetime.strptime(job["job_end_date"], "%Y-%m-%d").date() != DATE_MAX:
         job_end_date = datetime.strptime(job["job_end_date"], "%Y-%m-%d").date()
 
-    # Take the all supplied name values and ensure that they are suitable for generating an email address.
-    if job["first_name"]:
-        first_name = job["first_name"]
-    else:
-        first_name = ""
-    if job["preferred_name"]:
-        preferred_name = job["preferred_name"]
-    else:
-        preferred_name = ""
-    if job["surname"]:
-        surname = job["surname"]
-    else:
-        surname = ""
-    if job["second_name"]:
-        second_name = job["second_name"]
-    else:
-        second_name = ""
-    first_name, second_name, surname, preferred_name = sanitise_name_values(first_name, second_name, surname, preferred_name)
+    # --- Name validation and email generation ---
+    # Surname is required, plus one of preferred_name or first_name.
+    first_name, second_name, surname, preferred_name = _resolve_names(job)
 
-    # Rule: we require values for surname plus first_name and/or preferred_name.
     if not surname:
-        log = f"Creation of new Entra ID account aborted, surname absent ({ascender_record})"
-        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
-        LOGGER.warning(log)
-        return
+        _log_and_abort(f"Creation of new Entra ID account aborted, surname absent ({ascender_record})", job)
+        return None
     if not preferred_name and not first_name:
-        log = f"Creation of new Entra ID account aborted, first and preferred name both absent ({ascender_record})"
-        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
-        LOGGER.warning(log)
-        return
+        _log_and_abort(f"Creation of new Entra ID account aborted, first and preferred name both absent ({ascender_record})", job)
+        return None
 
-    # New email address generation.
     email, mail_nickname = generate_valid_dbca_email(surname, preferred_name, first_name, second_name)
-
     if not email:
-        # We can't generate a unique email with the supplied information; abort.
-        log = f"Creation of new Entra ID account aborted at email step, unable to generate unique email ({ascender_record})"
-        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
-        LOGGER.warning(log)
-        return
+        _log_and_abort(f"Creation of new Entra ID account aborted at email step, unable to generate unique email ({ascender_record})", job)
+        return None
 
-    # Display name generation. Set names to title case and strip trailing space.
+    # --- Display name and job title ---
+    # Set names to title case and strip trailing whitespace.
     if job["preferred_name"] and job["surname"]:
         display_name = f"{job['preferred_name'].title().strip()} {job['surname'].title().strip()}"
     elif job["first_name"] and job["surname"]:
         display_name = f"{job['first_name'].title().strip()} {job['surname'].title().strip()}"
-    else:  # No preferred/first name recorded.
-        log = f"Creation of new Entra ID account aborted, first/preferred name absent ({ascender_record})"
-        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
-        LOGGER.warning(log)
-        return
+    else:
+        _log_and_abort(f"Creation of new Entra ID account aborted, first/preferred name absent ({ascender_record})", job)
+        return None
     title = title_except(job["occup_pos_title"])
 
-    # M365 license availability is obtained from the subscribedSku resource type.
-    # Total license number is returned in the prepaidUnits object (enabled + warning + suspended + lockedOut).
-    # License consumption is returned in the value for consumedUnits, but this includes suspended
-    # and locked-out licenses.
-    # License availabilty (to assign to a user) is not especially intuitive; only licenses having
-    # status `enabled` or `warning` are available to be assigned. Therefore if the value of consumedUnits
-    # is greater than the value of prepaidUnits (enabled + warning), no licenses are currently
-    # available to be assigned.
-    # References:
-    # - https://learn.microsoft.com/en-us/graph/api/resources/subscribedsku?view=graph-rest-1.0
-    # - https://learn.microsoft.com/en-us/graph/api/resources/licenseunitsdetail?view=graph-rest-1.0
-    # - https://github.com/microsoftgraph/microsoft-graph-docs-contrib/issues/2337
+    # --- M365 licence availability check ---
+    licence_type = _check_licence_availability(job["licence_type"], token, ascender_record)
+    if not licence_type:
+        return None
 
-    if job["licence_type"] == "ONPUL":
-        licence_type = "On-premise"
-
-        e5_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 E5"], token)
-        if not e5_sku:
-            LOGGER.warning(f"Graph API E5 SKU query returned no data ({ascender_record})")
-            return
-        e5_consumed = e5_sku["consumedUnits"]
-        e5_assignable = e5_sku["prepaidUnits"]["enabled"] + e5_sku["prepaidUnits"]["warning"]
-
-        if e5_assignable - e5_consumed <= 0:
-            LOGGER.warning(f"Creation of new Entra ID account aborted, no E5 licences available ({ascender_record})")
-            return
-
-    elif job["licence_type"] == "CLDUL":
-        licence_type = "Cloud"
-
-        f3_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F3"], token)
-        if not f3_sku:
-            LOGGER.warning(f"Graph API F3 SKU query returned no data ({ascender_record})")
-            return
-        f3_consumed = f3_sku["consumedUnits"]
-        f3_assignable = f3_sku["prepaidUnits"]["enabled"] + f3_sku["prepaidUnits"]["warning"]
-        if f3_assignable - f3_consumed <= 0:
-            LOGGER.warning(f"Creation of new Entra ID account aborted, no Cloud F3 licences available ({ascender_record})")
-            return
-
-        eo_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"], token)
-        if not eo_sku:
-            LOGGER.warning(f"Graph API Exchange Online (Plan 2) SKU query returned no data ({ascender_record})")
-            return
-        eo_consumed = eo_sku["consumedUnits"]
-        eo_assignable = eo_sku["prepaidUnits"]["enabled"] + eo_sku["prepaidUnits"]["warning"]
-        if eo_assignable - eo_consumed <= 0:
-            LOGGER.warning(f"Creation of new Entra ID account aborted, no Cloud Exchange Online licences available ({ascender_record})")
-            return
-
-        sec_sku = ms_graph_get_subscribed_sku(MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"], token)
-        if not sec_sku:
-            LOGGER.warning(f"Graph API F5 Security Addon SKU query returned no data ({ascender_record})")
-            return
-        sec_consumed = sec_sku["consumedUnits"]
-        sec_assignable = sec_sku["prepaidUnits"]["enabled"] + sec_sku["prepaidUnits"]["warning"]
-        if sec_assignable - sec_consumed <= 0:
-            LOGGER.warning(
-                f"Creation of new Entra ID account aborted, no Cloud Security & Compliance for FLW licences available ({ascender_record})"
-            )
-            return
-    else:
-        LOGGER.warning(f"Creation of new Entra ID account aborted, invalid license type ({ascender_record})")
-        return
-
-    LOGGER.info(f"Creating new Entra ID account: {display_name}, {email}, {licence_type} account")
-
-    # Generate an account password and validate its complexity.
+    # --- Password generation ---
+    # Generate a random password and retry until it satisfies MS Graph complexity rules.
     # Reference: https://docs.python.org/3/library/secrets.html#secrets.token_urlsafe
-    password = ""
-    password_valid = False
-
-    while not password_valid:
-        # Generate a randow string with sufficient complexity to meet our requirements.
-        # We may need to tweak this method over time.
+    password = generate_password()
+    while not ms_graph_validate_password(password):
+        LOGGER.info("Generated password did not meet complexity requirements, retrying")
         password = generate_password()
-        # Validate the generated password, and keep doing so until we get one that validates.
-        password_valid = ms_graph_validate_password(password)
-        if not password_valid:
-            LOGGER.info("Generated password did not meet complexity requirements, retrying")
 
-    # Configuration setting to explicitly allow creation of new AD users.
+    # --- Dry-run short-circuits ---
+    # Honour these settings before making any mutating Graph API calls.
     if not settings.ASCENDER_CREATE_AZURE_AD:
         LOGGER.info(f"Skipping creation of new Entra ID account: {ascender_record} (ASCENDER_CREATE_AZURE_AD == False)")
-        return
-
-    # Final short-circuit: skip creation of new AD accounts while in Debug mode (mainly to avoid blunders during dev/testing).
-    # After this point, we begin making changes to Entra ID.
+        return None
     if settings.DEBUG:
         LOGGER.info(f"Skipping creation of new Entra ID account for emp ID {ascender_record} (DEBUG)")
-        return
+        return None
+
+    LOGGER.info(f"Creating new Entra ID account: {display_name}, {email}, {licence_type} account")
 
     headers = {
         "Authorization": "Bearer {}".format(token["access_token"]),
         "Content-Type": "application/json",
     }
 
-    # Initially create the bare-minimum Entra ID user with the MS Graph API.
+    # --- Step 1: Create the bare-minimum Entra ID user ---
     url = "https://graph.microsoft.com/v1.0/users"
     data = {
         "accountEnabled": False,
@@ -777,34 +959,25 @@ def create_entra_id_user(
             "password": password,
         },
     }
+    resp = None
     try:
         resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
-        resp_json = resp.json()
-        guid = resp_json["id"]
+        guid = resp.json()["id"]
     except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
         log = f"Create new Entra ID user failed at account creation step for {email}, most likely duplicate email account exists ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
-        text_content = f"""Ascender record:\n
-        {job}\n
-        Request URL: {url}\n
-        Request body:\n
-        {data}\n
-        Response code: {resp.status_code}\n
-        Response content:\n
-        {resp.content}\n"""
-        msg = EmailMultiAlternatives(
-            subject=log,
-            body=text_content,
-            from_email=settings.NOREPLY_EMAIL,
-            to=settings.ADMIN_EMAILS,
+        resp_code = resp.status_code if resp is not None else "N/A"
+        resp_content = resp.content if resp is not None else "N/A"
+        _send_admin_failure_email(
+            log,
+            f"Ascender record:\n{job}\nRequest URL: {url}\nRequest body:\n{data}\nResponse code: {resp_code}\nResponse content:\n{resp_content}",
         )
-        msg.send(fail_silently=True)
-        return
+        return None
 
-    # Next, update the user details with additional information.
-    sleep(3)  # Add a delay between calls to the Graph API.
+    # --- Step 2: Patch additional user details ---
+    sleep(3)
     url = f"https://graph.microsoft.com/v1.0/users/{guid}"
     data = {
         "mail": email,
@@ -825,25 +998,14 @@ def create_entra_id_user(
         log = f"Create new Entra ID user failed at account update step for {email}, ask administrator to investigate ({ascender_record})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
-        text_content = f"""Ascender record:\n
-        {job}\n
-        Request URL: {url}\n
-        Request body:\n
-        {data}\n
-        Response code: {resp.status_code}\n
-        Response content:\n
-        {resp.content}\n"""
-        msg = EmailMultiAlternatives(
-            subject=log,
-            body=text_content,
-            from_email=settings.NOREPLY_EMAIL,
-            to=settings.ADMIN_EMAILS,
+        _send_admin_failure_email(
+            log,
+            f"Ascender record:\n{job}\nRequest URL: {url}\nRequest body:\n{data}\nResponse code: {resp.status_code}\nResponse content:\n{resp.content}",
         )
-        msg.send(fail_silently=True)
-        return
+        return None
 
-    # Next, set the user manager.
-    sleep(3)  # Add a delay between calls to the Graph API.
+    # --- Step 3: Assign the manager ---
+    sleep(3)
     manager_url = f"https://graph.microsoft.com/v1.0/users/{guid}/manager/$ref"
     data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{manager.azure_guid}"}
     resp = requests.put(manager_url, headers=headers, json=data)
@@ -853,173 +1015,31 @@ def create_entra_id_user(
         log = f"Create new Entra ID user failed at assign manager update step for {email} (manager {manager})"
         AscenderActionLog.objects.create(level="ERROR", log=log, ascender_data=job)
         LOGGER.exception(log)
-        text_content = f"""Ascender record:\n
-        {job}\n
-        Request URL: {manager_url}\n
-        Request body:\n
-        {data}\n
-        Response code: {resp.status_code}\n
-        Response content:\n
-        {resp.content}\n"""
-        msg = EmailMultiAlternatives(
-            subject=log,
-            body=text_content,
-            from_email=settings.NOREPLY_EMAIL,
-            to=settings.ADMIN_EMAILS,
+        _send_admin_failure_email(
+            log,
+            f"Ascender record:\n{job}\nRequest URL: {manager_url}\nRequest body:\n{data}\nResponse code: {resp.status_code}\nResponse content:\n{resp.content}",
         )
-        msg.send(fail_silently=True)
-        return
+        return None
 
-    # Before trying to add licenses to the user account, query the Graph API to confirm if
-    # the usageLocation value is set on the user object.
-    # Retry several times, applying an exponential backoff between retries, up to a sane limit.
-    user_has_usage_location = False
-    graph_user = None
-    timestamp = datetime.now()
-    retry_delay = 1  # Delay in seconds between retries to MS Graph API.
-    url = f"https://graph.microsoft.com/v1.0/users/{guid}"
-    params = {"$select": "id,usageLocation"}
+    # --- Step 4: Wait for usageLocation to propagate before assigning licences ---
+    if not _wait_for_usage_location(guid, headers, job, email):
+        return None
 
-    while retry_delay < 300:
-        resp = requests.get(url, headers=headers, params=params)
-        try:
-            resp.raise_for_status()
-            graph_user = resp.json()
-        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
-            LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
-
-        timestamp = datetime.now()
-
-        # Our Graph API call returned a user account, and that account has usageLocation set.
-        if graph_user and graph_user.get("usageLocation", None) == "AU":
-            user_has_usage_location = True
-            break
-        else:
-            LOGGER.info(f"User {guid} usageLocation not set; retrying in {retry_delay} seconds")
-            sleep(retry_delay)
-            retry_delay = retry_delay * 2
-
-    if not user_has_usage_location:
-        # Abort the remaining workflow with an alert notification to admins.
-        log = f"Create new Entra ID user failed at assign license step for {email}, usageLocation field value not set"
-        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
-        LOGGER.warning(log)
-        text_content = f"""Ascender record:\n
-        {job}\n
-        Microsoft Graph API endpoint: {url}\n
-        Retry delay: {retry_delay}\n
-        Query timestamp: {timestamp.isoformat()}"""
-        msg = EmailMultiAlternatives(
-            subject=log,
-            body=text_content,
-            from_email=settings.NOREPLY_EMAIL,
-            to=settings.ADMIN_EMAILS,
-        )
-        msg.send(fail_silently=True)
-        return
-
-    # Assign the required license type via the Graph API.
-    # Retry several times, applying an exponential backoff between retries, up to a sane limit.
-    user_has_license = False
-    url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
-    timestamp = datetime.now()
-    retry_delay = 1  # Delay in seconds between retries to MS Graph API.
-    if licence_type == "On-premise":
-        data = {
-            "addLicenses": [
-                {"skuId": MS_PRODUCTS["MICROSOFT 365 E5"], "disabledPlans": []},
-            ],
-            "removeLicenses": [],
-        }
-    elif licence_type == "Cloud":
-        data = {
-            "addLicenses": [
-                {
-                    "skuId": MS_PRODUCTS["MICROSOFT 365 F3"],
-                    "disabledPlans": [
-                        MS_PRODUCTS["EXCHANGE ONLINE KIOSK"],
-                    ],
-                },
-                {
-                    "skuId": MS_PRODUCTS["EXCHANGE ONLINE (PLAN 2)"],
-                    "disabledPlans": [],
-                },
-                {
-                    "skuId": MS_PRODUCTS["MICROSOFT 365 F5 SECURITY + COMPLIANCE ADD-ON"],
-                    "disabledPlans": [
-                        MS_PRODUCTS["EXCHANGE ONLINE ARCHIVING"],
-                    ],
-                },
-            ],
-            "removeLicenses": [],
-        }
-
-    while retry_delay < 300:
-        try:
-            resp = requests.post(url, headers=headers, json=data)
-            resp.raise_for_status()
-            user_has_license = True
-        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
-            LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
-
-        timestamp = datetime.now()
-
-        # Our Graph API call returned a successful response
-        if user_has_license:
-            break
-        else:
-            LOGGER.info(f"Licence assignment for user {guid} not yet successful; retrying in {retry_delay} seconds")
-            sleep(retry_delay)
-            retry_delay = retry_delay * 2
-
-    if not user_has_license:
-        # Abort the remaining workflow with an alert notification to admins.
-        log = f"Create new Entra ID user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
-        AscenderActionLog.objects.create(level="WARNING", log=log, ascender_data=job)
-        LOGGER.warning(log)
-        text_content = f"""Ascender record:\n
-        {job}\n
-        Microsoft Graph API endpoint: {url}\n
-        Retry delay: {retry_delay}\n
-        Query timestamp: {timestamp.isoformat()}\n
-        Request body: {data}\n
-        Response code: {resp.status_code}\n
-        Response content: {resp.content}"""
-        msg = EmailMultiAlternatives(
-            subject=log,
-            body=text_content,
-            from_email=settings.NOREPLY_EMAIL,
-            to=settings.ADMIN_EMAILS,
-        )
-        msg.send(fail_silently=True)
-
-        # Clean up the partially-provisioned account so it does not remain as an orphaned Entra ID user.
-        delete_url = f"https://graph.microsoft.com/v1.0/users/{guid}"
-        try:
-            delete_resp = requests.delete(delete_url, headers=headers)
-            delete_resp.raise_for_status()
-            cleanup_log = (
-                f"Create new Entra ID user cleanup due to license assign failure: deleted orphaned Entra ID account {guid} ({email})"
-            )
-            AscenderActionLog.objects.create(level="INFO", log=cleanup_log, ascender_data=job)
-            LOGGER.info(cleanup_log)
-        except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception):
-            cleanup_log = f"Create new Entra ID user cleanup due to license assign failure: failed to delete orphaned Entra ID account {guid} ({email}), manual deletion required"
-            AscenderActionLog.objects.create(level="WARNING", log=cleanup_log, ascender_data=job)
-            LOGGER.exception(cleanup_log)
-        return
+    # --- Step 5: Assign the M365 licence ---
+    licence_payload = _build_licence_payload(licence_type)
+    if not _assign_licence_with_retry(guid, headers, licence_payload, job, email, ascender_record):
+        return None
 
     LOGGER.info(f"New Entra ID account created from Ascender data ({email})")
 
-    # Next, create a new DepartmentUser that is linked to the Ascender record and the Entra ID account.
+    # Create the corresponding DepartmentUser linked to the Ascender record and Entra ID account.
     new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager, position_no)
 
-    # Email the new account's manager the checklist to finish account provision.
+    # Email the new account's manager the provisioning checklist.
     email_sent = new_user_creation_email(new_user, manager, licence_type, job_start_date, job_end_date)
     if email_sent:
         LOGGER.info(f"ASCENDER SYNC: Emailed {manager.email} about new user account creation")
     else:
-        # This branch should never happen.
         LOGGER.error("ASCENDER SYNC: no email sent regarding new user account creation")
 
     return new_user
@@ -1078,7 +1098,9 @@ def department_user_create(
     manager: DepartmentUser,
     position_no: Optional[str] = None,
 ) -> DepartmentUser:
-    """This create function is split from the Entra ID/AD 'create' function to allow for unit testing."""
+    """This helper function is split from the Entra ID 'create' function to allow for unit testing.
+    It creates a new DepartmentUser object, an initial Django admin LogEntry, an AscenderActionLog for record-keeping,
+    then returns the new DepartmentUser object."""
     given_name = job["preferred_name"].title().strip() if job["preferred_name"] else job["first_name"].title().strip()
     new_user = DepartmentUser.objects.create(
         azure_guid=azure_guid,
