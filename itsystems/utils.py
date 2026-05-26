@@ -189,7 +189,7 @@ def edit_record_from_dict(record, dict, user):
             # Create comment for version history
             change_log = "Changed via web request: "
             for field in dict.keys():
-                if field in original.keys():
+                if field in original.keys() and original[field] != incoming[field]:
                     change_log += record.__display_field__(field) + ", "
             comment = change_log[:-2] + "."
 
