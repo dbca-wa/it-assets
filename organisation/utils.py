@@ -76,7 +76,7 @@ def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: O
     for word in words[1:]:
         word = word.lower()
 
-        # Disregard curly brackets while handling each word.
+        # Disregard parentheses while handling each word.
         if word.startswith("("):
             pre = "("
             word = word.replace("(", "")
