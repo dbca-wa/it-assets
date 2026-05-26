@@ -9,8 +9,10 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
-from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.utils import IntegrityError
 
 
 from itassets.utils import get_next_pages, get_previous_pages
@@ -219,9 +221,10 @@ class ITSystemRecordAPIResource(View):
                 response = HttpResponseBadRequest("Invalid field value in choice field - " + str(e))
             except KeyError as e:
                 response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
+            except IntegrityError as e:
+                response = HttpResponseBadRequest("Empty value in mandatory choice field - " + str(e))
             except Exception as e:
                 response = HttpResponseBadRequest("Unexpected error - " + str(e))
-
         else:
             try:
                 data = dict(json.loads(request.body))

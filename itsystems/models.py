@@ -246,8 +246,9 @@ class ITSystemRecord(models.Model):
         if obj:
             self_fields = self.__dict__
             obj_fields = obj.__dict__
+
             for self_val, obj_val in self_fields.items():
-                if (self_val not in excluded_fields) and (self_val in self_fields) and (self_val in obj_fields):
+                if (self_val not in excluded_fields) and (self_val in obj_fields):
                     #  obj_fileds' 'Or None' accounts for empty string values, self fields' 'Or None' allows for Boolean 'False' equivalency
                     if (self_fields[self_val] or None) != (obj_fields[self_val] or None):
                         changes.append(
@@ -379,7 +380,7 @@ class ITSystemRecord(models.Model):
         """
         return_val = value
         if field.endswith("_id"):
-            return_val = str(getattr(self, field[:-3]))
+            return_val = str(getattr(self, field[:-3], None))
 
         return return_val
 
