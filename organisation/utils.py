@@ -16,10 +16,16 @@ FRESHSERVICE_AUTH = (settings.FRESHSERVICE_API_KEY, "X")
 
 
 def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: Optional[Iterable[str]] = None) -> str:
-    """Utility function to title-case words in a job title, except for all the exceptions and edge cases."""
+    """Utility function to title-case words in a job title, except for all the many exceptions and edge cases.
+    We (normally) receive job titles in all-caps, and we are required to convert them to title case for display purposes.
+    This function is just a really crude tokeniser and there is probably a better solution."""
     if not exceptions:
+        # Don't title-case these words.
         exceptions = ("the", "of", "for", "and", "or")
     if not acronyms:
+        # We use a significant number of unique organisational acronyms.
+        # This list will grow over time as new ones are discovered.
+        # Don't title-case these.
         acronyms = (
             "OIM",
             "IT",
@@ -54,7 +60,7 @@ def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: O
         )
     words = s.split()
 
-    # Case: first word of the title starts with 'A/'.
+    # Case: first word of the title starts with 'A/' (abbreviation for 'Acting').
     if words[0].startswith("A/"):
         if words[0].replace("A/", "") in acronyms:
             words_title = [words[0]]
@@ -70,6 +76,7 @@ def title_except(s: str, exceptions: Optional[Iterable[str]] = None, acronyms: O
     for word in words[1:]:
         word = word.lower()
 
+        # Disregard parentheses while handling each word.
         if word.startswith("("):
             pre = "("
             word = word.replace("(", "")
