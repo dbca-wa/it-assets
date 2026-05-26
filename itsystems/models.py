@@ -144,7 +144,7 @@ class ITSystemRecord(models.Model):
         help_text="Division",
     )
     description = models.TextField(null=True, blank=True, verbose_name="Description")
-    link = models.URLField(max_length=2048, null=True, blank=True, help_text="URL to web application")
+    link = models.URLField(max_length=2048, null=True, blank=True,verbose_name="Link", help_text="URL to web application")
     business_service_owner = models.ForeignKey(
         DepartmentUser,
         on_delete=models.SET_NULL,

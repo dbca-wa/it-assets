@@ -129,14 +129,16 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(
             path=url,
-            data=json.dumps({"name": (self.record1.name + "_ADDED_VALUE"), "description": self.record1.description}),
+            data=json.dumps({"description": (self.record1.description + "_ADDED_VALUE"), "name": self.record1.name, "business_service_owner":self.record1.business_service_owner.email}),
             secure=False,
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
         versions = Version.objects.get_for_object(self.record1)
-        self.assertIn("Name", versions[0].revision.get_comment())
-        self.assertNotIn("Description", versions[0].revision.get_comment())
+        self.assertIn("Description", versions[0].revision.get_comment())
+        self.assertNotIn("Name", versions[0].revision.get_comment())
+        self.assertNotIn("Business Service Owner", versions[0].revision.get_comment())
+
 
         # Tests that empty strings are treated as Null, but mandatory fields throw exceptions
         empty_record={

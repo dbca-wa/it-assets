@@ -179,7 +179,8 @@ def edit_record_from_dict(record, dict, user):
     incoming.update(dict)
     incoming_rec = ITSystemRecord()
     incoming_rec.set_from_dict(incoming)
-    if len(record.compare(incoming_rec)) > 0:
+    changes = record.compare(incoming_rec)
+    if len(changes) > 0:
         with reversion.create_revision():
             # updated record
             record.set_from_dict(dict=incoming, plain_text=True, force=False)
@@ -188,9 +189,8 @@ def edit_record_from_dict(record, dict, user):
 
             # Create comment for version history
             change_log = "Changed via web request: "
-            for field in dict.keys():
-                if field in original.keys() and original[field] != incoming[field]:
-                    change_log += record.__display_field__(field) + ", "
+            for change in changes:
+                change_log += change["verbose_field"] + ", "
             comment = change_log[:-2] + "."
 
             # Create version history entry
