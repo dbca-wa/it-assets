@@ -3,15 +3,15 @@ kind: CronJob
 metadata:
   name: itassets-cronjob
 spec:
-  # Every minute
-  schedule: '* * * * *'
+  # Every ten minutes
+  schedule: '*/10 * * * *'
   jobTemplate:
     spec:
       template:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ['manage.py', 'department_users_signins', '--logging']
+              args: ['manage.py', 'department_users_signins', '--logging', '--minutes', '20']
               envFrom:
                 - secretRef:
                     name: itassets-env-prod
