@@ -58,6 +58,12 @@ class Command(BaseCommand):
         j = resp.json()
         signins = j["value"]
 
+        while "@odata.nextLink" in j:
+            resp = requests.get(j["@odata.nextLink"], headers=headers)
+            resp.raise_for_status()
+            j = resp.json()
+            signins.extend(j["value"])
+
         for signin in signins:
             try:
                 du = DepartmentUser.objects.get(azure_guid=signin["userId"])
