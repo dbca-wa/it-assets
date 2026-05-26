@@ -56,19 +56,15 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         # Tests changing the name of an existing record
         old_name = self.record1.name
         new_name = old_name[:-5] + "added_string"
-
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"name": new_name}), secure=False, content_type="application/json")
-
         self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
         self.assertContains(response, status_code=200, text=new_name)
         self.assertNotContains(response, old_name)
         self.assertEqual(self.record1.name, new_name)
-
         # confirms modified by behaviour
         self.assertEqual(self.record1.modified_by, self.testuser.email)
         self.assertNotEqual(self.record1.created_by, self.testuser.email)
-
         # confirms that a new version was created
         versions = Version.objects.get_for_object(self.record1)
         self.assertEqual(len(versions), 1)
@@ -79,15 +75,12 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         old_division_id = self.record1.division.id
         new_division = self.record2.division.name
         new_division_id = self.record2.division.id
-
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"division": new_division}), secure=False, content_type="application/json")
-
         self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
         self.assertContains(response, status_code=200, text=new_division)
         self.assertNotContains(response, old_division)
         self.assertEqual(self.record1.division.name, new_division)
-
         # confirms that a new version was created
         versions = Version.objects.get_for_object(self.record1)
         self.assertEqual(len(versions), 2)
@@ -97,10 +90,8 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         # Tests changing the name of a record that doesn't exist
         old_name = self.record1.name
         new_name = old_name + "ADDED_STRING"
-
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id + "ADDED_STRING"})
         response = self.client.post(path=url, data=json.dumps({"name": new_name}), secure=False, content_type="application/json")
-
         self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
         self.assertContains(response=response, status_code=400, text="Can't find system ")
         self.assertEqual(self.record1.name, old_name)
@@ -108,10 +99,8 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         # Tests changing an FK field of an existing record to one that doesn't exist
         old_division = self.record1.division.name
         fake_division = self.record1.division.name + "ADDED_STRING"
-
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"division": fake_division}), secure=False, content_type="application/json")
-
         self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
         self.assertContains(response, status_code=400, text="Invalid field value in choice field")
         self.assertEqual(self.record1.division.name, old_division)
@@ -119,10 +108,35 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         # Tests that attempting to change a field that doesn't exist doesn't change the record at all
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"fake_field": "fake_value"}), secure=False, content_type="application/json")
-
         self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
         self.assertEqual(response.status_code, 200)
         self.assert_response_contains_record(response, self.record1)
+
+        # Tests that sending identical data doesn't cause the new versions to be created
+        original_num_versions = len(Version.objects.get_for_object(self.record1))
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(
+            path=url,
+            data=json.dumps({"name": self.record1.name, "description": self.record1.description}),
+            secure=False,
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        versions = Version.objects.get_for_object(self.record1)
+        self.assertEqual(len(versions), original_num_versions)
+
+        # Tests that identical data doesn't get included in version history comments
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(
+            path=url,
+            data=json.dumps({"name": (self.record1.name + "_ADDED_VALUE"), "description": self.record1.description}),
+            secure=False,
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        versions = Version.objects.get_for_object(self.record1)
+        self.assertIn("Name", versions[0].revision.get_comment())
+        self.assertNotIn("Description", versions[0].revision.get_comment())
 
     def test_contact_replace(self):
         """Test the ITSystemRecordAPIResource replace contact functionality"""
