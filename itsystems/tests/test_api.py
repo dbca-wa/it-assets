@@ -129,7 +129,13 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(
             path=url,
-            data=json.dumps({"description": (self.record1.description + "_ADDED_VALUE"), "name": self.record1.name, "business_service_owner":self.record1.business_service_owner.email}),
+            data=json.dumps(
+                {
+                    "description": (self.record1.description + "_ADDED_VALUE"),
+                    "name": self.record1.name,
+                    "business_service_owner": self.record1.business_service_owner.email,
+                }
+            ),
             secure=False,
             content_type="application/json",
         )
@@ -139,28 +145,27 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.assertNotIn("Name", versions[0].revision.get_comment())
         self.assertNotIn("Business Service Owner", versions[0].revision.get_comment())
 
-
         # Tests that empty strings are treated as Null, but mandatory fields throw exceptions
-        empty_record={
-                "name": "",
-                "status": "",
-                "division": "",
-                "description": "",
-                "link": "",
-                "business_service_owner": "",
-                "system_owner": "",
-                "technology_custodian": "",
-                "information_custodian": "",
-                "seasonality": "",
-                "availability": "",
-                "file_store_link": "",
-                "vital_records": "",
-                "disposal_authority": "",
-                "retention_and_disposal": "",
-                "ubcs": "",
-                "sensitivity": "",
-                "system_type": ""
-            }
+        empty_record = {
+            "name": "",
+            "status": "",
+            "division": "",
+            "description": "",
+            "link": "",
+            "business_service_owner": "",
+            "system_owner": "",
+            "technology_custodian": "",
+            "information_custodian": "",
+            "seasonality": "",
+            "availability": "",
+            "file_store_link": "",
+            "vital_records": "",
+            "disposal_authority": "",
+            "retention_and_disposal": "",
+            "ubcs": "",
+            "sensitivity": "",
+            "system_type": "",
+        }
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(
             path=url,
@@ -168,24 +173,24 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
             secure=False,
             content_type="application/json",
         )
-        self.assertContains(response, status_code=400,text = "Empty value in mandatory choice field")
-        empty_record={
-                "name": "",
-                "division": "",
-                "description": "",
-                "link": "",
-                "business_service_owner": "",
-                "system_owner": "",
-                "technology_custodian": "",
-                "information_custodian": "",
-                "file_store_link": "",
-                "vital_records": "",
-                "disposal_authority": "",
-                "retention_and_disposal": "",
-                "ubcs": "",
-                "sensitivity": "",
-                "system_type": ""
-            }
+        self.assertContains(response, status_code=400, text="Empty value in mandatory choice field")
+        empty_record = {
+            "name": "",
+            "division": "",
+            "description": "",
+            "link": "",
+            "business_service_owner": "",
+            "system_owner": "",
+            "technology_custodian": "",
+            "information_custodian": "",
+            "file_store_link": "",
+            "vital_records": "",
+            "disposal_authority": "",
+            "retention_and_disposal": "",
+            "ubcs": "",
+            "sensitivity": "",
+            "system_type": "",
+        }
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(
             path=url,

@@ -174,7 +174,6 @@ def replace_contact(old_contact, new_contact, user):
 def edit_record_from_dict(record, dict, user):
     """updates record with new values passed in from a dictionary, returning the updated record values as a dictionary"""
     # Compares incoming values to base record
-    original = record.to_dict()
     incoming = record.to_dict()
     incoming.update(dict)
     incoming_rec = ITSystemRecord()
