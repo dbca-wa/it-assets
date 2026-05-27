@@ -9,8 +9,10 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
-from django.core.exceptions import ObjectDoesNotExist
 from django.views.decorators.csrf import csrf_exempt
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.utils import IntegrityError
 
 
 from itassets.utils import get_next_pages, get_previous_pages
@@ -34,7 +36,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
 
         # Filter out decommisioned and (if required) drafts
         excluded = ["Decommissioned"]
-        if not "show_drafts" in self.request.GET:
+        if "show_drafts" not in self.request.GET:
             excluded.append("Draft")
 
         # retrieve choice fields
@@ -87,7 +89,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
 
         # Filter out decommisioned and (if required) drafts
         excluded = ["Decommissioned"]
-        if not "show_drafts" in self.request.GET:
+        if "show_drafts" not in self.request.GET:
             excluded.append("Draft")
 
         # Filters queryset by chosen search values and filter values
@@ -169,10 +171,11 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
             response = render(request, "admin/itsystems/itsystemrecord/upload_csv.html", context=results["validation"])
         return response
 
+
 # The below view is CSRF exempt as it's intended to be used by Freshservice without state.
 # The only possible malicious security implications is making edits of the register, which can all be rolled back with django-reversions.
 # Improvements to this are still being investigated.
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name="dispatch")
 class ITSystemRecordAPIResource(View):
     """An API view that returns JSON of the IT System Register"""
 
@@ -190,6 +193,9 @@ class ITSystemRecordAPIResource(View):
             queryset = queryset.filter(system_id=kwargs["system_id"])
 
         register = [record.to_dict() for record in queryset]
+
+        if len(queryset) == 1:
+            register = register[0]
 
         response = JsonResponse(register, safe=False)
 
@@ -215,9 +221,10 @@ class ITSystemRecordAPIResource(View):
                 response = HttpResponseBadRequest("Invalid field value in choice field - " + str(e))
             except KeyError as e:
                 response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
+            except IntegrityError as e:
+                response = HttpResponseBadRequest("Empty value in mandatory choice field - " + str(e))
             except Exception as e:
                 response = HttpResponseBadRequest("Unexpected error - " + str(e))
-
         else:
             try:
                 data = dict(json.loads(request.body))

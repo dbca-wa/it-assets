@@ -174,12 +174,12 @@ def replace_contact(old_contact, new_contact, user):
 def edit_record_from_dict(record, dict, user):
     """updates record with new values passed in from a dictionary, returning the updated record values as a dictionary"""
     # Compares incoming values to base record
-    original = record.to_dict()
     incoming = record.to_dict()
     incoming.update(dict)
     incoming_rec = ITSystemRecord()
     incoming_rec.set_from_dict(incoming)
-    if len(record.compare(incoming_rec)) > 0:
+    changes = record.compare(incoming_rec)
+    if len(changes) > 0:
         with reversion.create_revision():
             # updated record
             record.set_from_dict(dict=incoming, plain_text=True, force=False)
@@ -188,9 +188,8 @@ def edit_record_from_dict(record, dict, user):
 
             # Create comment for version history
             change_log = "Changed via web request: "
-            for field in dict.keys():
-                if field in original.keys():
-                    change_log += record.__display_field__(field) + ", "
+            for change in changes:
+                change_log += change["verbose_field"] + ", "
             comment = change_log[:-2] + "."
 
             # Create version history entry
