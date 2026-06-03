@@ -183,25 +183,24 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
 class ITSystemRecordAPIResource(View):
     """An API view that returns JSON of the IT System Register"""
 
-    # Improvement: If the system ID is specified, only retrieve that system rather than retrieving everything and filtering by that ID.
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         response = None
-        queryset = (
-            ITSystemRecord.objects.all()
-            .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
-            .order_by("system_id")
-        )
 
         # Queryset filtering.
         if "system_id" in kwargs and kwargs["system_id"]:
-            queryset = queryset.filter(system_id=kwargs["system_id"])
-
-        register = [record.to_dict() for record in queryset]
-
-        # Returns search values as a singular record, rather than a size 1 array
-        if len(queryset) == 1:
-            register = register[0]
+            try:
+                record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
+                register = record.to_dict()
+            except ITSystemRecord.DoesNotExist:
+                register = None
+        else:
+            queryset = (
+                ITSystemRecord.objects.all()
+                .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
+                .order_by("system_id")
+            )
+            register = [record.to_dict() for record in queryset]
 
         response = JsonResponse(register, safe=False)
 
