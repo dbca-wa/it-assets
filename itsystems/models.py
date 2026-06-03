@@ -244,6 +244,7 @@ class ITSystemRecord(models.Model):
         excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state", "system_id"]
         changes = []
         if obj:
+            # Compares self to other record object, returns differences
             self_fields = self.__dict__
             obj_fields = obj.__dict__
 
@@ -260,6 +261,7 @@ class ITSystemRecord(models.Model):
                             }
                         )
         else:
+            # Returns all fields
             self_fields = self.__dict__
             for self_val in self_fields.items():
                 if self_val[0] not in excluded_fields:
@@ -297,10 +299,11 @@ class ITSystemRecord(models.Model):
     def set_from_dict(self, dict, plain_text=True, force=False):
         """
         Sets field values from inputted dictionary object.
-        If plain_text is false, data with fk values is interpreted literally instead of as plain text
+        If plain_text is false, data with fk fields are set using PK values rather than human readable display values.
         """
         force_failures = []
 
+        # Sets Non-FK fields
         self.system_id = dict.get("system_id")
         self.name = dict.get("name")
         self.description = dict.get("description")
@@ -310,6 +313,7 @@ class ITSystemRecord(models.Model):
         self.retention_and_disposal = dict.get("retention_and_disposal")
         self.ubcs = dict.get("ubcs")
         if plain_text:
+            # Sets FK fields using their human readable display values
             self.division = self.__get_choice_fk(dict.get("division"), Division, force, force_failures)
             self.status = self.__get_choice_fk(dict.get("status"), Status, force, force_failures)
             self.seasonality = self.__get_choice_fk(dict.get("seasonality"), Seasonality, force, force_failures)
@@ -328,6 +332,7 @@ class ITSystemRecord(models.Model):
             if vital_records:
                 self.vital_records = vital_records.strip().lower() == "true"
         else:
+            # Sets FK fields by using their direct value
             self.division = Division.objects.get(pk=dict.get("division_id"))
             self.status = Status.objects.get(pk=dict.get("status_id"))
             self.seasonality = Seasonality.objects.get(pk=dict.get("seasonality_id"))
@@ -343,6 +348,10 @@ class ITSystemRecord(models.Model):
         return force_failures
 
     def to_dict(self):
+        """
+        Returns a human readable dictionary representation of the record.
+        FK fields are displayed using their primary display value rather than their ID.
+        """
         return {
             "system_id": self.system_id,
             "name": self.name,
@@ -366,6 +375,10 @@ class ITSystemRecord(models.Model):
         }
 
     def to_array(self):
+        """
+        Creates a human readable array representation of the record field values.
+        FK fields are displayed using their primary display value rather than their ID
+        """
         return self.to_dict().values()
 
     def __str__(self):
@@ -402,6 +415,7 @@ class ITSystemRecord(models.Model):
     def __get_choice_fk(self, text, ChoiceClass, force=False, force_failures=None):
         """
         Retrieves a division id from the inputted text value.
+        This is used for generic choice FK fields, where 'name' is the identifying field.
         """
         fk = None
 
@@ -419,6 +433,7 @@ class ITSystemRecord(models.Model):
     def __get_user_fk(self, email, field, force=False, force_failures=None):
         """
         Retrieves a user id from an inputted email or display name.
+        This is exclusively used for DepartmentUser FK fields.
         """
         user = None
         suffix = "@dbca.wa.gov.au"
@@ -427,8 +442,10 @@ class ITSystemRecord(models.Model):
         try:
             if email:
                 if email.endswith(suffix):
+                    # Retrieves the email directly
                     email_query = email
                 elif " " in email:
+                    # Attempts to recreate the email based on the user's full name.
                     names = email.split(" ")
                     email_query = names[0].lower() + "." + "".join(names[1:]).lower() + suffix
             if email_query:

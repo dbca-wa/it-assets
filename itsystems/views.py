@@ -30,6 +30,8 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        # Passes in site data for the headers
         context["site_title"] = "Office of Information Management"
         context["site_acronym"] = "OIM"
         context["page_title"] = "IT Systems Register"
@@ -39,7 +41,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "show_drafts" not in self.request.GET:
             excluded.append("Draft")
 
-        # retrieve choice fields
+        # Passes in FK field values to populate dropdowns
         context["statuses"] = Status.objects.all().exclude(name__in=excluded).order_by("name")
         context["divisions"] = Division.objects.all().order_by("name")
         context["seasonalities"] = Seasonality.objects.all().order_by("name")
@@ -79,6 +81,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "information_custodian" in self.request.GET:
             context["information_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["information_custodian"])
 
+        # Passes in pagination data
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
@@ -122,6 +125,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
                 Q(system_id__icontains=query_str) | Q(name__icontains=query_str) | Q(description__icontains=query_str)
             )
 
+        # Sorts records by system ID
         queryset = queryset.order_by("system_id")
 
         return queryset
@@ -179,6 +183,7 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
 class ITSystemRecordAPIResource(View):
     """An API view that returns JSON of the IT System Register"""
 
+    # Improvement: If the system ID is specified, only retrieve that system rather than retrieving everything and filtering by that ID.
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         response = None
@@ -194,6 +199,7 @@ class ITSystemRecordAPIResource(View):
 
         register = [record.to_dict() for record in queryset]
 
+        # Returns search values as a singular record, rather than a size 1 array
         if len(queryset) == 1:
             register = register[0]
 
@@ -206,7 +212,8 @@ class ITSystemRecordAPIResource(View):
 
         response = None
 
-        if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
+        if "system_id" in kwargs and kwargs["system_id"]:
+            # Updates record in kwargs with inputted json package
             try:
                 old_record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
                 data = dict(json.loads(request.body))
@@ -226,6 +233,7 @@ class ITSystemRecordAPIResource(View):
             except Exception as e:
                 response = HttpResponseBadRequest("Unexpected error - " + str(e))
         else:
+            # replaces old contact with new contact specified in json package.
             try:
                 data = dict(json.loads(request.body))
                 changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"], user=request.user)

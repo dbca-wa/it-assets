@@ -10,9 +10,12 @@ def export_csv(response):
     Exports the IT Systems Register to a csv, writing it into a HttpResponse object passed to it.
     """
     writer = csv.writer(response)
+
+    # Writes headers into the CSV
     headers = [field.name for field in __get_model_fields()]
     writer.writerow(headers)
 
+    # Writes all record values into the csv
     records = ITSystemRecord.objects.all()
     for record in records:
         record_vals = record.to_array()
@@ -30,10 +33,14 @@ def import_csv(request):
     create_list = []
     failed_list = []
 
+    # Checks if CSV file is valid
     validate_results = __validate_csv(csv_file)
     if validate_results["valid"]:
+        # Convert raw text to dictionary
         raw_text = validate_results["raw_text"]
         record_list = list(csv.DictReader(io.StringIO(raw_text)))
+
+        # Import each record by updating an existing record or creating a new one
         for record in record_list:
             force_failures = []
             # Search for existing record in database
@@ -48,8 +55,10 @@ def import_csv(request):
                 force_failures = new_record.set_from_dict(dict=record, plain_text=True, force=force)
 
                 if found_record:
+                    # Finds differences between the two
                     changes = found_record.compare(new_record)
                     if len(changes) > 0:
+                        # Updates existing record and creates an entry in the version history
                         with reversion.create_revision():
                             # Update Record
                             force_failures = found_record.set_from_dict(dict=record, plain_text=True, force=force)
@@ -68,6 +77,7 @@ def import_csv(request):
 
                         update_list.append({"record": found_record.system_id_name, "changes": changes})
                 elif not found_record:
+                    # Creates a new record and creates an entry in the version history
                     with reversion.create_revision():
                         # Create Record
                         new_record.created_by = request.user.email
@@ -91,6 +101,7 @@ def import_csv(request):
                     error_message = str(e)
                 failed_list.append({"record": record["system_id"], "changes": error_message})
 
+    # Returns dictionary of results
     return {
         "validation": {"valid": validate_results["valid"], "message": validate_results["message"]},
         "created": create_list,
@@ -110,6 +121,7 @@ def retrieve(cls, id):
     return model
 
 
+# Improvement: Instead of checking through entire database, use related name to directly query the fk field.
 def replace_contact(old_contact, new_contact, user):
     """
     Replaces all instances of one contact in the IT Systems Register with another.
@@ -118,6 +130,7 @@ def replace_contact(old_contact, new_contact, user):
     records = ITSystemRecord.objects.all()
     changes = []
 
+    # Searches for both contacts
     try:
         old_contact_fk = DepartmentUser.objects.get(email=old_contact)
     except DepartmentUser.DoesNotExist:
@@ -128,9 +141,11 @@ def replace_contact(old_contact, new_contact, user):
         new_contact_fk = None
 
     if old_contact_fk and new_contact_fk:
+        # Replaces each instance of the old contact with the new contact, and creates an entry in the version history of each updated record
         for record in records:
             record_changes = []
             with reversion.create_revision():
+                # Checks record contacts for old contact
                 if record.business_service_owner == old_contact_fk:
                     record.business_service_owner = new_contact_fk
                     record_changes.append("business_service_owner")
@@ -146,6 +161,7 @@ def replace_contact(old_contact, new_contact, user):
 
                 if len(record_changes) > 0:
                     try:
+                        # Updates record
                         record.modified_by = user.email
                         record.save()
                         changes.append({"record": record.system_id, "success": True, "changes": record_changes})
@@ -179,7 +195,9 @@ def edit_record_from_dict(record, dict, user):
     incoming_rec = ITSystemRecord()
     incoming_rec.set_from_dict(incoming)
     changes = record.compare(incoming_rec)
+
     if len(changes) > 0:
+        # Updates record, creating an addition to the version history
         with reversion.create_revision():
             # updated record
             record.set_from_dict(dict=incoming, plain_text=True, force=False)
@@ -195,10 +213,15 @@ def edit_record_from_dict(record, dict, user):
             # Create version history entry
             reversion.set_user(user)
             reversion.set_comment(comment)
+
+    # Returns result
     return record.to_dict()
 
 
 def get_unique_users(field):
+    """
+    Retrieves all unique contacts in a specified ITSystemRecord contact field
+    """
     unique_vals = ITSystemRecord.objects.values_list(field, flat=True).distinct()
     return DepartmentUser.objects.filter(pk__in=unique_vals).order_by("email")
 
@@ -221,6 +244,7 @@ def __validate_csv(csv_file):
             all_headers_present = True
             for field in model_fields:
                 all_headers_present = field.name in csv_headers and all_headers_present
+            # Checks that all required headers are present
             if all_headers_present:
                 valid = True
                 msg = "CSV is Valid"
