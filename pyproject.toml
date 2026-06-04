@@ -20,11 +20,11 @@ dependencies = [
   "python-dateutil==2.9.0",
   "webtemplate-dbca==1.8.3",
   "requests==2.34.2",
-  "msal==1.36.0",
+  "msal==1.37.0",
   "whitenoise[brotli]==6.12.0",
   "xlsxwriter==3.2.9",
-  "sentry-sdk[django]==2.60.0",
-  "redis==7.4.0",
+  "sentry-sdk[django]==2.61.1",
+  "redis==8.0.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",                # Fix version (no upgrades) until Ascender SFTP updated
   "django-reversion==6.2.0",
@@ -32,11 +32,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "ipython>=9.13.0",
+  "ipython>=9.14.0",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.6.0",
-  "coverage>=7.14.0",
+  "coverage>=7.14.1",
 ]
 
 # Reference: https://docs.astral.sh/ruff/configuration/
