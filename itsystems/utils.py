@@ -121,13 +121,11 @@ def retrieve(cls, id):
     return model
 
 
-# Improvement: Instead of checking through entire database, use related name to directly query the fk field.
 def replace_contact(old_contact, new_contact, user):
     """
     Replaces all instances of one contact in the IT Systems Register with another.
     It then returns a list of changes.
     """
-    records = ITSystemRecord.objects.all()
     changes = []
 
     # Searches for both contacts
@@ -141,42 +139,34 @@ def replace_contact(old_contact, new_contact, user):
         new_contact_fk = None
 
     if old_contact_fk and new_contact_fk:
+        # Retrieves all related systems of the old user
+        related_systems = get_user_related_systems(old_contact_fk)
+
         # Replaces each instance of the old contact with the new contact, and creates an entry in the version history of each updated record
-        for record in records:
-            record_changes = []
+        for system_id, roles in related_systems.items():
             with reversion.create_revision():
-                # Checks record contacts for old contact
-                if record.business_service_owner == old_contact_fk:
-                    record.business_service_owner = new_contact_fk
-                    record_changes.append("business_service_owner")
-                if record.system_owner == old_contact_fk:
-                    record.system_owner = new_contact_fk
-                    record_changes.append("system_owner")
-                if record.technology_custodian == old_contact_fk:
-                    record.technology_custodian = new_contact_fk
-                    record_changes.append("technology_custodian")
-                if record.information_custodian == old_contact_fk:
-                    record.information_custodian = new_contact_fk
-                    record_changes.append("information_custodian")
+                try:
+                    record = ITSystemRecord.objects.get(system_id=system_id)
+                    # Updates the IT System to replace the old user
+                    for role in roles:
+                        setattr(record, role, new_contact_fk)
+                    record.modified_by = user.email
+                    record.save()
+                    # Updates change log
+                    changes.append({"record": record.system_id, "success": True, "changes": roles})
 
-                if len(record_changes) > 0:
-                    try:
-                        # Updates record
-                        record.modified_by = user.email
-                        record.save()
-                        changes.append({"record": record.system_id, "success": True, "changes": record_changes})
+                    # Create comment for version history
+                    change_log = "Changed via web request: "
+                    for field in roles:
+                        change_log += record.__display_field__(field) + ", "
+                    comment = change_log[:-2] + "."
 
-                        # Create comment for version history
-                        change_log = "Changed via web request: "
-                        for field in record_changes:
-                            change_log += record.__display_field__(field) + ", "
-                        comment = change_log[:-2] + "."
-
-                        # Create version history entry
-                        reversion.set_user(user)
-                        reversion.set_comment(comment)
-                    except Exception as e:
-                        changes.append({"record": record.system_id, "success": False, "changes": str(e)})
+                    # Create version history entry
+                    reversion.set_user(user)
+                    reversion.set_comment(comment)
+                except Exception as e:
+                    # Notes failure in the change log
+                    changes.append({"record": record.system_id, "success": False, "changes": str(e)})
     else:
         error_msg = "Failed to find user for value(s):"
         if not old_contact_fk:
@@ -262,3 +252,46 @@ def __get_model_fields():
     Retrieves data-entry relevant fields of the ITSystemRecord class
     """
     return ITSystemRecord._meta.get_fields()[1:-4]
+
+
+def get_user_related_systems(user, hide_decommissioned=False, verbose_names=False):
+    """
+    returns a dictionary of arrays that represent the systems a user is a contact in, and what roles they fill.
+    """
+    systems_dict = {}
+    __process_related_list(
+        systems_dict,
+        user.systems_business_service_owner_of.all(),
+        "Business Service Owner" if verbose_names else "business_service_owner",
+        hide_decommissioned,
+    )
+    __process_related_list(
+        systems_dict, user.systems_owner_of.all(), "System Owner" if verbose_names else "system_owner", hide_decommissioned
+    )
+    __process_related_list(
+        systems_dict,
+        user.systems_technology_custodian_of.all(),
+        "Technology Custodian" if verbose_names else "technology_custodian",
+        hide_decommissioned,
+    )
+    __process_related_list(
+        systems_dict,
+        user.systems_information_custodian_of.all(),
+        "Information Custodian" if verbose_names else "information_custodian",
+        hide_decommissioned,
+    )
+
+    return systems_dict
+
+
+def __process_related_list(systems_dict, related_list, fieldname, hide_decommissioned):
+    """
+    For each related system, appends the specified field to that systems list.
+    Hides decommissioned systems if specified.
+    """
+    for item in related_list:
+        if not (hide_decommissioned and item.status.name == "Decommissioned"):
+            if item.system_id in systems_dict:
+                systems_dict[item.system_id].append(fieldname)
+            else:
+                systems_dict[item.system_id] = [fieldname]

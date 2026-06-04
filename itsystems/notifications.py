@@ -2,34 +2,34 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
 
-def send_user_deletion_email(systems, field_value):
+def send_user_deletion_email(user, related_systems):
     """
     Sends a contact deletion notification email to the defined ITSR Mailbox.
     """
     all_systems = ""
     all_systems_html = ""
 
-    if len(systems) > 0:
+    if len(related_systems) > 0:
         # Converts each 'system' item into a human readable text.
-        for system in systems:
-            all_systems += "\n - " + system["system"] + ": " + system["field"]
-            all_systems_html += "<li>" + system["system"] + ": " + system["field"] + "</li>"
+        for system_id, roles in related_systems.items():
+            all_systems += "\n - " + system_id + ": " + ", ".join(roles)
+            all_systems_html += "<li>" + system_id + ": " + ", ".join(roles) + "</li>"
 
         # Creates email content
         text_content = f"""Hi,
 This is an automated email to notify you of the deletion of an IT System Register user contact.
-User: {field_value}
-Affected Fields: {all_systems}
+User: {user}
+Affected Systems: {all_systems}
 
 Regards,
 OIM Service Desk"""
         html_content = f"""<p>Hi,</p>
 <p>This is an automated email to notify you of the deletion of an IT System Register user contact.</p>
-<p><ul>User: {field_value}<br>
+<p><ul>User: {user}<br>
 Affected Fields:{all_systems_html}</ul></p>
 <p>Regards,</p>
 <p>OIM Service Desk</p>"""
-        subject = f"IT System Register - User Contact Deletion: {field_value}"
+        subject = f"IT System Register - User Contact Deletion: {user}"
 
         # Sends the email
         return notify(subject=subject, body=text_content, html_body=html_content)

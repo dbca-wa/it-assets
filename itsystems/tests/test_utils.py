@@ -5,9 +5,9 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.test import TestCase
 
-from itsystems.models import ITSystemRecord
+from itsystems.models import ITSystemRecord, Status
 from itsystems.utils import __validate_csv as validate
-from itsystems.utils import export_csv, import_csv
+from itsystems.utils import export_csv, import_csv, get_user_related_systems
 
 from .test_model import create_random_record
 
@@ -132,6 +132,70 @@ class UtilsTestCase(TestCase):
         self.assertEqual(len(results["updated"]), 0)
         self.assertEqual(len(results["failed"]), 2)
         self.assertEqual(original_size, len(ITSystemRecord.objects.all()))
+
+    def test_get_user_related_systems(self):
+        """
+        Tests that the systems and contact roles retrieved by get_user_related_systems() are accurate.
+        """
+        create_random_record().save()
+        records = ITSystemRecord.objects.all()
+
+        record1 = records.first()
+        record2 = records.last()
+        user1 = record1.technology_custodian
+        old_user1 = record1.business_service_owner
+
+        # Tests that a users related systems are accurately reported, and that their roles match
+        # Singular role test
+        user1_related_systems = get_user_related_systems(user1)
+        self.assertEqual(len(user1_related_systems), 1)
+        self.assertEqual(len(user1_related_systems[record1.system_id]), 1)
+        self.assertEqual(list(user1_related_systems)[0], record1.system_id)
+        self.assertEqual(user1_related_systems[record1.system_id][0], "technology_custodian")
+
+        # Tests accurate reporting of a user with multiple roles within a singular system.
+        # Also tests that users without any roles do not have any related systems reported
+        record1.business_service_owner = user1
+        record1.save()
+        user1_related_systems = get_user_related_systems(user1)
+        self.assertEqual(len(user1_related_systems), 1)
+        self.assertEqual(list(user1_related_systems)[0], record1.system_id)
+        self.assertEqual(len(user1_related_systems[record1.system_id]), 2)
+        self.assertIn("technology_custodian", user1_related_systems[record1.system_id])
+        self.assertIn("business_service_owner", user1_related_systems[record1.system_id])
+
+        old_user1_related_systems = get_user_related_systems(old_user1)
+        self.assertEqual(len(old_user1_related_systems), 0)
+
+        # Tests that users with multiple roles across multiple systems are reported accurates.
+        record2.information_custodian = user1
+        record2.system_owner = user1
+        record2.save()
+        user1_related_systems = get_user_related_systems(user1)
+        self.assertEqual(len(user1_related_systems), 2)
+        self.assertEqual(len(user1_related_systems[record1.system_id]), 2)
+        self.assertEqual(len(user1_related_systems[record2.system_id]), 2)
+        self.assertIn("technology_custodian", user1_related_systems[record1.system_id])
+        self.assertIn("business_service_owner", user1_related_systems[record1.system_id])
+        self.assertIn("information_custodian", user1_related_systems[record2.system_id])
+        self.assertIn("system_owner", user1_related_systems[record2.system_id])
+
+        # Tests that if hide_decommissioned is true, decommissioned systems are hidden
+        d_status = Status(name="Decommissioned")
+        d_status.save()
+        record1.status = d_status
+        record1.save()
+        user1_related_systems = get_user_related_systems(user1, hide_decommissioned=True)
+        self.assertEqual(len(user1_related_systems), 1)
+        self.assertIn(record2.system_id, user1_related_systems.keys())
+
+        # Tests that if verbose_name is true, names become verbose
+        user1_related_systems = get_user_related_systems(user1, verbose_names=True)
+        self.assertEqual(len(user1_related_systems), 2)
+        self.assertIn("Technology Custodian", user1_related_systems[record1.system_id])
+        self.assertIn("Business Service Owner", user1_related_systems[record1.system_id])
+        self.assertIn("Information Custodian", user1_related_systems[record2.system_id])
+        self.assertIn("System Owner", user1_related_systems[record2.system_id])
 
 
 def get_field_names(field_list):
