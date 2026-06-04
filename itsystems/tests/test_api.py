@@ -45,10 +45,7 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         # Searches for a record that doesn't exist, ensuring that nothing is returned
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id + "EXTRA_STRING"})
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assert_response_does_not_contain_record(response, self.record1)
-        self.assert_response_does_not_contain_record(response, self.record2)
-        self.assert_response_does_not_contain_record(response, self.record3)
+        self.assertContains(response=response, status_code=200, text="null")
 
     def test_record_edit(self):
         """Test the ITSystemRecordAPIResource edit record functionality"""

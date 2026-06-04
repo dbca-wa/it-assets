@@ -10,9 +10,12 @@ def export_csv(response):
     Exports the IT Systems Register to a csv, writing it into a HttpResponse object passed to it.
     """
     writer = csv.writer(response)
+
+    # Writes headers into the CSV
     headers = [field.name for field in __get_model_fields()]
     writer.writerow(headers)
 
+    # Writes all record values into the csv
     records = ITSystemRecord.objects.all()
     for record in records:
         record_vals = record.to_array()
@@ -30,10 +33,14 @@ def import_csv(request):
     create_list = []
     failed_list = []
 
+    # Checks if CSV file is valid
     validate_results = __validate_csv(csv_file)
     if validate_results["valid"]:
+        # Convert raw text to dictionary
         raw_text = validate_results["raw_text"]
         record_list = list(csv.DictReader(io.StringIO(raw_text)))
+
+        # Import each record by updating an existing record or creating a new one
         for record in record_list:
             force_failures = []
             # Search for existing record in database
@@ -48,8 +55,10 @@ def import_csv(request):
                 force_failures = new_record.set_from_dict(dict=record, plain_text=True, force=force)
 
                 if found_record:
+                    # Finds differences between the two
                     changes = found_record.compare(new_record)
                     if len(changes) > 0:
+                        # Updates existing record and creates an entry in the version history
                         with reversion.create_revision():
                             # Update Record
                             force_failures = found_record.set_from_dict(dict=record, plain_text=True, force=force)
@@ -68,6 +77,7 @@ def import_csv(request):
 
                         update_list.append({"record": found_record.system_id_name, "changes": changes})
                 elif not found_record:
+                    # Creates a new record and creates an entry in the version history
                     with reversion.create_revision():
                         # Create Record
                         new_record.created_by = request.user.email
@@ -91,6 +101,7 @@ def import_csv(request):
                     error_message = str(e)
                 failed_list.append({"record": record["system_id"], "changes": error_message})
 
+    # Returns dictionary of results
     return {
         "validation": {"valid": validate_results["valid"], "message": validate_results["message"]},
         "created": create_list,
@@ -99,9 +110,9 @@ def import_csv(request):
     }
 
 
-def retrieve(cls, id):
+def get_or_none(cls, id):
     """
-    Retrieves a record using an Id from an inputted class.
+    Retrieves a record using an Id from an inputted class, and returns None if it can't find it
     """
     try:
         model = cls.objects.get(id=id)
@@ -115,9 +126,9 @@ def replace_contact(old_contact, new_contact, user):
     Replaces all instances of one contact in the IT Systems Register with another.
     It then returns a list of changes.
     """
-    records = ITSystemRecord.objects.all()
     changes = []
 
+    # Searches for both contacts
     try:
         old_contact_fk = DepartmentUser.objects.get(email=old_contact)
     except DepartmentUser.DoesNotExist:
@@ -128,39 +139,34 @@ def replace_contact(old_contact, new_contact, user):
         new_contact_fk = None
 
     if old_contact_fk and new_contact_fk:
-        for record in records:
-            record_changes = []
+        # Retrieves all related systems of the old user
+        related_systems = get_user_related_systems(old_contact_fk)
+
+        # Replaces each instance of the old contact with the new contact, and creates an entry in the version history of each updated record
+        for system_id, roles in related_systems.items():
             with reversion.create_revision():
-                if record.business_service_owner == old_contact_fk:
-                    record.business_service_owner = new_contact_fk
-                    record_changes.append("business_service_owner")
-                if record.system_owner == old_contact_fk:
-                    record.system_owner = new_contact_fk
-                    record_changes.append("system_owner")
-                if record.technology_custodian == old_contact_fk:
-                    record.technology_custodian = new_contact_fk
-                    record_changes.append("technology_custodian")
-                if record.information_custodian == old_contact_fk:
-                    record.information_custodian = new_contact_fk
-                    record_changes.append("information_custodian")
+                try:
+                    record = ITSystemRecord.objects.get(system_id=system_id)
+                    # Updates the IT System to replace the old user
+                    for role in roles:
+                        setattr(record, role, new_contact_fk)
+                    record.modified_by = user.email
+                    record.save()
+                    # Updates change log
+                    changes.append({"record": record.system_id, "success": True, "changes": roles})
 
-                if len(record_changes) > 0:
-                    try:
-                        record.modified_by = user.email
-                        record.save()
-                        changes.append({"record": record.system_id, "success": True, "changes": record_changes})
+                    # Create comment for version history
+                    change_log = "Changed via web request: "
+                    for field in roles:
+                        change_log += record.__display_field__(field) + ", "
+                    comment = change_log[:-2] + "."
 
-                        # Create comment for version history
-                        change_log = "Changed via web request: "
-                        for field in record_changes:
-                            change_log += record.__display_field__(field) + ", "
-                        comment = change_log[:-2] + "."
-
-                        # Create version history entry
-                        reversion.set_user(user)
-                        reversion.set_comment(comment)
-                    except Exception as e:
-                        changes.append({"record": record.system_id, "success": False, "changes": str(e)})
+                    # Create version history entry
+                    reversion.set_user(user)
+                    reversion.set_comment(comment)
+                except Exception as e:
+                    # Notes failure in the change log
+                    changes.append({"record": record.system_id, "success": False, "changes": str(e)})
     else:
         error_msg = "Failed to find user for value(s):"
         if not old_contact_fk:
@@ -179,7 +185,9 @@ def edit_record_from_dict(record, dict, user):
     incoming_rec = ITSystemRecord()
     incoming_rec.set_from_dict(incoming)
     changes = record.compare(incoming_rec)
+
     if len(changes) > 0:
+        # Updates record, creating an addition to the version history
         with reversion.create_revision():
             # updated record
             record.set_from_dict(dict=incoming, plain_text=True, force=False)
@@ -195,10 +203,15 @@ def edit_record_from_dict(record, dict, user):
             # Create version history entry
             reversion.set_user(user)
             reversion.set_comment(comment)
+
+    # Returns result
     return record.to_dict()
 
 
 def get_unique_users(field):
+    """
+    Retrieves all unique contacts in a specified ITSystemRecord contact field
+    """
     unique_vals = ITSystemRecord.objects.values_list(field, flat=True).distinct()
     return DepartmentUser.objects.filter(pk__in=unique_vals).order_by("email")
 
@@ -221,6 +234,7 @@ def __validate_csv(csv_file):
             all_headers_present = True
             for field in model_fields:
                 all_headers_present = field.name in csv_headers and all_headers_present
+            # Checks that all required headers are present
             if all_headers_present:
                 valid = True
                 msg = "CSV is Valid"
@@ -235,6 +249,50 @@ def __validate_csv(csv_file):
 
 def __get_model_fields():
     """
-    Retrieves data-entry relevant fields of the ITSystemRecord class
+    Retrieves data-entry relevant fields of the ITSystemRecord class.
     """
-    return ITSystemRecord._meta.get_fields()[1:-4]
+    excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state"]
+    return [x for x in ITSystemRecord._meta.get_fields() if x.name not in excluded_fields]
+
+
+def get_user_related_systems(user, hide_decommissioned=False, verbose_names=False):
+    """
+    returns a dictionary of arrays that represent the systems a user is a contact in, and what roles they fill.
+    """
+    systems_dict = {}
+    __process_related_list(
+        systems_dict,
+        user.systems_business_service_owner_of.all(),
+        "Business Service Owner" if verbose_names else "business_service_owner",
+        hide_decommissioned,
+    )
+    __process_related_list(
+        systems_dict, user.systems_owner_of.all(), "System Owner" if verbose_names else "system_owner", hide_decommissioned
+    )
+    __process_related_list(
+        systems_dict,
+        user.systems_technology_custodian_of.all(),
+        "Technology Custodian" if verbose_names else "technology_custodian",
+        hide_decommissioned,
+    )
+    __process_related_list(
+        systems_dict,
+        user.systems_information_custodian_of.all(),
+        "Information Custodian" if verbose_names else "information_custodian",
+        hide_decommissioned,
+    )
+
+    return systems_dict
+
+
+def __process_related_list(systems_dict, related_list, fieldname, hide_decommissioned):
+    """
+    For each related system, appends the specified field to that systems list.
+    Hides decommissioned systems if specified.
+    """
+    for item in related_list:
+        if not (hide_decommissioned and item.status.name == "Decommissioned"):
+            if item.system_id in systems_dict:
+                systems_dict[item.system_id].append(fieldname)
+            else:
+                systems_dict[item.system_id] = [fieldname]

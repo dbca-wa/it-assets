@@ -29,6 +29,7 @@ class Command(BaseCommand):
         register = ITSystemRecord.objects.all().exclude(status__name="Decommissioned")
 
         flagged_users = []
+        # Checks each record for invalid user contact field values, appending invalid field values to the flagged user list
         for record in register:
             logger.info("processing system: " + str(record))
             if record.business_service_owner:
@@ -72,6 +73,7 @@ class Command(BaseCommand):
 
         if num_flagged_users > 0:
             if options.get("send_email"):
+                # Notifies set ISR Mailbox of flagged user contact fields
                 logger.info("Sending contact audit email")
                 msg = send_daily_audit_email(flagged_users=flagged_users)
 
@@ -81,6 +83,9 @@ class Command(BaseCommand):
 
 
 def _process_contact(flagged_users, record, field_name, user, logger):
+    """
+    If the user doesn't appear on the addressbook, the user is flagged.
+    """
     if user.account_type in DepartmentUser.ACCOUNT_TYPE_EXCLUDE:
         system_str = str(record)
         user_str = str(user)
@@ -90,6 +95,9 @@ def _process_contact(flagged_users, record, field_name, user, logger):
 
 
 def _process_null(flagged_users, record, field_name, logger):
+    """
+    Flags mandatory field as empty.
+    """
     system_str = str(record)
     flagged_users.append({"system_name": system_str, "field_name": field_name, "user_email": "EMPTY", "user_status": "EMPTY"})
     logger.info(f"User Flagged - {system_str} | {field_name} | EMPTY | EMPTY")

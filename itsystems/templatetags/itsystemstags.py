@@ -6,6 +6,9 @@ register = template.Library()
 
 @register.simple_block_tag(takes_context=True)
 def renderButtons(context, content):
+    """
+    Renders all dynamic filter buttons in a row.
+    """
     format_kwargs = {
         "context": context,
         "content": content,
@@ -38,6 +41,9 @@ def renderButtons(context, content):
 
 
 def renderButton(filter, field_name, verbose_name):
+    """
+    Renders a button that clears the inputted filter field if clicked
+    """
     return (
         """<button type="button" class="btn btn-outline-secondary" onClick="clearField('"""
         + field_name
@@ -51,6 +57,9 @@ def renderButton(filter, field_name, verbose_name):
 
 @register.simple_block_tag(takes_context=True)
 def renderSelect(context, content, id, filter, list_name):
+    """
+    Renders a dropdown field that defaults the selected option to the previously selected option.
+    """
     format_kwargs = {
         "id": id,
         "list_name": list_name,
