@@ -267,7 +267,11 @@ def ascender_job_sort_key(record: dict) -> int:
 
 def ascender_employee_fetch(employee_id) -> tuple:
     """Returns a tuple: (employee_id, [sorted employee jobs])"""
-    ascender_records = ascender_db_fetch(employee_id)
+    try:
+        ascender_records = ascender_db_fetch(employee_id)
+    except ValueError:
+        return (None, None)
+
     jobs = []
 
     for row in ascender_records:

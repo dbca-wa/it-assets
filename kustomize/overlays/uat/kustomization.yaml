@@ -4,6 +4,7 @@ nameSuffix: -uat
 resources:
   - ../../base
   - cronjobs/deptusers-check-ascender
+  - cronjobs/deptusers-signins
   - ingress.yaml
   - postgres_fdw_pvc.yaml
 secretGenerator:
