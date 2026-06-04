@@ -248,29 +248,29 @@ class ITSystemRecord(models.Model):
             self_fields = self.__dict__
             obj_fields = obj.__dict__
 
-            for self_val, obj_val in self_fields.items():
-                if (self_val not in excluded_fields) and (self_val in obj_fields):
+            for field_name, self_value in self_fields.items():
+                if (field_name not in excluded_fields) and (field_name in obj_fields):
                     #  obj_fileds' 'Or None' accounts for empty string values, self fields' 'Or None' allows for Boolean 'False' equivalency
-                    if (self_fields[self_val] or None) != (obj_fields[self_val] or None):
+                    if (self_value or None) != (obj_fields[field_name] or None):
                         changes.append(
                             {
-                                "field": self.__strip_field__(str(self_val)),
-                                "verbose_field": self.__display_field__(str(self_val)),
-                                "old": self.__display_val__(self_val, self_fields[self_val]),
-                                "new": obj.__display_val__(self_val, obj_fields[self_val]),
+                                "field": self.__strip_field__(field_name),
+                                "verbose_field": self.__display_field__(field_name),
+                                "old": self.__display_val__(field_name, self_value),
+                                "new": obj.__display_val__(field_name, obj_fields[field_name]),
                             }
                         )
         else:
             # Returns all fields
             self_fields = self.__dict__
-            for self_val in self_fields.items():
-                if self_val[0] not in excluded_fields:
+            for field_name, self_value in self_fields.items():
+                if field_name not in excluded_fields:
                     changes.append(
                         {
-                            "field": self.__strip_field__(self_val[0]),
-                            "verbose_field": self.__display_field__(self_val[0]),
+                            "field": self.__strip_field__(field_name),
+                            "verbose_field": self.__display_field__(field_name),
                             "old": None,
-                            "new": self.__display_val__(self_val[0], self_val[1]),
+                            "new": self.__display_val__(field_name, self_value),
                         }
                     )
 

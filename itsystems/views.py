@@ -18,7 +18,7 @@ from django.db.utils import IntegrityError
 from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType, DepartmentUser
-from .utils import export_csv, import_csv, retrieve, replace_contact, edit_record_from_dict, get_unique_users
+from .utils import export_csv, import_csv, get_or_none, replace_contact, edit_record_from_dict, get_unique_users
 
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
@@ -59,27 +59,27 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "show_drafts" in self.request.GET:
             context["drafts_filter"] = self.request.GET["show_drafts"]
         if "status" in self.request.GET:
-            context["status_filter"] = retrieve(Status, self.request.GET["status"])
+            context["status_filter"] = get_or_none(Status, self.request.GET["status"])
         if "division" in self.request.GET:
-            context["division_filter"] = retrieve(Division, self.request.GET["division"])
+            context["division_filter"] = get_or_none(Division, self.request.GET["division"])
         if "seasonality" in self.request.GET:
-            context["seasonality_filter"] = retrieve(Seasonality, self.request.GET["seasonality"])
+            context["seasonality_filter"] = get_or_none(Seasonality, self.request.GET["seasonality"])
         if "availability" in self.request.GET:
-            context["availability_filter"] = retrieve(Availability, self.request.GET["availability"])
+            context["availability_filter"] = get_or_none(Availability, self.request.GET["availability"])
         if "vital_records" in self.request.GET:
             context["vital_records_filter"] = self.request.GET["vital_records"]
         if "sensitivity" in self.request.GET:
-            context["sensitivity_filter"] = retrieve(Sensitivity, self.request.GET["sensitivity"])
+            context["sensitivity_filter"] = get_or_none(Sensitivity, self.request.GET["sensitivity"])
         if "system_type" in self.request.GET:
-            context["system_type_filter"] = retrieve(SystemType, self.request.GET["system_type"])
+            context["system_type_filter"] = get_or_none(SystemType, self.request.GET["system_type"])
         if "business_service_owner" in self.request.GET:
-            context["business_service_owner_filter"] = retrieve(DepartmentUser, self.request.GET["business_service_owner"])
+            context["business_service_owner_filter"] = get_or_none(DepartmentUser, self.request.GET["business_service_owner"])
         if "system_owner" in self.request.GET:
-            context["system_owner_filter"] = retrieve(DepartmentUser, self.request.GET["system_owner"])
+            context["system_owner_filter"] = get_or_none(DepartmentUser, self.request.GET["system_owner"])
         if "technology_custodian" in self.request.GET:
-            context["technology_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["technology_custodian"])
+            context["technology_custodian_filter"] = get_or_none(DepartmentUser, self.request.GET["technology_custodian"])
         if "information_custodian" in self.request.GET:
-            context["information_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["information_custodian"])
+            context["information_custodian_filter"] = get_or_none(DepartmentUser, self.request.GET["information_custodian"])
 
         # Passes in pagination data
         context["object_count"] = len(self.get_queryset())

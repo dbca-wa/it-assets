@@ -110,9 +110,9 @@ def import_csv(request):
     }
 
 
-def retrieve(cls, id):
+def get_or_none(cls, id):
     """
-    Retrieves a record using an Id from an inputted class.
+    Retrieves a record using an Id from an inputted class, and returns None if it can't find it
     """
     try:
         model = cls.objects.get(id=id)
@@ -249,9 +249,10 @@ def __validate_csv(csv_file):
 
 def __get_model_fields():
     """
-    Retrieves data-entry relevant fields of the ITSystemRecord class
+    Retrieves data-entry relevant fields of the ITSystemRecord class.
     """
-    return ITSystemRecord._meta.get_fields()[1:-4]
+    excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state"]
+    return [x for x in ITSystemRecord._meta.get_fields() if x.name not in excluded_fields]
 
 
 def get_user_related_systems(user, hide_decommissioned=False, verbose_names=False):
