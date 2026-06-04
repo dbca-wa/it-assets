@@ -17,14 +17,14 @@ def send_user_deletion_email(user, related_systems):
 
         # Creates email content
         text_content = f"""Hi,
-This is an automated email to notify you of the deletion of an IT System Register user contact.
+An IT System Register user contact has been deleted from IT Assets, affecting one or more active IT systems.
 User: {user}
 Affected Systems: {all_systems}
 
 Regards,
 OIM Service Desk"""
         html_content = f"""<p>Hi,</p>
-<p>This is an automated email to notify you of the deletion of an IT System Register user contact.</p>
+<p>An IT System Register user contact has been deleted from IT Assets, affecting one or more active IT systems.</p>
 <p><ul>User: {user}<br>
 Affected Fields:{all_systems_html}</ul></p>
 <p>Regards,</p>
@@ -45,8 +45,8 @@ def send_daily_audit_email(flagged_users):
     if num_users > 0:
         # Creates an initial text body and subject
         subject = "IT Systems Register - Flagged Users"
-        text_content_header = f"Hi,\n This is an automated email to notify you of IT Systems Register contacts flagged as missing from address book.\n There are {num_users} flagged contacts.\n"
-        html_content_header = f"<p>Hi,</p><p>This is an automated email to notify you of IT Systems Register contacts flagged as missing from address book.</p><p>There are {num_users} flagged contacts.</p>"
+        text_content_header = f"Hi,\nOne or more IT Systems Register contact fields have been flagged as missing from address book.\n There are {num_users} flagged contact fields.\n"
+        html_content_header = f"<p>Hi,</p><p>One or more IT Systems Register contact fields have been flagged as missing from address book.</p><p>There are {num_users} flagged contact fields.</p>"
 
         text_content_footer = "Regards,\nOIM Service Desk\n"
         html_content_footer = "<p>Regards,</p><p>OIM Service Desk</p>"
