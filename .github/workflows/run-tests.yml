@@ -19,7 +19,7 @@ jobs:
       ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS: 14
     services:
       postgres:
-        image: postgis/postgis:15-3.4-alpine
+        image: postgis/postgis:16-3.5-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
