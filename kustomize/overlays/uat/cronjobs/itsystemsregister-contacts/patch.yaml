@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  # AWST: 8am on friday
+  schedule: '0 0 * * 5'
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: itassets-cronjob
+              args: ['manage.py', 'it_systems_register_contact_notification', '--e']
+              envFrom:
+                - secretRef:
+                    name: itassets-env-uat
