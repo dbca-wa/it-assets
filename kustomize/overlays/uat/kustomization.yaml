@@ -5,6 +5,7 @@ resources:
   - ../../base
   - cronjobs/deptusers-check-ascender
   - cronjobs/deptusers-signins
+  - cronjobs/itsystemsregister-contacts
   - ingress.yaml
   - postgres_fdw_pvc.yaml
 secretGenerator:
