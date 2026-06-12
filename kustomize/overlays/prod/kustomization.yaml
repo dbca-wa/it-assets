@@ -17,6 +17,7 @@ resources:
   - cronjobs/m365-licence-check
   - cronjobs/storage-usage
   - cronjobs/update-ccm
+  - cronjobs/itsystemsregister-contacts
   - postgres_fdw_pvc.yaml
 secretGenerator:
   - name: itassets-env

@@ -14,4 +14,4 @@ spec:
               args: ['manage.py', 'it_systems_register_contact_notification', '--e']
               envFrom:
                 - secretRef:
-                    name: itassets-env-uat
+                    name: itassets-env-prod
