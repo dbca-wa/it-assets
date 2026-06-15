@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime
+from user_agents import parse
 
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -14,9 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.utils import IntegrityError
 
-
 from itassets.utils import get_next_pages, get_previous_pages
-
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType, DepartmentUser
 from .utils import export_csv, import_csv, get_or_none, replace_contact, edit_record_from_dict, get_unique_users
 
@@ -35,6 +34,12 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["site_title"] = "Office of Information Management"
         context["site_acronym"] = "OIM"
         context["page_title"] = "IT Systems Register"
+
+        # Gets browser data
+        try:
+            context["user_agent"] = parse(self.request.headers.get("User-Agent"))
+        except TypeError:
+            context["user_agent"] = parse("")
 
         # Filter out decommisioned and (if required) drafts
         excluded = ["Decommissioned"]
