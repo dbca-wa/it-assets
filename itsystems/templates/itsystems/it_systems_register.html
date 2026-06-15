@@ -33,7 +33,12 @@
         select{
             max-width:2.5ch;
             border: 0px;
-            text-indent:900px;
+            {% if user_agent.browser.family == "Firefox" or user_agent.browser.family == "Chrome" %}
+            text-indent:0px;
+            {% else %}
+            text-indent:100px;
+            {% endif %}
+
         }
         
         th {
