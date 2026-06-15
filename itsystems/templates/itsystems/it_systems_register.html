@@ -17,7 +17,7 @@
             width: 100%;
             font-size:14px;
         }
-        {% if user_agent.is_pc %}
+        {% if user_agent.is_pc or user_agent.device.family == "Other" %}
         #sticky-col{
             position:sticky; 
             left:0; 
@@ -62,7 +62,7 @@
 {% endblock extra_style %}
 
 {% block page_content %}
-    {% if user_agent.is_pc %}
+    {% if user_agent.is_pc or user_agent.device.family == "Other" %}
     <div id = "parent-container" class="d-flex flex-column container-fluid p-5">
     {% else %}
     <div id = "parent-container" class="d-flex flex-column container-fluid p-2">
@@ -102,7 +102,7 @@
                     </form>
                 </div>
                 <!-- Pagination -->
-                {% if user_agent.is_pc %}
+                {% if user_agent.is_pc or user_agent.device.family == "Other" %}
                 <div class="col">
                     <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
                 </div>
