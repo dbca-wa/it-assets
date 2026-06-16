@@ -208,11 +208,14 @@ def edit_record_from_dict(record, dict, user):
     return record.to_dict()
 
 
-def get_unique_users(field):
+def get_unique_users(field, excluded_statuses=[]):
     """
     Retrieves all unique contacts in a specified ITSystemRecord contact field
     """
-    unique_vals = ITSystemRecord.objects.values_list(field, flat=True).distinct()
+    if len(excluded_statuses) > 0:
+        unique_vals = ITSystemRecord.objects.values_list(field, flat=True).exclude(status__name__in=excluded_statuses).distinct()
+    else:
+        unique_vals = ITSystemRecord.objects.values_list(field, flat=True).distinct()
     return DepartmentUser.objects.filter(pk__in=unique_vals).order_by("email")
 
 
