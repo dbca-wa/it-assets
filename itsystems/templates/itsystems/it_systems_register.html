@@ -17,6 +17,7 @@
             width: 100%;
             font-size:14px;
         }
+        {% if user_agent.is_pc or user_agent.device.family == "Other" %}
         #sticky-col{
             position:sticky; 
             left:0; 
@@ -24,6 +25,7 @@
             z-index:1;     
             outline: 1px solid grey;
         }
+        {% endif %}
         #sticky-head{
             position: sticky;
             top: 0; 
@@ -33,7 +35,11 @@
         select{
             max-width:2.5ch;
             border: 0px;
-            text-indent:900px;
+            {% if user_agent.browser.family == "Edge" %}
+            text-indent:100px;
+            {% else %}
+            text-indent:0px;
+            {% endif %}
         }
         
         th {
@@ -48,12 +54,19 @@
             bottom:0;
             width:100%;
             z-index:2;
+            {% if user_agent.is_mobile %}
+            height: 70px;
+            {% endif %}
         }
     </style>
 {% endblock extra_style %}
 
 {% block page_content %}
+    {% if user_agent.is_pc or user_agent.device.family == "Other" %}
     <div id = "parent-container" class="d-flex flex-column container-fluid p-5">
+    {% else %}
+    <div id = "parent-container" class="d-flex flex-column container-fluid p-2">
+    {% endif %}
         <div id="page-headers">
             <div class="row">
                 <h1>{{ page_title }}</h1>
@@ -89,12 +102,19 @@
                     </form>
                 </div>
                 <!-- Pagination -->
+                {% if user_agent.is_pc or user_agent.device.family == "Other" %}
                 <div class="col">
                     <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
                 </div>
+                {% endif %}
             </div>
         </div>
-        <div style="padding:10px">
+            {% if user_agent.is_mobile %}
+            <div class="col">
+                <div class="d-flex justify-content-center">{% include "itsystems/register_pagination.html" %}</div>
+            </div>
+            {% endif %}
+        <div style="padding:3px">
             {% renderButtons %}
             {% endrenderButtons %}
             <script>
