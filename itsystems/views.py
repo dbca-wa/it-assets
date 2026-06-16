@@ -53,10 +53,10 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["availabilities"] = Availability.objects.all().order_by("name")
         context["sensitivities"] = Sensitivity.objects.all().order_by("name")
         context["system_types"] = SystemType.objects.all().order_by("name")
-        context["business_service_owners"] = get_unique_users("business_service_owner")
-        context["system_owners"] = get_unique_users("system_owner")
-        context["technology_custodians"] = get_unique_users("technology_custodian")
-        context["information_custodians"] = get_unique_users("information_custodian")
+        context["business_service_owners"] = get_unique_users("business_service_owner", excluded)
+        context["system_owners"] = get_unique_users("system_owner", excluded)
+        context["technology_custodians"] = get_unique_users("technology_custodian", excluded)
+        context["information_custodians"] = get_unique_users("information_custodian", excluded)
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
