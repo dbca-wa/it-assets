@@ -12,6 +12,7 @@
         #table-container{
             overflow-y:auto;
             overflow-x:auto;
+            outline: 1px solid lightgrey;
         }
         #register-table{
             width: 100%;
@@ -23,7 +24,7 @@
             left:0; 
             border-right: 
             z-index:1;     
-            outline: 1px solid grey;
+            outline: 1px solid lightgrey;
         }
         {% endif %}
         #sticky-head{
@@ -35,14 +36,9 @@
         select{
             width:3ch;
             border: 0px;
-            {% if user_agent.browser.family == "Edge" %}
-            text-indent:100px;
-            {% else %}
-            text-indent:0px;
-            {% endif %}
         }
         th {
-            outline: 1px solid grey;
+            outline: 1px solid lightgrey;
         }
 
         td {
@@ -62,48 +58,58 @@
 
 {% block page_content %}
     {% if user_agent.is_pc or user_agent.device.family == "Other" %}
-    <div id = "parent-container" class="d-flex flex-column container-fluid p-5">
+    <div id = "parent-container" class="d-flex flex-column container-fluid px-4 py-4">
     {% else %}
     <div id = "parent-container" class="d-flex flex-column container-fluid p-2">
     {% endif %}
-        <div id="page-headers">
-            <div class="row">
-                <h1>{{ page_title }}</h1>
+        <div class="container-fluid">
+            <div class="row pb-2">
+                <h1><b>{{ page_title }}</b></h1>
+                <hr style="color:lightgrey;">
             </div>
-            <div class="row pt-3">
-                <div class="col">
+            <div class="row flex-nowrap justify-content-between">
+                <div class="col pb-1">
                     <!-- Search bar -->
                     <form id="filters" action="" method="get">
-                        <div class="row">
-                            <div class="d-none d-md-block col-md-2">
-                                <label for="search_field" style="vertical-align: middle;">Search:</label>
+                        {% if user_agent.is_pc or user_agent.device.family == "Other" %}
+                        <div class="row justify-content-start align-self-center">
+                        {% else %}
+                        <div class="row justify-content-center">
+                        {% endif %}
+                            <div class="col-md-8 col-xl-7">
+                                <div class="input-group align-self-center">
+                                    <input id="search_field"
+                                            type="text"
+                                            class="form-control"
+                                            name="q"
+                                            placeholder="Search a name or description..."
+                                            value="{{ query_string }}">
+                                    <button class="btn btn-primary px-3" type="button" id="SearchButton" onclick="this.form.submit()">Search</button>
+                                </div>
                             </div>
-                            <div class="col-sm-12 col-md-10 col-lg-7">
-                                <input id="search_field"
-                                        type="text"
-                                        class="form-control"
-                                        name="q"
-                                        placeholder="Search name or description"
-                                        value="{{ query_string }}">
+                            <div class="col align-self-center">
+                                <div class="d-none d-md-block align-self-center text-nowrap"> 
+                                    {% if drafts_filter %}
+                                        <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()" checked>
+                                        <label for="show_drafts">Show Drafts</label>
+                                    {% else %}
+                                        <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()">
+                                        <label for="show_drafts">Show Drafts</label>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <div class="d-none d-lg-block col-lg-3"> 
-                                {% if drafts_filter %}
-                                    <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()" checked>
-                                    <label for="show_drafts">Show Drafts</label>
-                                {% else %}
-                                    <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()">
-                                    <label for="show_drafts">Show Drafts</label>
-                                {% endif %}
+                            <div class="col-auto align-self-center">
+                                <div class="d-none d-xl-block text-muted"> 
+                                        Viewing {{ object_count }} record(s)
+                                </div>
                             </div>
                         </div>
-                            <div class="d-none d-lg-block"> Viewing {{ object_count }} record(s)</div>
-
                     </form>
                 </div>
                 <!-- Pagination -->
                 {% if user_agent.is_pc or user_agent.device.family == "Other" %}
-                <div class="col">
-                    <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
+                <div class="col-auto pb-1">
+                    <div class="d-flex">{% include "itsystems/register_pagination.html" %}</div>
                 </div>
                 {% endif %}
             </div>
