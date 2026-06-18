@@ -12,20 +12,19 @@
         #table-container{
             overflow-y:auto;
             overflow-x:auto;
+            outline: 1px solid lightgrey;
         }
         #register-table{
             width: 100%;
             font-size:14px;
         }
-        {% if user_agent.is_pc or user_agent.device.family == "Other" %}
         #sticky-col{
             position:sticky; 
             left:0; 
             border-right: 
             z-index:1;     
-            outline: 1px solid grey;
+            outline: 1px solid lightgrey;
         }
-        {% endif %}
         #sticky-head{
             position: sticky;
             top: 0; 
@@ -33,17 +32,11 @@
             z-index:2;
         }
         select{
-            max-width:2.5ch;
+            width:3ch;
             border: 0px;
-            {% if user_agent.browser.family == "Edge" %}
-            text-indent:100px;
-            {% else %}
-            text-indent:0px;
-            {% endif %}
         }
-        
         th {
-            outline: 1px solid grey;
+            outline: 1px solid lightgrey;
         }
 
         td {
@@ -54,83 +47,71 @@
             bottom:0;
             width:100%;
             z-index:2;
-            {% if user_agent.is_mobile %}
-            height: 70px;
-            {% endif %}
+            max-height:65px;
         }
     </style>
 {% endblock extra_style %}
 
 {% block page_content %}
-    {% if user_agent.is_pc or user_agent.device.family == "Other" %}
-    <div id = "parent-container" class="d-flex flex-column container-fluid p-5">
-    {% else %}
-    <div id = "parent-container" class="d-flex flex-column container-fluid p-2">
-    {% endif %}
-        <div id="page-headers">
-            <div class="row">
-                <h1>{{ page_title }}</h1>
+    <div id = "parent-container" class="d-flex flex-column container-fluid p-sm-2 p-md-4">
+        <div class="container-fluid">
+            <div class="row pb-2">
+                <h1><b>{{ page_title }}</b></h1>
+                <hr style="color:lightgrey;">
             </div>
-            <div class="row pt-3">
-                <div class="col">
+            <div class="row flex-nowrap justify-content-between">
+                <div class="col pb-1">
                     <!-- Search bar -->
                     <form id="filters" action="" method="get">
-                        <div class="row">
-                            <div class="d-none d-md-block col-md-2">
-                                <label for="search_field" style="vertical-align: middle;">Search:</label>
+                        <div class="row justify-content-start align-self-center">
+                            <div class="col-md-8 col-xl-7">
+                                <div class="input-group align-self-center">
+                                    <input id="search_field"
+                                            type="text"
+                                            class="form-control"
+                                            name="q"
+                                            placeholder="Search a name or description..."
+                                            value="{{ query_string }}">
+                                    <button class="btn btn-primary px-3" type="button" id="SearchButton" onclick="this.form.submit()">Search</button>
+                                </div>
                             </div>
-                            <div class="col-sm-12 col-md-10 col-lg-7">
-                                <input id="search_field"
-                                        type="text"
-                                        class="form-control"
-                                        name="q"
-                                        placeholder="Search name or description"
-                                        value="{{ query_string }}">
+                            <div class="col align-self-center">
+                                <div class="d-none d-md-block align-self-center text-nowrap"> 
+                                    {% if drafts_filter %}
+                                        <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()" checked>
+                                        <label for="show_drafts">Show Drafts</label>
+                                    {% else %}
+                                        <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()">
+                                        <label for="show_drafts">Show Drafts</label>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <div class="d-none d-lg-block col-lg-3"> 
-                                {% if drafts_filter %}
-                                    <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()" checked>
-                                    <label for="show_drafts">Show Drafts</label>
-                                {% else %}
-                                    <input class="form-check-input" type="checkbox" form="filters" id="show_drafts" name="show_drafts" value="True" onchange="this.form.submit()">
-                                    <label for="show_drafts">Show Drafts</label>
-                                {% endif %}
+                            <div class="col-auto align-self-center">
+                                <div class="d-none d-xl-block text-muted"> 
+                                        Viewing {{ object_count }} record(s)
+                                </div>
                             </div>
                         </div>
-                            <div class="d-none d-lg-block"> Viewing {{ object_count }} record(s)</div>
-
                     </form>
                 </div>
-                <!-- Pagination -->
-                {% if user_agent.is_pc or user_agent.device.family == "Other" %}
-                <div class="col">
-                    <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
+                <div class="col-auto pb-1 d-none d-sm-block">
+                    <div class="d-flex">{% include "itsystems/register_pagination.html" %}</div>
                 </div>
-                {% endif %}
             </div>
         </div>
-            {% if user_agent.is_mobile %}
-            <div class="col">
+            <div class="col d-block d-sm-none">
                 <div class="d-flex justify-content-center">{% include "itsystems/register_pagination.html" %}</div>
             </div>
-            {% endif %}
         <div style="padding:3px">
             {% renderButtons %}
             {% endrenderButtons %}
-            <script>
-                function clearField(field){
-                    document.getElementById(field).value='';
-                    document.getElementById('filters').submit();
-                }
-            </script>
         </div>
         <div id ="table-container" class="d-flex flex-fill">
             <table id = "register-table" class="table table-striped table-sm table-hover">
                 <thead id = "sticky-head">
                     <tr>
-                        <th id = "sticky-col">System ID - Name</th>
-                        <th>
-                            Status
+                        <th id = "sticky-col" style="z-index:3">System ID - Name</th>
+                        <th>Status
                             {% renderSelect id="status" filter=status_filter list_name="statuses" %}
                             {% endrenderSelect %}
                         </th>
@@ -199,7 +180,7 @@
                     {% for obj in object_list %}
                         <tr>
                             <td id="sticky-col">
-                                <p style="width:30ch">
+                                <p style="width:10dvw;max-width:30ch;min-width:8ch">
                                     <b>{{obj.system_id_name}}</b>
                                 </p>
                             </td>
@@ -288,3 +269,36 @@
         {% endif %}
     </div>
 {% endblock page_content %}
+{% block extra_js %}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js" 
+        integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" \
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    {{block.super}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js" 
+        integrity="sha512-l97jKm0MQeIX6OolYay6IlA3Y2KpGh+4/hm8pLSKmQkFwLFkhk7hhWfzGEyqmfetG30G4i4Bo7RHNwMWgEpSLA==" 
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+    <script>
+        function clearField(field){
+            document.getElementById(field).value='';
+            document.getElementById('filters').submit();
+        }
+        function toggleField(id){
+            element = document.getElementById(id);
+            if (element.style.display != "none"){
+                element.style.display = "none";
+            }
+            else {
+                element.style.display = "block";
+            }
+        }
+        $(document).ready(function () {
+            $("select").select2({
+                dropdownAutoWidth: true,
+                templateSelection: function(){return ""}
+            });
+        });
+    </script>
+{% endblock %}

@@ -1,6 +1,5 @@
 import json
 from datetime import date, datetime
-from user_agents import parse
 
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -35,12 +34,6 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["site_acronym"] = "OIM"
         context["page_title"] = "IT Systems Register"
 
-        # Gets browser data
-        try:
-            context["user_agent"] = parse(self.request.headers.get("User-Agent"))
-        except TypeError:
-            context["user_agent"] = parse("")
-
         # Filter out decommisioned and (if required) drafts
         excluded = ["Decommissioned"]
         if "show_drafts" not in self.request.GET:
@@ -53,10 +46,10 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["availabilities"] = Availability.objects.all().order_by("name")
         context["sensitivities"] = Sensitivity.objects.all().order_by("name")
         context["system_types"] = SystemType.objects.all().order_by("name")
-        context["business_service_owners"] = get_unique_users("business_service_owner")
-        context["system_owners"] = get_unique_users("system_owner")
-        context["technology_custodians"] = get_unique_users("technology_custodian")
-        context["information_custodians"] = get_unique_users("information_custodian")
+        context["business_service_owners"] = get_unique_users("business_service_owner", excluded)
+        context["system_owners"] = get_unique_users("system_owner", excluded)
+        context["technology_custodians"] = get_unique_users("technology_custodian", excluded)
+        context["information_custodians"] = get_unique_users("information_custodian", excluded)
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
