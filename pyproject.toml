@@ -18,7 +18,7 @@ dependencies = [
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "python-dateutil==2.9.0",
-  "webtemplate-dbca==1.8.3",
+  "webtemplate-dbca==1.9.0",
   "requests==2.34.2",
   "msal==1.37.0",
   "whitenoise[brotli]==6.12.0",
