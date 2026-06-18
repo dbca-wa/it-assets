@@ -1,6 +1,5 @@
 import json
 from datetime import date, datetime
-from user_agents import parse
 
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
