@@ -35,12 +35,6 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["site_acronym"] = "OIM"
         context["page_title"] = "IT Systems Register"
 
-        # Gets browser data
-        try:
-            context["user_agent"] = parse(self.request.headers.get("User-Agent"))
-        except TypeError:
-            context["user_agent"] = parse("")
-
         # Filter out decommisioned and (if required) drafts
         excluded = ["Decommissioned"]
         if "show_drafts" not in self.request.GET:

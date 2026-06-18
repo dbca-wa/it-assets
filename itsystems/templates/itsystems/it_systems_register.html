@@ -18,7 +18,6 @@
             width: 100%;
             font-size:14px;
         }
-        {% if user_agent.is_pc or user_agent.device.family == "Other" %}
         #sticky-col{
             position:sticky; 
             left:0; 
@@ -26,7 +25,6 @@
             z-index:1;     
             outline: 1px solid lightgrey;
         }
-        {% endif %}
         #sticky-head{
             position: sticky;
             top: 0; 
@@ -49,19 +47,13 @@
             bottom:0;
             width:100%;
             z-index:2;
-            {% if user_agent.is_mobile %}
-            height: 70px;
-            {% endif %}
+            max-height:65px;
         }
     </style>
 {% endblock extra_style %}
 
 {% block page_content %}
-    {% if user_agent.is_pc or user_agent.device.family == "Other" %}
-    <div id = "parent-container" class="d-flex flex-column container-fluid px-4 py-4">
-    {% else %}
-    <div id = "parent-container" class="d-flex flex-column container-fluid p-2">
-    {% endif %}
+    <div id = "parent-container" class="d-flex flex-column container-fluid p-sm-2 p-md-4">
         <div class="container-fluid">
             <div class="row pb-2">
                 <h1><b>{{ page_title }}</b></h1>
@@ -71,11 +63,7 @@
                 <div class="col pb-1">
                     <!-- Search bar -->
                     <form id="filters" action="" method="get">
-                        {% if user_agent.is_pc or user_agent.device.family == "Other" %}
                         <div class="row justify-content-start align-self-center">
-                        {% else %}
-                        <div class="row justify-content-center">
-                        {% endif %}
                             <div class="col-md-8 col-xl-7">
                                 <div class="input-group align-self-center">
                                     <input id="search_field"
@@ -106,19 +94,14 @@
                         </div>
                     </form>
                 </div>
-                <!-- Pagination -->
-                {% if user_agent.is_pc or user_agent.device.family == "Other" %}
-                <div class="col-auto pb-1">
+                <div class="col-auto pb-1 d-none d-sm-block">
                     <div class="d-flex">{% include "itsystems/register_pagination.html" %}</div>
                 </div>
-                {% endif %}
             </div>
         </div>
-            {% if user_agent.is_mobile %}
-            <div class="col">
+            <div class="col d-block d-sm-none">
                 <div class="d-flex justify-content-center">{% include "itsystems/register_pagination.html" %}</div>
             </div>
-            {% endif %}
         <div style="padding:3px">
             {% renderButtons %}
             {% endrenderButtons %}
@@ -197,7 +180,7 @@
                     {% for obj in object_list %}
                         <tr>
                             <td id="sticky-col">
-                                <p style="width:30ch">
+                                <p style="width:10dvw;max-width:30ch;min-width:8ch">
                                     <b>{{obj.system_id_name}}</b>
                                 </p>
                             </td>
