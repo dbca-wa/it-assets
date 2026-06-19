@@ -44,7 +44,8 @@ class ITSystemRecordAdmin(VersionAdmin):
     ordering = ["system_id"]
 
     list_display = (
-        "system_id_name",
+        "system_id",
+        "name",
         "status",
         "division",
         "business_service_owner",

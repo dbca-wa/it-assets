@@ -31,7 +31,7 @@
             white-space:nowrap; 
             z-index:2;
         }
-        select{
+        #select2{
             width:3ch;
             border: 0px;
         }
@@ -68,11 +68,30 @@
                                 <div class="input-group align-self-center">
                                     <input id="search_field"
                                             type="text"
-                                            class="form-control"
+                                            class="form-control border-end-0"
                                             name="q"
-                                            placeholder="Search a name or description..."
+                                            placeholder="Search..."
                                             value="{{ query_string }}">
-                                    <button class="btn btn-primary px-3" type="button" id="SearchButton" onclick="this.form.submit()">Search</button>
+                                    <button class="btn btn-outline-secondary border-start-0" type="button" style="border-color:#DEE2E6" data-bs-toggle="dropdown" data-bs-auto-close="outside"><b>⋮</b></button>
+                                    <ul class="dropdown-menu p-2">
+                                        <li><h6 class="dropdown-header">Search Fields</h6></li>
+                                        <li>
+                                            {% renderCheckboxField title="SIDN" text="System ID - Name" value=SIDN %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="Desc" text="Description" value=Desc %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="DA" text="Disposal Authority" value=DA %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="RaD" text="Retention and Disposal" value=RaD %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="UBCS" text="UBCS" value=UBCS %}{% endrenderCheckboxField %}
+                                        </li>
+                                    </ul>
+                                    <button class="btn rounded-end btn-primary px-3" type="button" id="SearchButton" onclick="this.form.submit()">🔍︎</button>
                                 </div>
                             </div>
                             <div class="col align-self-center">
@@ -147,7 +166,7 @@
                         </th>
                         <th>File Store Link</th>
                         <th>Vital Records
-                            <select id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
+                            <select class="select2" id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
                                 {% if vital_records_filter == null %}
                                     <option disabled selected value></option>
                                 {% endif %}
@@ -295,9 +314,10 @@
             }
         }
         $(document).ready(function () {
-            $("select").select2({
+            $(".select2").select2({
                 dropdownAutoWidth: true,
-                templateSelection: function(){return ""}
+                templateSelection: function(){return ""},
+                width: '3ch'
             });
         });
     </script>

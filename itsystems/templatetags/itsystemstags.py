@@ -67,7 +67,7 @@ def renderSelect(context, content, id, filter, list_name):
         "context": context,
     }
 
-    result = """<select id="{id}" name="{id}" form="filters" onchange="this.form.submit()">"""
+    result = """<select id="{id}" class="select2" name="{id}" form="filters" onchange="this.form.submit()">"""
     if filter:
         for option in context[list_name]:
             if option.id == filter.id:
@@ -80,4 +80,35 @@ def renderSelect(context, content, id, filter, list_name):
             result += """<option value = """ + str(option.id) + """>""" + str(option) + """</option>"""
 
     result += "</select>"
+    return format_html(result, **format_kwargs)
+
+@register.simple_block_tag(takes_context=False)
+def renderCheckboxField(content, title,text, value):
+    """
+    Renders a checkbox field within the searchbar dropdown menu for selecting fields to search within.
+    Defaults to the last selected value.
+    """
+    format_kwargs = {
+        "title": title,
+        "text": text,
+        "value": value,
+        "content": content,
+    }
+    result = """
+    <a class="dropdown-item">
+        <div class="form-check">
+    """
+    if value:
+        result +="""
+                <input class="form-check-input" type="checkbox" name={title} checked/>
+        """
+    else:
+        result +="""
+                <input class="form-check-input" type="checkbox" name="{title}"/>
+        """
+    result +="""
+            <label class="form-check-label">{text}</label>
+        </div>
+    </a>
+    """
     return format_html(result, **format_kwargs)

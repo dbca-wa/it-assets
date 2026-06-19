@@ -39,6 +39,27 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "show_drafts" not in self.request.GET:
             excluded.append("Draft")
 
+        # Passes search fields back to template, defaulting to Name & Desc if nothing is selected.
+        search_field_selected = False
+        if "SIDN" in self.request.GET:
+            context["SIDN"] = True
+            search_field_selected = True
+        if "Desc" in self.request.GET:
+            context["Desc"] = True
+            search_field_selected = True
+        if "DA" in self.request.GET:
+            context["DA"] = True
+            search_field_selected = True
+        if "RaD" in self.request.GET:
+            context["RaD"] = True
+            search_field_selected = True
+        if "UBCS" in self.request.GET:
+            context["UBCS"] = True
+            search_field_selected = True
+        if not search_field_selected:
+            context["SIDN"] = True
+            context["Desc"] = True
+
         # Passes in FK field values to populate dropdowns
         context["statuses"] = Status.objects.all().exclude(name__in=excluded).order_by("name")
         context["divisions"] = Division.objects.all().order_by("name")
@@ -117,11 +138,32 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             queryset = queryset.filter(technology_custodian__id=self.request.GET["technology_custodian"])
         if self.request.GET.get("information_custodian"):
             queryset = queryset.filter(information_custodian__id=self.request.GET["information_custodian"])
-        if "q" in self.request.GET and self.request.GET["q"]:
+
+
+        if self.request.GET.get("q"):
             query_str = self.request.GET["q"]
-            queryset = queryset.filter(
-                Q(system_id__icontains=query_str) | Q(name__icontains=query_str) | Q(description__icontains=query_str)
-            )
+            filter_applied = False
+            filter_query = Q()
+            if self.request.GET.get("SIDN"):
+                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("Desc"):
+                filter_query = filter_query | Q(description__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("DA"):
+                filter_query = filter_query | Q(disposal_authority__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("RaD"):
+                filter_query = filter_query | Q(retention_and_disposal__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("UBCS"):
+                filter_query = filter_query | Q(ubcs__icontains=query_str)
+                filter_applied = True
+
+            if not filter_applied:
+                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str)
+
+            queryset = queryset.filter(filter_query)
 
         # Sorts records by system ID
         queryset = queryset.order_by("system_id")
