@@ -235,6 +235,20 @@ class ITSystemRecord(models.Model):
         A calculated field combining the ID of the record and the name.
         """
         return self.system_id + " - " + self.name
+    
+    @property
+    def short_description(self):
+        """
+        A calculated field producing a shortened version of the description.
+        This is used primarily in the admin view.
+        """
+        limit = 100
+        if self.description and len(self.description)> limit:
+            text = self.description[:97] + "..."
+        else:
+            text = self.description
+        return text
+
 
     def compare(self, obj):
         """
