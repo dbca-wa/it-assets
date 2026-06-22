@@ -39,13 +39,12 @@ def renderButtons(context, content):
 
     return format_html(result, **format_kwargs)
 
-
 def renderButton(filter, field_name, verbose_name):
     """
     Renders a button that clears the inputted filter field if clicked
     """
     return (
-        """<button type="button" class="btn btn-outline-secondary" onClick="clearField('"""
+        """<button type="button" class="btn btn-outline-secondary m-1" onClick="clearField('"""
         + field_name
         + """')">"""
         + verbose_name
@@ -53,6 +52,28 @@ def renderButton(filter, field_name, verbose_name):
         + filter
         + """  ✕</button>"""
     )
+
+@register.simple_block_tag(takes_context=True)
+def renderSort(context, content,field_name):
+    """
+    Renders an order-by button for a given field.
+    """
+    format_kwargs = {
+        "field_name": field_name,
+        "content": content,
+        "context":context,
+    }    
+    button_icon = "⇅"
+    if "order_by" in context:
+        if context["order_by"] == field_name:
+            if context["asc"] == "true":
+                button_icon = "↑"
+            else:
+                button_icon = "↓"
+
+    result = """<button type="button" class="order" onClick="orderField('{field_name}');">""" + button_icon  + """</button>"""
+
+    return format_html(result, **format_kwargs)
 
 
 @register.simple_block_tag(takes_context=True)

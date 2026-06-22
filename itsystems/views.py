@@ -100,6 +100,16 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "information_custodian" in self.request.GET:
             context["information_custodian_filter"] = get_or_none(DepartmentUser, self.request.GET["information_custodian"])
 
+        # Pass in sorting data - defaults to descending system id sorting
+        if "order_by" in self.request.GET:
+            context["order_by"] = self.request.GET["order_by"]
+        else:
+            context["order_by"] = "system_id"
+        if "asc" in self.request.GET:
+            context["asc"] = self.request.GET["asc"]
+        else:
+            context["asc"] = "false"
+
         # Passes in pagination data
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
@@ -166,7 +176,19 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             queryset = queryset.filter(filter_query)
 
         # Sorts records by system ID
-        queryset = queryset.order_by("system_id")
+        if "order_by" in self.request.GET:
+            order_string = self.request.GET.get("order_by")
+            field = ITSystemRecord._meta.get_field(self.request.GET.get("order_by"))
+            # Sorts FK fields by their name instead of their ID
+            if field.is_relation:
+                order_string += "__name"
+            # determines sort order
+            if self.request.GET.get("asc")=="true":
+                order_string = "-" + order_string
+        else:
+            # Defaults to System ID
+            order_string = "system_id"
+        queryset = queryset.order_by(order_string)
 
         return queryset
 
