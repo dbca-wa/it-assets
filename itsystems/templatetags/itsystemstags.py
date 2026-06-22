@@ -95,19 +95,19 @@ def renderCheckboxField(content, title,text, value):
         "content": content,
     }
     result = """
-    <a class="dropdown-item">
+    <a class="dropdown-item" href="#">
         <div class="form-check">
     """
     if value:
         result +="""
-                <input class="form-check-input" type="checkbox" name={title} checked/>
+                <input class="form-check-input" type="checkbox" name="{title}" id="{title}" checked/>
         """
     else:
         result +="""
-                <input class="form-check-input" type="checkbox" name="{title}"/>
+                <input class="form-check-input" type="checkbox" name="{title}" id="{title}"/>
         """
     result +="""
-            <label class="form-check-label">{text}</label>
+            <label class="form-check-label" for="{title}">{text}</label>
         </div>
     </a>
     """
