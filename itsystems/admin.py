@@ -186,7 +186,7 @@ class ITSystemRecordAdmin(VersionAdmin):
 
     autocomplete_fields = ("system_owner", "technology_custodian", "information_custodian", "business_service_owner")
 
-    list_filter = (CustomStatusFilters,"division")
+    list_filter = (CustomStatusFilters,"division", "seasonality", "availability", "vital_records" ,"sensitivity", "system_type")
 
     # Updates meta-data upon save.
     # Populates Created_* fields only during creation
