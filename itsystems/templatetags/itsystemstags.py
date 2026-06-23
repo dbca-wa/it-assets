@@ -133,3 +133,53 @@ def renderCheckboxField(content, title,text, value):
     </a>
     """
     return format_html(result, **format_kwargs)
+
+@register.simple_block_tag(takes_context=True)
+def encodeURL(context, content):
+    format_kwargs = {
+        "content": content,
+        "context":context
+    }
+    url_string = ""
+    if "order_by" in context:
+        url_string += "&order_by="+context["order_by"]
+    if "asc" in context:
+        url_string += "&asc="+context["asc"]
+    if "query_string" in context and len(context["query_string"])>0:
+        url_string += "&q="+context["query_string"]
+    if "SIDN" in context:
+        url_string += "&SIDN=on"
+    if "Desc" in context:
+        url_string += "&Desc=on"
+    if "DA" in context:
+        url_string += "&DA=on"
+    if "RaD" in context:
+        url_string += "&RaD=on"
+    if "UBCS" in context:
+        url_string += "&UBCS=on"
+    if "drafts_filter" in context:
+        url_string += "&show_drafts="+str(context["drafts_filter"])
+    if "status_filter" in context:
+        url_string += "&status="+str(context["status_filter"].id)
+    if "division_filter" in context:
+        url_string += "&division="+str(context["division_filter"].id)
+    if "business_service_owner_filter" in context:
+        url_string += "&business_service_owner="+str(context["business_service_owner_filter"].id)
+    if "system_owner_filter" in context:
+        url_string += "&system_owner="+str(context["system_owner_filter"].id)
+    if "technology_custodian_filter" in context:
+        url_string += "&technology_custodian="+str(context["technology_custodian_filter"].id)
+    if "information_custodian_filter" in context:
+        url_string += "&information_custodian="+str(context["information_custodian_filter"].id)
+    if "seasonality_filter" in context:
+        url_string += "&seasonality="+str(context["seasonality_filter"].id)
+    if "availability_filter" in context:
+        url_string += "&availability="+str(context["availability_filter"].id)
+    if "vital_records_filter" in context:
+        url_string += "&vital_records="+context["vital_records_filter"]
+    if "sensitivity_filter" in context:
+        url_string += "&sensitivity="+str(context["sensitivity_filter"].id)
+    if "system_type_filter" in context:
+        url_string += "&system_type="+str(context["system_type_filter"].id)
+
+    return format_html(url_string, **format_kwargs)
