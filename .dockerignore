@@ -2,10 +2,9 @@
 .env
 .flake8
 .git*
-.s2i
-.travis.yml
 .pgdump
 .dump
+.pyc
 __pycache__
 Dockerfile
 LICENSE
