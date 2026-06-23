@@ -7,9 +7,10 @@ from django.core import mail
 from django.core.management.base import BaseCommand
 from sentry_sdk.crons import monitor
 
+from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import CostCentre, DepartmentUser, Location
-from organisation.utils import ms_graph_list_users
+from organisation.utils import ms_graph_get_member_groups, ms_graph_list_users
 
 
 class Command(BaseCommand):
@@ -32,7 +33,8 @@ class Command(BaseCommand):
         """Separate the body of this management command to allow running it in context with
         the Sentry monitor process.
         """
-        azure_users = ms_graph_list_users()
+        token = ms_graph_client_token()
+        azure_users = ms_graph_list_users(token=token)
 
         if not azure_users:
             logger.error("Microsoft Graph API returned no data")
@@ -138,6 +140,9 @@ class Command(BaseCommand):
                     # Update the existing DepartmentUser object fields with values from Azure.
                     existing_user = DepartmentUser.objects.get(azure_guid=az["objectId"])
                     existing_user.azure_ad_data = az
+                    # Cache the list of assigned Entra groups on the user account.
+                    groups = ms_graph_get_member_groups(azure_guid=existing_user.azure_guid, token=token)
+                    existing_user.assigned_groups = groups
                     existing_user.azure_ad_data_updated = datetime.now(timezone.utc)
                     existing_user.update_from_entra_id_data()  # This method calls save()
             except Exception as e:
