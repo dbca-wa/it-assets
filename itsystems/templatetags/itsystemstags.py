@@ -215,6 +215,14 @@ def encodeURL(context, content):
         url_string += "&SIDN=on"
     if "Desc" in context:
         url_string += "&Desc=on"
+    if "BSO" in context:
+        url_string += "&BSO=on"
+    if "SO" in context:
+        url_string += "&SO=on"
+    if "TC" in context:
+        url_string += "&TC=on"
+    if "IC" in context:
+        url_string += "&IC=on"
     if "DA" in context:
         url_string += "&DA=on"
     if "RaD" in context:

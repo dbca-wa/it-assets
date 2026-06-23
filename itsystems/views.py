@@ -47,6 +47,18 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "Desc" in self.request.GET:
             context["Desc"] = True
             search_field_selected = True
+        if "BSO" in self.request.GET:
+            context["BSO"] = True
+            search_field_selected = True
+        if "SO" in self.request.GET:
+            context["SO"] = True
+            search_field_selected = True
+        if "TC" in self.request.GET:
+            context["TC"] = True
+            search_field_selected = True
+        if "IC" in self.request.GET:
+            context["IC"] = True
+            search_field_selected = True
         if "DA" in self.request.GET:
             context["DA"] = True
             search_field_selected = True
@@ -160,6 +172,18 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
                 filter_applied = True
             if self.request.GET.get("Desc"):
                 filter_query = filter_query | Q(description__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("BSO"):
+                filter_query = filter_query | Q(business_service_owner__email__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("SO"):
+                filter_query = filter_query | Q(system_owner__email__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("TC"):
+                filter_query = filter_query | Q(technology_custodian__email__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("IC"):
+                filter_query = filter_query | Q(information_custodian__email__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("DA"):
                 filter_query = filter_query | Q(disposal_authority__icontains=query_str)
