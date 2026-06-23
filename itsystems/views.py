@@ -14,9 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.utils import IntegrityError
 
-
 from itassets.utils import get_next_pages, get_previous_pages
-
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType, DepartmentUser
 from .utils import export_csv, import_csv, get_or_none, replace_contact, edit_record_from_dict, get_unique_users
 
@@ -48,10 +46,10 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["availabilities"] = Availability.objects.all().order_by("name")
         context["sensitivities"] = Sensitivity.objects.all().order_by("name")
         context["system_types"] = SystemType.objects.all().order_by("name")
-        context["business_service_owners"] = get_unique_users("business_service_owner")
-        context["system_owners"] = get_unique_users("system_owner")
-        context["technology_custodians"] = get_unique_users("technology_custodian")
-        context["information_custodians"] = get_unique_users("information_custodian")
+        context["business_service_owners"] = get_unique_users("business_service_owner", excluded)
+        context["system_owners"] = get_unique_users("system_owner", excluded)
+        context["technology_custodians"] = get_unique_users("technology_custodian", excluded)
+        context["information_custodians"] = get_unique_users("information_custodian", excluded)
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
