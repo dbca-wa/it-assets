@@ -36,7 +36,9 @@ dev = [
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.6.0",
-  "coverage>=7.14.1",
+  "coverage>=7.14.3",
+  "django-stubs>=6.0.5",
+  "deptry>=0.25.1",
 ]
 
 # Reference: https://docs.astral.sh/ruff/configuration/
@@ -54,3 +56,16 @@ ignore = [
 # Reference: https://www.djlint.com/docs/configuration/
 [tool.djlint]
 profile = "django"
+
+[tool.deptry]
+ignore = ["DEP004"]
+[tool.deptry.per_rule_ignores]
+DEP002 = [
+  "django-extensions",
+  "gunicorn",
+  "psycopg",
+  "whitenoise",
+  "webtemplate-dbca",
+  "django-storages",
+]
+DEP003 = ["azure"]

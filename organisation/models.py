@@ -443,7 +443,7 @@ class DepartmentUser(models.Model):
 
         return None
 
-    def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = None):
+    def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Entra ID, onprem AD).
         Each field has a 'source of truth'. In each case, check the source of truth and make changes
