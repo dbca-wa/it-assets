@@ -146,12 +146,12 @@
                         <th>
                             <div>Status
                             {% renderSort field_name="status" %}{% endrenderSort %}
-                            {% renderSelect id="status" filter=status_filter list_name="statuses" %}{% endrenderSelect %}
+                            {% renderSelect id="status" filter_name="status_filter" list_name="statuses" %}{% endrenderSelect %}
                             </div>
                         </th>
                         <th>Division
                             {% renderSort field_name="division" %}{% endrenderSort %}
-                            {% renderSelect id="division" filter=division_filter list_name="divisions" %}{% endrenderSelect %}
+                            {% renderSelect id="division" filter_name="division_filter" list_name="divisions" %}{% endrenderSelect %}
                         </th>
                         <th>Description
                             {% renderSort field_name="description" %}{% endrenderSort %}
@@ -161,48 +161,34 @@
                         </th>
                         <th>Business Service Owner
                             {% renderSort field_name="business_service_owner" %}{% endrenderSort %}
-                            {% renderSelect id="business_service_owner" filter=business_service_owner_filter list_name="business_service_owners" %}{% endrenderSelect %}
+                            {% renderSelect id="business_service_owner" filter_name="business_service_owner_filter" list_name="business_service_owners" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>System Owner
                             {% renderSort field_name="system_owner" %}{% endrenderSort %}
-                            {% renderSelect id="system_owner" filter=system_owner_filter list_name="system_owners" %}{% endrenderSelect %}
+                            {% renderSelect id="system_owner" filter_name="system_owner_filter" list_name="system_owners" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>Technology Custodian
                             {% renderSort field_name="technology_custodian" %}{% endrenderSort %}
-                            {% renderSelect id="technology_custodian" filter=technology_custodian_filter list_name="technology_custodians" %}{% endrenderSelect %}
+                            {% renderSelect id="technology_custodian" filter_name="technology_custodian_filter" list_name="technology_custodians" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>Information Custodian
                             {% renderSort field_name="information_custodian" %}{% endrenderSort %}
-                            {% renderSelect id="information_custodian" filter=information_custodian_filter list_name="information_custodians" %}{% endrenderSelect %}
+                            {% renderSelect id="information_custodian" filter_name="information_custodian_filter" list_name="information_custodians" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>Seasonality
                             {% renderSort field_name="seasonality" %}{% endrenderSort %}
-                            {% renderSelect id="seasonality" filter=seasonality_filter list_name="seasonalities" %}{% endrenderSelect %}
+                            {% renderSelect id="seasonality" filter_name="seasonality_filter" list_name="seasonalities" %}{% endrenderSelect %}
                         </th>
                         <th>Availability
                             {% renderSort field_name="availability" %}{% endrenderSort %}
-                            {% renderSelect id="availability" filter=availability_filter list_name="availabilities" %}{% endrenderSelect %}
+                            {% renderSelect id="availability" filter_name="availability_filter" list_name="availabilities" %}{% endrenderSelect %}
                         </th>
                         <th>File Store Link
                             {% renderSort field_name="file_store_link" %}{% endrenderSort %}
                         </th>
                         <th>Vital Records
                             {% renderSort field_name="vital_records" %}{% endrenderSort %}
-                            <select class="select2" id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
-                                {% if vital_records_filter == null %}
-                                    <option disabled selected value></option>
-                                {% endif %}
-                                {% if vital_records_filter == "True" %}
-                                    <option selected="selected">True</option>
-                                    <option>False</option>
-                                {% elif vital_records_filter == "False" %}
-                                    <option>True</option>
-                                    <option selected="selected">False</option>
-                                {% else %}
-                                    <option>True</option>
-                                    <option>False</option>
-                                {% endif%}
-                            </select>
+                            {% renderBooleanSelect id="vital_records" filter_name="vital_records_filter" nullable=True %}{% endrenderBooleanSelect %}
                         </th>
                         <th>Disposal Authority
                             {% renderSort field_name="disposal_authority" %}{% endrenderSort %}
@@ -215,11 +201,11 @@
                         </th>
                         <th>Sensitivity
                             {% renderSort field_name="sensitivity" %}{% endrenderSort %}
-                            {% renderSelect id="sensitivity" filter=sensitivity_filter list_name="sensitivities" %}{% endrenderSelect %}
+                            {% renderSelect id="sensitivity" filter_name="sensitivity_filter" list_name="sensitivities" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>System Type
                             {% renderSort field_name="system_type" %}{% endrenderSort %}
-                            {% renderSelect id="system_type" filter=system_type_filter list_name="system_types" %}{% endrenderSelect %}
+                            {% renderSelect id="system_type" filter_name="system_type_filter" list_name="system_types" %}{% endrenderSelect %}
                         </th>
                     </tr>
                 </thead>
@@ -284,7 +270,7 @@
                                 </p>
                             </td>
                             <td>
-                                {{obj.vital_records|default_if_none:"False"}}
+                                {{obj.vital_records|default_if_none:""}}
                             </td>
                             <td>
                                 {{obj.disposal_authority|default_if_none:""}}
@@ -329,7 +315,7 @@
         referrerpolicy="no-referrer"></script>
     <script>
         function clearField(field){
-            document.getElementById(field).value='';
+            document.getElementById(field).value=document.getElementById(field+"_disabled");
             document.getElementById('filters').submit();
         }
         function toggleField(id){

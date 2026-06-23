@@ -198,8 +198,8 @@ class ITSystemRecord(models.Model):
         help_text="Availability",
     )
     file_store_link = models.URLField(max_length=2048, null=True, blank=True, verbose_name="File Store Link", help_text="URL to file store")
-    vital_records = models.BooleanField(default=False, verbose_name="Vital Records")
-    disposal_authority = models.CharField(max_length=255, null=True, blank=True, verbose_name="Disposal Authority")
+    vital_records = models.BooleanField(default=False, null=True, blank=True, verbose_name="Vital Records")
+    disposal_authority = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="Disposal Authority")
     retention_and_disposal = models.CharField(max_length=255, null=True, blank=True, verbose_name="Retention and Disposal")
     ubcs = models.CharField(max_length=255, null=True, blank=True, verbose_name="UBCS")
     sensitivity = models.ForeignKey(
@@ -342,9 +342,11 @@ class ITSystemRecord(models.Model):
             )
             self.sensitivity = self.__get_choice_fk(dict.get("sensitivity"), Sensitivity, force, force_failures)
             self.system_type = self.__get_choice_fk(dict.get("system_type"), SystemType, force, force_failures)
-            vital_records = str(dict.get("vital_records"))
-            if vital_records:
-                self.vital_records = vital_records.strip().lower() == "true"
+            vital_records = dict.get("vital_records")
+            if vital_records and not str(vital_records)=="":
+                self.vital_records = str(vital_records).strip().lower() == "true"
+            else:
+                self.vital_records = None
         else:
             # Sets FK fields by using their direct value
             self.division = Division.objects.get(pk=dict.get("division_id"))

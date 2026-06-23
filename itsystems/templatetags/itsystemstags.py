@@ -14,28 +14,28 @@ def renderButtons(context, content):
         "content": content,
     }
     result = ""
-    if context.get("status_filter"):
-        result += renderButton(context["status_filter"].name, "status", "Status")
-    if context.get("division_filter"):
-        result += renderButton(context["division_filter"].name, "division", "Division")
-    if context.get("business_service_owner_filter"):
-        result += renderButton(context["business_service_owner_filter"].name, "business_service_owner", "Business Service Owner")
-    if context.get("system_owner_filter"):
-        result += renderButton(context["system_owner_filter"].name, "system_owner", "System Owner")
-    if context.get("technology_custodian_filter"):
-        result += renderButton(context["technology_custodian_filter"].name, "technology_custodian", "Technology Custodian")
-    if context.get("information_custodian_filter"):
-        result += renderButton(context["information_custodian_filter"].name, "information_custodian", "Information Custodian")
-    if context.get("seasonality_filter"):
-        result += renderButton(context["seasonality_filter"].name, "seasonality", "Seasonality")
-    if context.get("availability_filter"):
-        result += renderButton(context["availability_filter"].name, "availability", "Availability")
-    if context.get("vital_records_filter"):
-        result += renderButton(context["vital_records_filter"], "vital_records", "Vital Records")
-    if context.get("sensitivity_filter"):
-        result += renderButton(context["sensitivity_filter"].name, "sensitivity", "Sensitivity")
-    if context.get("system_type_filter"):
-        result += renderButton(context["system_type_filter"].name, "system_type", "System Type")
+    if "status_filter" in context:
+        result += renderButton(str(context["status_filter"]), "status", "Status")
+    if "division_filter" in context:
+        result += renderButton(str(context["division_filter"]), "division", "Division")
+    if "business_service_owner_filter"  in context:
+        result += renderButton(str(context["business_service_owner_filter"]), "business_service_owner", "Business Service Owner")
+    if "system_owner_filter" in context:
+        result += renderButton(str(context["system_owner_filter"]), "system_owner", "System Owner")
+    if "technology_custodian_filter" in context:
+        result += renderButton(str(context["technology_custodian_filter"]), "technology_custodian", "Technology Custodian")
+    if "information_custodian_filter" in context:
+        result += renderButton(str(context["information_custodian_filter"]), "information_custodian", "Information Custodian")
+    if "seasonality_filter" in context:
+        result += renderButton(str(context["seasonality_filter"]), "seasonality", "Seasonality")
+    if "availability_filter" in context:
+        result += renderButton(str(context["availability_filter"]), "availability", "Availability")
+    if "vital_records_filter" in context:
+        result += renderButton(str(context["vital_records_filter"]), "vital_records", "Vital Records")
+    if "sensitivity_filter" in context:
+        result += renderButton(str(context["sensitivity_filter"]), "sensitivity", "Sensitivity")
+    if "system_type_filter" in context:
+        result += renderButton(str(context["system_type_filter"]), "system_type", "System Type")
 
     return format_html(result, **format_kwargs)
 
@@ -49,7 +49,7 @@ def renderButton(filter, field_name, verbose_name):
         + """')">"""
         + verbose_name
         + """ | """
-        + filter
+        + (filter or "None")
         + """  ✕</button>"""
     )
 
@@ -77,28 +77,89 @@ def renderSort(context, content,field_name):
 
 
 @register.simple_block_tag(takes_context=True)
-def renderSelect(context, content, id, filter, list_name):
+def renderSelect(context, content, id, filter_name, list_name, nullable=False):
     """
     Renders a dropdown field that defaults the selected option to the previously selected option.
     """
     format_kwargs = {
         "id": id,
         "list_name": list_name,
+        "filter_name": filter_name,
+        "nullable": nullable,
         "content": content,
         "context": context,
     }
 
     result = """<select id="{id}" class="select2" name="{id}" form="filters" onchange="this.form.submit()">"""
-    if filter:
+    if filter_name in context:
+        result += """<option disabled id="{id}_disabled" value></option>"""
+        if nullable and context[filter_name] == None:
+            result += """<option selected value=>(Empty)</option>"""
+        elif nullable:
+            result += """<option value=>(Empty)</option>"""
+    else:
+        result += """<option disabled id="{id}_disabled" selected value></option>"""
+        if nullable:
+            result += """<option value=>(Empty)</option>"""
+
+    if context.get(filter_name):
         for option in context[list_name]:
-            if option.id == filter.id:
+            if option.id == context[filter_name].id:
                 result += """<option selected="selected" value = """ + str(option.id) + """>""" + str(option) + """</option>"""
             else:
                 result += """<option value = """ + str(option.id) + """>""" + str(option) + """</option>"""
     else:
-        result += """<option disabled selected value></option>"""
         for option in context[list_name]:
             result += """<option value = """ + str(option.id) + """>""" + str(option) + """</option>"""
+
+    result += "</select>"
+    return format_html(result, **format_kwargs)
+
+@register.simple_block_tag(takes_context=True)
+def renderBooleanSelect(context, content, id, filter_name, nullable=False):
+    """
+    Renders a boolean dropdown field that defaults the selected option to the previously selected option.
+    """
+    format_kwargs = {
+        "id": id,
+        "filter_name": filter_name,
+        "content": content,
+        "context": context,
+    }
+
+    result = """<select id="{id}" class="select2" name="{id}" form="filters" onchange="this.form.submit()">"""
+    if filter_name in context:
+        result += """<option disabled id="{id}_disabled" value></option>"""
+        if nullable and context[filter_name] == None:
+            result += """<option selected value=>(Empty)</option>"""
+        elif nullable:
+            result += """<option value=>(Empty)</option>"""
+    else:
+        result += """<option disabled id="{id}_disabled" selected value></option>"""
+        if nullable:
+            result += """<option value=>(Empty)</option>"""
+
+    if filter_name in context:
+        if context[filter_name]=="True":
+            result+="""
+                <option selected>True</option>
+                <option>False</option>
+                """
+        elif context[filter_name]=="False":
+            result+="""
+                <option>True</option>
+                <option selected>False</option>
+                """
+        else:
+         result+="""
+            <option>True</option>
+            <option>False</option>
+            """ 
+    else:
+        result+="""
+            <option>True</option>
+            <option>False</option>
+            """
 
     result += "</select>"
     return format_html(result, **format_kwargs)
@@ -136,6 +197,9 @@ def renderCheckboxField(content, title,text, value):
 
 @register.simple_block_tag(takes_context=True)
 def encodeURL(context, content):
+    """
+    Encodes all filtering and search variables (not including pagination variables) into a url string.
+    """
     format_kwargs = {
         "content": content,
         "context":context
@@ -160,26 +224,26 @@ def encodeURL(context, content):
     if "drafts_filter" in context:
         url_string += "&show_drafts="+str(context["drafts_filter"])
     if "status_filter" in context:
-        url_string += "&status="+str(context["status_filter"].id)
+        url_string += "&status="+str(getattr(context["status_filter"],'id',""))
     if "division_filter" in context:
-        url_string += "&division="+str(context["division_filter"].id)
+        url_string += "&division="+str(getattr(context["division_filter"],'id',""))
     if "business_service_owner_filter" in context:
-        url_string += "&business_service_owner="+str(context["business_service_owner_filter"].id)
+        url_string += "&business_service_owner="+str(getattr(context["business_service_owner_filter"],'id',""))
     if "system_owner_filter" in context:
-        url_string += "&system_owner="+str(context["system_owner_filter"].id)
+        url_string += "&system_owner="+str(getattr(context["system_owner_filter"],'id',""))
     if "technology_custodian_filter" in context:
-        url_string += "&technology_custodian="+str(context["technology_custodian_filter"].id)
+        url_string += "&technology_custodian="+str(getattr(context["technology_custodian_filter"],'id',""))
     if "information_custodian_filter" in context:
-        url_string += "&information_custodian="+str(context["information_custodian_filter"].id)
+        url_string += "&information_custodian="+str(getattr(context["information_custodian_filter"],'id',""))
     if "seasonality_filter" in context:
-        url_string += "&seasonality="+str(context["seasonality_filter"].id)
+        url_string += "&seasonality="+str(getattr(context["seasonality_filter"],'id',""))
     if "availability_filter" in context:
-        url_string += "&availability="+str(context["availability_filter"].id)
+        url_string += "&availability="+str(getattr(context["availability_filter"],'id',""))
     if "vital_records_filter" in context:
         url_string += "&vital_records="+context["vital_records_filter"]
     if "sensitivity_filter" in context:
-        url_string += "&sensitivity="+str(context["sensitivity_filter"].id)
+        url_string += "&sensitivity="+str(getattr(context["sensitivity_filter"],'id',""))
     if "system_type_filter" in context:
-        url_string += "&system_type="+str(context["system_type_filter"].id)
+        url_string += "&system_type="+str(getattr(context["system_type_filter"],'id',""))
 
     return format_html(url_string, **format_kwargs)

@@ -72,6 +72,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["technology_custodians"] = get_unique_users("technology_custodian", excluded)
         context["information_custodians"] = get_unique_users("information_custodian", excluded)
 
+
         # Pass in any search & filtering data
         if "q" in self.request.GET:
             context["query_string"] = self.request.GET["q"]
@@ -126,31 +127,31 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
 
         # Filters queryset by chosen search values and filter values
         queryset = queryset.exclude(status__name__in=excluded)
-        if self.request.GET.get("status"):
-            queryset = queryset.filter(status__id=self.request.GET["status"])
-        if self.request.GET.get("division"):
-            queryset = queryset.filter(division__id=self.request.GET["division"])
-        if self.request.GET.get("seasonality"):
-            queryset = queryset.filter(seasonality__id=self.request.GET["seasonality"])
-        if self.request.GET.get("availability"):
-            queryset = queryset.filter(availability__id=self.request.GET["availability"])
-        if self.request.GET.get("vital_records"):
-            queryset = queryset.filter(vital_records=(self.request.GET["vital_records"] == "True"))
-        if self.request.GET.get("sensitivity"):
-            queryset = queryset.filter(sensitivity__id=self.request.GET["sensitivity"])
-        if self.request.GET.get("system_type"):
-            queryset = queryset.filter(system_type__id=self.request.GET["system_type"])
-        if self.request.GET.get("business_service_owner"):
-            queryset = queryset.filter(business_service_owner__id=self.request.GET["business_service_owner"])
-        if self.request.GET.get("system_owner"):
-            queryset = queryset.filter(system_owner__id=self.request.GET["system_owner"])
-        if self.request.GET.get("technology_custodian"):
-            queryset = queryset.filter(technology_custodian__id=self.request.GET["technology_custodian"])
-        if self.request.GET.get("information_custodian"):
-            queryset = queryset.filter(information_custodian__id=self.request.GET["information_custodian"])
+        if "status" in self.request.GET:
+            queryset = queryset.filter(status=self.request.GET["status"] or None)
+        if "division" in self.request.GET:
+            queryset = queryset.filter(division=self.request.GET["division"] or None)
+        if "seasonality" in self.request.GET:
+            queryset = queryset.filter(seasonality=self.request.GET["seasonality"] or None)
+        if "availability" in self.request.GET:
+            queryset = queryset.filter(availability=self.request.GET["availability"] or None)
+        if "vital_records" in self.request.GET:
+            queryset = queryset.filter(vital_records=self.request.GET["vital_records"])
+        if "sensitivity" in self.request.GET:
+            queryset = queryset.filter(sensitivity=self.request.GET["sensitivity"] or None)
+        if "system_type" in self.request.GET:
+            queryset = queryset.filter(system_type=self.request.GET["system_type"] or None)
+        if "business_service_owner" in self.request.GET:
+            queryset = queryset.filter(business_service_owner=self.request.GET["business_service_owner"] or None)
+        if "system_owner" in self.request.GET:
+            queryset = queryset.filter(system_owner=self.request.GET["system_owner"] or None)
+        if "technology_custodian" in self.request.GET:
+            queryset = queryset.filter(technology_custodian=self.request.GET["technology_custodian"] or None)
+        if "information_custodian" in self.request.GET:
+            queryset = queryset.filter(information_custodian=self.request.GET["information_custodian"] or None)
 
 
-        if self.request.GET.get("q"):
+        if "q" in self.request.GET:
             query_str = self.request.GET["q"]
             filter_applied = False
             filter_query = Q()
