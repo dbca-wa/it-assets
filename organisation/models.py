@@ -195,6 +195,12 @@ class DepartmentUser(models.Model):
     last_password_change = models.DateTimeField(
         null=True, editable=False, help_text="The time when the user account password was last changed"
     )
+    assigned_groups = ArrayField(
+        base_field=models.CharField(max_length=254, blank=True),
+        blank=True,
+        null=True,
+        help_text="Entra ID groups assigned to this user's account",
+    )
 
     def __str__(self):
         return self.email
