@@ -18,16 +18,16 @@ dependencies = [
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "python-dateutil==2.9.0",
-  "webtemplate-dbca==1.8.3",
+  "webtemplate-dbca==1.9.0",
   "requests==2.34.2",
   "msal==1.37.0",
   "whitenoise[brotli]==6.12.0",
   "xlsxwriter==3.2.9",
-  "sentry-sdk[django]==2.62.0",
+  "sentry-sdk[django]==2.63.0",
   "redis==8.0.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",                # Fix version (no upgrades) until Ascender SFTP updated
-  "django-reversion==6.2.0",
+  "django-reversion==6.3.0",
 ]
 
 [dependency-groups]
