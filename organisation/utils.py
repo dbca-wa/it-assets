@@ -247,6 +247,51 @@ def ms_graph_get_user(azure_guid: str, token: Optional[dict] = None) -> Dict | N
     return resp.json()
 
 
+def ms_graph_get_group(azure_guid: str, token: Optional[dict] = None) -> Dict | None:
+    """Query the Microsoft Graph API for details of a single Entra ID group."""
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+        "ConsistencyLevel": "eventual",
+    }
+    params = {
+        "$select": "id,displayName,description,mail,securityEnabled",
+    }
+    url = f"https://graph.microsoft.com/v1.0/groups/{azure_guid}"
+    resp = requests.get(url, headers=headers, params=params)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def ms_graph_get_member_groups(azure_guid: str, token: Optional[dict] = None) -> Dict | None:
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+        "ConsistencyLevel": "eventual",
+    }
+    payload = {"securityEnabledOnly": False}
+    url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}/getMemberGroups"
+    resp = requests.post(url, headers=headers, json=payload)
+    resp.raise_for_status()
+    j = resp.json()
+    groups = []
+
+    while "@odata.nextLink" in j:
+        groups = groups + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    groups = groups + j["value"]  # Final page.
+    return groups
+
+
 def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> bool | None:
     """Query the Microsoft Graph API (beta) if a given password string validates complexity requirements."""
     if not token:

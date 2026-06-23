@@ -16,8 +16,8 @@ def ms_graph_client_token() -> Dict:
     Ref: https://docs.microsoft.com/en-us/python/api/msal/msal.application.confidentialclientapplication
     """
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
-    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
-    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
+    client_id = os.environ["AZURE_CLIENT_ID"]
+    client_secret = os.environ["AZURE_CLIENT_SECRET"]
     context = ConfidentialClientApplication(
         client_id=client_id,
         client_credential=client_secret,
@@ -33,8 +33,8 @@ def ms_security_api_client_token() -> str:
     Ref: https://docs.microsoft.com/en-us/microsoft-365/security/defender/api-hello-world
     """
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
-    client_id = os.environ["MS_GRAPH_API_CLIENT_ID"]
-    client_secret = os.environ["MS_GRAPH_API_CLIENT_SECRET"]
+    client_id = os.environ["AZURE_CLIENT_ID"]
+    client_secret = os.environ["AZURE_CLIENT_SECRET"]
     data = {
         "resource": "https://api.security.microsoft.com",
         "client_id": client_id,

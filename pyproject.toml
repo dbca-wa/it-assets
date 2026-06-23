@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.5.1"
+version = "2.5.2"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -18,25 +18,27 @@ dependencies = [
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "python-dateutil==2.9.0",
-  "webtemplate-dbca==1.8.3",
+  "webtemplate-dbca==1.9.0",
   "requests==2.34.2",
   "msal==1.37.0",
   "whitenoise[brotli]==6.12.0",
   "xlsxwriter==3.2.9",
-  "sentry-sdk[django]==2.61.1",
+  "sentry-sdk[django]==2.63.0",
   "redis==8.0.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",                # Fix version (no upgrades) until Ascender SFTP updated
-  "django-reversion==6.2.0",
+  "django-reversion==6.3.0",
 ]
 
 [dependency-groups]
 dev = [
-  "ipython>=9.14.0",
+  "ipython>=9.14.1",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.6.0",
-  "coverage>=7.14.1",
+  "coverage>=7.14.3",
+  "django-stubs>=6.0.5",
+  "deptry>=0.25.1",
 ]
 
 # Reference: https://docs.astral.sh/ruff/configuration/
@@ -54,3 +56,16 @@ ignore = [
 # Reference: https://www.djlint.com/docs/configuration/
 [tool.djlint]
 profile = "django"
+
+[tool.deptry]
+ignore = ["DEP004"]
+[tool.deptry.per_rule_ignores]
+DEP002 = [
+  "django-extensions",
+  "gunicorn",
+  "psycopg",
+  "whitenoise",
+  "webtemplate-dbca",
+  "django-storages",
+]
+DEP003 = ["azure"]

@@ -1,5 +1,6 @@
 node_modules/
 .ruff_cache/
+.vscode/
 markdown_output/
 virtualenv/
 venv/

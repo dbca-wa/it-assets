@@ -40,6 +40,23 @@ class DepartmentUser(models.Model):
         9,  # Role-based
         14,  # Unknown, disabled
     ]
+    # Hard-coded mapping of Entra security group object IDs to human-readable descriptions.
+    COPILOT_GROUPS = {
+        "3e5f27db-d53b-40bf-891f-f82fb473645c": "sg-zpa-app-copilot-users",
+        "57245806-7837-4f2d-ad34-0207de8c0299": "sg-bgpa-app-copilot-users",
+        "cc30f4d3-1a99-46d8-8304-43ba37ec7f67": "sg-coe-app-copilot-users",
+        "e993ace9-a6c3-4bab-87f2-7743e57a3dcd": "sg-ria-app-copilot-users",
+        "071a1635-a7e7-4c01-9e5a-ead4a5ee41da": "sg-pws-pvs-app-copilot-users",
+        "09207270-7ca4-45cb-afe2-2759dd6eeb22": "sg-ssag-bcs-app-copilot-users",
+        "221831c4-0cd2-4b0a-927a-265d42f55610": "sg-pws-nbt-app-copilot-users",
+        "42cb27eb-6638-49c9-8059-7d5c78508595": "sg-pws-cem-app-copilot-users",
+        "51ce6b2e-1948-4215-a455-5807513728da": "sg-ssag-fb-app-copilot-users",
+        "53318398-dad4-47e8-9c5b-163228c923c1": "sg-ssag-p&c-app-copilot-users",
+        "a02e1c31-1632-493e-b09a-b740c285dd82": "sg-ssag-odg-app-copilot-users",
+        "a70f82ae-f646-40f0-b984-8ee4e0b36dbd": "sg-ssag-oim-app-copilot-users",
+        "c0f7a94d-3e4f-4d9d-b567-40d00e69bbd6": "sg-pws-rfms-app-copilot-users",
+        "ee9f03d8-cd43-4f1d-b594-465feee7f6a5": "sg-ssag-pica-app-copilot-users",
+    }
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -194,6 +211,12 @@ class DepartmentUser(models.Model):
     last_signin = models.DateTimeField(null=True, editable=False, help_text="Entra ID last sign-in time")
     last_password_change = models.DateTimeField(
         null=True, editable=False, help_text="The time when the user account password was last changed"
+    )
+    assigned_groups = ArrayField(
+        base_field=models.CharField(max_length=254, blank=True),
+        blank=True,
+        null=True,
+        help_text="Entra ID groups assigned to this user's account",
     )
 
     def __str__(self):
@@ -443,7 +466,7 @@ class DepartmentUser(models.Model):
 
         return None
 
-    def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = None):
+    def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
         and external AD databases (Entra ID, onprem AD).
         Each field has a 'source of truth'. In each case, check the source of truth and make changes
@@ -1443,6 +1466,17 @@ class DepartmentUser(models.Model):
             return ms_graph_get_user(self.azure_guid)
         else:
             return None
+
+    def get_copilot_group(self) -> Optional[str]:
+        """Returns the Entra ID Copilot security group this user is assigned to, or None."""
+        if self.assigned_groups:
+            copilot_groups = [i for i in self.assigned_groups if i in self.COPILOT_GROUPS.keys()]
+            # If an account is in >1 SG, that's an issue to solve elsewhere. Use the first value.
+            if copilot_groups and copilot_groups[0] in self.COPILOT_GROUPS.keys():
+                obj_id = copilot_groups[0]
+                return self.COPILOT_GROUPS[obj_id]
+
+        return None
 
 
 class DepartmentUserLog(models.Model):

@@ -26,8 +26,8 @@ FAKE_TOKEN = {"token_type": "Bearer", "access_token": "fake-access-token"}
 
 ENV_VARS = {
     "AZURE_TENANT_ID": "test-tenant-id",
-    "MS_GRAPH_API_CLIENT_ID": "test-client-id",
-    "MS_GRAPH_API_CLIENT_SECRET": "test-client-secret",
+    "AZURE_CLIENT_ID": "test-client-id",
+    "AZURE_CLIENT_SECRET": "test-client-secret",
     "AZURE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net",
 }
 
