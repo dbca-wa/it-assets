@@ -259,6 +259,7 @@ class LicenseAPIResource(View):
                 "email": user.email,
                 "cost_centre": user.cost_centre.code if user.cost_centre else None,
                 "microsoft_365_licence": user.get_licence(),
+                "copilot_group": user.get_copilot_group(),
                 "active": user.active,
             }
             for user in queryset
