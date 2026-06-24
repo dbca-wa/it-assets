@@ -199,7 +199,7 @@ class ITSystemRecord(models.Model):
     )
     file_store_link = models.URLField(max_length=2048, null=True, blank=True, verbose_name="File Store Link", help_text="URL to file store")
     vital_records = models.BooleanField(default=False, null=True, blank=True, verbose_name="Vital Records")
-    disposal_authority = models.CharField(max_length=255, null=True, blank=True, default=None, verbose_name="Disposal Authority")
+    disposal_authority = models.CharField(max_length=255, null=True, blank=True, verbose_name="Disposal Authority")
     retention_and_disposal = models.CharField(max_length=255, null=True, blank=True, verbose_name="Retention and Disposal")
     ubcs = models.CharField(max_length=255, null=True, blank=True, verbose_name="UBCS")
     sensitivity = models.ForeignKey(
