@@ -31,12 +31,21 @@
             white-space:nowrap; 
             z-index:2;
         }
-        select{
+        .order{
+            border: 0px;
+            background-color: white;
+            color: #888888;
+        }
+        #select2{
             width:3ch;
             border: 0px;
         }
+        .select2-selection {
+            border: 0px !important;
+        }
         th {
             outline: 1px solid lightgrey;
+            vertical-align: middle;
         }
 
         td {
@@ -63,16 +72,49 @@
                 <div class="col pb-1">
                     <!-- Search bar -->
                     <form id="filters" action="" method="get">
+                        <input type="hidden" id="order_by" name="order_by" value="{{ order_by }}"/>
+                        <input type="hidden" id="asc" name="asc" value="{{ asc }}"/>
                         <div class="row justify-content-start align-self-center">
                             <div class="col-md-8 col-xl-7">
                                 <div class="input-group align-self-center">
                                     <input id="search_field"
                                             type="text"
-                                            class="form-control"
+                                            class="form-control border-end-0"
                                             name="q"
-                                            placeholder="Search a name or description..."
+                                            placeholder="Search..."
                                             value="{{ query_string }}">
-                                    <button class="btn btn-primary px-3" type="button" id="SearchButton" onclick="this.form.submit()">Search</button>
+                                    <button class="btn btn-outline-secondary border-start-0" type="button" style="border-color:#DEE2E6" data-bs-toggle="dropdown" data-bs-auto-close="outside"><b>⋮</b></button>
+                                    <ul class="dropdown-menu p-2">
+                                        <li><h6 class="dropdown-header">Search Fields</h6></li>
+                                        <li>
+                                            {% renderCheckboxField title="SIDN" text="System ID - Name" value=SIDN %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="Desc" text="Description" value=Desc %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="BSO" text="Business Service Owner" value=BSO %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="SO" text="System Owner" value=SO %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="TC" text="Technology Custodian" value=TC %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="IC" text="Information Custodian" value=IC %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="DA" text="Disposal Authority" value=DA %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="RaD" text="Retention and Disposal" value=RaD %}{% endrenderCheckboxField %}
+                                        </li>
+                                        <li>
+                                            {% renderCheckboxField title="UBCS" text="UBCS" value=UBCS %}{% endrenderCheckboxField %}
+                                        </li>
+                                    </ul>
+                                    <button class="btn rounded-end btn-primary px-3" type="button" id="SearchButton" onclick="this.form.submit()">🔍︎</button>
                                 </div>
                             </div>
                             <div class="col align-self-center">
@@ -102,7 +144,7 @@
             <div class="col d-block d-sm-none">
                 <div class="d-flex justify-content-center">{% include "itsystems/register_pagination.html" %}</div>
             </div>
-        <div style="padding:3px">
+        <div style="background-color:#F2F2F2;border-radius:5px 5px 0px 0px;">
             {% renderButtons %}
             {% endrenderButtons %}
         </div>
@@ -110,69 +152,72 @@
             <table id = "register-table" class="table table-striped table-sm table-hover">
                 <thead id = "sticky-head">
                     <tr>
-                        <th id = "sticky-col" style="z-index:3">System ID - Name</th>
-                        <th>Status
-                            {% renderSelect id="status" filter=status_filter list_name="statuses" %}
-                            {% endrenderSelect %}
+                        <th id = "sticky-col" style="z-index:3">System ID - Name
+                            {% renderSort field_name="system_id" %}{% endrenderSort %}
+                        </th>
+                        <th>
+                            <div>Status
+                            {% renderSort field_name="status" %}{% endrenderSort %}
+                            {% renderSelect id="status" filter_name="status_filter" list_name="statuses" %}{% endrenderSelect %}
+                            </div>
                         </th>
                         <th>Division
-                            {% renderSelect id="division" filter=division_filter list_name="divisions" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="division" %}{% endrenderSort %}
+                            {% renderSelect id="division" filter_name="division_filter" list_name="divisions" %}{% endrenderSelect %}
                         </th>
-                        <th>Description</th>
-                        <th>Link</th>
+                        <th>Description
+                            {% renderSort field_name="description" %}{% endrenderSort %}
+                        </th>
+                        <th>Link
+                            {% renderSort field_name="link" %}{% endrenderSort %}
+                        </th>
                         <th>Business Service Owner
-                            {% renderSelect id="business_service_owner" filter=business_service_owner_filter list_name="business_service_owners" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="business_service_owner" %}{% endrenderSort %}
+                            {% renderSelect id="business_service_owner" filter_name="business_service_owner_filter" list_name="business_service_owners" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>System Owner
-                            {% renderSelect id="system_owner" filter=system_owner_filter list_name="system_owners" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="system_owner" %}{% endrenderSort %}
+                            {% renderSelect id="system_owner" filter_name="system_owner_filter" list_name="system_owners" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>Technology Custodian
-                            {% renderSelect id="technology_custodian" filter=technology_custodian_filter list_name="technology_custodians" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="technology_custodian" %}{% endrenderSort %}
+                            {% renderSelect id="technology_custodian" filter_name="technology_custodian_filter" list_name="technology_custodians" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>Information Custodian
-                            {% renderSelect id="information_custodian" filter=information_custodian_filter list_name="information_custodians" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="information_custodian" %}{% endrenderSort %}
+                            {% renderSelect id="information_custodian" filter_name="information_custodian_filter" list_name="information_custodians" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>Seasonality
-                            {% renderSelect id="seasonality" filter=seasonality_filter list_name="seasonalities" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="seasonality" %}{% endrenderSort %}
+                            {% renderSelect id="seasonality" filter_name="seasonality_filter" list_name="seasonalities" %}{% endrenderSelect %}
                         </th>
                         <th>Availability
-                            {% renderSelect id="availability" filter=availability_filter list_name="availabilities" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="availability" %}{% endrenderSort %}
+                            {% renderSelect id="availability" filter_name="availability_filter" list_name="availabilities" %}{% endrenderSelect %}
                         </th>
-                        <th>File Store Link</th>
+                        <th>File Store Link
+                            {% renderSort field_name="file_store_link" %}{% endrenderSort %}
+                        </th>
                         <th>Vital Records
-                            <select id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
-                                {% if vital_records_filter == null %}
-                                    <option disabled selected value></option>
-                                {% endif %}
-                                {% if vital_records_filter == "True" %}
-                                    <option selected="selected">True</option>
-                                    <option>False</option>
-                                {% elif vital_records_filter == "False" %}
-                                    <option>True</option>
-                                    <option selected="selected">False</option>
-                                {% else %}
-                                    <option>True</option>
-                                    <option>False</option>
-                                {% endif%}
-                            </select>
+                            {% renderSort field_name="vital_records" %}{% endrenderSort %}
+                            {% renderBooleanSelect id="vital_records" filter_name="vital_records_filter" nullable=True %}{% endrenderBooleanSelect %}
                         </th>
-                        <th>Disposal Authority</th>
-                        <th>Retention and Disposal</th>
-                        <th>UBCS</th>
+                        <th>Disposal Authority
+                            {% renderSort field_name="disposal_authority" %}{% endrenderSort %}
+                        </th>
+                        <th>Retention and Disposal
+                            {% renderSort field_name="retention_and_disposal" %}{% endrenderSort %}
+                        </th>
+                        <th>UBCS
+                            {% renderSort field_name="ubcs" %}{% endrenderSort %}
+                        </th>
                         <th>Sensitivity
-                            {% renderSelect id="sensitivity" filter=sensitivity_filter list_name="sensitivities" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="sensitivity" %}{% endrenderSort %}
+                            {% renderSelect id="sensitivity" filter_name="sensitivity_filter" list_name="sensitivities" nullable=True %}{% endrenderSelect %}
                         </th>
                         <th>System Type
-                            {% renderSelect id="system_type" filter=system_type_filter list_name="system_types" %}
-                            {% endrenderSelect %}
+                            {% renderSort field_name="system_type" %}{% endrenderSort %}
+                            {% renderSelect id="system_type" filter_name="system_type_filter" list_name="system_types" %}{% endrenderSelect %}
                         </th>
                     </tr>
                 </thead>
@@ -237,7 +282,7 @@
                                 </p>
                             </td>
                             <td>
-                                {{obj.vital_records|default_if_none:"False"}}
+                                {{obj.vital_records|default_if_none:""}}
                             </td>
                             <td>
                                 {{obj.disposal_authority|default_if_none:""}}
@@ -282,7 +327,13 @@
         referrerpolicy="no-referrer"></script>
     <script>
         function clearField(field){
-            document.getElementById(field).value='';
+            document.getElementById(field).value=document.getElementById(field+"_disabled");
+            document.getElementById('filters').submit();
+        }
+        function clearFields(fields){
+            fields.forEach(function(field) {
+                document.getElementById(field).value=document.getElementById(field+"_disabled");
+            });
             document.getElementById('filters').submit();
         }
         function toggleField(id){
@@ -294,11 +345,40 @@
                 element.style.display = "block";
             }
         }
+        function orderField(field){
+            order_by = document.getElementById("order_by");
+            asc = document.getElementById("asc");
+            if (order_by.value === field){
+                asc.value = asc.value === "false"
+            }
+            else {
+                order_by.value = field;
+                asc.value = false;
+            }
+            document.getElementById('filters').submit();
+
+        }
         $(document).ready(function () {
-            $("select").select2({
+            $(".select2").select2({
                 dropdownAutoWidth: true,
-                templateSelection: function(){return ""}
+                templateSelection: function(){return ""},
+                width: '3ch'
             });
+        });
+        window.addEventListener('load', () => {        
+            // load table scroll position, roughly preserving horizontal scroll when updating filters
+            const savedPosition = sessionStorage.getItem('scrollPosition');
+            if (savedPosition) {
+                const left = JSON.parse(savedPosition);
+                const top = 0;
+                document.querySelector("#table-container").scrollTo({ top, left });
+                sessionStorage.removeItem('scrollPosition');
+        }
+        });
+        window.addEventListener('beforeunload', () => {
+            // Save table scroll position
+            const left = document.querySelector("#table-container").scrollLeft;
+            sessionStorage.setItem('scrollPosition', JSON.stringify(left));
         });
     </script>
 {% endblock %}
