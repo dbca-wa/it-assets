@@ -8,12 +8,11 @@ from django.urls import path
 from django.utils.html import mark_safe
 
 from itassets.utils import ModelDescMixin
+from itsystems.admin import ITSystemRecordAdmin
+from itsystems.models import ITSystemRecord
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport
-
-from itsystems.models import ITSystemRecord
-from itsystems.admin import ITSystemRecordAdmin
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -86,6 +85,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "ascender_full_name",
         "ascender_preferred_name",
         "assigned_licences",
+        "copilot_group",
         "proxy_addresses",
         "dir_sync_enabled",
         "last_signin",
@@ -130,7 +130,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             },
         ),
         (
-            "Microsoft 365 and Active Directory account information",
+            "Microsoft 365, Entra ID and Active Directory account information",
             {
                 "description": '<span class="errornote">Data in these fields is maintained in Azure Entra ID / on-prem Active Directory.</span>',
                 "fields": (
@@ -138,6 +138,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "email",
                     "name",
                     "assigned_licences",
+                    "copilot_group",
                     "dir_sync_enabled",
                     "last_signin",
                     "last_password_change",
@@ -263,6 +264,12 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             return ""
 
     ascender_data_pprint.short_description = "Ascender data"
+
+    def copilot_group(self, obj=None):
+        if obj and obj.get_copilot_group():
+            return obj.get_copilot_group()
+        else:
+            return ""
 
     def admin_change_view(self, request, object_id, form_url="", extra_context={}):
         """A special change form for superusers only to edit employee_id/maiden_name.
