@@ -13,29 +13,47 @@ def renderButtons(context, content):
         "context": context,
         "content": content,
     }
+    
     result = ""
+    fields = []
     if "status_filter" in context:
         result += renderButton(str(context["status_filter"]), "status", "Status")
+        fields.append("status")
     if "division_filter" in context:
         result += renderButton(str(context["division_filter"]), "division", "Division")
+        fields.append("division")
     if "business_service_owner_filter"  in context:
         result += renderButton(str(context["business_service_owner_filter"]), "business_service_owner", "Business Service Owner")
+        fields.append("business_service_owner")
     if "system_owner_filter" in context:
         result += renderButton(str(context["system_owner_filter"]), "system_owner", "System Owner")
+        fields.append("system_owner")
     if "technology_custodian_filter" in context:
         result += renderButton(str(context["technology_custodian_filter"]), "technology_custodian", "Technology Custodian")
+        fields.append("technology_custodian")
     if "information_custodian_filter" in context:
         result += renderButton(str(context["information_custodian_filter"]), "information_custodian", "Information Custodian")
+        fields.append("information_custodian")
     if "seasonality_filter" in context:
         result += renderButton(str(context["seasonality_filter"]), "seasonality", "Seasonality")
+        fields.append("seasonality")
     if "availability_filter" in context:
         result += renderButton(str(context["availability_filter"]), "availability", "Availability")
+        fields.append("availability")
     if "vital_records_filter" in context:
         result += renderButton(str(context["vital_records_filter"]), "vital_records", "Vital Records")
+        fields.append("vital_records")
     if "sensitivity_filter" in context:
         result += renderButton(str(context["sensitivity_filter"]), "sensitivity", "Sensitivity")
+        fields.append("sensitivity")
     if "system_type_filter" in context:
         result += renderButton(str(context["system_type_filter"]), "system_type", "System Type")
+        fields.append("system_type")
+    
+    if len(fields)>0:
+        fields_string = "['" + "','".join(fields) + "']"
+        clearAllButton = """<button type="button" class="btn btn-outline-secondary m-1" onClick="clearFields(""" + fields_string + """);">Clear All Filters</button>"""
+        result = clearAllButton + result
 
     return format_html(result, **format_kwargs)
 

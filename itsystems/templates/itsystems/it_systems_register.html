@@ -330,6 +330,12 @@
             document.getElementById(field).value=document.getElementById(field+"_disabled");
             document.getElementById('filters').submit();
         }
+        function clearFields(fields){
+            fields.forEach(function(field) {
+                document.getElementById(field).value=document.getElementById(field+"_disabled");
+            });
+            document.getElementById('filters').submit();
+        }
         function toggleField(id){
             element = document.getElementById(id);
             if (element.style.display != "none"){
