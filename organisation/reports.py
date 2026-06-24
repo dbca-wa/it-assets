@@ -41,6 +41,7 @@ def department_user_export(fileobj, users):
                 "UNIT",
                 "LAST SIGN-IN",
                 "LAST PASSWORD CHANGE",
+                "COPILOT GROUP",
             ),
         )
         row = 1
@@ -67,12 +68,15 @@ def department_user_export(fileobj, users):
                     i.get_business_unit() or "",
                 ],
             )
-            # Write the last sign-in cell value
+            # Append the last sign-in cell value
             if i.last_signin:
                 users_sheet.write_datetime(row, 16, i.last_signin, date_format)
-            # Write the last password change value
+            # Append the last password change value
             if i.get_pw_last_change():
                 users_sheet.write_datetime(row, 17, i.get_pw_last_change(), date_format)
+            # Append the user Copilot group.
+            if i.get_copilot_group():
+                users_sheet.write(row, 18, i.get_copilot_group())
 
             row += 1
 
@@ -87,6 +91,7 @@ def department_user_export(fileobj, users):
         users_sheet.set_column("L:M", 20)
         users_sheet.set_column("N:P", 60)
         users_sheet.set_column("Q:R", 20)
+        users_sheet.set_column("S:S", 28)
 
     return fileobj
 
