@@ -174,16 +174,16 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
                 filter_query = filter_query | Q(description__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("BSO"):
-                filter_query = filter_query | Q(business_service_owner__email__icontains=query_str)
+                filter_query = filter_query | Q(business_service_owner__email__icontains=query_str) | Q(business_service_owner__name__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("SO"):
-                filter_query = filter_query | Q(system_owner__email__icontains=query_str)
+                filter_query = filter_query | Q(system_owner__email__icontains=query_str) | Q(system_owner__name__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("TC"):
-                filter_query = filter_query | Q(technology_custodian__email__icontains=query_str)
+                filter_query = filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("IC"):
-                filter_query = filter_query | Q(information_custodian__email__icontains=query_str)
+                filter_query = filter_query | Q(information_custodian__email__icontains=query_str) | Q(information_custodian__name__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("DA"):
                 filter_query = filter_query | Q(disposal_authority__icontains=query_str)
