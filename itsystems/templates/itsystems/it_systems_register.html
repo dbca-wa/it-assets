@@ -359,5 +359,20 @@
                 width: '3ch'
             });
         });
+        window.addEventListener('load', () => {        
+            // load table scroll position, roughly preserving horizontal scroll when updating filters
+            const savedPosition = sessionStorage.getItem('scrollPosition');
+            if (savedPosition) {
+                const left = JSON.parse(savedPosition);
+                const top = 0;
+                document.querySelector("#table-container").scrollTo({ top, left });
+                sessionStorage.removeItem('scrollPosition');
+        }
+        });
+        window.addEventListener('beforeunload', () => {
+            // Save table scroll position
+            const left = document.querySelector("#table-container").scrollLeft;
+            sessionStorage.setItem('scrollPosition', JSON.stringify(left));
+        });
     </script>
 {% endblock %}
