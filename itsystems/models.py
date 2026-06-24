@@ -1,4 +1,5 @@
 from django.db import models
+from itassets.utils import smart_truncate
 
 from organisation.models import DepartmentUser
 
@@ -242,12 +243,7 @@ class ITSystemRecord(models.Model):
         A calculated field producing a shortened version of the description.
         This is used primarily in the admin view.
         """
-        limit = 100
-        if self.description and len(self.description)> limit:
-            text = self.description[:97] + "..."
-        else:
-            text = self.description
-        return text
+        return smart_truncate(self.description)
 
 
     def compare(self, obj):
