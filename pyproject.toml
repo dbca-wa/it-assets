@@ -1,10 +1,11 @@
 [project]
 name = "itassets"
-version = "2.5.2"
+version = "2.5.3"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
   { name = "Rocky Chen", email = "rocky.chen@dbca.wa.gov.au" },
+  { name = "Alasdair Nation", email = "alasdair.nation@dbca.wa.gov.au" },
 ]
 license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
