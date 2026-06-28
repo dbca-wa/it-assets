@@ -39,6 +39,39 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "show_drafts" not in self.request.GET:
             excluded.append("Draft")
 
+        # Passes search fields back to template, defaulting to Name & Desc if nothing is selected.
+        search_field_selected = False
+        if "SIDN" in self.request.GET:
+            context["SIDN"] = True
+            search_field_selected = True
+        if "Desc" in self.request.GET:
+            context["Desc"] = True
+            search_field_selected = True
+        if "BSO" in self.request.GET:
+            context["BSO"] = True
+            search_field_selected = True
+        if "SO" in self.request.GET:
+            context["SO"] = True
+            search_field_selected = True
+        if "TC" in self.request.GET:
+            context["TC"] = True
+            search_field_selected = True
+        if "IC" in self.request.GET:
+            context["IC"] = True
+            search_field_selected = True
+        if "DA" in self.request.GET:
+            context["DA"] = True
+            search_field_selected = True
+        if "RaD" in self.request.GET:
+            context["RaD"] = True
+            search_field_selected = True
+        if "UBCS" in self.request.GET:
+            context["UBCS"] = True
+            search_field_selected = True
+        if not search_field_selected:
+            context["SIDN"] = True
+            context["Desc"] = True
+
         # Passes in FK field values to populate dropdowns
         context["statuses"] = Status.objects.all().exclude(name__in=excluded).order_by("name")
         context["divisions"] = Division.objects.all().order_by("name")
@@ -50,6 +83,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["system_owners"] = get_unique_users("system_owner", excluded)
         context["technology_custodians"] = get_unique_users("technology_custodian", excluded)
         context["information_custodians"] = get_unique_users("information_custodian", excluded)
+
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
@@ -79,6 +113,16 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "information_custodian" in self.request.GET:
             context["information_custodian_filter"] = get_or_none(DepartmentUser, self.request.GET["information_custodian"])
 
+        # Pass in sorting data - defaults to descending system id sorting
+        if "order_by" in self.request.GET:
+            context["order_by"] = self.request.GET["order_by"]
+        else:
+            context["order_by"] = "system_id"
+        if "asc" in self.request.GET:
+            context["asc"] = self.request.GET["asc"]
+        else:
+            context["asc"] = "false"
+
         # Passes in pagination data
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
@@ -95,36 +139,81 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
 
         # Filters queryset by chosen search values and filter values
         queryset = queryset.exclude(status__name__in=excluded)
-        if self.request.GET.get("status"):
-            queryset = queryset.filter(status__id=self.request.GET["status"])
-        if self.request.GET.get("division"):
-            queryset = queryset.filter(division__id=self.request.GET["division"])
-        if self.request.GET.get("seasonality"):
-            queryset = queryset.filter(seasonality__id=self.request.GET["seasonality"])
-        if self.request.GET.get("availability"):
-            queryset = queryset.filter(availability__id=self.request.GET["availability"])
-        if self.request.GET.get("vital_records"):
-            queryset = queryset.filter(vital_records=(self.request.GET["vital_records"] == "True"))
-        if self.request.GET.get("sensitivity"):
-            queryset = queryset.filter(sensitivity__id=self.request.GET["sensitivity"])
-        if self.request.GET.get("system_type"):
-            queryset = queryset.filter(system_type__id=self.request.GET["system_type"])
-        if self.request.GET.get("business_service_owner"):
-            queryset = queryset.filter(business_service_owner__id=self.request.GET["business_service_owner"])
-        if self.request.GET.get("system_owner"):
-            queryset = queryset.filter(system_owner__id=self.request.GET["system_owner"])
-        if self.request.GET.get("technology_custodian"):
-            queryset = queryset.filter(technology_custodian__id=self.request.GET["technology_custodian"])
-        if self.request.GET.get("information_custodian"):
-            queryset = queryset.filter(information_custodian__id=self.request.GET["information_custodian"])
-        if "q" in self.request.GET and self.request.GET["q"]:
+        if "status" in self.request.GET:
+            queryset = queryset.filter(status=self.request.GET["status"] or None)
+        if "division" in self.request.GET:
+            queryset = queryset.filter(division=self.request.GET["division"] or None)
+        if "seasonality" in self.request.GET:
+            queryset = queryset.filter(seasonality=self.request.GET["seasonality"] or None)
+        if "availability" in self.request.GET:
+            queryset = queryset.filter(availability=self.request.GET["availability"] or None)
+        if "vital_records" in self.request.GET:
+            queryset = queryset.filter(vital_records=self.request.GET["vital_records"])
+        if "sensitivity" in self.request.GET:
+            queryset = queryset.filter(sensitivity=self.request.GET["sensitivity"] or None)
+        if "system_type" in self.request.GET:
+            queryset = queryset.filter(system_type=self.request.GET["system_type"] or None)
+        if "business_service_owner" in self.request.GET:
+            queryset = queryset.filter(business_service_owner=self.request.GET["business_service_owner"] or None)
+        if "system_owner" in self.request.GET:
+            queryset = queryset.filter(system_owner=self.request.GET["system_owner"] or None)
+        if "technology_custodian" in self.request.GET:
+            queryset = queryset.filter(technology_custodian=self.request.GET["technology_custodian"] or None)
+        if "information_custodian" in self.request.GET:
+            queryset = queryset.filter(information_custodian=self.request.GET["information_custodian"] or None)
+
+
+        if "q" in self.request.GET:
             query_str = self.request.GET["q"]
-            queryset = queryset.filter(
-                Q(system_id__icontains=query_str) | Q(name__icontains=query_str) | Q(description__icontains=query_str)
-            )
+            filter_applied = False
+            filter_query = Q()
+            if self.request.GET.get("SIDN"):
+                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("Desc"):
+                filter_query = filter_query | Q(description__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("BSO"):
+                filter_query = filter_query | Q(business_service_owner__email__icontains=query_str) | Q(business_service_owner__name__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("SO"):
+                filter_query = filter_query | Q(system_owner__email__icontains=query_str) | Q(system_owner__name__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("TC"):
+                filter_query = filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("IC"):
+                filter_query = filter_query | Q(information_custodian__email__icontains=query_str) | Q(information_custodian__name__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("DA"):
+                filter_query = filter_query | Q(disposal_authority__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("RaD"):
+                filter_query = filter_query | Q(retention_and_disposal__icontains=query_str)
+                filter_applied = True
+            if self.request.GET.get("UBCS"):
+                filter_query = filter_query | Q(ubcs__icontains=query_str)
+                filter_applied = True
+
+            if not filter_applied:
+                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str)
+
+            queryset = queryset.filter(filter_query)
 
         # Sorts records by system ID
-        queryset = queryset.order_by("system_id")
+        if "order_by" in self.request.GET:
+            order_string = self.request.GET.get("order_by")
+            field = ITSystemRecord._meta.get_field(self.request.GET.get("order_by"))
+            # Sorts FK fields by their name instead of their ID
+            if field.is_relation:
+                order_string += "__name"
+            # determines sort order
+            if self.request.GET.get("asc")=="true":
+                order_string = "-" + order_string
+        else:
+            # Defaults to System ID
+            order_string = "system_id"
+        queryset = queryset.order_by(order_string)
 
         return queryset
 
