@@ -258,7 +258,7 @@ def ms_graph_get_group(azure_guid: str, token: Optional[dict] = None) -> Dict | 
         "ConsistencyLevel": "eventual",
     }
     params = {
-        "$select": "id,displayName,description,mail,securityEnabled",
+        "$select": "id,displayName,description,mail,securityEnabled,assignedLicenses",
     }
     url = f"https://graph.microsoft.com/v1.0/groups/{azure_guid}"
     resp = requests.get(url, headers=headers, params=params)
@@ -266,7 +266,7 @@ def ms_graph_get_group(azure_guid: str, token: Optional[dict] = None) -> Dict | 
     return resp.json()
 
 
-def ms_graph_get_member_groups(azure_guid: str, token: Optional[dict] = None) -> Dict | None:
+def ms_graph_list_member_groups(azure_guid: str, token: Optional[dict] = None) -> Dict | None:
     if not token:
         token = ms_graph_client_token()
     if not token:  # The call to the MS API occasionally fails and returns None.
