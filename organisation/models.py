@@ -42,6 +42,7 @@ class DepartmentUser(models.Model):
     ]
     # Hard-coded mapping of Entra security group object IDs to human-readable descriptions.
     COPILOT_GROUPS = {
+        "0fd74638-f7d9-48ae-b570-833e988c3adf": "sg-oim-app-copilot-eval",
         "3e5f27db-d53b-40bf-891f-f82fb473645c": "sg-zpa-app-copilot-users",
         "57245806-7837-4f2d-ad34-0207de8c0299": "sg-bgpa-app-copilot-users",
         "cc30f4d3-1a99-46d8-8304-43ba37ec7f67": "sg-coe-app-copilot-users",
@@ -52,6 +53,7 @@ class DepartmentUser(models.Model):
         "42cb27eb-6638-49c9-8059-7d5c78508595": "sg-pws-cem-app-copilot-users",
         "51ce6b2e-1948-4215-a455-5807513728da": "sg-ssag-fb-app-copilot-users",
         "53318398-dad4-47e8-9c5b-163228c923c1": "sg-ssag-p&c-app-copilot-users",
+        "5ad8d72f-bdf5-42ad-9405-3e52fa9de84e": "sg-ssag-T&S-app-copilot-users",
         "a02e1c31-1632-493e-b09a-b740c285dd82": "sg-ssag-odg-app-copilot-users",
         "a70f82ae-f646-40f0-b984-8ee4e0b36dbd": "sg-ssag-oim-app-copilot-users",
         "c0f7a94d-3e4f-4d9d-b567-40d00e69bbd6": "sg-pws-rfms-app-copilot-users",
