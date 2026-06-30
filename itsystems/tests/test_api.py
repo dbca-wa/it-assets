@@ -25,17 +25,26 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.testuser.user_permissions.add(permission_change)
 
     def test_permissions(self):
-        # Tests basic connection
+        # Tests for users having correct perms for GET and POST
         url = reverse("it_system_api_resource")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(path=url, data=json.dumps({"name": "test"}), secure=False, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+
+        # Removes perms
         permission_change = Permission.objects.get(codename="change_itsystemrecord")
 
-        # Removes change perms, and ensures that the user can't access API
+        # Removes change perms, and ensures that the user can still access the GET API but not the POST API
         self.testuser.user_permissions.remove(permission_change)
         url = reverse("it_system_api_resource")
         response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(path=url, data=json.dumps({"name": "test"}), secure=False, content_type="application/json")
         self.assertEqual(response.status_code, 403)
 
     def test_list(self):

@@ -291,25 +291,22 @@ class ITSystemRecordAPIResource(View):
     def get(self, request, *args, **kwargs):
         response = None
 
-        if self.has_permissions(request.user):
-            # Queryset filtering.
-            if "system_id" in kwargs and kwargs["system_id"]:
-                try:
-                    record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
-                    register = record.to_dict()
-                except ITSystemRecord.DoesNotExist:
-                    register = None
-            else:
-                queryset = (
-                    ITSystemRecord.objects.all()
-                    .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
-                    .order_by("system_id")
-                )
-                register = [record.to_dict() for record in queryset]
-
-            response = JsonResponse(register, safe=False)
+        # Queryset filtering.
+        if "system_id" in kwargs and kwargs["system_id"]:
+            try:
+                record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
+                register = record.to_dict()
+            except ITSystemRecord.DoesNotExist:
+                register = None
         else:
-            response = HttpResponseForbidden("You do not have permission to view this resource")
+            queryset = (
+                ITSystemRecord.objects.all()
+                .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
+                .order_by("system_id")
+            )
+            register = [record.to_dict() for record in queryset]
+
+        response = JsonResponse(register, safe=False)
 
         return response
 
