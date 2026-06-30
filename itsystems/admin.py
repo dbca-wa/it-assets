@@ -7,6 +7,7 @@ from reversion.admin import VersionAdmin
 from .models import ITSystemRecord, Division, Seasonality, Status, Sensitivity, SystemType, Availability
 from .views import ExportRegisterAsCSV, ImportRegisterChangesFromCSV
 
+
 @admin.register(Division)
 class DivisionAdmin(admin.ModelAdmin):
     search_fields = ["name"]
@@ -45,6 +46,7 @@ class ITSystemRecordAdmin(VersionAdmin):
         Any Production: Returns results that have "Production" in the status name.
         Not Decommissioned: Returns any result that doesn't have "Decommissioned" in the status name.
         """
+
         title = _("Status")
         parameter_name = "status"
 
@@ -52,11 +54,13 @@ class ITSystemRecordAdmin(VersionAdmin):
             status_list = Status.objects.all()
             filter_list = []
             for status in status_list:
-                filter_list.append((status.pk,_(status.name)))
-            filter_list.extend([
-                ("all_prod", _("Any Production")),
-                ("not_decom", _("Not Decommissioned")),
-            ])
+                filter_list.append((status.pk, _(status.name)))
+            filter_list.extend(
+                [
+                    ("all_prod", _("Any Production")),
+                    ("not_decom", _("Not Decommissioned")),
+                ]
+            )
 
             return filter_list
 
@@ -65,11 +69,11 @@ class ITSystemRecordAdmin(VersionAdmin):
                 return queryset.filter(status__name__icontains="Production")
             if self.value() == "not_decom":
                 return queryset.exclude(status__name__icontains="Decommissioned")
-            
+
             status_list = Status.objects.all().filter(pk=self.value())
-            if len(status_list)==1:
+            if len(status_list) == 1:
                 return queryset.filter(status=status_list[0])
-            
+
     change_list_template = "admin/itsystems/itsystemrecord/change_list.html"
 
     ordering = ["system_id"]
@@ -186,7 +190,7 @@ class ITSystemRecordAdmin(VersionAdmin):
 
     autocomplete_fields = ("system_owner", "technology_custodian", "information_custodian", "business_service_owner")
 
-    list_filter = (CustomStatusFilters,"division", "seasonality", "availability", "vital_records" ,"sensitivity", "system_type")
+    list_filter = (CustomStatusFilters, "division", "seasonality", "availability", "vital_records", "sensitivity", "system_type")
 
     # Updates meta-data upon save.
     # Populates Created_* fields only during creation
@@ -220,4 +224,3 @@ class ITSystemRecordAdmin(VersionAdmin):
             ),
         ] + urls
         return urls
-        

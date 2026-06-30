@@ -6,10 +6,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.views.generic import ListView, View
 from django.db.models import Q
 from django.conf import settings
-from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import Permission
+
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.utils import IntegrityError
@@ -83,7 +85,6 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["system_owners"] = get_unique_users("system_owner", excluded)
         context["technology_custodians"] = get_unique_users("technology_custodian", excluded)
         context["information_custodians"] = get_unique_users("information_custodian", excluded)
-
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
@@ -162,7 +163,6 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "information_custodian" in self.request.GET:
             queryset = queryset.filter(information_custodian=self.request.GET["information_custodian"] or None)
 
-
         if "q" in self.request.GET:
             query_str = self.request.GET["q"]
             filter_applied = False
@@ -174,16 +174,26 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
                 filter_query = filter_query | Q(description__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("BSO"):
-                filter_query = filter_query | Q(business_service_owner__email__icontains=query_str) | Q(business_service_owner__name__icontains=query_str)
+                filter_query = (
+                    filter_query
+                    | Q(business_service_owner__email__icontains=query_str)
+                    | Q(business_service_owner__name__icontains=query_str)
+                )
                 filter_applied = True
             if self.request.GET.get("SO"):
                 filter_query = filter_query | Q(system_owner__email__icontains=query_str) | Q(system_owner__name__icontains=query_str)
                 filter_applied = True
             if self.request.GET.get("TC"):
-                filter_query = filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str)
+                filter_query = (
+                    filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str)
+                )
                 filter_applied = True
             if self.request.GET.get("IC"):
-                filter_query = filter_query | Q(information_custodian__email__icontains=query_str) | Q(information_custodian__name__icontains=query_str)
+                filter_query = (
+                    filter_query
+                    | Q(information_custodian__email__icontains=query_str)
+                    | Q(information_custodian__name__icontains=query_str)
+                )
                 filter_applied = True
             if self.request.GET.get("DA"):
                 filter_query = filter_query | Q(disposal_authority__icontains=query_str)
@@ -202,13 +212,13 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
 
         # Sorts records by system ID
         if "order_by" in self.request.GET:
-            order_string = self.request.GET.get("order_by")
-            field = ITSystemRecord._meta.get_field(self.request.GET.get("order_by"))
+            order_string = self.request.GET["order_by"]
+            field = ITSystemRecord._meta.get_field(self.request.GET["order_by"])
             # Sorts FK fields by their name instead of their ID
             if field.is_relation:
                 order_string += "__name"
             # determines sort order
-            if self.request.GET.get("asc")=="true":
+            if self.request.GET.get("asc") == "true":
                 order_string = "-" + order_string
         else:
             # Defaults to System ID
@@ -270,26 +280,36 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
 class ITSystemRecordAPIResource(View):
     """An API view that returns JSON of the IT System Register"""
 
+    def has_permissions(self, user):
+        perm = Permission.objects.get(codename="change_itsystemrecord")
+        has_perms = False
+        if perm in user.user_permissions.all():
+            has_perms = True
+        return has_perms
+
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         response = None
 
-        # Queryset filtering.
-        if "system_id" in kwargs and kwargs["system_id"]:
-            try:
-                record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
-                register = record.to_dict()
-            except ITSystemRecord.DoesNotExist:
-                register = None
-        else:
-            queryset = (
-                ITSystemRecord.objects.all()
-                .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
-                .order_by("system_id")
-            )
-            register = [record.to_dict() for record in queryset]
+        if self.has_permissions(request.user):
+            # Queryset filtering.
+            if "system_id" in kwargs and kwargs["system_id"]:
+                try:
+                    record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
+                    register = record.to_dict()
+                except ITSystemRecord.DoesNotExist:
+                    register = None
+            else:
+                queryset = (
+                    ITSystemRecord.objects.all()
+                    .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
+                    .order_by("system_id")
+                )
+                register = [record.to_dict() for record in queryset]
 
-        response = JsonResponse(register, safe=False)
+            response = JsonResponse(register, safe=False)
+        else:
+            response = HttpResponseForbidden("You do not have permission to view this resource")
 
         return response
 
@@ -298,39 +318,42 @@ class ITSystemRecordAPIResource(View):
 
         response = None
 
-        if "system_id" in kwargs and kwargs["system_id"]:
-            # Updates record in kwargs with inputted json package
-            try:
-                old_record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
-                data = dict(json.loads(request.body))
-                changes = edit_record_from_dict(record=old_record, dict=data, user=request.user)
-                response = JsonResponse(data=changes, safe=False)
+        if self.has_permissions(request.user):
+            if "system_id" in kwargs and kwargs["system_id"]:
+                # Updates record in kwargs with inputted json package
+                try:
+                    old_record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
+                    data = dict(json.loads(request.body))
+                    changes = edit_record_from_dict(record=old_record, dict=data, user=request.user)
+                    response = JsonResponse(data=changes, safe=False)
 
-            except ITSystemRecord.DoesNotExist:
-                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"])
-            except json.JSONDecodeError:
-                response = HttpResponseBadRequest("JSON data is invalid")
-            except ObjectDoesNotExist as e:
-                response = HttpResponseBadRequest("Invalid field value in choice field - " + str(e))
-            except KeyError as e:
-                response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
-            except IntegrityError as e:
-                response = HttpResponseBadRequest("Empty value in mandatory choice field - " + str(e))
-            except Exception as e:
-                response = HttpResponseBadRequest("Unexpected error - " + str(e))
+                except ITSystemRecord.DoesNotExist:
+                    response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"])
+                except json.JSONDecodeError:
+                    response = HttpResponseBadRequest("JSON data is invalid")
+                except ObjectDoesNotExist as e:
+                    response = HttpResponseBadRequest("Invalid field value in choice field - " + str(e))
+                except KeyError as e:
+                    response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
+                except IntegrityError as e:
+                    response = HttpResponseBadRequest("Empty value in mandatory choice field - " + str(e))
+                except Exception as e:
+                    response = HttpResponseBadRequest("Unexpected error - " + str(e))
+            else:
+                # replaces old contact with new contact specified in json package.
+                try:
+                    data = dict(json.loads(request.body))
+                    changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"], user=request.user)
+                    response = JsonResponse(changes, safe=False)
+                except json.JSONDecodeError:
+                    response = HttpResponseBadRequest("JSON data is invalid")
+                except KeyError as e:
+                    response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
+                except ObjectDoesNotExist as e:
+                    response = HttpResponseBadRequest("Invalid user email - " + str(e))
+                except Exception as e:
+                    response = HttpResponseBadRequest("Unexpected error - " + str(e))
         else:
-            # replaces old contact with new contact specified in json package.
-            try:
-                data = dict(json.loads(request.body))
-                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"], user=request.user)
-                response = JsonResponse(changes, safe=False)
-            except json.JSONDecodeError:
-                response = HttpResponseBadRequest("JSON data is invalid")
-            except KeyError as e:
-                response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
-            except ObjectDoesNotExist as e:
-                response = HttpResponseBadRequest("Invalid user email - " + str(e))
-            except Exception as e:
-                response = HttpResponseBadRequest("Unexpected error - " + str(e))
+            response = HttpResponseForbidden("You do not have permission to edit this resource")
 
         return response

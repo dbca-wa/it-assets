@@ -6,6 +6,7 @@ from itassets.test_api import ApiTestCase
 from .test_model import create_random_record
 from itsystems.models import ITSystemRecord
 from reversion.models import Version
+from django.contrib.auth.models import Permission
 
 
 class ITSystemRecordAPIResourceTestCase(ApiTestCase):
@@ -18,6 +19,24 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.record2.save()
         self.record3.save()
         self.records = ITSystemRecord.objects.all()
+
+        # Gives permission for user to access API
+        permission_change = Permission.objects.get(codename="change_itsystemrecord")
+        self.testuser.user_permissions.add(permission_change)
+
+    def test_permissions(self):
+        # Tests basic connection
+        url = reverse("it_system_api_resource")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        permission_change = Permission.objects.get(codename="change_itsystemrecord")
+
+        # Removes change perms, and ensures that the user can't access API
+        self.testuser.user_permissions.remove(permission_change)
+        url = reverse("it_system_api_resource")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
 
     def test_list(self):
         """Test the ITSystemRecordAPIResource list responses"""
