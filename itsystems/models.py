@@ -236,7 +236,7 @@ class ITSystemRecord(models.Model):
         A calculated field combining the ID of the record and the name.
         """
         return self.system_id + " - " + self.name
-    
+
     @property
     def short_description(self):
         """
@@ -244,7 +244,6 @@ class ITSystemRecord(models.Model):
         This is used primarily in the admin view.
         """
         return smart_truncate(self.description)
-
 
     def compare(self, obj):
         """
@@ -339,7 +338,7 @@ class ITSystemRecord(models.Model):
             self.sensitivity = self.__get_choice_fk(dict.get("sensitivity"), Sensitivity, force, force_failures)
             self.system_type = self.__get_choice_fk(dict.get("system_type"), SystemType, force, force_failures)
             vital_records = dict.get("vital_records")
-            if vital_records and not str(vital_records)=="":
+            if vital_records and not str(vital_records) == "":
                 self.vital_records = str(vital_records).strip().lower() == "true"
             else:
                 self.vital_records = None
