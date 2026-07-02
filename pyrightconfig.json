@@ -1,5 +1,5 @@
 {
   "venvPath": "./.venv",
-  "include": ["ibms", "ibms_project", "sfm"],
-  "exclude": ["**/migrations"]
+  "include": ["itassets", "itsystems", "organisation", "registers"],
+  "exclude": ["**/migrations", "kustomize"]
 }
