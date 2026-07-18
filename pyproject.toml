@@ -38,7 +38,7 @@ dev = [
   "mixer>=7.2.2",
   "pre-commit>=4.6.0",
   "coverage>=7.14.3",
-  "django-stubs>=6.0.6",
+  "django-stubs>=6.0.7",
   "deptry>=0.25.1",
 ]
 
