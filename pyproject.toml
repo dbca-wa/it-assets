@@ -37,7 +37,7 @@ dev = [
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.6.0",
-  "coverage>=7.14.3",
+  "coverage>=7.15.2",
   "django-stubs>=6.0.6",
   "deptry>=0.25.1",
 ]
