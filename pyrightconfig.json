@@ -1,5 +1,0 @@
-{
-  "venvPath": "./.venv",
-  "include": ["itassets", "itsystems", "organisation", "registers"],
-  "exclude": ["**/migrations", "kustomize"]
-}
