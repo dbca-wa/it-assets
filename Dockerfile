@@ -24,7 +24,7 @@ RUN uv sync \
   && rm -rf /bin/uv uv.lock
 
 # ---- Runtime stage ----
-FROM dhi.io/python:3.13-debian13-dev
+FROM dhi.io/python:3.13-debian13-dev AS runtime
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/it-assets
 
