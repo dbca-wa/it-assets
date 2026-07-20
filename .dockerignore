@@ -1,14 +1,30 @@
+# Docker
+.git
+.gitignore
 .dockerignore
+Dockerfile*
+compose*.yaml
+docker-compose*.yml
+docker-bake.hcl
+
+# Secrets & local env
 .env
-.flake8
-.git*
+.env.*
+*.pem
+secrets/
+
+# CI / docs / editor / OS cruft
+.github/
+README.md
+.vscode/
+.idea/
+.DS_Store
+
+# Local project files
 .pgdump
-.dump
 .pyc
 __pycache__
-Dockerfile
 LICENSE
 logs
 media
 staticfiles
-README.md

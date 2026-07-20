@@ -1,5 +1,0 @@
-{
-  "venvPath": "./.venv",
-  "include": ["ibms", "ibms_project", "sfm"],
-  "exclude": ["**/migrations"]
-}
