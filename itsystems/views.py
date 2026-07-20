@@ -41,7 +41,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "show_drafts" not in self.request.GET:
             excluded.append("Draft")
 
-        # Passes search fields back to template, defaulting to Name & Desc if nothing is selected.
+        # Passes search fields back to template, defaulting to Name, Desc, and contacts if nothing is selected.
         search_field_selected = False
         if "SIDN" in self.request.GET:
             context["SIDN"] = True
@@ -73,7 +73,11 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if not search_field_selected:
             context["SIDN"] = True
             context["Desc"] = True
-
+            context["SO"] = True
+            context["BSO"] = True
+            context["TC"] = True
+            context["IC"] = True
+            
         # Passes in FK field values to populate dropdowns
         context["statuses"] = Status.objects.all().exclude(name__in=excluded).order_by("name")
         context["divisions"] = Division.objects.all().order_by("name")
@@ -87,7 +91,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["information_custodians"] = get_unique_users("information_custodian", excluded)
 
         # Pass in any search & filtering data
-        if "q" in self.request.GET:
+        if "q" in self.request.GET and self.request.GET["q"]:
             context["query_string"] = self.request.GET["q"]
         if "show_drafts" in self.request.GET:
             context["drafts_filter"] = self.request.GET["show_drafts"]
@@ -163,7 +167,8 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if "information_custodian" in self.request.GET:
             queryset = queryset.filter(information_custodian=self.request.GET["information_custodian"] or None)
 
-        if "q" in self.request.GET:
+        # Searches within ticked search fields
+        if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             filter_applied = False
             filter_query = Q()
@@ -205,9 +210,20 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
                 filter_query = filter_query | Q(ubcs__icontains=query_str)
                 filter_applied = True
 
+            # Default search filtering
             if not filter_applied:
-                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str)
-
+                # Filter by system id, name, and description
+                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str) | Q(description__icontains=query_str) 
+                # Filter by System Owner
+                filter_query = filter_query | Q(system_owner__email__icontains=query_str) | Q(system_owner__name__icontains=query_str)
+                # Filter by Business Service Owner
+                filter_query = (filter_query | Q(business_service_owner__email__icontains=query_str) | Q(business_service_owner__name__icontains=query_str))
+                # Filter by Technology Custodian
+                filter_query = (filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str))
+                # Filter by Information Custodian
+                filter_query = (
+                    filter_query | Q(information_custodian__email__icontains=query_str) | Q(information_custodian__name__icontains=query_str))
+                
             queryset = queryset.filter(filter_query)
 
         # Sorts records by system ID
