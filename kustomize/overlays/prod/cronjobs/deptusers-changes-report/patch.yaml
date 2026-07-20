@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ['manage.py', 'department_users_changes_report', '--emails', 'kmsupport@dbca.wa.gov.au']
+              args: ['manage.py', 'department_users_changes_report', '--emails', 'kmsupport@dbca.wa.gov.au,cisenquiries@dbca.wa.gov.au']
               envFrom:
                 - secretRef:
                     name: itassets-env-prod
