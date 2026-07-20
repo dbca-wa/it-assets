@@ -1,8 +1,10 @@
-from datetime import datetime, date, time, timedelta
+import logging
+from datetime import date, datetime, time, timedelta
+from tempfile import NamedTemporaryFile
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand, CommandError
-from tempfile import NamedTemporaryFile
 
 from organisation.models import AscenderActionLog
 from organisation.reports import user_changes_export
@@ -30,6 +32,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        logger = logging.getLogger("organisation")
         if options["emails"]:
             try:
                 recipients = options["emails"].split(",")
@@ -60,3 +63,5 @@ class Command(BaseCommand):
         )
         msg.attach_file(tempfile.name)
         msg.send()
+
+        logger.info(f"Emailed department user changes report to: {', '.join(recipients)}")
