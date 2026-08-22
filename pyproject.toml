@@ -16,7 +16,7 @@ dependencies = [
   "django-extensions==4.1",
   "python-dotenv==1.2.2",
   "dj-database-url==3.1.2",
-  "gunicorn[fast]==26.0.0",
+  "gunicorn[fast]==26.1.0",
   "unicodecsv==0.14.1",
   "python-dateutil==2.9.0",
   "webtemplate-dbca==1.9.0",
