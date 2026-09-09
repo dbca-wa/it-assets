@@ -266,31 +266,6 @@ def ms_graph_get_group(azure_guid: str, token: Optional[dict] = None) -> Dict | 
     return resp.json()
 
 
-def ms_graph_list_member_groups(azure_guid: str, token: Optional[dict] = None) -> Dict | None:
-    if not token:
-        token = ms_graph_client_token()
-    if not token:  # The call to the MS API occasionally fails and returns None.
-        return None
-    headers = {
-        "Authorization": f"Bearer {token['access_token']}",
-        "ConsistencyLevel": "eventual",
-    }
-    payload = {"securityEnabledOnly": False}
-    url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}/getMemberGroups"
-    resp = requests.post(url, headers=headers, json=payload)
-    resp.raise_for_status()
-    j = resp.json()
-    groups = []
-
-    while "@odata.nextLink" in j:
-        groups = groups + j["value"]
-        resp = requests.get(j["@odata.nextLink"], headers=headers)
-        resp.raise_for_status()
-        j = resp.json()
-
-    groups = groups + j["value"]  # Final page.
-    return groups
-
 def ms_graph_list_member_groups_with_names(azure_guid: str, token: Optional[Dict] = None) -> Dict | None:
     """Query the Microsoft Graph API to find a list of groups a user belongs to, and return the results as a dict of displayNames"""
     if not token:
