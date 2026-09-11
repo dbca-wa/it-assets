@@ -628,22 +628,22 @@ class GetAssignedEntraGroupsTestCase(TestCase):
 
     def test_get_copilot_group(self):
         # Test finding 1 viable copilot group
-        group = self.user.get_copilot_group_name()
+        group = self.user.get_copilot_group()
         self.assertEqual("sg-oim-app-copilot-users",group)
 
         # Test finding >1 viable copilot groups
         self.user.assigned_entra_groups.update({"sg-fb-app-copilot-users":"copilot-guid-3"})
-        group = self.user.get_copilot_group_name()
+        group = self.user.get_copilot_group()
         self.assertEqual(group == "sg-fb-app-copilot-users" or group == "sg-oim-app-copilot-users",True)
 
         # Test finding 0 viable copilot groups
         self.user.assigned_entra_groups = {"some-name-1":"some-guid-1","sg-oim-app-copilot-eval":"copilot-guid-2","some-name-2":"some-guid-2"}
-        group = self.user.get_copilot_group_name()
+        group = self.user.get_copilot_group()
         self.assertIsNone(group)
 
         # Test the user being in no groups
         self.user.assigned_entra_groups = None
-        group = self.user.get_copilot_group_name()
+        group = self.user.get_copilot_group()
         self.assertIsNone(group)
 
 # ---------------------------------------------------------------------------

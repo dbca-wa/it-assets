@@ -10,7 +10,7 @@ from sentry_sdk.crons import monitor
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import CostCentre, DepartmentUser, Location
-from organisation.utils import ms_graph_list_member_groups, ms_graph_list_users, ms_graph_list_member_groups_with_names
+from organisation.utils import ms_graph_list_users, ms_graph_list_member_groups_with_names
 
 
 class Command(BaseCommand):
@@ -140,10 +140,7 @@ class Command(BaseCommand):
                     # Update the existing DepartmentUser object fields with values from Azure.
                     existing_user = DepartmentUser.objects.get(azure_guid=az["objectId"])
                     existing_user.azure_ad_data = az
-                    # Cache the list of assigned Entra groups on the user account. - Deprecating
-                    groups = ms_graph_list_member_groups(azure_guid=existing_user.azure_guid, token=token)
-                    existing_user.assigned_groups = groups
-                    # Cache the list of assigned Entra groups on the user account - New
+                    # Cache the list of assigned Entra groups on the user account
                     groups_with_names = ms_graph_list_member_groups_with_names(azure_guid=existing_user.azure_guid, token=token)
                     existing_user.assigned_entra_groups = groups_with_names
                     # Update entra ID data
