@@ -154,6 +154,13 @@ class DepartmentUser(models.Model):
         verbose_name="position no.",
         help_text="Optional Ascender position number to specify the user's current active job",
     )
+    term_date_data =  models.JSONField(
+        default = list,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Cache of staff Ascender termination date data. May include 1 or more records if the user has/ had multiple jobs with the department.",
+    )
 
     # On-premise AD data
     ad_guid = models.CharField(

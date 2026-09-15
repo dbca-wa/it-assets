@@ -300,6 +300,23 @@ def ascender_employees_fetch_all() -> dict:
 
     return records
 
+def ascender_term_date_fetch_employee(employee_id) -> list:
+    """returns a sorted list of termination date records"""
+    try:
+        ascender_records = ascender_term_date_fetch(employee_id)
+    except ValueError:
+        return [None]
+
+    term_records = []
+
+    for row in ascender_records:
+        term_records.append(row)
+
+    # Sort the list of jobs in descending order of the termination date.
+    term_records.sort(key=lambda record:record['term_date'] , reverse=True)
+    return term_records
+
+
 
 def validate_ascender_user_account_rules(
     job: dict, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, logging: bool = False
@@ -520,6 +537,8 @@ def ascender_user_import_all():
             # Cache the job record.
             user.ascender_data = job
             user.ascender_data_updated = timezone.localtime()
+            # Cache any termination date data.
+            user.term_date_data = ascender_term_date_fetch_employee(employee_id=employee_id)
             user.update_from_ascender_data()  # This method calls save()
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
@@ -1228,3 +1247,36 @@ def ascender_cc_manager_fetch() -> List[tuple]:
     query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
     cursor.execute(query)
     return cursor.fetchall()
+
+def ascender_term_date_fetch(employee_id: Optional[str] = None) -> Iterator:
+    """Returns an iterator which yields all rows from the TERM_DATE_VW Ascender database query.
+    Optionally pass employee_id to filter on a single employee.
+    """
+    if employee_id:
+        # Validate `employee_id`: this value needs be castable as an integer, even though we use it as a string.
+        try:
+            int(employee_id)
+        except ValueError:
+            raise ValueError("Invalid employee ID value")
+
+    conn = get_ascender_db_connection()
+    cur = conn.cursor()
+    schema = sql.Identifier(settings.FOREIGN_SCHEMA)
+    table = sql.Identifier(settings.FOREIGN_TABLE_TERM_DATE)
+    employee_no = sql.Identifier("employee_no")
+
+    if employee_id:
+        query = sql.SQL("SELECT * FROM {schema}.{table} WHERE {employee_no} = %s").format(
+            schema=schema, table=table, employee_no=employee_no
+        )
+        cur.execute(query, (employee_id,))
+    else:
+        query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
+        cur.execute(query)
+
+    while True:
+        row = cur.fetchone()
+        if row is None:
+            break
+        record = row_to_python(row)
+        yield record
