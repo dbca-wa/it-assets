@@ -316,8 +316,6 @@ def ascender_term_date_fetch_employee(employee_id) -> list:
     term_records.sort(key=lambda record:record['term_date'] , reverse=True)
     return term_records
 
-
-
 def validate_ascender_user_account_rules(
     job: dict, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, logging: bool = False
 ) -> tuple | Literal[False]:
