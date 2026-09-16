@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
