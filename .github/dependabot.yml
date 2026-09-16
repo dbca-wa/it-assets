@@ -13,12 +13,16 @@ updates:
       interval: 'weekly'
     commit-message:
       prefix: '[python] '
+    cooldown:
+      default-days: 7
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
     commit-message:
       prefix: '[actions] '
+    cooldown:
+      default-days: 7
   - package-ecosystem: 'docker'
     registries: '*'
     directory: '/'
@@ -30,3 +34,5 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+    cooldown:
+      default-days: 7
