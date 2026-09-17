@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  # AWST: 6pm every day
+  schedule: '0 10 * * *'
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: itassets-cronjob
+              args: ['manage.py', 'department_users_terminated_users_handling', '-r']
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

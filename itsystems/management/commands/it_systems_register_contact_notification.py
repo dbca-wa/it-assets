@@ -86,12 +86,14 @@ def _process_contact(flagged_users, record, field_name, user, logger):
     """
     If the user doesn't appear on the addressbook, the user is flagged.
     """
-    if user.account_type in DepartmentUser.ACCOUNT_TYPE_EXCLUDE or user.active==False:
+    if user.account_type in DepartmentUser.ACCOUNT_TYPE_EXCLUDE or not user.active:
         system_str = str(record)
         user_str = str(user)
         status_str = user.get_account_type_display()
         active_str = str(user.active)
-        flagged_users.append({"system_name": system_str, "field_name": field_name, "user_email": user_str, "user_status": status_str, "active": active_str})
+        flagged_users.append(
+            {"system_name": system_str, "field_name": field_name, "user_email": user_str, "user_status": status_str, "active": active_str}
+        )
         logger.info(f"User Flagged - {system_str} | {field_name} | {user_str} | {status_str} | Active: {active_str}")
 
 
@@ -100,5 +102,7 @@ def _process_null(flagged_users, record, field_name, logger):
     Flags mandatory field as empty.
     """
     system_str = str(record)
-    flagged_users.append({"system_name": system_str, "field_name": field_name, "user_email": "EMPTY", "user_status": "EMPTY", "active": "N/A"})
+    flagged_users.append(
+        {"system_name": system_str, "field_name": field_name, "user_email": "EMPTY", "user_status": "EMPTY", "active": "N/A"}
+    )
     logger.info(f"User Flagged - {system_str} | {field_name} | EMPTY | EMPTY | Active: N/A")
