@@ -55,4 +55,4 @@ class NotificationsTestCase(TestCase):
             self.assertIn(user["field_name"], msg.body)
             self.assertIn(user["user_email"], msg.body)
             self.assertIn(user["user_status"], msg.body)
-            self.assertIn(f"Active?: {user["active"]}", msg.body)
+            self.assertIn(f"Active?: {user['active']}", msg.body)

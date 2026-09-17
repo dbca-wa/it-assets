@@ -302,7 +302,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         obj = self.get_object(request, unquote(object_id))
         add = False
         change = True
-        readonly_fields = ("ad_data_pprint", "entra_id_data_pprint", "ascender_data_pprint","term_date_data_pprint")
+        readonly_fields = ("ad_data_pprint", "entra_id_data_pprint", "ascender_data_pprint", "term_date_data_pprint")
         fieldsets = (
             (
                 "Employee information",
@@ -317,7 +317,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                         "ad_data_pprint",
                         "entra_id_data_pprint",
                         "ascender_data_pprint",
-                        "term_date_data_pprint"
+                        "term_date_data_pprint",
                     ),
                 },
             ),

@@ -300,21 +300,29 @@ def ascender_employees_fetch_all() -> dict:
 
     return records
 
+
 def ascender_term_date_fetch_employee(employee_id) -> list:
     """returns a sorted list of termination date records"""
     try:
         ascender_records = ascender_term_date_fetch(employee_id)
     except ValueError:
-        return [None]
+        return []
 
     term_records = []
 
     for row in ascender_records:
         term_records.append(row)
 
-    # Sort the list of jobs in descending order of the termination date.
-    term_records.sort(key=lambda record:record['term_date'] , reverse=True)
+    if len(term_records) > 0:
+        # Sort the list of jobs in descending order of the termination date.
+        try:
+            term_records.sort(key=(lambda record: str(record["term_date"])), reverse=True)
+        except KeyError:
+            LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Field 'term_date' missing from record")
+        except TypeError:
+            LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Invalid value for 'term_date' found within record")
     return term_records
+
 
 def validate_ascender_user_account_rules(
     job: dict, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, logging: bool = False
@@ -1245,6 +1253,7 @@ def ascender_cc_manager_fetch() -> List[tuple]:
     query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
     cursor.execute(query)
     return cursor.fetchall()
+
 
 def ascender_term_date_fetch(employee_id: Optional[str] = None) -> Iterator:
     """Returns an iterator which yields all rows from the TERM_DATE_VW Ascender database query.

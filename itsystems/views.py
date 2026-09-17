@@ -77,7 +77,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             context["BSO"] = True
             context["TC"] = True
             context["IC"] = True
-            
+
         # Passes in FK field values to populate dropdowns
         context["statuses"] = Status.objects.all().exclude(name__in=excluded).order_by("name")
         context["divisions"] = Division.objects.all().order_by("name")
@@ -213,17 +213,28 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             # Default search filtering
             if not filter_applied:
                 # Filter by system id, name, and description
-                filter_query = filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str) | Q(description__icontains=query_str) 
+                filter_query = (
+                    filter_query | Q(system_id__icontains=query_str) | Q(name__icontains=query_str) | Q(description__icontains=query_str)
+                )
                 # Filter by System Owner
                 filter_query = filter_query | Q(system_owner__email__icontains=query_str) | Q(system_owner__name__icontains=query_str)
                 # Filter by Business Service Owner
-                filter_query = (filter_query | Q(business_service_owner__email__icontains=query_str) | Q(business_service_owner__name__icontains=query_str))
+                filter_query = (
+                    filter_query
+                    | Q(business_service_owner__email__icontains=query_str)
+                    | Q(business_service_owner__name__icontains=query_str)
+                )
                 # Filter by Technology Custodian
-                filter_query = (filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str))
+                filter_query = (
+                    filter_query | Q(technology_custodian__email__icontains=query_str) | Q(technology_custodian__name__icontains=query_str)
+                )
                 # Filter by Information Custodian
                 filter_query = (
-                    filter_query | Q(information_custodian__email__icontains=query_str) | Q(information_custodian__name__icontains=query_str))
-                
+                    filter_query
+                    | Q(information_custodian__email__icontains=query_str)
+                    | Q(information_custodian__name__icontains=query_str)
+                )
+
             queryset = queryset.filter(filter_query)
 
         # Sorts records by system ID
