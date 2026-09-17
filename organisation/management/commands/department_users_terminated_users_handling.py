@@ -72,5 +72,5 @@ SUMMARY:
 # Notes:
 # - Should have some way of tracking users that have already been processed and quantifying that
 # - Maybe at this point the users can also be deleted from IT Assets? Will follow up w/ Ash on this.
-def remove_licenses(self, user):
+def remove_licenses(user):
     pass
