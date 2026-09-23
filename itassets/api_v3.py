@@ -10,6 +10,7 @@ urlpatterns = [
     path("location/<int:pk>/", LocationAPIResource.as_view(), name="location_api_resource"),
     path("license/", LicenseAPIResource.as_view(), name="license_api_resource"),
     path("license/<int:pk>/", LicenseAPIResource.as_view(), name="license_api_resource"),
+    path("license/<str:flag>/", LicenseAPIResource.as_view(), name="license_api_resource"),
     path("itsystem/", ITSystemRecordAPIResource.as_view(), name="it_system_api_resource"),
     path("itsystem/<str:system_id>/", ITSystemRecordAPIResource.as_view(), name="it_system_api_resource"),
     path("costcentre/", CostCentreAPIResource.as_view(), name="cost_centre_api_resource"),

@@ -229,11 +229,14 @@ class LicenseAPIResource(View):
 
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
-        # Return active users having an E5 or E1 licence assigned.
+        # Optional filter that allows inactive users to be shown as well.
+        if kwargs.get("flag")=="show_inactive":
+            queryset = DepartmentUser.objects.all()
+        else:
+            queryset = DepartmentUser.objects.filter(active=True)
+        # Return users having an E5 or E1 licence assigned.
         queryset = (
-            DepartmentUser.objects.filter(
-                active=True,
-            )
+            queryset
             .filter(
                 Q(assigned_licences__contains=["MICROSOFT 365 E5"])
                 | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
