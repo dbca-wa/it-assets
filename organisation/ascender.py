@@ -68,6 +68,20 @@ FOREIGN_TABLE_FIELDS = (
     "manager_emp_no",
     "manager_name",
 )
+
+TERM_DATE_FOREIGN_TABLE_FIELDS = (
+    ("employee_no", "employee_id"),
+    "job_no",
+    (
+        "term_date",
+        lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None,
+    ),
+    (
+        "term_process_date",
+        lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None,
+    ),    
+)
+
 STATUS_RANKING = [
     "NOPAY",
     "NON",
@@ -204,6 +218,27 @@ def row_to_python(row):
             record[field] = row[k]
 
     return record
+
+def row_to_python_term_date(row):
+    """A convenience function to convert a row from the TERM_DATE_VW Ascender database to a
+    Python dict, applying optional transforms to each column.
+    Transforms can be to convert strings to datetime, or to rename column in
+    the returned dict.
+    """
+    record = {}
+
+    for k, field in enumerate(TERM_DATE_FOREIGN_TABLE_FIELDS):
+        # If the field in a list or tuple, use the first element as the record key
+        # and the second element (a callable function) as a transformer.
+        if isinstance(field, (list, tuple)):
+            if callable(field[1]):
+                record[field[0]] = field[1](row[k])
+            else:
+                record[field[1]] = row[k]
+        else:
+            record[field] = row[k]
+
+    return record    
 
 
 def ascender_db_fetch(employee_id: Optional[str] = None) -> Iterator:
@@ -1285,5 +1320,5 @@ def ascender_term_date_fetch(employee_id: Optional[str] = None) -> Iterator:
         row = cur.fetchone()
         if row is None:
             break
-        record = row_to_python(row)
+        record = row_to_python_term_date(row)
         yield record
