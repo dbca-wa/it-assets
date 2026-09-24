@@ -363,6 +363,38 @@ def ascender_term_date_fetch_employee(employee_id) -> list:
             LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id}", exc_info=exc)
     return term_records
 
+def ascender_term_date_fetch_all() -> dict:
+    """Returns a dict: {'<employee_id>': [sorted termination records], ...}"""
+    try:
+        ascender_records = ascender_term_date_fetch()
+    except ValueError:
+        return {}
+    except Exception as exc: # Temporary overly broad exception handling for deployment
+        LOGGER.warning(f"Failure during term_date_data retrieval",exc_info=exc)
+        return {}
+    
+    records = {}
+
+    for row in ascender_records:
+        employee_id = row["employee_id"]
+        if employee_id in records:
+            # Append the next job to the list of termination records, sort and replace the dict value.
+            term_record = records[employee_id]
+            term_record.append(row)
+            try:
+                term_record.sort(key=(lambda record: str(record["term_date"])), reverse=True)
+            except KeyError:
+                LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Field 'term_date' missing from record")
+            except TypeError:
+                LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Invalid value for 'term_date' found within record")
+            except Exception as exc: # Temporary overly broad exception handling for deployment
+                LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id}", exc_info=exc)
+            records[employee_id] = term_record
+        else:
+            records[employee_id] = [row]
+
+    return records
+
 
 def validate_ascender_user_account_rules(
     job: dict, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, logging: bool = False
@@ -514,6 +546,7 @@ def ascender_user_import_all():
     LOGGER.info("Querying Ascender database for employee information")
     token = ms_graph_client_token()
     employee_records = ascender_employees_fetch_all()
+    termination_records = ascender_term_date_fetch_all()
 
     for employee_id, jobs in employee_records.items():
         # If we have no jobs data from Ascender for this employee, skip them.
@@ -584,8 +617,7 @@ def ascender_user_import_all():
             user.ascender_data = job
             user.ascender_data_updated = timezone.localtime()
             # Cache any termination date data.
-            # Temporarily commented out.
-            # user.term_date_data = ascender_term_date_fetch_employee(employee_id=employee_id)
+            user.term_date_data = termination_records.get(employee_id)
             user.update_from_ascender_data()  # This method calls save()
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
