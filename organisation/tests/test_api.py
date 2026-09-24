@@ -90,6 +90,21 @@ class LicenseAPIResourceTestCase(ApiTestCase):
         self.assertNotContains(response, self.user_permanent.email)
         self.assertContains(response, self.user_contract.email)
 
+    def test_inactive(self):
+        """Test optional inactive flag shows inactive users"""
+        self.user_permanent.active=False
+        self.user_permanent.save()
+        url = reverse("license_api_resource")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.user_permanent.email)
+        self.assertContains(response, self.user_contract.email)
+
+        url = "{}?show_inactive".format(reverse("license_api_resource"))        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.user_permanent.email)
+        self.assertContains(response, self.user_contract.email)        
 
 class CostCentreAPIResourceTestCase(ApiTestCase):
     def test_list(self):
