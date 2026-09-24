@@ -269,7 +269,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
 
     def term_date_data_pprint(self, obj=None):
         if obj and obj.term_date_data:
-            result = json.dumps(obj.ascender_data, indent=4, sort_keys=True)
+            result = json.dumps(obj.term_data_data, indent=4, sort_keys=True)
             result = f"<pre>{result}</pre>"
             return mark_safe(result)
         else:
