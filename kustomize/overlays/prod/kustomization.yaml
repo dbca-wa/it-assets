@@ -39,4 +39,4 @@ patches:
   - path: postgres_fdw_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.5.10
+    newTag: 2.5.11
