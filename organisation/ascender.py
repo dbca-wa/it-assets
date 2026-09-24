@@ -342,6 +342,9 @@ def ascender_term_date_fetch_employee(employee_id) -> list:
         ascender_records = ascender_term_date_fetch(employee_id)
     except ValueError:
         return []
+    except Exception as exc: # Temporary overly broad exception handling for deployment
+        LOGGER.warning(f"Failure during term_date_data retrieval of {employee_id}",exc_info=exc)
+        return []
 
     term_records = []
 
@@ -356,6 +359,8 @@ def ascender_term_date_fetch_employee(employee_id) -> list:
             LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Field 'term_date' missing from record")
         except TypeError:
             LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Invalid value for 'term_date' found within record")
+        except Exception as exc: # Temporary overly broad exception handling for deployment
+            LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id}", exc_info=exc)
     return term_records
 
 
