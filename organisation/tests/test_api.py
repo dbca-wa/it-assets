@@ -100,7 +100,7 @@ class LicenseAPIResourceTestCase(ApiTestCase):
         self.assertNotContains(response, self.user_permanent.email)
         self.assertContains(response, self.user_contract.email)
 
-        url = reverse("license_api_resource", kwargs={"flag": "show_inactive"})
+        url = "{}?show_inactive".format(reverse("license_api_resource"))        
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.user_permanent.email)

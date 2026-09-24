@@ -230,7 +230,7 @@ class LicenseAPIResource(View):
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         # Optional filter that allows inactive users to be shown as well.
-        if kwargs.get("flag")=="show_inactive":
+        if "show_inactive" in self.request.GET:
             queryset = DepartmentUser.objects.all()
         else:
             queryset = DepartmentUser.objects.filter(active=True)
