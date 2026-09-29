@@ -11,7 +11,7 @@ license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
   "django==5.2.17",
-  "psycopg[binary,pool]==3.3.5",
+  "psycopg[binary,pool]==3.3.6",
   "dbca-utils==3.0.13",
   "django-extensions==4.1",
   "python-dotenv==1.2.3",
@@ -21,10 +21,10 @@ dependencies = [
   "python-dateutil==2.9.0",
   "webtemplate-dbca==1.9.0",
   "requests==2.34.2",
-  "msal==1.38.0",
+  "msal==1.39.0",
   "whitenoise[brotli]==6.12.0",
   "xlsxwriter==3.2.9",
-  "sentry-sdk[django]==2.69.1",
+  "sentry-sdk[django]==2.69.2",
   "redis==8.1.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",                # Fix version (no upgrades) until Ascender SFTP updated
