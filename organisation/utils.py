@@ -290,7 +290,7 @@ def ms_graph_list_member_groups_with_names(azure_guid: str, token: Optional[Dict
 
     groups = groups + j["value"]  # Final page.
 
-    return {g['displayName']: g['id'] for g in groups}
+    return {g["displayName"]: g["id"] for g in groups}
 
 
 def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> bool | None:

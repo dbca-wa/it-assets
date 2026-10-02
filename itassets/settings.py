@@ -162,6 +162,8 @@ ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS = env("ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS",
 DORMANT_ACCOUNT_DAYS = env("DORMANT_ACCOUNT_DAYS", 90)
 # Flag to control whether dormant accounts are deactivated.
 DORMANT_ACCOUNT_DEACTIVATE = env("DORMANT_ACCOUNT_DEACTIVATE", False)
+# Number of days after termination that entra ID Accounts may have licenses removed.
+TERMINATED_ACCOUNT_DAYS = env("TERMINATED_ACCOUNT_DAYS", 14)
 
 # Settings related to the Ascender SFTP target
 ASCENDER_SFTP_HOST = env("ASCENDER_SFTP_HOST", None)
@@ -179,6 +181,7 @@ FOREIGN_SERVER = env("FOREIGN_SERVER", None)
 FOREIGN_SCHEMA = env("FOREIGN_SCHEMA", default="public")
 FOREIGN_TABLE = env("FOREIGN_TABLE", None)
 FOREIGN_TABLE_CC_MANAGER = env("FOREIGN_TABLE_CC_MANAGER", None)
+FOREIGN_TABLE_TERM_DATE = env("FOREIGN_TABLE_TERM_DATE", None)
 
 # Database configuration
 DATABASES = {

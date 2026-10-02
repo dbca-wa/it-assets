@@ -80,7 +80,7 @@ class CommandsTestCase(TestCase):
         self.assertEqual(msg, None)
 
         # Verify that the audit detects inactive accounts
-        record2.business_service_owner.active=False
+        record2.business_service_owner.active = False
         record2.business_service_owner.save()
         msg = cmd.handle(send_email=True, return_msg=True)
         self.assertEqual(msg.body.count(str(record2)), 2)

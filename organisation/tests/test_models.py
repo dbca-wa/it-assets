@@ -247,6 +247,120 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Ascender TERM_DATE_VW term date and past_termination method testing
+# ---------------------------------------------------------------------------
+class DepartmentUserTerminationsTestCase(TestCase):
+    def setUp(self):
+        self.user = mixer.blend(
+            DepartmentUser,
+            active=True,
+            email=random_dbca_email,
+            name="Jane Doe",
+            given_name="Jane",
+            surname="Doe",
+            employee_id=mixer.RANDOM,
+            dir_sync_enabled=True,
+            azure_guid=uuid1,
+            term_date_data=[
+                {
+                    "employee_no": "placeholder_val",
+                    "job_no": 1,
+                    "term_date": (date.today() + timedelta(weeks=1)).strftime("%Y-%m-%d"),
+                    "term_process_date": None,
+                },
+                {
+                    "employee_no": "placeholder_val",
+                    "job_no": 4,
+                    "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
+                    "term_process_date": None,
+                },
+                {"employee_no": "placeholder_val", "job_no": 2, "term_date": None, "term_process_date": None},
+                {"employee_no": "placeholder_val", "job_no": 5, "term_date": "", "term_process_date": None},
+                {
+                    "employee_no": "placeholder_val",
+                    "job_no": 3,
+                    "term_date": (date.today() + timedelta(weeks=-8)).strftime("%Y-%m-%d"),
+                    "term_process_date": None,
+                },
+            ],
+        )
+        self.user.save()
+
+    def test_termination_date(self):
+        # 3+ valid check, null & empty check, mixed valid & invalid check
+        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.past_term_date(), False)
+
+        # Empty values check
+        self.user.term_date_data = []
+        self.assertEqual(self.user.get_term_date(), None)
+        self.assertEqual(self.user.past_term_date(), False)
+
+        # blank and None values check
+        self.user.term_date_data = [
+            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": None, "term_process_date": None},
+            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": "", "term_process_date": None},
+        ]
+        self.assertEqual(self.user.get_term_date(), None)
+        self.assertEqual(self.user.past_term_date(), False)
+
+        # 2 valid values check
+        self.user.term_date_data = [
+            {
+                "employee_no": mixer.RANDOM,
+                "job_no": 1,
+                "term_date": (date.today() + timedelta(weeks=1)).strftime("%Y-%m-%d"),
+                "term_process_date": None,
+            },
+            {
+                "employee_no": mixer.RANDOM,
+                "job_no": 4,
+                "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
+                "term_process_date": None,
+            },
+        ]
+        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.past_term_date(), False)
+
+        # Identical date check
+        self.user.term_date_data = [
+            {
+                "employee_no": mixer.RANDOM,
+                "job_no": 1,
+                "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
+                "term_process_date": None,
+            },
+            {
+                "employee_no": mixer.RANDOM,
+                "job_no": 4,
+                "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
+                "term_process_date": None,
+            },
+        ]
+        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.past_term_date(), False)
+
+        # 1 valid + past_term_date check
+        self.user.term_date_data = [
+            {
+                "employee_no": mixer.RANDOM,
+                "job_no": 1,
+                "term_date": (date.today() + timedelta(weeks=-2)).strftime("%Y-%m-%d"),
+                "term_process_date": None,
+            }
+        ]
+        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=-2))
+        self.assertEqual(self.user.past_term_date(), True)
+
+        # 1 valid + past_term_date check
+        self.user.term_date_data = [
+            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": date.today().strftime("%Y-%m-%d"), "term_process_date": None}
+        ]
+        self.assertEqual(self.user.get_term_date(), date.today())
+        self.assertEqual(self.user.past_term_date(), True)
+
+
+# ---------------------------------------------------------------------------
 # Ascender data getter methods
 # ---------------------------------------------------------------------------
 
@@ -584,33 +698,40 @@ class GetGraphUserTestCase(TestCase):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, azure_guid=None)
         self.assertIsNone(user.get_graph_user())
 
+
 # ---------------------------------------------------------------------------
 # DepartmentUser.get_assigned_entra_groups() & DepartmentUser.get_copilot_group()
 # ---------------------------------------------------------------------------
+
 
 class GetAssignedEntraGroupsTestCase(TestCase):
     def setUp(self):
         self.user = mixer.blend(
             DepartmentUser,
-            assigned_entra_groups = {"some-name-1":"some-guid-1","sg-oim-app-copilot-users":"copilot-guid-1","sg-oim-app-copilot-eval":"copilot-guid-2","some-name-2":"some-guid-2"}
+            assigned_entra_groups={
+                "some-name-1": "some-guid-1",
+                "sg-oim-app-copilot-users": "copilot-guid-1",
+                "sg-oim-app-copilot-eval": "copilot-guid-2",
+                "some-name-2": "some-guid-2",
+            },
         )
 
     def test_get_assigned_entra_groups(self):
         # Test retrieving group names
         groups = self.user.get_assigned_entra_groups()
-        self.assertIn("some-name-1",groups)
-        self.assertIn("some-name-2",groups)
-        self.assertIn("sg-oim-app-copilot-users",groups)
-        self.assertIn("sg-oim-app-copilot-eval",groups)
-        self.assertEqual(len(groups),4)
+        self.assertIn("some-name-1", groups)
+        self.assertIn("some-name-2", groups)
+        self.assertIn("sg-oim-app-copilot-users", groups)
+        self.assertIn("sg-oim-app-copilot-eval", groups)
+        self.assertEqual(len(groups), 4)
 
         # Test retrieving group guids
         groups = self.user.get_assigned_entra_groups(guids=True)
-        self.assertIn("some-guid-1",groups)
-        self.assertIn("copilot-guid-1",groups)
-        self.assertIn("copilot-guid-2",groups)
-        self.assertIn("some-guid-2",groups)
-        self.assertEqual(len(groups),4)
+        self.assertIn("some-guid-1", groups)
+        self.assertIn("copilot-guid-1", groups)
+        self.assertIn("copilot-guid-2", groups)
+        self.assertIn("some-guid-2", groups)
+        self.assertEqual(len(groups), 4)
 
         # Test accurate report of empty dict
         self.user.assigned_entra_groups = {}
@@ -629,15 +750,19 @@ class GetAssignedEntraGroupsTestCase(TestCase):
     def test_get_copilot_group(self):
         # Test finding 1 viable copilot group
         group = self.user.get_copilot_group()
-        self.assertEqual("sg-oim-app-copilot-users",group)
+        self.assertEqual("sg-oim-app-copilot-users", group)
 
         # Test finding >1 viable copilot groups
-        self.user.assigned_entra_groups.update({"sg-fb-app-copilot-users":"copilot-guid-3"})
+        self.user.assigned_entra_groups.update({"sg-fb-app-copilot-users": "copilot-guid-3"})
         group = self.user.get_copilot_group()
-        self.assertEqual(group == "sg-fb-app-copilot-users" or group == "sg-oim-app-copilot-users",True)
+        self.assertEqual(group == "sg-fb-app-copilot-users" or group == "sg-oim-app-copilot-users", True)
 
         # Test finding 0 viable copilot groups
-        self.user.assigned_entra_groups = {"some-name-1":"some-guid-1","sg-oim-app-copilot-eval":"copilot-guid-2","some-name-2":"some-guid-2"}
+        self.user.assigned_entra_groups = {
+            "some-name-1": "some-guid-1",
+            "sg-oim-app-copilot-eval": "copilot-guid-2",
+            "some-name-2": "some-guid-2",
+        }
         group = self.user.get_copilot_group()
         self.assertIsNone(group)
 
@@ -645,6 +770,7 @@ class GetAssignedEntraGroupsTestCase(TestCase):
         self.user.assigned_entra_groups = None
         group = self.user.get_copilot_group()
         self.assertIsNone(group)
+
 
 # ---------------------------------------------------------------------------
 # Model __str__ representations

@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -399,27 +399,20 @@ class MsGraphListSigninsUserTestCase(TestCase):
 
         self.assertIsNone(result)
 
+
 class MsGraphListMemberGroupsWithNamesTestCase(TestCase):
     @patch("organisation.utils.requests.get")
     def test_ms_graph_list_member_groups_with_names(self, mock_get):
         package = {
-            "value":[
-                {
-                    "@odata.type": "#microsoft.graph.group",
-                    "id": "sku-1",
-                    "displayName": "example-group-1"
-                },
-                {
-                    "@odata.type": "#microsoft.graph.group",
-                    "id": "sku-2",
-                    "displayName": "example-group-2"
-                }
+            "value": [
+                {"@odata.type": "#microsoft.graph.group", "id": "sku-1", "displayName": "example-group-1"},
+                {"@odata.type": "#microsoft.graph.group", "id": "sku-2", "displayName": "example-group-2"},
             ]
         }
         mock_get.return_value = mock_response(package)
 
-        result = ms_graph_list_member_groups_with_names(token=FAKE_TOKEN,azure_guid="some guid")
+        result = ms_graph_list_member_groups_with_names(token=FAKE_TOKEN, azure_guid="some guid")
 
-        self.assertEqual(result['example-group-1'], "sku-1")
-        self.assertEqual(result['example-group-2'], "sku-2")
-        self.assertEqual(len(result),2)
+        self.assertEqual(result["example-group-1"], "sku-1")
+        self.assertEqual(result["example-group-2"], "sku-2")
+        self.assertEqual(len(result), 2)

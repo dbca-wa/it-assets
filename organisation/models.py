@@ -154,6 +154,13 @@ class DepartmentUser(models.Model):
         verbose_name="position no.",
         help_text="Optional Ascender position number to specify the user's current active job",
     )
+    term_date_data = models.JSONField(
+        default=list,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Cache of staff Ascender termination date data. May include 1 or more records if the user has/ had multiple jobs with the department.",
+    )
 
     # On-premise AD data
     ad_guid = models.CharField(
@@ -195,12 +202,7 @@ class DepartmentUser(models.Model):
     last_password_change = models.DateTimeField(
         null=True, editable=False, help_text="The time when the user account password was last changed"
     )
-    assigned_entra_groups = JSONField(
-        default=dict,
-        null=True,
-        blank=True,
-        editable=False
-    )
+    assigned_entra_groups = JSONField(default=dict, null=True, blank=True, editable=False)
 
     def __str__(self):
         return self.email
@@ -459,6 +461,26 @@ class DepartmentUser(models.Model):
                 return TERM_REASON_MAP[self.ascender_data["term_reason"]]
 
         return None
+
+    def get_term_date(self) -> date | None:
+        """From Ascender data, return the latest termination date of a given user, if any."""
+        max_date = None
+        if len(self.term_date_data) > 0:
+            # Retrieve all valid non-null or non-blank term_date values
+            valid_dates = [x["term_date"] for x in self.term_date_data if (x["term_date"] is not None and x["term_date"] != "")]
+            if len(valid_dates) > 0:
+                # Get maximum & convert to date - ISO 8601 dates can be naturally compared using string comparison
+                max_date = datetime.strptime(max(valid_dates), "%Y-%m-%d").date()
+        return max_date
+
+    def past_term_date(self) -> bool:
+        """From Ascender data, return True if the user is past their termination date."""
+        terminated = False
+        term_date = self.get_term_date()
+        if term_date:
+            if term_date <= date.today():
+                terminated = True
+        return terminated
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
@@ -1446,22 +1468,20 @@ class DepartmentUser(models.Model):
         else:
             return None
 
-
-    def get_assigned_entra_groups(self, guids : bool = False) -> list | None:
+    def get_assigned_entra_groups(self, guids: bool = False) -> list | None:
         """Returns a list of entra groups the user is a member of, or None. By default this returns the display names only, but if guids is set to 'True' it returns the guids instead."""
-        if self.assigned_entra_groups and len(self.assigned_entra_groups)>0:
+        if self.assigned_entra_groups and len(self.assigned_entra_groups) > 0:
             if guids:
                 groups = self.assigned_entra_groups.values()
             else:
                 groups = self.assigned_entra_groups.keys()
             return groups
 
-
     def get_copilot_group(self) -> str | None:
         """Returns the display name of the first copilot group that this user is assigned to, or None"""
         groups = self.get_assigned_entra_groups()
         if groups:
-            return next(filter(lambda group_name: 'app-copilot-users' in group_name, groups), None)
+            return next(filter(lambda group_name: "app-copilot-users" in group_name, groups), None)
 
 
 class DepartmentUserLog(models.Model):
