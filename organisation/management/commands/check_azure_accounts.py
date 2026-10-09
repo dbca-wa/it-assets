@@ -80,7 +80,7 @@ class Command(BaseCommand):
 
                     # EDGE CASE 2: a department user with matching employee ID may already exist with a different azure_guid.
                     # We'll need to correct this issue manually. Email a warning to admins and skip the account.
-                    if az["employeeId"] and DepartmentUser.objects.filter(employee_id=az["employeeId"], azure_guid__isnull=True).exists():
+                    if az["employeeId"] and DepartmentUser.objects.filter(employee_id=az["employeeId"], azure_guid__isnull=False).exists():
                         existing_user = DepartmentUser.objects.filter(employee_id=az["employeeId"]).first()
                         message = f"Skipped {az['userPrincipalName']} ({az['objectId']}): employeeId exists and is already associated with {existing_user}"
                         logger.warning(message)
