@@ -11,8 +11,8 @@ from itassets.admin_filters import DropdownFilterChoices, DropdownFilterBoolean,
 from itassets.utils import ModelDescMixin
 from itsystems.admin import ITSystemRecordAdmin
 from itsystems.models import ITSystemRecord
-from assets.models import Asset, AssetTag, AssetTagCategory
-from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin
+from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
+from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin, VulnerabilityAdmin
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport
@@ -456,3 +456,4 @@ service_desk_admin_site.register(ITSystemRecord, ITSystemRecordAdmin)
 service_desk_admin_site.register(Asset, AssetAdmin)
 service_desk_admin_site.register(AssetTag, AssetTagAdmin)
 service_desk_admin_site.register(AssetTagCategory, AssetTagCategoryAdmin)
+service_desk_admin_site.register(Vulnerability, VulnerabilityAdmin)
