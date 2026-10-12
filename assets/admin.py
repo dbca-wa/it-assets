@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
-from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterChoices, DropdownFilterRelated, DROPDOWN_TEMPLATE
+from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DROPDOWN_TEMPLATE
 
 
 class AssetTagInline(admin.TabularInline):
@@ -83,13 +83,14 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         """
         Standard State filter but adds in the option to exclude "Fixed".
         """
+
         template = DROPDOWN_TEMPLATE
         title = "State"
         parameter_name = "state"
 
         def lookups(self, request, model_admin):
             filter_list = [
-                ("NF","Not Fixed"),
+                ("NF", "Not Fixed"),
             ]
             for key, val in Vulnerability.STATE_CHOICES.items():
                 filter_list.append((key, _(val)))
@@ -97,24 +98,25 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             return filter_list
 
         def queryset(self, request, queryset):
-                if self.value() == "NF":
-                    return queryset.exclude(state="F")                
-                elif self.value() is not None:
-                    return queryset.filter(severity=self.value())
-                
+            if self.value() == "NF":
+                return queryset.exclude(state="F")
+            elif self.value() is not None:
+                return queryset.filter(severity=self.value())
+
     class SeverityFilter(admin.SimpleListFilter):
         """
         Standard Severity filter but adds some range options.
         """
+
         template = DROPDOWN_TEMPLATE
         title = "Severity"
         parameter_name = "severity"
 
         def lookups(self, request, model_admin):
             filter_list = [
-                (-1,">= Low"),
-                (-2,">= Medium"),
-                (-3,">= High"),
+                (-1, ">= Low"),
+                (-2, ">= Medium"),
+                (-3, ">= High"),
             ]
             for key, val in Vulnerability.SEVERITY_CHOICES.items():
                 filter_list.append((key, _(val)))
@@ -137,12 +139,13 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         """
         Standard Severity Modification Type filter but adds in the option to exclude "Accepted".
         """
+
         template = DROPDOWN_TEMPLATE
         title = "Severity Modification Type"
         parameter_name = "severity_modification_type"
 
         def lookups(self, request, model_admin):
-            filter_list = [("NA","Not Accepted")]
+            filter_list = [("NA", "Not Accepted")]
             for key, val in Vulnerability.SEVERITY_MOD_TYPE_CHOICES.items():
                 filter_list.append((key, _(val)))
 
@@ -154,20 +157,12 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
 
-
     search_fields = (
         "asset__name",
         "finding_id",
     )
 
-    list_display = (
-        "plugin_name",
-        "plugin_family",
-        "asset__name",
-        "state",
-        "severity",
-        "severity_modification_type"
-        )
+    list_display = ("plugin_name", "plugin_family", "asset__name", "state", "severity", "severity_modification_type")
 
     list_filter = (
         ("asset", DropdownFilterRelated),
@@ -190,7 +185,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "indexed",
         "source",
         "resurfaced_date",
-        "time_taken_to_fix",  
+        "time_taken_to_fix",
         "asset",
         "ipv4_addresses",
         "operating_systems",
@@ -220,7 +215,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         (
             "General",
             {
-                "fields":(
+                "fields": (
                     "finding_id",
                     "state",
                     "severity",
@@ -233,23 +228,23 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                     "source",
                     "resurfaced_date",
                     "time_taken_to_fix",
-                    ),
-            }
+                ),
+            },
         ),
         (
             "Asset",
-            { 
-                "fields":(
+            {
+                "fields": (
                     "asset",
                     "ipv4_addresses",
                     "operating_systems",
-                    ),
-            }
+                ),
+            },
         ),
         (
             "Plugin",
             {
-                "fields":(
+                "fields": (
                     "plugin_id",
                     "plugin_name",
                     "plugin_family",
@@ -266,19 +261,19 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                     "cve",
                     "vpr_pprint",
                     "workaround",
-                    ),
-            }
+                ),
+            },
         ),
         (
             "Raw Data",
             {
-                "fields":(
+                "fields": (
                     "plugin_pprint",
                     "port_pprint",
                     "scan_pprint",
                     "software_vulns_pprint",
-                    ),
-            }
+                ),
+            },
         ),
     )
 
@@ -289,7 +284,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     def port_pprint(self, obj=None):
         if obj and obj.port:
             return pprint_json(data=obj.port)
-        
+
     def scan_pprint(self, obj=None):
         if obj and obj.scan:
             return pprint_json(data=obj.scan)
@@ -368,15 +363,7 @@ class AssetAdmin(admin.ModelAdmin):
         "active_critical_vulns",
     )
 
-    search_fields = (
-        "name", 
-        "description", 
-        "contacts__email", 
-        "systems__name", 
-        "tags__name", 
-        "os", 
-        "os_version"
-    )
+    search_fields = ("name", "description", "contacts__email", "systems__name", "tags__name", "os", "os_version")
 
     autocomplete_fields = (
         "contacts",
@@ -403,13 +390,7 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Overview",
             {
-                "fields": (
-                    "name", 
-                    "asset_type", 
-                    "active_vulns",
-                    "active_critical_vulns",
-                    "description"
-                    ),
+                "fields": ("name", "asset_type", "active_vulns", "active_critical_vulns", "description"),
             },
         ),
         (
@@ -449,7 +430,10 @@ class AssetAdmin(admin.ModelAdmin):
         """
         num_vulns = len(obj.get_active_vulns())
         # Links to the 'vulnerabilities' admin page, filtered for active vulns of this asset.
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset__id__exact": obj.pk,"severity_modification_type":"NA","state":"NF" })
+        url = reverse(
+            "service_desk_admin:assets_vulnerability_changelist",
+            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF"},
+        )
         return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
 
     @admin.display(description="Active Critical Vulns", ordering="total_critical_vulns")
@@ -459,9 +443,11 @@ class AssetAdmin(admin.ModelAdmin):
         """
         num_vulns = len(obj.get_active_vulns(severity=4))
         # Links to the 'vulnerabilities' admin page, filtered for active critical vulns of this asset.
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset__id__exact": obj.pk,"severity_modification_type":"NA","state":"NF", "severity":4})
+        url = reverse(
+            "service_desk_admin:assets_vulnerability_changelist",
+            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF", "severity": 4},
+        )
         return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
-
 
     def defender_data_pprint(self, obj=None):
         if obj and obj.defender_data:
@@ -473,6 +459,7 @@ class AssetAdmin(admin.ModelAdmin):
 
     defender_data_pprint.short_description = "Defender Data"
     tenable_data_pprint.short_description = "Tenable Data"
+
 
 def pprint_json(data=None):
     result = ""

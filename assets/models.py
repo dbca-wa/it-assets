@@ -309,7 +309,7 @@ class Asset(models.Model):
         """
         return self.tags.filter(name=tag, category__name=category).exists()
 
-    def __split_tenable_os_and_version(self, os_string: str) -> tuple[str | None , str | None]:
+    def __split_tenable_os_and_version(self, os_string: str) -> tuple[str | None, str | None]:
         """
         Converts a tenable OS string into an OS & version number.
         Returns a tuple of (OS <string>, version number <string>)
@@ -350,7 +350,7 @@ class Vulnerability(models.Model):
 
     SEVERITY_CHOICES = {0: "Info", 1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
 
-    SEVERITY_MOD_TYPE_CHOICES = {"N":"None", "R":"Recasted", "A":"Accepted"}
+    SEVERITY_MOD_TYPE_CHOICES = {"N": "None", "R": "Recasted", "A": "Accepted"}
 
     STATE_CHOICES = {"O": "Open", "R": "Reopened", "F": "Fixed"}
 
@@ -363,7 +363,9 @@ class Vulnerability(models.Model):
     scan = models.JSONField(verbose_name="Scan", default=dict)
     severity = models.PositiveSmallIntegerField(choices=SEVERITY_CHOICES, verbose_name="Severity", null=True, blank=True)
     severity_default = models.PositiveSmallIntegerField(choices=SEVERITY_CHOICES, verbose_name="Default Severity", null=True, blank=True)
-    severity_modification_type = models.CharField(max_length=1, choices=SEVERITY_MOD_TYPE_CHOICES, null=True, blank=True, verbose_name="Severity Modification Type")
+    severity_modification_type = models.CharField(
+        max_length=1, choices=SEVERITY_MOD_TYPE_CHOICES, null=True, blank=True, verbose_name="Severity Modification Type"
+    )
     first_found = models.DateTimeField(null=True, blank=True, verbose_name="First Found")
     last_fixed = models.DateTimeField(null=True, blank=True, verbose_name="Last Fixed")
     last_found = models.DateTimeField(null=True, blank=True, verbose_name="Last Found")
@@ -394,7 +396,9 @@ class Vulnerability(models.Model):
             self.scan = data.get("scan", {})
             self.severity = data.get("severity_id")
             self.severity_default = data.get("severity_default_id")
-            self.severity_modification_type = data["severity_modification_type"][0].upper() if data.get("severity_modification_type") else None
+            self.severity_modification_type = (
+                data["severity_modification_type"][0].upper() if data.get("severity_modification_type") else None
+            )
             self.first_found = self.__convert_iso(data.get("first_found"))
             self.last_fixed = self.__convert_iso(data.get("last_fixed"))
             self.last_found = self.__convert_iso(data.get("last_found"))
@@ -486,10 +490,10 @@ class Vulnerability(models.Model):
     def vuln_age(self):
         if self.plugin.get("vpr") and self.plugin["vpr"].get("drivers"):
             age_dict = self.plugin["vpr"]["drivers"].get("age_of_vuln")
-            if age_dict["lower_bound"]==731:
+            if age_dict["lower_bound"] == 731:
                 age_str = "More than 730 days"
             else:
-                age_str = f"{age_dict["lower_bound"]}-{age_dict["upper_bound"]} days"
+                age_str = f"{age_dict['lower_bound']}-{age_dict['upper_bound']} days"
             return age_str
 
     @property
