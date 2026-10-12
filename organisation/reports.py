@@ -18,7 +18,8 @@ def department_user_export(fileobj, users):
             "remove_timezone": True,
         },
     ) as workbook:
-        date_format = workbook.add_format({"num_format": "dd-mmm-yyyy HH:MM", "align": "left"})
+        datetime_format = workbook.add_format({"num_format": "dd-mmm-yyyy HH:MM", "align": "left"})
+        date_format = workbook.add_format({"num_format": "dd-mmm-yyyy", "align": "left"})
         users_sheet = workbook.add_worksheet("Department users")
         users_sheet.write_row(
             "A1",
@@ -42,6 +43,8 @@ def department_user_export(fileobj, users):
                 "LAST SIGN-IN",
                 "LAST PASSWORD CHANGE",
                 "COPILOT GROUP",
+                "ASCENDER JOB START DATE",
+                "ASCENDER JOB END DATE",
             ),
         )
         row = 1
@@ -70,13 +73,19 @@ def department_user_export(fileobj, users):
             )
             # Append the last sign-in cell value
             if i.last_signin:
-                users_sheet.write_datetime(row, 16, i.last_signin, date_format)
+                users_sheet.write_datetime(row, 16, i.last_signin, datetime_format)
             # Append the last password change value
             if i.get_pw_last_change():
-                users_sheet.write_datetime(row, 17, i.get_pw_last_change(), date_format)
+                users_sheet.write_datetime(row, 17, i.get_pw_last_change(), datetime_format)
             # Append the user Copilot group.
             if i.get_copilot_group():
                 users_sheet.write(row, 18, i.get_copilot_group())
+            # Append the job start date
+            if i.get_job_start_date():
+                users_sheet.write_datetime(row, 19, i.get_job_start_date(), date_format)
+            # Append the job end date
+            if i.get_job_end_date():
+                users_sheet.write_datetime(row, 20, i.get_job_end_date(), date_format)
 
             row += 1
 
