@@ -238,9 +238,9 @@ class Asset(models.Model):
                     self.add_or_update_vuln(vuln)
 
                 # Retrieves active vulnerabilities for stats
-                active_vulns = self.vulns.exclude(state="F").exclude(severity_modification_type="A")
+                active_vulns = self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED)
                 self.total_vulns = len(active_vulns)
-                self.total_critical_vulns = len(active_vulns.filter(severity=4))
+                self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
 
         self.save()
 
@@ -272,21 +272,43 @@ class Asset(models.Model):
         """
         return self.get_vulns().filter(finding_id=finding_id).exists()
 
-    def get_vulns(self) -> models.query.QuerySet:
+    def get_vulns(self, severity: int | None = None, severity_exclude_list: list[int] | None = None) -> models.query.QuerySet[Vulnerability]:
         """
         Returns a queryset of all vulnerabilities for this asset.
+        Severity can be optionally specified to return vulns prefiltered for that specific severity.
+        Severity exclude list can be specified to exclude different severity levels from the search
         """
-        return self.vulns.all()
+        # Filter for active vulns
+        vulns = self.vulns.all()
 
-    def get_active_vulns(self, severity: int | None = None) -> models.query.QuerySet:
+        # filter for specified severity
+        if severity is not None:
+            vulns = vulns.filter(severity=severity)
+
+        # Filter out excluded severities
+        if severity_exclude_list is not None:
+            vulns = vulns.exclude(severity__in=severity_exclude_list)
+        
+        return vulns
+
+    def get_active_vulns(self, severity: int | None = None, severity_exclude_list: list[int] | None = None) -> models.query.QuerySet[Vulnerability]:
         """
         Returns a queryset of all vulnerabilities for this asset that don't have a 'fixed' state or 'accepted' severity mod type.
         Severity can be optionally specified to return vulns prefiltered for that specific severity.
+        Severity exclude list can be specified to exclude different severity levels from the search
         """
+        # Filter for active vulns
+        vulns = self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED)
+
+        # filter for specified severity
         if severity is not None:
-            return self.vulns.exclude(state="F").exclude(severity_modification_type="A").filter(severity=severity)
-        else:
-            return self.vulns.exclude(state="F").exclude(severity_modification_type="A")
+            vulns = vulns.filter(severity=severity)
+
+        # Filter out excluded severities
+        if severity_exclude_list is not None:
+            vulns = vulns.exclude(severity__in=severity_exclude_list)
+        
+        return vulns
 
     def remove_vuln(self, finding_id: str):
         """
@@ -342,17 +364,41 @@ class Asset(models.Model):
         """
         return str(self.name)
 
+# Enum equivalents for readable code
+# Kept outside of the vulnerability class for easier external use
+class Severity():
+    """
+    Enum class for the Vulnerability field "severity"
+    """
+    INFO = 0
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+class SeverityMT():
+    """
+    Enum class for the Vulnerability field "severity_modification_type"
+    """
+    NONE = "N"
+    RECASTED = "R"
+    ACCEPTED = "A"
+class State():
+    """
+    Enum class for the Vulnerability field "state"
+    """
+    OPEN = "O"
+    REOPENED = "R"
+    FIXED = "F"
 
 class Vulnerability(models.Model):
     class Meta:
         verbose_name = "Vulnerability"
         verbose_name_plural = "Vulnerabilities"
-
-    SEVERITY_CHOICES = {0: "Info", 1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
-
-    SEVERITY_MOD_TYPE_CHOICES = {"N": "None", "R": "Recasted", "A": "Accepted"}
-
-    STATE_CHOICES = {"O": "Open", "R": "Reopened", "F": "Fixed"}
+    
+    # Choices for fields
+    SEVERITY_CHOICES = {Severity.INFO: "Info", Severity.LOW: "Low", Severity.MEDIUM: "Medium", Severity.HIGH: "High", Severity.CRITICAL: "Critical"}
+    SEVERITY_MOD_TYPE_CHOICES = {SeverityMT.NONE: "None", SeverityMT.RECASTED: "Recasted", SeverityMT.ACCEPTED: "Accepted"}
+    STATE_CHOICES = {State.OPEN: "Open", State.REOPENED: "Reopened", State.FIXED: "Fixed"}
 
     asset = models.ForeignKey(Asset, related_name="vulns", verbose_name="Asset", on_delete=models.CASCADE)
     output = models.TextField(null=True, blank=True, verbose_name="Output")

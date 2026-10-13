@@ -2,9 +2,28 @@ from django.views.generic import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 
 from assets.models import Asset, AssetTag
+# from assets.exports import export_vulns
+
+# from datetime import date, datetime
+
+# class VulnerabilityExport(View):
+#     """A custom view to export details of an asset's vulerabilities as a csv."""
+
+#     def get(self, request, *args, **kwargs):
+#         response = HttpResponse(content_type="text/csv")
+#         response["Content-Disposition"] = (
+#             f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+#         )
+
+#         if "assets" in request.GET:  # Only return vulns from the asset list
+#             assets = Asset.objects.filter(tenable_id__in=request.GET["assets"])
+#         else:  # Return all assets vulns
+#             assets = Asset.objects.all()
+
+#         return export_vulns(response=response, assets=assets) 
 
 
 class AssetAPIResource(View):

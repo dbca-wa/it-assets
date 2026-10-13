@@ -5,6 +5,9 @@ DROPDOWN_TEMPLATE = 'admin/dropdown_filter.html'
 class DropdownFilterAllValues(admin.AllValuesFieldListFilter):
     template = DROPDOWN_TEMPLATE
 
+class DropdownFilterRelatedOnly(admin.RelatedOnlyFieldListFilter):
+    template = DROPDOWN_TEMPLATE
+
 class DropdownFilterRelated(admin.RelatedFieldListFilter):
     template = DROPDOWN_TEMPLATE
 

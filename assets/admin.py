@@ -1,12 +1,16 @@
 import json
+from datetime import date, datetime
 
 from django.contrib import admin
 from django.utils.html import mark_safe
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.http import HttpResponse
 
-from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
-from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DROPDOWN_TEMPLATE
+from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability, Severity, SeverityMT, State
+from assets.exports import export_asset_vulns
+from itsystems.models import ITSystemRecord
+from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly, DROPDOWN_TEMPLATE
 
 
 class AssetTagInline(admin.TabularInline):
@@ -99,7 +103,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
         def queryset(self, request, queryset):
             if self.value() == "NF":
-                return queryset.exclude(state="F")
+                return queryset.exclude(state=State.FIXED)
             elif self.value() is not None:
                 return queryset.filter(severity=self.value())
 
@@ -114,9 +118,9 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
         def lookups(self, request, model_admin):
             filter_list = [
-                (-1, ">= Low"),
-                (-2, ">= Medium"),
-                (-3, ">= High"),
+                ("L", ">= Low"),
+                ("M", ">= Medium"),
+                ("H", ">= High"),
             ]
             for key, val in Vulnerability.SEVERITY_CHOICES.items():
                 filter_list.append((key, _(val)))
@@ -125,12 +129,12 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
         def queryset(self, request, queryset):
             match self.value():
-                case "-1":
-                    return queryset.filter(severity__gt=0)
-                case "-2":
-                    return queryset.filter(severity__gt=1)
-                case "-3":
-                    return queryset.filter(severity__gt=2)
+                case "L":
+                    return queryset.filter(severity__gte=Severity.LOW)
+                case "M":
+                    return queryset.filter(severity__gte=Severity.MEDIUM)
+                case "H":
+                    return queryset.filter(severity__gt=Severity.HIGH)
                 case _:
                     if self.value() is not None:
                         return queryset.filter(severity=self.value())
@@ -153,7 +157,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
         def queryset(self, request, queryset):
             if self.value() == "NA":
-                return queryset.exclude(severity_modification_type="A")
+                return queryset.exclude(severity_modification_type=SeverityMT.ACCEPTED)
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
 
@@ -303,9 +307,55 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     software_vulns_pprint.short_description = "Software Vulnerabilities"
     vpr_pprint.short_description = "VPR"
 
+@admin.action(permissions=["view"], description="Export asset vulnerabilities")
+def asset_export_as_csv(self, request, queryset):
+    """
+    Exports all assets with their vulnerabilities as a csv
+    """
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = (
+        f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    )
+    return export_asset_vulns(response, queryset, severity_exclude_list=[Severity.INFO])
+
+@admin.action(permissions=["view"], description="Export critical asset vulnerabilities")
+def asset_export_critical_as_csv(self, request, queryset):
+    """
+    Exports all assets with their vulnerabilities as a csv
+    """
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = (
+        f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    )
+    return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=[Severity.INFO,Severity.LOW,Severity.MEDIUM, Severity.HIGH])
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
+    class ITSystemRegisterFilter(admin.SimpleListFilter):
+        """
+        Related only filter for IT systems, but includse a "Not Empty" option, which filters out empty options
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "IT System"
+        parameter_name = "systems"
+
+        def lookups(self, request, model_admin):
+            filter_list = [("any", "Not Empty")]
+            for sys in ITSystemRecord.objects.exclude(related_assets=None):
+                filter_list.append((sys.pk, _(str(sys))))
+
+            filter_list.append(("none", "-"))
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            if self.value() == "any":
+                return queryset.filter(systems__isnull=False)
+            if self.value() == "none":
+                return queryset.filter(systems__isnull=True)
+            elif self.value() is not None:
+                return queryset.filter(systems__pk__iexact=self.value())
     class TagFilterTemplate(admin.SimpleListFilter):
         """
         A custom tag filter template class to allow for filtering on categorized tags.
@@ -346,8 +396,10 @@ class AssetAdmin(admin.ModelAdmin):
 
         return super().get_list_filter(request)
 
+    actions = [asset_export_as_csv, asset_export_critical_as_csv]
+
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (ITSystemRegisterFilter,("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
     ordering = ["name"]
     list_display = (
@@ -445,7 +497,7 @@ class AssetAdmin(admin.ModelAdmin):
         # Links to the 'vulnerabilities' admin page, filtered for active critical vulns of this asset.
         url = reverse(
             "service_desk_admin:assets_vulnerability_changelist",
-            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF", "severity": 4},
+            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF", "severity": Severity.CRITICAL},
         )
         return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
 
