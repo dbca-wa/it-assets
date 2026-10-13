@@ -6,6 +6,7 @@ from django.utils.timezone import now
 
 from assets.models import Asset
 
+
 def alias_get_or_create(aliases: list):
     """
     Get or Create an asset based on the list of aliases for that asset.

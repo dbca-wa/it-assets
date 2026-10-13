@@ -2,7 +2,7 @@ from django.views.generic import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 from django.conf import settings
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse  # , HttpResponse
 
 from assets.models import Asset, AssetTag
 # from assets.exports import export_vulns
@@ -23,7 +23,7 @@ from assets.models import Asset, AssetTag
 #         else:  # Return all assets vulns
 #             assets = Asset.objects.all()
 
-#         return export_vulns(response=response, assets=assets) 
+#         return export_vulns(response=response, assets=assets)
 
 
 class AssetAPIResource(View):

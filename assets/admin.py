@@ -10,7 +10,7 @@ from django.http import HttpResponse
 from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability, Severity, SeverityMT, State
 from assets.exports import export_asset_vulns
 from itsystems.models import ITSystemRecord
-from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly, DROPDOWN_TEMPLATE
+from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DROPDOWN_TEMPLATE
 
 
 class AssetTagInline(admin.TabularInline):
@@ -307,16 +307,16 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     software_vulns_pprint.short_description = "Software Vulnerabilities"
     vpr_pprint.short_description = "VPR"
 
+
 @admin.action(permissions=["view"], description="Export asset vulnerabilities")
 def asset_export_as_csv(self, request, queryset):
     """
     Exports all assets with their vulnerabilities as a csv
     """
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = (
-        f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
-    )
+    response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
     return export_asset_vulns(response, queryset, severity_exclude_list=[Severity.INFO])
+
 
 @admin.action(permissions=["view"], description="Export critical asset vulnerabilities")
 def asset_export_critical_as_csv(self, request, queryset):
@@ -324,10 +324,11 @@ def asset_export_critical_as_csv(self, request, queryset):
     Exports all assets with their vulnerabilities as a csv
     """
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = (
-        f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    return export_asset_vulns(
+        response=response, assets=queryset, severity_exclude_list=[Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
     )
-    return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=[Severity.INFO,Severity.LOW,Severity.MEDIUM, Severity.HIGH])
+
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
@@ -356,6 +357,7 @@ class AssetAdmin(admin.ModelAdmin):
                 return queryset.filter(systems__isnull=True)
             elif self.value() is not None:
                 return queryset.filter(systems__pk__iexact=self.value())
+
     class TagFilterTemplate(admin.SimpleListFilter):
         """
         A custom tag filter template class to allow for filtering on categorized tags.
@@ -399,7 +401,7 @@ class AssetAdmin(admin.ModelAdmin):
     actions = [asset_export_as_csv, asset_export_critical_as_csv]
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (ITSystemRegisterFilter,("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (ITSystemRegisterFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
     ordering = ["name"]
     list_display = (
