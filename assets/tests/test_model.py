@@ -295,6 +295,17 @@ class AssetModelTestCase(TestCase):
         self.assertIsNone(self.asset1.os_version)
         self.assertTrue(self.asset1.has_tag(tag="Others", category="OS"))
 
+class VulnerabilityModelTestCase(TestCase):
+
+    def test_update_from_raw_vuln_data(self):
+        pass
+
+    def test_vuln_age(self):
+        pass
+
+
+class RandomVulnGenerator:
+ pass
 
 class RandomAssetGenerator:
     tenable_id_inc = 0

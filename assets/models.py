@@ -11,6 +11,9 @@ from itsystems.models import ITSystemRecord
 
 
 class AssetTagCategory(models.Model):
+    """
+    Represents an arbitrary category for 1 or more asset tags
+    """
     class Meta:
         verbose_name = "Tag"
         verbose_name_plural = "Tags"
@@ -29,6 +32,9 @@ class AssetTagCategory(models.Model):
 
 
 class AssetTag(models.Model):
+    """
+    Represents an asset tag value under a given tag category
+    """
     class Meta:
         verbose_name = "Tag Value"
         verbose_name_plural = "Tag Values"
@@ -404,6 +410,9 @@ class State:
 
 
 class Vulnerability(models.Model):
+    """
+    Represents a vulnerability with a given asset.
+    """
     class Meta:
         verbose_name = "Vulnerability"
         verbose_name_plural = "Vulnerabilities"
@@ -478,8 +487,10 @@ class Vulnerability(models.Model):
         self.save()
 
     def __convert_iso(self, iso_date: str | None) -> datetime | None:
-        if iso_date:
-            return datetime.fromisoformat(iso_date)
+        """
+        Converts a given iso date string to a datetime, returns none if iso string is empty or None
+        """
+        return datetime.fromisoformat(iso_date) if iso_date else None
 
     @property
     def asset_name(self):

@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponse
 
 from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability, Severity, SeverityMT, State
-from assets.exports import export_asset_vulns
+from assets.exports import export_asset_vulns, export_vulns
 from itsystems.models import ITSystemRecord
 from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DROPDOWN_TEMPLATE
 
@@ -160,6 +160,17 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 return queryset.exclude(severity_modification_type=SeverityMT.ACCEPTED)
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
+            
+    @admin.action(permissions=["view"], description="Export vulnerabilities")
+    def asset_as_csv(self, request, queryset):
+        """
+        Admin action that all selected vulnerabilities as a csv
+        """
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f"attachment; filename=vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+        return export_vulns(response, queryset)
+
+    actions = [asset_as_csv]
 
     search_fields = (
         "asset__name",
@@ -308,28 +319,6 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     vpr_pprint.short_description = "VPR"
 
 
-@admin.action(permissions=["view"], description="Export asset vulnerabilities")
-def asset_export_as_csv(self, request, queryset):
-    """
-    Exports all assets with their vulnerabilities as a csv
-    """
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
-    return export_asset_vulns(response, queryset, severity_exclude_list=[Severity.INFO])
-
-
-@admin.action(permissions=["view"], description="Export critical asset vulnerabilities")
-def asset_export_critical_as_csv(self, request, queryset):
-    """
-    Exports all assets with their vulnerabilities as a csv
-    """
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
-    return export_asset_vulns(
-        response=response, assets=queryset, severity_exclude_list=[Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
-    )
-
-
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
     class ITSystemRegisterFilter(admin.SimpleListFilter):
@@ -397,6 +386,27 @@ class AssetAdmin(admin.ModelAdmin):
         )
 
         return super().get_list_filter(request)
+
+    @admin.action(permissions=["view"], description="Export asset vulnerabilities")
+    def asset_export_as_csv(self, request, queryset):
+        """
+        Exports all assets with their vulnerabilities as a csv
+        """
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+        return export_asset_vulns(response, queryset, severity_exclude_list=[Severity.INFO])
+
+
+    @admin.action(permissions=["view"], description="Export critical asset vulnerabilities")
+    def asset_export_critical_as_csv(self, request, queryset):
+        """
+        Exports all assets with their vulnerabilities as a csv
+        """
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+        return export_asset_vulns(
+            response=response, assets=queryset, severity_exclude_list=[Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
+        )
 
     actions = [asset_export_as_csv, asset_export_critical_as_csv]
 
