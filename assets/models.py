@@ -123,8 +123,9 @@ class Asset(models.Model):
 
     # Cached during every sync for better load performance and to enable admin ordering
     # the use-case doesn't include manually adding or deleting vulns, so this should be fine
-    total_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Vulns")
-    total_critical_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Critical Vulns")
+    total_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Vulns", default=0)
+    total_active_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Active Vulns", default=0)
+    total_critical_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Critical Vulns", default=0)
 
     @property
     def asset_contacts(self) -> str:
@@ -236,17 +237,19 @@ class Asset(models.Model):
                 for tag in self.tenable_data.get("tags"):
                     self.add_tag(tag=tag["value"], category=tag["key"])
 
-            # Updates vulnerability data
-            self.total_vulns = 0
-            self.total_critical_vulns = 0
-            if vuln_data:
-                for vuln in vuln_data:
-                    self.add_or_update_vuln(vuln)
+        # Updates vulnerability data
+        self.total_vulns = 0
+        self.total_critical_vulns = 0
+        if vuln_data:
+            for vuln in vuln_data:
+                self.add_or_update_vuln(vuln)
 
-                # Retrieves active vulnerabilities for stats
-                active_vulns = self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED)
-                self.total_vulns = len(active_vulns)
-                self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
+            # Retrieves active vulnerabilities for stats
+            total_vulns = self.vulns.all()
+            self.total_vulns = len(total_vulns)
+            active_vulns = total_vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED).exclude(severity=Severity.INFO)
+            self.total_active_vulns = len(active_vulns)
+            self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
 
         self.save()
 
@@ -265,12 +268,17 @@ class Asset(models.Model):
     def add_or_update_vuln(self, vuln: dict):
         """
         Creates or updates a vulnerability linked to this asset via a tenable api vuln dict.
+        Note, this method does not automatically update any total vuln stats.
         """
         if vuln["asset"].get("uuid") == self.tenable_id:
             new_vuln, created = Vulnerability.objects.get_or_create(
                 finding_id=vuln["finding_id"], defaults={"asset": self, "raw_vuln_data": vuln}
             )
-            new_vuln.update_from_raw_vuln_data()
+            if created:
+                new_vuln.update_from_raw_vuln_data()
+            else:
+                new_vuln.update_from_raw_vuln_data(raw_vuln_data=vuln)
+
 
     def has_vuln(self, finding_id: str) -> bool:
         """
@@ -308,7 +316,7 @@ class Asset(models.Model):
         Severity exclude list can be specified to exclude different severity levels from the search
         """
         # Filter for active vulns
-        vulns = self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED)
+        vulns = self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED).exclude(severity=Severity.INFO)
 
         # filter for specified severity
         if severity is not None:
@@ -566,7 +574,7 @@ class Vulnerability(models.Model):
     def vuln_age(self):
         if self.plugin.get("vpr") and self.plugin["vpr"].get("drivers"):
             age_dict = self.plugin["vpr"]["drivers"].get("age_of_vuln")
-            if age_dict["lower_bound"] == 731:
+            if age_dict["lower_bound"] > 730:
                 age_str = "More than 730 days"
             else:
                 age_str = f"{age_dict['lower_bound']}-{age_dict['upper_bound']} days"

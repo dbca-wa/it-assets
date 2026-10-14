@@ -487,12 +487,12 @@ class AssetAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="Active Vulns", ordering="total_vulns")
+    @admin.display(description="Active Vulns", ordering="total_active_vulns")
     def active_vulns(self, obj):
         """
         Provides a count of all active vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
         """
-        num_vulns = len(obj.get_active_vulns())
+        num_vulns = obj.total_active_vulns
         # Links to the 'vulnerabilities' admin page, filtered for active vulns of this asset.
         url = reverse(
             "service_desk_admin:assets_vulnerability_changelist",
@@ -505,7 +505,7 @@ class AssetAdmin(admin.ModelAdmin):
         """
         Provides a count of all active critical vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
         """
-        num_vulns = len(obj.get_active_vulns(severity=4))
+        num_vulns = obj.total_critical_vulns
         # Links to the 'vulnerabilities' admin page, filtered for active critical vulns of this asset.
         url = reverse(
             "service_desk_admin:assets_vulnerability_changelist",

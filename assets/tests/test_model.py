@@ -1,10 +1,12 @@
-from assets.models import Asset
+from assets.models import Asset, Severity, SeverityMT, State, Vulnerability
 from organisation.models import DepartmentUser
 from itsystems.models import ITSystemRecord
 
 from django.test import TestCase
 
 from mixer.backend.django import mixer
+
+from datetime import datetime
 
 
 class AssetModelTestCase(TestCase):
@@ -298,7 +300,187 @@ class AssetModelTestCase(TestCase):
 class VulnerabilityModelTestCase(TestCase):
 
     def test_update_from_raw_vuln_data(self):
-        pass
+        gen = RandomAssetGenerator()
+        asset1, asset2 = gen.generate(2)
+
+        # Sample tenable vulnerability with random data
+        raw = {
+            'port': {
+                'port': 1, 'protocol': 'TCP'
+                },
+            'scan': {
+                'uuid': 'example_scan_uuid',
+                'target': '1.1.1.1',
+                'started_at': '2026-10-09T10:02:28.348Z',
+                'schedule_uuid': 'example_schedule_uuid'
+                },
+            'asset': {
+                'fqdn': 'test_asset.example.domain',
+                'ipv4': '1.2.3.4',
+                'uuid': asset1.tenable_id,
+                'tracked': True,
+                'hostname': 'test_asset',
+                'bios_uuid': 'example_bios_uuid',
+                'agent_uuid': 'example_agent_uuid',
+                'network_id': '0000000000000000',
+                'device_type': 'general-purpose',
+                'mac_address': '01:02:03:04:05',
+                'netbios_name': 'TEST_ASSET',
+                'last_scan_target': '10.6.20.16',
+                'operating_system': ['Microsoft Windows Server 2019 Standard 10.0.17763 0'],
+                'last_authenticated_results': '2026-10-09T11:03:02.078Z'
+                },
+            'state': 'OPEN',
+            'output': 'example plugin output',
+            'plugin': {
+                'id': 1234,
+                'cpe': ['cpename'],
+                'name': 'plugin name example',
+                'type': 'local',
+                'xrefs': [],
+                'family': 'Windows',
+                'version': '1.12',
+                'see_also': ['http://www.nessus.org/random_url'],
+                'solution': 'this is an example solution',
+                'synopsis': 'This is an example synopsis',
+                'family_id': 1,
+                'has_patch': False,
+                'cvss_vector': {
+                    'raw': 'raw/vector:/thingy',
+                    'access_vector': 'Local',
+                    'authentication': 'None required',
+                    'integrity_impact': 'Complete',
+                    'access_complexity': 'Low',
+                    'availability_impact': 'Complete',
+                    'confidentiality_impact': 'Complete'
+                },
+                'description': 'example plugin description',
+                'in_the_news': False,
+                'risk_factor': 'high',
+                'cvss3_vector': {
+                    'raw': 'blahblahblah',
+                    'access_vector': 'Local',
+                    'integrity_impact': 'High',
+                    'access_complexity': 'Low',
+                    'availability_impact': 'High',
+                    'confidentiality_impact': 'High'
+                },
+                'has_workaround': False,
+                'cvss_base_score': 7.2,
+                'cvss3_base_score': 8.4,
+                'publication_date': '2013-03-06T00:00:00Z',
+                'exploit_available': False,
+                'modification_date': '2025-03-14T00:00:00Z',
+                'checks_for_malware': False,
+                'exploited_by_nessus': False,
+                'cvss_temporal_vector': {},
+                'exploited_by_malware': False,
+                'cvss3_temporal_vector': {},
+                'unsupported_by_vendor': False,
+                'exploit_framework_core': False,
+                'exploit_framework_canvas': False,
+                'checks_for_default_account': False,
+                'exploit_framework_d2_elliot': False,
+                'exploit_framework_exploithub': False,
+                'exploit_framework_metasploit': False,
+                'vpr':{
+                    'drivers': {
+                        'age_of_vuln': {
+                            'lower_bound': 60,
+                            'upper_bound': 230
+                        },
+                    },
+                },
+            },
+            'source': 'AGENT',
+            'indexed': '2026-10-09T11:13:38.924904Z',
+            'severity': 'high',
+            'finding_id': 'random_finding_id',
+            'last_found': '2026-10-09T11:03:02.078Z',
+            'first_found': '2025-03-13T02:23:29.463Z',
+            'severity_id': 3,
+            'severity_default_id': 3,
+            'severity_modification_type': 'NONE'
+        }
+
+
+
+        # Add the vuln
+        asset1.update_from_tenable_data(vuln_data=[raw])
+
+        # ===========================================
+        #               General Tests
+        #============================================
+        new_vuln = asset1.get_active_vulns().first()
+        # Top level tests
+        self.assertEqual(new_vuln.finding_id,raw['finding_id'])
+        # Plugin test
+        self.assertEqual(new_vuln.cvss3_base_score, raw['plugin']['cvss3_base_score'])
+        # Vuln Age test
+        self.assertEqual(new_vuln.vuln_age,'60-230 days')
+        # date conversion test
+        self.assertEqual(new_vuln.first_found,datetime.fromisoformat(raw['first_found']))
+        # Choice value tests
+        self.assertEqual(new_vuln.get_severity_display(), "High")
+        self.assertEqual(new_vuln.severity, Severity.HIGH)
+        self.assertEqual(new_vuln.get_severity_modification_type_display(), "None")
+        self.assertEqual(new_vuln.severity_modification_type, SeverityMT.NONE)
+        self.assertEqual(new_vuln.get_state_display(), "Open")
+        self.assertEqual(new_vuln.state, State.OPEN)
+
+        # ==============================================
+        #          Stat & vuln assignment tests
+        #===============================================
+
+        # Adding critical vuln - should bump both total and critical stats
+        # Also bundles in new vuln age test value
+        raw['severity_id'] = Severity.CRITICAL
+        raw['plugin']['vpr']['drivers']['age_of_vuln']['lower_bound'] = 800
+
+        # Runs it twice to test update vs replacement
+        asset1.update_from_tenable_data(vuln_data=[raw, raw])
+
+        # Test that a new vuln wasn't added, just reclassified to critical
+        self.assertEqual(asset1.total_critical_vulns, 1)
+        self.assertEqual(asset1.total_active_vulns, 1)
+        self.assertEqual(len(Vulnerability.objects.all()),1)
+        self.assertEqual(len(asset1.get_vulns()),1)
+        self.assertEqual(len(asset1.get_active_vulns()),1)
+        self.assertEqual(len(Vulnerability.objects.all()),1)
+        self.assertTrue(asset1.has_vuln(finding_id=raw['finding_id']))
+
+        # age of vuln alt value check
+        new_vuln = asset1.get_active_vulns().first()
+        self.assertEqual(new_vuln.vuln_age, "More than 730 days")
+
+        # Adding 3 non-active vulns - shouldn't impact the active count, but should impact the general count
+        raw['finding_id'] = "different_finding_id"
+        raw['state'] = 'FIXED'
+        asset1.update_from_tenable_data(vuln_data=[raw])
+        raw['finding_id'] = "even_more_different_finding_id"
+        raw['state'] = 'OPEN'
+        raw['severity_id'] = Severity.INFO
+        asset1.update_from_tenable_data(vuln_data=[raw])
+        raw['finding_id'] = "extremely_diff_finding_id"
+        raw['severity_id'] = Severity.CRITICAL
+        raw["severity_modification_type"] = "ACCEPTED"
+        asset1.update_from_tenable_data(vuln_data=[raw])
+
+        # Verifies that all 3 vulns were added, but only 1 vuln is active + critical
+        self.assertEqual(asset1.total_critical_vulns, 1)
+        self.assertEqual(asset1.total_active_vulns, 1)
+        self.assertEqual(asset1.total_vulns, 4)
+        self.assertEqual(len(Vulnerability.objects.all()),4)
+        self.assertEqual(len(asset1.get_vulns()),4)
+        self.assertEqual(len(asset1.get_active_vulns()),1)
+
+        # has_vuln check
+        self.assertTrue(asset1.has_vuln(finding_id='different_finding_id'))
+        self.assertTrue(asset1.has_vuln(finding_id='even_more_different_finding_id'))
+        self.assertTrue(asset1.has_vuln(finding_id='extremely_diff_finding_id'))
+        self.assertTrue(asset1.has_vuln(finding_id='random_finding_id'))
+
+
 
     def test_vuln_age(self):
         pass
@@ -323,5 +505,5 @@ class RandomAssetGenerator:
             systems=mixer.blend(ITSystemRecord),
         )
 
-    def generate(self, generations: int):
+    def generate(self, generations: int) -> tuple[Asset]:
         return tuple([self.__create() for i in range(generations)])
