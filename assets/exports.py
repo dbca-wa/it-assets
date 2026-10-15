@@ -1,4 +1,5 @@
-from assets.models import Asset, Vulnerability, Severity
+from assets.models import Asset, Vulnerability
+from assets.enum_library import Severity
 
 from django.http import HttpResponse
 

@@ -8,6 +8,7 @@ from datetime import datetime
 
 from organisation.models import DepartmentUser
 from itsystems.models import ITSystemRecord
+from assets.enum_library import State, Severity, SeverityMT
 
 
 class AssetTagCategory(models.Model):
@@ -388,32 +389,6 @@ class Asset(models.Model):
         Overrides the default __str__ method.
         """
         return str(self.name)
-
-
-class Severity:
-    """Enum class for the Vulnerability field "severity" """
-
-    INFO = 0
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-    CRITICAL = 4
-
-
-class SeverityMT:
-    """Enum class for the Vulnerability field "severity_modification_type" """
-
-    NONE = "N"
-    RECASTED = "R"
-    ACCEPTED = "A"
-
-
-class State:
-    """Enum class for the Vulnerability field "state" """
-
-    OPEN = "O"
-    REOPENED = "R"
-    FIXED = "F"
 
 
 class Vulnerability(models.Model):

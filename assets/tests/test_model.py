@@ -1,4 +1,5 @@
-from assets.models import Asset, Severity, SeverityMT, State, Vulnerability
+from assets.models import Asset, Vulnerability
+from assets.enum_library import State, Severity, SeverityMT
 from organisation.models import DepartmentUser
 from itsystems.models import ITSystemRecord
 

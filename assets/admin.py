@@ -7,7 +7,8 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponse
 
-from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability, Severity, SeverityMT, State
+from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
+from assets.enum_library import State, Severity, SeverityMT
 from assets.exports import export_asset_vulns, export_vulns
 from itsystems.models import ITSystemRecord
 from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DROPDOWN_TEMPLATE
