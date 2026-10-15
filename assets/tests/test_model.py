@@ -482,10 +482,6 @@ class VulnerabilityModelTestCase(TestCase):
 
 
 
-    def test_vuln_age(self):
-        pass
-
-
 class RandomVulnGenerator:
  pass
 
