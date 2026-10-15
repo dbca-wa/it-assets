@@ -559,5 +559,58 @@ class Vulnerability(models.Model):
     def workaround(self):
         return self.plugin.get("workaround")
 
+    @property
+    def summary(self):
+        """
+        Returns a plain-text summary of the vulnerability
+        """
+        return f"""
+Asset: {self.asset_name}
+
+Severity: {self.get_severity_display()}
+State: {self.get_state_display()}
+Severity Modication Type: {self.get_severity_modification_type_display()}
+First Found: {self.first_found.strftime("%d/%m/%Y, %H:%M")}
+Last Found: {self.last_found.strftime("%d/%m/%Y, %H:%M")}
+Age: {self.vuln_age}
+
+{self.plugin_name}
+
+Plugin Output: 
+{self.plugin_output}
+
+Solution: 
+{self.solution}
+
+"""
+
+    @property
+    def html_summary(self):
+        """
+        Returns a html formatted string summary of the vulnerability
+        """
+        return f"""
+<h3>{self.asset_name}</h3>
+<br>
+<hr>
+<br>
+<b>Severity:</b> {self.get_severity_display()}<br>
+<b>State:</b> {self.get_state_display()}<br>
+<b>Severity Modication Type:</b> {self.get_severity_modification_type_display()}<br>
+<b>First found:</b> {self.first_found.strftime("%d/%m/%Y, %H:%M")}<br>
+<b>Last Found:</b> {self.last_found.strftime("%d/%m/%Y, %H:%M")}<br>
+<b>Age:</b> {self.vuln_age}<br> 
+<br>
+<hr>
+<br>
+<b>{self.plugin_name}</b><br>
+<br>
+<b>Plugin Output:</b><br>
+{self.plugin_output}<br><br>
+<b>Solution:</b><br> 
+{self.solution}<br>
+"""
+
+
     def __str__(self):
         return self.plugin_name

@@ -202,6 +202,9 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # ==================================
     #           Custom fields
     # ==================================
+    @admin.display(description="Summary")
+    def summarise(self, obj):
+        return mark_safe(obj.html_summary)
 
     def plugin_pprint(self, obj=None):
         if obj and obj.plugin:
@@ -247,6 +250,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = (
+        "summarise",
         "finding_id",
         "state",
         "severity",
@@ -273,7 +277,6 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "exploited_by_nessus",
         "cvss3_base_score",
         "cve",
-        "vpr_pprint",
         "has_patch",
         "patch_publication_date",
         "solution",
@@ -285,6 +288,14 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "summarise",
+                ),
+            },
+        ),
         (
             "General",
             {
@@ -332,7 +343,6 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                     "exploited_by_nessus",
                     "cvss3_base_score",
                     "cve",
-                    "vpr_pprint",
                     "workaround",
                 ),
             },
@@ -340,6 +350,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         (
             "Raw Data",
             {
+                "classes": ["collapse"],
                 "fields": (
                     "plugin_pprint",
                     "port_pprint",
