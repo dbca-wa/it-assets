@@ -14,6 +14,7 @@ class AssetTagCategory(models.Model):
     """
     Represents an arbitrary category for 1 or more asset tags
     """
+
     class Meta:
         verbose_name = "Tag"
         verbose_name_plural = "Tags"
@@ -35,6 +36,7 @@ class AssetTag(models.Model):
     """
     Represents an asset tag value under a given tag category
     """
+
     class Meta:
         verbose_name = "Tag Value"
         verbose_name_plural = "Tag Values"
@@ -247,7 +249,11 @@ class Asset(models.Model):
             # Retrieves active vulnerabilities for stats
             total_vulns = self.vulns.all()
             self.total_vulns = len(total_vulns)
-            active_vulns = total_vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED).exclude(severity=Severity.INFO)
+            active_vulns = (
+                total_vulns.exclude(state=State.FIXED)
+                .exclude(severity_modification_type=SeverityMT.ACCEPTED)
+                .exclude(severity=Severity.INFO)
+            )
             self.total_active_vulns = len(active_vulns)
             self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
 
@@ -278,7 +284,6 @@ class Asset(models.Model):
                 new_vuln.update_from_raw_vuln_data()
             else:
                 new_vuln.update_from_raw_vuln_data(raw_vuln_data=vuln)
-
 
     def has_vuln(self, finding_id: str) -> bool:
         """
@@ -316,7 +321,9 @@ class Asset(models.Model):
         Severity exclude list can be specified to exclude different severity levels from the search
         """
         # Filter for active vulns
-        vulns = self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED).exclude(severity=Severity.INFO)
+        vulns = (
+            self.vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED).exclude(severity=Severity.INFO)
+        )
 
         # filter for specified severity
         if severity is not None:
@@ -383,12 +390,8 @@ class Asset(models.Model):
         return str(self.name)
 
 
-# Enum equivalents for readable code
-# Kept outside of the vulnerability class for easier external use
 class Severity:
-    """
-    Enum class for the Vulnerability field "severity"
-    """
+    """Enum class for the Vulnerability field "severity" """
 
     INFO = 0
     LOW = 1
@@ -398,9 +401,7 @@ class Severity:
 
 
 class SeverityMT:
-    """
-    Enum class for the Vulnerability field "severity_modification_type"
-    """
+    """Enum class for the Vulnerability field "severity_modification_type" """
 
     NONE = "N"
     RECASTED = "R"
@@ -408,9 +409,7 @@ class SeverityMT:
 
 
 class State:
-    """
-    Enum class for the Vulnerability field "state"
-    """
+    """Enum class for the Vulnerability field "state" """
 
     OPEN = "O"
     REOPENED = "R"
@@ -421,6 +420,7 @@ class Vulnerability(models.Model):
     """
     Represents a vulnerability with a given asset.
     """
+
     class Meta:
         verbose_name = "Vulnerability"
         verbose_name_plural = "Vulnerabilities"

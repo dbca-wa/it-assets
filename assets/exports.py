@@ -27,7 +27,7 @@ def export_asset_vulns(
     return response
 
 
-def export_vulns(response: HttpResponse, vulns: Iterable[Vulnerability], simple : bool = False) -> HttpResponse:
+def export_vulns(response: HttpResponse, vulns: Iterable[Vulnerability], simple: bool = False) -> HttpResponse:
     """
     Writes asset vulnerabilities to the http response as a csv.
     severity_exclude_list can be optionally included to exclude specific vuln severity levels, default to hiding info level.
@@ -53,14 +53,14 @@ def __write_vuln_header(writer, prefix_headers=[], simple=False):
     if simple:
         # Simplified version for tech custodians
         headers = prefix_headers + [
-            "Asset", # asset_name
-            "Severity", # severity
-            "Type", # plugin_name
-            "Problem", # plugin_output
-            "Solution", # solution
-            "Full Problem", #plugin_description
-            "Technical Info", # output
-            "OIM Notes", # Blank space for OIM to add any further clarification
+            "Asset",  # asset_name
+            "Severity",  # severity
+            "Type",  # plugin_name
+            "Problem",  # plugin_output
+            "Solution",  # solution
+            "Full Problem",  # plugin_description
+            "Technical Info",  # output
+            "OIM Notes",  # Blank space for OIM to add any further clarification
         ]
     else:
         # Technical version
@@ -111,7 +111,7 @@ def __write_vuln(writer, vuln, prefix_data=[], simple=False):
             vuln.solution,
             vuln.plugin_description,
             vuln.output,
-            "" # Blank section for notes
+            "",  # Blank section for notes
         ]
     else:
         # Technical version

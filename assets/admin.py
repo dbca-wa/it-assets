@@ -18,6 +18,7 @@ class AssetTagInline(admin.TabularInline):
     Used to dispay tag values inside the tag category admin page.
     Allows for tags and tag categories to be displayed heirarchically.
     """
+
     model = AssetTag
     extra = 0
     readonly_fields = ("total_assets",)
@@ -179,7 +180,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # =================================
     #       Export actions & Config
     # =================================
-            
+
     @admin.action(permissions=["view"], description="Export Vulns - Technical")
     def vulns_as_csv_technical(self, request, queryset):
         """
@@ -195,7 +196,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         return export_vulns_action(queryset=queryset, simple=True)
 
     # Set actions
-    actions = [vulns_as_csv_simple,vulns_as_csv_technical]
+    actions = [vulns_as_csv_simple, vulns_as_csv_technical]
 
     # ==================================
     #           Custom fields
@@ -237,9 +238,12 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "plugin",
     )
 
-    list_display = ("plugin_name", "asset__name","severity", "state",  "severity_modification_type")
+    list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type")
 
-    ordering = ("-severity", "asset__name",)
+    ordering = (
+        "-severity",
+        "asset__name",
+    )
 
     readonly_fields = (
         "finding_id",
@@ -346,11 +350,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     )
 
 
-
-
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
-
     # ==========================================
     #       Custom Filter classes & Config
     # ==========================================
@@ -419,7 +420,7 @@ class AssetAdmin(admin.ModelAdmin):
         )
 
         return super().get_list_filter(request)
-    
+
     # Base filters - Dynamic tag filters are appended to this
     list_filter_base = (ITSystemRegisterFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
@@ -435,19 +436,24 @@ class AssetAdmin(admin.ModelAdmin):
     @admin.action(permissions=["view"], description="Export critical Asset Vulns - Technical")
     def asset_export_critical_as_csv_technical(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv"""
-        return export_vulns_action(queryset=queryset, critical_only=True,export_assets=True)
+        return export_vulns_action(queryset=queryset, critical_only=True, export_assets=True)
 
     @admin.action(permissions=["view"], description="Export Asset Vulns - Simple")
     def asset_export_as_csv_simple(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
-        return export_vulns_action(queryset=queryset,simple=True,export_assets=True)
+        return export_vulns_action(queryset=queryset, simple=True, export_assets=True)
 
     @admin.action(permissions=["view"], description="Export critical Asset Vulns - Simple")
     def asset_export_critical_as_csv_simple(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
-        return export_vulns_action(queryset=queryset, critical_only=True,simple=True,export_assets=True)
+        return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_assets=True)
 
-    actions = [asset_export_as_csv_simple, asset_export_critical_as_csv_simple,asset_export_as_csv_technical, asset_export_critical_as_csv_technical]
+    actions = [
+        asset_export_as_csv_simple,
+        asset_export_critical_as_csv_simple,
+        asset_export_as_csv_technical,
+        asset_export_critical_as_csv_technical,
+    ]
 
     # ==================================
     #           Custom fields
@@ -493,7 +499,6 @@ class AssetAdmin(admin.ModelAdmin):
     # ==========================================
     #       Admin list & change view config
     # ==========================================
-
 
     ordering = ["name"]
 
@@ -575,6 +580,7 @@ class AssetAdmin(admin.ModelAdmin):
 #           Helper functions
 # ==========================================
 
+
 def pprint_json(data=None):
     """
     JSON pretty print, makes json fields more readable
@@ -586,7 +592,8 @@ def pprint_json(data=None):
         result = mark_safe(result)
     return result
 
-def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool=False):
+
+def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool = False):
     """
     Helper function for export actions to export vulnerabilities.
     """
@@ -600,12 +607,10 @@ def export_vulns_action(queryset, critical_only: bool = False, simple: bool = Fa
     exp_string = "asset_" if export_assets else ""
 
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f"attachment; filename={exp_string}vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    response["Content-Disposition"] = (
+        f"attachment; filename={exp_string}vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    )
     if export_assets:
-        return export_asset_vulns(
-            response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple
-        )
+        return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple)
     else:
-        return export_vulns(
-            response=response, vulns=queryset, simple=simple
-        )
+        return export_vulns(response=response, vulns=queryset, simple=simple)
