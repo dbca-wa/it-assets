@@ -44,7 +44,7 @@ class AddressBook(LoginRequiredMixin, ListView):
         )
 
         # Filter the queryset, if required.
-        if "q" in self.request.GET and self.request.GET["q"]:
+        if self.request.GET.get("q"):
             query_str = self.request.GET["q"]
             queryset = queryset.filter(
                 Q(name__icontains=query_str)
@@ -61,7 +61,7 @@ class AddressBook(LoginRequiredMixin, ListView):
 
 
 class UserAccounts(LoginRequiredMixin, ListView):
-    """A custom view to return a subset of DepartmentUser objects having licensed Entra ID accounts."""
+    """A custom view to return a subset of DepartmentUser objects having active, licensed Entra ID accounts."""
 
     template_name = "organisation/user_accounts.html"
     model = DepartmentUser
@@ -69,18 +69,11 @@ class UserAccounts(LoginRequiredMixin, ListView):
     admin_view = False  # Custom argument for whether to display inactive accounts or not in the view.
 
     def get_queryset(self):
-        # Initial queryset: accounts associated with a M365 account, having an appropriate license assigned.
+        # Initial queryset: accounts associated with an active M365 account, having an E5 or F3 license assigned.
         queryset = (
-            DepartmentUser.objects.filter(azure_guid__isnull=False)
-            .filter(
-                Q(assigned_licences__contains=["MICROSOFT 365 E5"])
-                | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
-                | Q(assigned_licences__contains=["OFFICE 365 E5"])
-                | Q(assigned_licences__contains=["OFFICE 365 E1"])
-            )
-            .select_related(
-                "cost_centre",
-            )
+            DepartmentUser.objects.filter(active=True)
+            .filter(Q(assigned_licences__contains=["MICROSOFT 365 E5"]) | Q(assigned_licences__contains=["MICROSOFT 365 F3"]))
+            .select_related("cost_centre")
             .order_by("name")
         )
 
@@ -88,7 +81,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
             queryset = queryset.filter(active=True)
 
         # Filter the queryset by search terms.
-        if "q" in self.request.GET and self.request.GET["q"]:
+        if self.request.GET.get("q"):
             query_str = self.request.GET["q"]
             queryset = queryset.filter(Q(name__icontains=query_str) | Q(cost_centre__code__icontains=query_str))
 
@@ -96,7 +89,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
 
     def get(self, request, *args, **kwargs):
         # Return an Excel spreadsheet if requested.
-        if "export" in self.request.GET and self.request.GET["export"]:
+        if self.request.GET.get("export"):
             response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             response["Content-Disposition"] = (
                 f"attachment; filename=department_user_m365_licences_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.xlsx"
@@ -140,7 +133,7 @@ class DepartmentUserAPIResource(View):
         )
 
         # Queryset filtering.
-        if "pk" in kwargs and kwargs["pk"]:  # Allow filtering by object PK.
+        if kwargs.get("pk"):  # Allow filtering by object PK.
             queryset = queryset.filter(pk=kwargs["pk"])
         if "q" in self.request.GET:  # Allow basic filtering on email.
             queryset = queryset.filter(email__icontains=self.request.GET["q"])
@@ -189,7 +182,7 @@ class LocationAPIResource(View):
         queryset = Location.objects.filter(active=True).order_by("name")
 
         # Queryset filtering.
-        if "pk" in kwargs and kwargs["pk"]:  # Allow filtering by object PK.
+        if kwargs.get("pk"):  # Allow filtering by object PK.
             queryset = queryset.filter(pk=kwargs["pk"])
         if "q" in self.request.GET:  # Allow basic filtering on name.
             queryset = queryset.filter(name__icontains=self.request.GET["q"])
@@ -236,8 +229,7 @@ class LicenseAPIResource(View):
             queryset = DepartmentUser.objects.filter(active=True)
         # Return users having an E5 or E1 licence assigned.
         queryset = (
-            queryset
-            .filter(
+            queryset.filter(
                 Q(assigned_licences__contains=["MICROSOFT 365 E5"])
                 | Q(assigned_licences__contains=["MICROSOFT 365 F3"])
                 | Q(assigned_licences__contains=["OFFICE 365 E5"])
@@ -250,7 +242,7 @@ class LicenseAPIResource(View):
         )
 
         # Queryset filtering.
-        if "pk" in kwargs and kwargs["pk"]:  # Allow filtering by object PK.
+        if kwargs.get("pk"):  # Allow filtering by object PK.
             queryset = queryset.filter(pk=kwargs["pk"])
         if "q" in self.request.GET:  # Allow basic filtering on email.
             queryset = queryset.filter(email__icontains=self.request.GET["q"])
@@ -297,7 +289,7 @@ class CostCentreAPIResource(View):
         queryset = CostCentre.objects.filter(active=True).select_related("manager").order_by("code")
 
         # Queryset filtering.
-        if "pk" in kwargs and kwargs["pk"]:  # Allow filtering by object PK.
+        if kwargs.get("pk"):  # Allow filtering by object PK.
             queryset = queryset.filter(pk=kwargs["pk"])
         if "q" in self.request.GET:  # Allow basic filtering on CC code.
             queryset = queryset.filter(code__icontains=self.request.GET["q"])
