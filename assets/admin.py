@@ -87,6 +87,9 @@ class AssetTagAdmin(admin.ModelAdmin):
 
 @admin.register(Vulnerability)
 class VulnerabilityAdmin(admin.ModelAdmin):
+    # ==========================================
+    #       Custom Filter classes & Config
+    # ==========================================
     class StateFilter(admin.SimpleListFilter):
         """
         Standard State filter but adds in the option to exclude "Fixed".
@@ -164,25 +167,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 return queryset.exclude(severity_modification_type=SeverityMT.ACCEPTED)
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
-            
-    @admin.action(permissions=["view"], description="Export vulnerabilities")
-    def asset_as_csv(self, request, queryset):
-        """
-        Admin action that all selected vulnerabilities as a csv
-        """
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f"attachment; filename=vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
-        return export_vulns(response, queryset)
 
-    actions = [asset_as_csv]
-
-    search_fields = (
-        "asset__name",
-        "finding_id",
-    )
-
-    list_display = ("plugin_name", "plugin_family", "asset__name", "state", "severity", "severity_modification_type")
-
+    # Set filters
     list_filter = (
         ("asset", DropdownFilterRelated),
         StateFilter,
@@ -190,7 +176,70 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         SeverityModTypeFilter,
     )
 
-    ordering = ("asset__name", "state", "severity")
+    # =================================
+    #       Export actions & Config
+    # =================================
+            
+    @admin.action(permissions=["view"], description="Export Vulns - Technical")
+    def vulns_as_csv_technical(self, request, queryset):
+        """
+        Admin action that exports all selected vulnerabilities as a csv
+        """
+        return export_vulns_action(queryset=queryset)
+
+    @admin.action(permissions=["view"], description="Export Vulns - Simple")
+    def vulns_as_csv_simple(self, request, queryset):
+        """
+        Admin action that exports all selected vulnerabilities as a csv, but is simplified for tech custodians
+        """
+        return export_vulns_action(queryset=queryset, simple=True)
+
+    # Set actions
+    actions = [vulns_as_csv_simple,vulns_as_csv_technical]
+
+    # ==================================
+    #           Custom fields
+    # ==================================
+
+    def plugin_pprint(self, obj=None):
+        if obj and obj.plugin:
+            return pprint_json(data=obj.plugin)
+
+    def port_pprint(self, obj=None):
+        if obj and obj.port:
+            return pprint_json(data=obj.port)
+
+    def scan_pprint(self, obj=None):
+        if obj and obj.scan:
+            return pprint_json(data=obj.scan)
+
+    def software_vulns_pprint(self, obj=None):
+        if obj and obj.software_vulns:
+            return pprint_json(data=obj.software_vulns)
+
+    def vpr_pprint(self, obj=None):
+        if obj and obj.plugin and obj.plugin.get("vpr"):
+            return pprint_json(data=obj.plugin["vpr"])
+
+    plugin_pprint.short_description = "Plugin"
+    port_pprint.short_description = "Port"
+    scan_pprint.short_description = "Scan"
+    software_vulns_pprint.short_description = "Software Vulnerabilities"
+    vpr_pprint.short_description = "VPR"
+
+    # ==========================================
+    #       Admin list & change view config
+    # ==========================================
+
+    search_fields = (
+        "asset__name",
+        "finding_id",
+        "plugin",
+    )
+
+    list_display = ("plugin_name", "asset__name","severity", "state",  "severity_modification_type")
+
+    ordering = ("-severity", "asset__name",)
 
     readonly_fields = (
         "finding_id",
@@ -296,35 +345,15 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         ),
     )
 
-    def plugin_pprint(self, obj=None):
-        if obj and obj.plugin:
-            return pprint_json(data=obj.plugin)
 
-    def port_pprint(self, obj=None):
-        if obj and obj.port:
-            return pprint_json(data=obj.port)
-
-    def scan_pprint(self, obj=None):
-        if obj and obj.scan:
-            return pprint_json(data=obj.scan)
-
-    def software_vulns_pprint(self, obj=None):
-        if obj and obj.software_vulns:
-            return pprint_json(data=obj.software_vulns)
-
-    def vpr_pprint(self, obj=None):
-        if obj and obj.plugin and obj.plugin.get("vpr"):
-            return pprint_json(data=obj.plugin["vpr"])
-
-    plugin_pprint.short_description = "Plugin"
-    port_pprint.short_description = "Port"
-    scan_pprint.short_description = "Scan"
-    software_vulns_pprint.short_description = "Software Vulnerabilities"
-    vpr_pprint.short_description = "VPR"
 
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
+
+    # ==========================================
+    #       Custom Filter classes & Config
+    # ==========================================
     class ITSystemRegisterFilter(admin.SimpleListFilter):
         """
         Related only filter for IT systems, but includse a "Not Empty" option, which filters out empty options
@@ -390,34 +419,84 @@ class AssetAdmin(admin.ModelAdmin):
         )
 
         return super().get_list_filter(request)
-
-    @admin.action(permissions=["view"], description="Export asset vulnerabilities")
-    def asset_export_as_csv(self, request, queryset):
-        """
-        Exports all assets with their vulnerabilities as a csv
-        """
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
-        return export_asset_vulns(response, queryset, severity_exclude_list=[Severity.INFO])
-
-
-    @admin.action(permissions=["view"], description="Export critical asset vulnerabilities")
-    def asset_export_critical_as_csv(self, request, queryset):
-        """
-        Exports all assets with their critical vulnerabilities as a csv
-        """
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
-        return export_asset_vulns(
-            response=response, assets=queryset, severity_exclude_list=[Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
-        )
-
-    actions = [asset_export_as_csv, asset_export_critical_as_csv]
-
+    
     # Base filters - Dynamic tag filters are appended to this
     list_filter_base = (ITSystemRegisterFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
+    # =================================
+    #       Export actions & Config
+    # =================================
+
+    @admin.action(permissions=["view"], description="Export Asset Vulns - Technical")
+    def asset_export_as_csv_technical(self, request, queryset):
+        """Exports all assets with their vulnerabilities as a csv"""
+        return export_vulns_action(queryset=queryset, export_assets=True)
+
+    @admin.action(permissions=["view"], description="Export critical Asset Vulns - Technical")
+    def asset_export_critical_as_csv_technical(self, request, queryset):
+        """Exports all assets with their critical vulnerabilities as a csv"""
+        return export_vulns_action(queryset=queryset, critical_only=True,export_assets=True)
+
+    @admin.action(permissions=["view"], description="Export Asset Vulns - Simple")
+    def asset_export_as_csv_simple(self, request, queryset):
+        """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
+        return export_vulns_action(queryset=queryset,simple=True,export_assets=True)
+
+    @admin.action(permissions=["view"], description="Export critical Asset Vulns - Simple")
+    def asset_export_critical_as_csv_simple(self, request, queryset):
+        """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
+        return export_vulns_action(queryset=queryset, critical_only=True,simple=True,export_assets=True)
+
+    actions = [asset_export_as_csv_simple, asset_export_critical_as_csv_simple,asset_export_as_csv_technical, asset_export_critical_as_csv_technical]
+
+    # ==================================
+    #           Custom fields
+    # ==================================
+
+    @admin.display(description="Active Vulns", ordering="total_active_vulns")
+    def active_vulns(self, obj):
+        """
+        Provides a count of all active vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
+        """
+        num_vulns = obj.total_active_vulns
+        # Links to the 'vulnerabilities' admin page, filtered for active vulns of this asset.
+        url = reverse(
+            "service_desk_admin:assets_vulnerability_changelist",
+            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF"},
+        )
+        return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
+
+    @admin.display(description="Active Critical Vulns", ordering="total_critical_vulns")
+    def active_critical_vulns(self, obj):
+        """
+        Provides a count of all active critical vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
+        """
+        num_vulns = obj.total_critical_vulns
+        # Links to the 'vulnerabilities' admin page, filtered for active critical vulns of this asset.
+        url = reverse(
+            "service_desk_admin:assets_vulnerability_changelist",
+            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF", "severity": Severity.CRITICAL},
+        )
+        return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
+
+    def defender_data_pprint(self, obj=None):
+        if obj and obj.defender_data:
+            return pprint_json(data=obj.defender_data)
+
+    def tenable_data_pprint(self, obj=None):
+        if obj and obj.tenable_data:
+            return pprint_json(data=obj.tenable_data)
+
+    defender_data_pprint.short_description = "Defender Data"
+    tenable_data_pprint.short_description = "Tenable Data"
+
+    # ==========================================
+    #       Admin list & change view config
+    # ==========================================
+
+
     ordering = ["name"]
+
     list_display = (
         "name",
         "custodian",
@@ -491,43 +570,10 @@ class AssetAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description="Active Vulns", ordering="total_active_vulns")
-    def active_vulns(self, obj):
-        """
-        Provides a count of all active vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
-        """
-        num_vulns = obj.total_active_vulns
-        # Links to the 'vulnerabilities' admin page, filtered for active vulns of this asset.
-        url = reverse(
-            "service_desk_admin:assets_vulnerability_changelist",
-            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF"},
-        )
-        return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
 
-    @admin.display(description="Active Critical Vulns", ordering="total_critical_vulns")
-    def active_critical_vulns(self, obj):
-        """
-        Provides a count of all active critical vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
-        """
-        num_vulns = obj.total_critical_vulns
-        # Links to the 'vulnerabilities' admin page, filtered for active critical vulns of this asset.
-        url = reverse(
-            "service_desk_admin:assets_vulnerability_changelist",
-            query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF", "severity": Severity.CRITICAL},
-        )
-        return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
-
-    def defender_data_pprint(self, obj=None):
-        if obj and obj.defender_data:
-            return pprint_json(data=obj.defender_data)
-
-    def tenable_data_pprint(self, obj=None):
-        if obj and obj.tenable_data:
-            return pprint_json(data=obj.tenable_data)
-
-    defender_data_pprint.short_description = "Defender Data"
-    tenable_data_pprint.short_description = "Tenable Data"
-
+# ==========================================
+#           Helper functions
+# ==========================================
 
 def pprint_json(data=None):
     """
@@ -539,3 +585,27 @@ def pprint_json(data=None):
         result = f"<pre>{result}</pre>"
         result = mark_safe(result)
     return result
+
+def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool=False):
+    """
+    Helper function for export actions to export vulnerabilities.
+    """
+    # Set severity exclusions
+    if critical_only:
+        exclude_list = [Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
+    else:
+        exclude_list = [Severity.INFO]
+
+    # Prepends "asset_" to filename if it's an asset export
+    exp_string = "asset_" if export_assets else ""
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f"attachment; filename={exp_string}vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+    if export_assets:
+        return export_asset_vulns(
+            response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple
+        )
+    else:
+        return export_vulns(
+            response=response, vulns=queryset, simple=simple
+        )
