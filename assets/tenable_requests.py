@@ -96,7 +96,7 @@ def tenable_export_vulns() -> list:
                 "num_assets": 1000,
                 "include_software_vulns": False,
                 "filters": {
-                    "last_seen": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 24 hours
+                    "last_seen": int((datetime.now() - timedelta(days=31)).timestamp()),  # seen within 24 hours
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
                     # "state": ["OPEN", "REOPENED"],
                     # "severity_modification_type": ["NONE", "RECASTED"]

@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.contrib import admin
 from django.utils.html import mark_safe
@@ -169,6 +169,40 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 return queryset.exclude(severity_modification_type=SeverityMT.ACCEPTED)
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
+    class LastFoundFilter(admin.SimpleListFilter):
+        """
+        A custom filter that allows users to filters by last_found within set week-by-week ranges
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "Last Found"
+        parameter_name = "last_found"
+
+        def lookups(self, request, model_admin):
+            filter_list = [
+                ("1", "0-1 Weeks Ago"),
+                ("2", "1-2 Weeks Ago"),
+                ("3", "2-3 Weeks Ago"),
+                ("4", "3-4 Weeks Ago"),
+                ("5", "4+ Weeks Ago"), 
+                ]
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            match self.value():
+                case "1":
+                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=1), datetime.now()))
+                case "2":
+                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=2), datetime.now()- timedelta(weeks=1)))
+                case "3":
+                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=3), datetime.now()- timedelta(weeks=2)))
+                case "4":
+                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=4), datetime.now()- timedelta(weeks=3)))
+                case "5":
+                    return queryset.filter(last_found__lte=datetime.now()-timedelta(weeks=4))
+                case _:
+                    return queryset
 
     # Set filters
     list_filter = (
@@ -176,6 +210,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         StateFilter,
         SeverityFilter,
         SeverityModTypeFilter,
+        LastFoundFilter,
     )
 
     # =================================
@@ -243,7 +278,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "plugin",
     )
 
-    list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type")
+    list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type", "last_found")
 
     ordering = (
         "-severity",
@@ -416,6 +451,41 @@ class AssetAdmin(admin.ModelAdmin):
             if self.value() is not None:
                 return queryset.filter(tags__id__exact=self.value())
 
+    class LastSeenFilter(admin.SimpleListFilter):
+        """
+        A custom filter that allows users to filters by last_seen within set week-by-week ranges
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "Last Seen"
+        parameter_name = "last_seen"
+
+        def lookups(self, request, model_admin):
+            filter_list = [
+                ("1", "0-1 Weeks Ago"),
+                ("2", "1-2 Weeks Ago"),
+                ("3", "2-3 Weeks Ago"),
+                ("4", "3-4 Weeks Ago"),
+                ("5", "4+ Weeks Ago"), 
+                ]
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            match self.value():
+                case "1":
+                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=1), datetime.now()))
+                case "2":
+                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=2), datetime.now()- timedelta(weeks=1)))
+                case "3":
+                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=3), datetime.now()- timedelta(weeks=2)))
+                case "4":
+                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=4), datetime.now()- timedelta(weeks=3)))
+                case "5":
+                    return queryset.filter(last_seen__lte=datetime.now()-timedelta(weeks=4))
+                case _:
+                    return queryset
+
     def get_list_filter(self, request):
         """
         Dynamically creates filter classes from tags found in the db.
@@ -435,7 +505,7 @@ class AssetAdmin(admin.ModelAdmin):
         return super().get_list_filter(request)
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (ITSystemRegisterFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (ITSystemRegisterFilter,LastSeenFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
     # =================================
     #       Export actions & Config
@@ -526,6 +596,7 @@ class AssetAdmin(admin.ModelAdmin):
         "display_tags",
         "active_vulns",
         "active_critical_vulns",
+        "last_seen",
     )
 
     search_fields = ("name", "description", "contacts__email", "systems__name", "tags__name", "os", "os_version")
