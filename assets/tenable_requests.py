@@ -96,7 +96,29 @@ def tenable_export_vulns() -> list:
                 "num_assets": 1000,
                 "include_software_vulns": False,
                 "filters": {
-                    "last_seen": int((datetime.now() - timedelta(days=31)).timestamp()),  # seen within 24 hours
+                    "last_seen": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 1 week
+                    "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
+                    # "state": ["OPEN", "REOPENED"],
+                    # "severity_modification_type": ["NONE", "RECASTED"]
+                },
+            },
+            download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},
+        )
+    )
+
+def tenable_export_web_app_vulns() -> list:
+    """
+    Initiates a Tenable web app vulnerability export and downloads the result once the export is complete.
+    """
+    return tenable_export(
+        # Pass through a TenableExporter populated for the vulnerability endpoints
+        TenableExporter(
+            base_url="https://cloud.tenable.com/was/v1/export/vulns",
+            export_payload={
+                "include_unlicensed": True,
+                "num_assets": 1000,
+                "filters": {
+                    "last_found": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
                     # "state": ["OPEN", "REOPENED"],
                     # "severity_modification_type": ["NONE", "RECASTED"]

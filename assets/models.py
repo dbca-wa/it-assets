@@ -151,12 +151,12 @@ class Asset(models.Model):
     @property
     def operating_systems(self) -> str:
         """Provides a string representation of all operating systems"""
-        return ", ".join(self.os_list)
+        return ", ".join(self.os_list) if self.os_list else ""
 
     @property
     def ipv4s(self) -> str:
         """Returns a string representation of all ipv4 values"""
-        return ", ".join(self.ipv4_list)
+        return ", ".join(self.ipv4_list) if self.ipv4_list else ""
 
     @property
     def custodian(self) -> str:
@@ -175,7 +175,7 @@ class Asset(models.Model):
     @property
     def display_tags(self) -> str:
         """Returns a string representation of each tag"""
-        return ", ".join([f"{t.category.name}: {t.name}" for t in self.tags.all()])
+        return ", ".join([f"{t.category.name}: {t.name}" for t in self.tags.all()]) if self.tags.all().exists() else ""
 
     def save(self, *args, **kwargs):
         """
@@ -549,10 +549,10 @@ class Vulnerability(models.Model):
     def vuln_age(self):
         if self.plugin.get("vpr") and self.plugin["vpr"].get("drivers"):
             age_dict = self.plugin["vpr"]["drivers"].get("age_of_vuln")
-            if age_dict["lower_bound"] > 730:
+            if age_dict["lower_bound"] >= 730:
                 age_str = "More than 730 days"
             else:
-                age_str = f"{age_dict['lower_bound']}-{age_dict['upper_bound']} days"
+                age_str = f"{age_dict.get('lower_bound',"?")}-{age_dict.get('upper_bound',"?")} days"
             return age_str
 
     @property

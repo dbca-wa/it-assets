@@ -2,7 +2,7 @@ import logging
 
 from django.core.management.base import BaseCommand
 
-from assets.tenable_requests import tenable_export_assets, tenable_export_vulns
+from assets.tenable_requests import tenable_export_assets, tenable_export_vulns, tenable_export_web_app_vulns
 
 from assets.models import Asset
 
@@ -68,7 +68,7 @@ class Command(BaseCommand):
         logger = logging.getLogger("assets")
         vuln_store = {}
         try:
-            vulns = tenable_export_vulns()
+            vulns = tenable_export_vulns() + tenable_export_web_app_vulns()
             logger.info(f"Updating {len(vulns)} asset vulns")
             for vuln in vulns:
                 if "uuid" in vuln["asset"]:
