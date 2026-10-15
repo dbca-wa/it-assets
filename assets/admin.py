@@ -202,6 +202,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # ==================================
     #           Custom fields
     # ==================================
+
     @admin.display(description="Summary")
     def summarise(self, obj):
         return mark_safe(obj.html_summary)
@@ -548,6 +549,8 @@ class AssetAdmin(admin.ModelAdmin):
         "tenable_data_pprint",
         "active_vulns",
         "active_critical_vulns",
+        "ipv4s",
+        "operating_systems",
     )
 
     fieldsets = (
@@ -574,8 +577,8 @@ class AssetAdmin(admin.ModelAdmin):
                 "fields": (
                     "os",
                     "os_version",
-                    "defender_data_pprint",
-                    "tenable_data_pprint",
+                    "ipv4s",
+                    "operating_systems",
                 ),
             },
         ),
@@ -583,6 +586,15 @@ class AssetAdmin(admin.ModelAdmin):
             "Meta-Data",
             {
                 "fields": ("first_seen", "last_seen", "last_modified"),
+            },
+        ),
+        (
+            "Raw Data",
+            {
+                "classes":["collapse"],
+                "fields": (
+                    "tenable_data_pprint",
+                ),
             },
         ),
     )
