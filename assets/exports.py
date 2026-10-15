@@ -44,6 +44,9 @@ def export_vulns(response: HttpResponse, vulns: Iterable[Vulnerability]) -> Http
 
 
 def __write_vuln_header(writer, prefix_headers=[]):
+    """
+    Writes headers to a csv, allowing for additional headers to be prepended using prefix_headers
+    """
     headers = prefix_headers + [
         "ASSET",
         "FINDING_ID",
@@ -77,6 +80,9 @@ def __write_vuln_header(writer, prefix_headers=[]):
 
 
 def __write_vuln(writer, vuln, prefix_data=[]):
+    """
+    Writes vulnerabilities to a csv, allowing for additional data to be prepended using prefix_data
+    """
     vulns = prefix_data + [
         vuln.asset_name,
         vuln.finding_id,

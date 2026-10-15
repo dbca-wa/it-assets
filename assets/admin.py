@@ -14,6 +14,10 @@ from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelate
 
 
 class AssetTagInline(admin.TabularInline):
+    """
+    Used to dispay tag values inside the tag category admin page.
+    Allows for tags and tag categories to be displayed heirarchically.
+    """
     model = AssetTag
     extra = 0
     readonly_fields = ("total_assets",)
@@ -400,7 +404,7 @@ class AssetAdmin(admin.ModelAdmin):
     @admin.action(permissions=["view"], description="Export critical asset vulnerabilities")
     def asset_export_critical_as_csv(self, request, queryset):
         """
-        Exports all assets with their vulnerabilities as a csv
+        Exports all assets with their critical vulnerabilities as a csv
         """
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f"attachment; filename=asset_vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
@@ -526,6 +530,9 @@ class AssetAdmin(admin.ModelAdmin):
 
 
 def pprint_json(data=None):
+    """
+    JSON pretty print, makes json fields more readable
+    """
     result = ""
     if data:
         result = json.dumps(data, indent=4, sort_keys=True)
