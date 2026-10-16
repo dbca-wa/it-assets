@@ -293,12 +293,13 @@ class Asset(models.Model):
         return self.get_vulns().filter(finding_id=finding_id).exists()
 
     def get_vulns(
-        self, severity: int | None = None, severity_exclude_list: list[int] | None = None
+        self, severity: int | None = None, severity_exclude_list: list[int] | None = [Severity.INFO]
     ) -> models.query.QuerySet[Vulnerability]:  # noqa
         """
         Returns a queryset of all vulnerabilities for this asset.
         Severity can be optionally specified to return vulns prefiltered for that specific severity.
-        Severity exclude list can be specified to exclude different severity levels from the search
+        Severity exclude list can be specified to exclude different severity levels from the search.
+        By default, this call excludes info level vulnerabilities.
         """
         # Filter for active vulns
         vulns = self.vulns.all()
@@ -314,12 +315,13 @@ class Asset(models.Model):
         return vulns
 
     def get_active_vulns(
-        self, severity: int | None = None, severity_exclude_list: list[int] | None = None
+        self, severity: int | None = None, severity_exclude_list: list[int] | None = [Severity.INFO]
     ) -> models.query.QuerySet[Vulnerability]:  # noqa
         """
         Returns a queryset of all vulnerabilities for this asset that don't have a 'fixed' state or 'accepted' severity mod type.
         Severity can be optionally specified to return vulns prefiltered for that specific severity.
         Severity exclude list can be specified to exclude different severity levels from the search
+        By default, this call excludes info level vulnerabilities.
         """
         # Filter for active vulns
         vulns = (
@@ -547,9 +549,12 @@ class Vulnerability(models.Model):
 
     @property
     def vuln_age(self):
+        """
+        Retrieves a plain text representation of the vulnerability's age
+        """
         if self.plugin.get("vpr") and self.plugin["vpr"].get("drivers"):
             age_dict = self.plugin["vpr"]["drivers"].get("age_of_vuln")
-            if age_dict["lower_bound"] >= 730:
+            if age_dict.get("lower_bound",0) >= 730:
                 age_str = "More than 730 days"
             else:
                 age_str = f"{age_dict.get('lower_bound',"?")}-{age_dict.get('upper_bound',"?")} days"
