@@ -468,7 +468,7 @@ class DepartmentUser(models.Model):
         # If a user has a job with a blank/ null term_date value, they aren't terminated
         # If a user has user only has jobs with term_date values in the past, they are terminated
 
-        if len(self.term_date_data) > 0:
+        if self.term_date_data and len(self.term_date_data) > 0:
             # Get all jobs without a term date
             active_jobs = [x for x in self.term_date_data if (x["term_date"] is None or x["term_date"] == "")]
             if len(active_jobs) > 0:
