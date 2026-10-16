@@ -247,35 +247,16 @@ class Asset(models.Model):
             for vuln in vuln_data:
                 self.add_or_update_vuln(vuln)
 
-            # Retrieves active vulnerabilities for stats
-            total_vulns = self.vulns.all()
-            self.total_vulns = len(total_vulns)
-            active_vulns = (
-                total_vulns.exclude(state=State.FIXED)
-                .exclude(severity_modification_type=SeverityMT.ACCEPTED)
-                .exclude(severity=Severity.INFO)
-            )
-            self.total_active_vulns = len(active_vulns)
-            self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
+            # Refresh vulnerability stats to match the latest changes
+            self.__refresh_vuln_stats()
 
         self.save()
 
-    def add_tag(self, tag: str, category: str):
-        """
-        Adds a tag to an asset. If the tag and/or category doesn't exist, they're created.
-        """
-        if not self.has_tag(tag, category):
-            found_category, _ = AssetTagCategory.objects.get_or_create(name=category)
-            found_tag, _ = AssetTag.objects.get_or_create(
-                name=tag,
-                category=found_category,
-            )
-            self.tags.add(found_tag)
-
-    def add_or_update_vuln(self, vuln: dict):
+    def add_or_update_vuln(self, vuln: dict, refresh_stats=False):
         """
         Creates or updates a vulnerability linked to this asset via a tenable api vuln dict.
         Note, this method does not automatically update any total vuln stats.
+        You can optionally set refresh_stats to True in order to have total_vulns, total_active_vulns, and total_critical_vulns updated to match any changes.
         """
         if vuln["asset"].get("uuid") == self.tenable_id:
             new_vuln, created = Vulnerability.objects.get_or_create(
@@ -286,6 +267,20 @@ class Asset(models.Model):
             else:
                 new_vuln.update_from_raw_vuln_data(raw_vuln_data=vuln)
 
+            if refresh_stats:
+                self.__refresh_vuln_stats()
+
+    def remove_vuln(self, finding_id: str, refresh_stats: bool=False):
+        """
+        Deletes an associated vulnerability.
+        You can optionally set refresh_stats to True in order to have total_vulns, total_active_vulns, and total_critical_vulns updated to match any changes.
+        """
+        vuln = self.vulns.filter(finding_id=finding_id)
+        if vuln.exists():
+            vuln[0].delete()
+            if refresh_stats:
+                self.__refresh_vuln_stats()
+
     def has_vuln(self, finding_id: str) -> bool:
         """
         Checks if an asset has a specific vulnerability
@@ -293,7 +288,7 @@ class Asset(models.Model):
         return self.get_vulns().filter(finding_id=finding_id).exists()
 
     def get_vulns(
-        self, severity: int | None = None, severity_exclude_list: list[int] | None = [Severity.INFO]
+        self, severity: int | None = None, severity_exclude_list: list[int] | None = None
     ) -> models.query.QuerySet[Vulnerability]:  # noqa
         """
         Returns a queryset of all vulnerabilities for this asset.
@@ -338,13 +333,17 @@ class Asset(models.Model):
 
         return vulns
 
-    def remove_vuln(self, finding_id: str):
+    def add_tag(self, tag: str, category: str):
         """
-        Deletes an associated vulnerability
+        Adds a tag to an asset. If the tag and/or category doesn't exist, they're created.
         """
-        vuln = self.vulns.filter(finding_id=finding_id)
-        if vuln.exists():
-            vuln[0].delete()
+        if not self.has_tag(tag, category):
+            found_category, _ = AssetTagCategory.objects.get_or_create(name=category)
+            found_tag, _ = AssetTag.objects.get_or_create(
+                name=tag,
+                category=found_category,
+            )
+            self.tags.add(found_tag)
 
     def remove_tag(self, tag: str, category: str):
         """
@@ -385,6 +384,20 @@ class Asset(models.Model):
         """
         tags = [tag.name for tag in self.tags.filter(category__name__iexact=category)]
         return ", ".join(tags)
+
+    def __refresh_vuln_stats(self):
+        """
+        Refreshes total_vulns, total_active_vulns, and total_critical_vulns.
+        """
+        total_vulns = self.vulns.all()
+        self.total_vulns = len(total_vulns)
+        active_vulns = (
+            total_vulns.exclude(state=State.FIXED)
+            .exclude(severity_modification_type=SeverityMT.ACCEPTED)
+            .exclude(severity=Severity.INFO)
+        )
+        self.total_active_vulns = len(active_vulns)
+        self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
 
     def __str__(self):
         """

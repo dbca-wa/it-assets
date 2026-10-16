@@ -1,10 +1,12 @@
 import logging
+from datetime import timedelta
+from django.utils import timezone
 
 from django.core.management.base import BaseCommand
 
 from assets.tenable_requests import tenable_export_assets, tenable_export_vulns, tenable_export_web_app_vulns
-
-from assets.models import Asset
+from assets.models import Asset, Vulnerability
+from itassets import settings
 
 
 class Command(BaseCommand):
@@ -12,15 +14,36 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """
-        Retrieves all Tenable assets and uses that to create / update assets.
+        Syncs asset and vulnerability data to tenable.
+        Prunes vulnerabilities older than the VULN_LAST_SEEN_LIMIT
         """
         logger = logging.getLogger("assets")
         try:
+            # Prune aged-out vulns
+            age_limit = settings.VULN_LAST_SEEN_LIMIT
+            logger.info(f"Pruning vulns older than {age_limit} days")
+            aged_out_vulns = Vulnerability.objects.filter(last_found__lte=timezone.now()-timedelta(days=age_limit))
+            deleted = len(aged_out_vulns)
+            if aged_out_vulns.exists():
+                aged_out_vulns.delete()
+                logger.info(f"Pruned {deleted} vulns")
+            else:
+                logger.info(f"No vulns pruned")
+
+
+            # Retrieve assets and all vulnerabilities
             assets = tenable_export_assets()
-            vulns = self.get_asset_vulns()
+            vulns = self.get_vulns_per_asset()
+
+            # Init stats
             count = 0
+            assets_created = 0
+            assets_updated = 0
+            assets_skipped = 0
             total = len(assets)
-            logger.info(f"Updating {len(assets)} department assets")
+
+            #Process assets
+            logger.info(f"Processing {total} found assets")
             for asset in assets:
                 count += 1
                 if self.is_valid_asset(asset):
@@ -28,13 +51,18 @@ class Command(BaseCommand):
                     found_asset.update_from_tenable_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id))
                     if created:
                         logger.info(
-                            f"[{count}/{total}]: Created asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
+                            f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
                         )
+                        created += 1
                     else:
                         logger.info(
-                            f"[{count}/{total}]: Updated asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
+                            f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
                         )
-            logger.info(f"Successfully processed {len(assets)} department assets")
+                        updated += 1
+                    skipped += 1
+            logger.info(f"Successfully processed {total} department assets")
+            logger.info(f"{assets_updated} UPDATED | {assets_created} CREATED | {assets_skipped} SKIPPED")
+
         except Exception as exc:
             logger.warning("Failed to sync Tenable assets", exc_info=exc)
 
@@ -61,7 +89,7 @@ class Command(BaseCommand):
                 valid = False
         return valid
 
-    def get_asset_vulns(self) -> dict:
+    def get_vulns_per_asset(self) -> dict:
         """
         Retrieves vulnerabilities for each asset, returning a the dict of vuln lists per asset uuid {tenable_uuid <str> : [{vuln},]}
         """
