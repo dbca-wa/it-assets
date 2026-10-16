@@ -464,23 +464,27 @@ class DepartmentUser(models.Model):
 
     def get_term_date(self) -> date | None:
         """From Ascender data, return the latest termination date of a given user, if any."""
-        max_date = None
+        # Business rules:
+        # If a user has a job with a blank/ null term_date value, they aren't terminated
+        # If a user has user only has jobs with term_date values in the past, they are terminated
+
         if len(self.term_date_data) > 0:
-            # Retrieve all valid non-null or non-blank term_date values
-            valid_dates = [x["term_date"] for x in self.term_date_data if (x["term_date"] is not None and x["term_date"] != "")]
-            if len(valid_dates) > 0:
-                # Get maximum & convert to date - ISO 8601 dates can be naturally compared using string comparison
-                max_date = datetime.strptime(max(valid_dates), "%Y-%m-%d").date()
-        return max_date
+            # Get all jobs without a term date
+            active_jobs = [x for x in self.term_date_data if (x["term_date"] is None or x["term_date"] == "")]
+            if len(active_jobs) > 0:
+                return None
+            
+            # Get all valid term dates
+            valid_term_dates = [x["term_date"] for x in self.term_date_data if (x["term_date"] is not None and x["term_date"] != "")]
+            if len(valid_term_dates) > 0:
+                # return latest date
+                return datetime.strptime(max(valid_term_dates), "%Y-%m-%d").date()
 
     def past_term_date(self) -> bool:
         """From Ascender data, return True if the user is past their termination date."""
-        terminated = False
         term_date = self.get_term_date()
-        if term_date:
-            if term_date <= date.today():
-                terminated = True
-        return terminated
+        return term_date is not None and term_date <= date.today()
+
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets

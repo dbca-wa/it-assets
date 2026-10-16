@@ -274,6 +274,37 @@ class DepartmentUserTerminationsTestCase(TestCase):
                     "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                     "term_process_date": None,
                 },
+                {
+                    "employee_no": "placeholder_val",
+                    "job_no": 3,
+                    "term_date": (date.today() + timedelta(weeks=-8)).strftime("%Y-%m-%d"),
+                    "term_process_date": None,
+                },
+            ],
+        )
+        self.user_with_empties = mixer.blend(
+            DepartmentUser,
+            active=True,
+            email=random_dbca_email,
+            name="John Doe",
+            given_name="John",
+            surname="Doe",
+            employee_id=mixer.RANDOM,
+            dir_sync_enabled=True,
+            azure_guid=uuid1,
+            term_date_data=[
+                {
+                    "employee_no": "placeholder_val",
+                    "job_no": 1,
+                    "term_date": (date.today() + timedelta(weeks=-3)).strftime("%Y-%m-%d"),
+                    "term_process_date": None,
+                },
+                {
+                    "employee_no": "placeholder_val",
+                    "job_no": 4,
+                    "term_date": (date.today() + timedelta(weeks=-4)).strftime("%Y-%m-%d"),
+                    "term_process_date": None,
+                },
                 {"employee_no": "placeholder_val", "job_no": 2, "term_date": None, "term_process_date": None},
                 {"employee_no": "placeholder_val", "job_no": 5, "term_date": "", "term_process_date": None},
                 {
@@ -285,12 +316,14 @@ class DepartmentUserTerminationsTestCase(TestCase):
             ],
         )
         self.user.save()
+        self.user_with_empties.save()
 
     def test_termination_date(self):
         # 3+ valid check, null & empty check, mixed valid & invalid check
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
         self.assertEqual(self.user.past_term_date(), False)
-
+        self.assertEqual(self.user_with_empties.get_term_date(), None)
+        self.assertEqual(self.user_with_empties.past_term_date(), False)
         # Empty values check
         self.user.term_date_data = []
         self.assertEqual(self.user.get_term_date(), None)
