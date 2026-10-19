@@ -240,6 +240,10 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     #           Custom fields
     # ==================================
 
+    @admin.display(description="Age in days", ordering="first_found")
+    def age(self, obj):
+         return obj.age_in_days
+
     @admin.display(description="Summary")
     def summarise(self, obj):
         return mark_safe(obj.html_summary)
@@ -280,14 +284,17 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "plugin",
     )
 
-    list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type", "last_found")
+    list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type", "last_found", "age")
 
     ordering = (
+        "-last_found",
         "-severity",
+        "first_found",
         "asset__name",
     )
 
     readonly_fields = (
+        "age",
         "summarise",
         "finding_id",
         "state",
@@ -345,6 +352,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                     "output",
                     "first_found",
                     "last_found",
+                    "age",
                     "last_fixed",
                     "indexed",
                     "source",
@@ -585,7 +593,11 @@ class AssetAdmin(admin.ModelAdmin):
     #       Admin list & change view config
     # ==========================================
 
-    ordering = ["name"]
+    ordering = (
+        "-total_active_vulns",
+        "-total_critical_vulns",
+        "name"
+        )
 
     list_display = (
         "name",

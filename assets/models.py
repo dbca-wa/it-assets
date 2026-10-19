@@ -177,6 +177,7 @@ class Asset(models.Model):
         """Returns a string representation of each tag"""
         return ", ".join([f"{t.category.name}: {t.name}" for t in self.tags.all()]) if self.tags.all().exists() else ""
 
+
     def save(self, *args, **kwargs):
         """
         Overrides the default save method.
@@ -572,6 +573,10 @@ class Vulnerability(models.Model):
             return age_str
 
     @property
+    def age_in_days(self) -> int | None:
+        return (now() - self.first_found).days if self.first_found else None
+
+    @property
     def workaround(self) -> str | None:
         return self.plugin.get("workaround")
 
@@ -588,7 +593,7 @@ State: {self.get_state_display()}
 Severity Modication Type: {self.get_severity_modification_type_display()}
 First Found: {self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else ""}
 Last Found: {self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else ""}
-Age: {self.vuln_age}
+Age: {self.age_in_days} days
 
 {self.plugin_name}
 
@@ -615,7 +620,7 @@ Solution:
 <b>Severity Modication Type:</b> {self.get_severity_modification_type_display()}<br>
 <b>First found:</b> {self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else ""}<br>
 <b>Last Found:</b> {self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else ""}<br>
-<b>Age:</b> {self.vuln_age}<br> 
+<b>Age:</b> {self.age_in_days} days<br> 
 <br>
 <hr>
 <br>

@@ -2,7 +2,7 @@ from django.urls import path
 
 from organisation.views import CostCentreAPIResource, DepartmentUserAPIResource, LicenseAPIResource, LocationAPIResource
 from itsystems.views import ITSystemRecordAPIResource
-from assets.views import AssetAPIResource
+from assets.views import AssetAPIResource, VulnerabilityAPIResource
 
 urlpatterns = [
     path("departmentuser/", DepartmentUserAPIResource.as_view(), name="department_user_api_resource"),
@@ -17,4 +17,6 @@ urlpatterns = [
     path("costcentre/<int:pk>/", CostCentreAPIResource.as_view(), name="cost_centre_api_resource"),
     path("assets/", AssetAPIResource.as_view(), name="asset_api_resource"),
     path("assets/<int:pk>/", AssetAPIResource.as_view(), name="asset_api_resource"),
+    path("vulns/", VulnerabilityAPIResource.as_view(), name="vulnerability_api_resource"),
+    path("vulns/<str:finding_id>/", VulnerabilityAPIResource.as_view(), name="vulnerability_api_resource"),
 ]

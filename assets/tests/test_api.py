@@ -51,11 +51,15 @@ class AssetsAPITestCase(ApiTestCase):
         self.asset1.save()
 
         # Confirms that the data is visible when flagged
-        url = "{}?show_tenable_data".format(reverse("asset_api_resource"))
+        url = "{}?tenable_data_only".format(reverse("asset_api_resource"))
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "test_tenable_data_key")
         self.assertContains(resp, "test_tenable_data_result")
+        # Validates that it's exclusively showing the tenable data
+        self.assertNotContains(resp, self.asset1.name)
+        self.assertNotContains(resp, self.asset2.name)
+        self.assertNotContains(resp, self.asset3.name)
 
         # Confirms that the data is hidden when not flagged
         url = reverse("asset_api_resource")

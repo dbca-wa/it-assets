@@ -49,7 +49,7 @@ class Command(BaseCommand):
                 # If it's a valid asset, add or update it the asset and any associated vulns
                 if self.passes_filter(asset):
                     found_asset, created = Asset.objects.get_or_create(tenable_id=asset["id"])
-                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id))
+                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id,[]))
                     if created:
                         logger.info(
                             f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
