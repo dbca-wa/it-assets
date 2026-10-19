@@ -11,7 +11,7 @@ from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
 from assets.enum_library import State, Severity, SeverityMT
 from assets.exports import export_asset_vulns, export_vulns
 from itsystems.models import ITSystemRecord
-from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DROPDOWN_TEMPLATE
+from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly, DROPDOWN_TEMPLATE
 
 
 class AssetTagInline(admin.TabularInline):
@@ -114,7 +114,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             if self.value() == "NF":
                 return queryset.exclude(state=State.FIXED)
             elif self.value() is not None:
-                return queryset.filter(severity=self.value())
+                return queryset.filter(state=self.value())
 
     class SeverityFilter(admin.SimpleListFilter):
         """
@@ -206,6 +206,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     # Set filters
     list_filter = (
+        ("asset__systems", DropdownFilterRelatedOnly),
         ("asset", DropdownFilterRelated),
         StateFilter,
         SeverityFilter,
