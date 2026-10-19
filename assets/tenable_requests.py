@@ -11,7 +11,7 @@ from assets.utils import get_with_retry, post_with_retry
 LOGGER = logging.getLogger("assets")
 
 
-def get_tenable_key_string():
+def get_tenable_key_string() -> str:
     # Manual right now, but could be retrieved dynamically from azure key vault
     return f"accessKey={os.environ['TENABLE_ACCESS_KEY']};secretKey={os.environ['TENABLE_SECRET_KEY']}"
 
@@ -25,7 +25,7 @@ class TenableExporter:
     DEFAULT_EXPORT_HEADERS = {"accept": "application/json", "content-type": "application/json", "X-ApiKeys": KEY}
     DEFAULT_CHECK_AND_DOWNLOAD_HEADERS = {"accept": "application/json", "X-ApiKeys": KEY}
 
-    def __init__(self, base_url, export_payload, export_headers=None, check_headers=None, download_headers=None, alt_export_url=None):
+    def __init__(self, base_url: str, export_payload: dict, export_headers: dict | None = None, check_headers: dict | None = None, download_headers: dict | None = None, alt_export_url: str | None = None) -> None:
         self.base_url = base_url  # Mandatory
         self.export_payload = export_payload  # Mandatory
         self.alt_export_url = alt_export_url  # Optional
@@ -58,6 +58,7 @@ class TenableExporter:
 
         response = get_with_retry(url=url, headers=self.download_headers, retries=retries)
 
+        # Allows for json and octet formatting methods.
         if "json" in self.download_headers["accept"]:
             return json.loads(response.content)
         elif "octet" in self.download_headers["accept"]:
@@ -77,7 +78,7 @@ def tenable_export_assets() -> list:
                 "include_resource_tags": True,
                 "include_open_ports": False,
                 "chunk_size": 1000,
-                "filters": {"types": ["host", "webapp"]},
+                "filters": {"types": ["host", "webapp"]}, # includes web apps
             },
         )
     )
@@ -98,8 +99,6 @@ def tenable_export_vulns() -> list:
                 "filters": {
                     "last_seen": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
-                    # "state": ["OPEN", "REOPENED"],
-                    # "severity_modification_type": ["NONE", "RECASTED"]
                 },
             },
             download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},
@@ -120,8 +119,6 @@ def tenable_export_web_app_vulns() -> list:
                 "filters": {
                     "last_found": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
-                    # "state": ["OPEN", "REOPENED"],
-                    # "severity_modification_type": ["NONE", "RECASTED"]
                 },
             },
             download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},

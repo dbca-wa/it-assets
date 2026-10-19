@@ -30,7 +30,12 @@ class AssetAPIResource(View):
     """An API view that returns JSON of assets."""
 
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
-    def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs) -> JsonResponse:
+        """
+        Returns a json object recorded assets.
+        Provides filtering functionality on ID, name, os, tag catgory, tag value.
+        Has an additional flag of "show_tenable_data" that will modify the response to contain the raw tenable data used to generate the asset.
+        """
         queryset = Asset.objects.all().order_by("name")
 
         # Queryset filtering.

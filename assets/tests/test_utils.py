@@ -104,7 +104,7 @@ class UtilsTestCase(TestCase):
         resp.raise_for_status.assert_called_once()
 
 
-def mock_response(data, status_code=200, headers=None):
+def mock_response(data, status_code=200, headers=None) -> MagicMock:
     """Return a mock requests.Response-like object."""
     resp = MagicMock()
     resp.status_code = status_code

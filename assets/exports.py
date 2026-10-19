@@ -46,7 +46,7 @@ def export_vulns(response: HttpResponse, vulns: Iterable[Vulnerability], simple:
     return response
 
 
-def __write_vuln_header(writer, prefix_headers=[], simple=False):
+def __write_vuln_header(writer, prefix_headers=[], simple=False) -> None:
     """
     Writes headers to a csv, allowing for additional headers to be prepended using prefix_headers
     Allows for an alternative simple version. If simple headers are used, simple vulns must also be used
@@ -97,7 +97,7 @@ def __write_vuln_header(writer, prefix_headers=[], simple=False):
     writer.writerow(headers)
 
 
-def __write_vuln(writer, vuln, prefix_data=[], simple=False):
+def __write_vuln(writer, vuln, prefix_data=[], simple=False) -> None:
     """
     Writes vulnerabilities to a csv, allowing for additional data to be prepended using prefix_data.
     Allows for an alternative simple version. If simple vulns are used, simple headers must also have been used.

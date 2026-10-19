@@ -1,3 +1,4 @@
+from typing import Callable
 import requests
 import json
 import time
@@ -7,7 +8,7 @@ from django.utils.timezone import now
 from assets.models import Asset
 
 
-def alias_get_or_create(aliases: list):
+def alias_get_or_create(aliases: list) -> tuple[Asset, bool]:
     """
     Get or Create an asset based on the list of aliases for that asset.
     Returns a tuple of (Asset <Asset>, Created <bool>).
@@ -19,7 +20,7 @@ def alias_get_or_create(aliases: list):
     return Asset.objects.create(name=aliases[0], aliases=aliases, last_seen=now()), True
 
 
-def get_with_retry(url: str, headers: dict, retries: int = 3):
+def get_with_retry(url: str, headers: dict, retries: int = 3) -> requests.Response:
     """
     Makes a GET web request, retrying 429 errors after sleeping and raising other errors.
     Retries 429 errors 1 time by default.
@@ -27,7 +28,7 @@ def get_with_retry(url: str, headers: dict, retries: int = 3):
     return __wr_with_retry(lambda: requests.get(url, headers=headers), retries)
 
 
-def post_with_retry(url: str, headers: dict, payload: dict, retries: int = 3):
+def post_with_retry(url: str, headers: dict, payload: dict, retries: int = 3) -> requests.Response:
     """
     Makes a Post web request, retrying 429 errors after sleeping and raising other errors.
     Retries 429 errors 1 time by default.
@@ -36,7 +37,7 @@ def post_with_retry(url: str, headers: dict, payload: dict, retries: int = 3):
     return __wr_with_retry(lambda: requests.post(url, json=json_payload, headers=headers), retries)
 
 
-def __wr_with_retry(request, retries: int):
+def __wr_with_retry(request: Callable, retries: int) -> requests.Response:
     """
     Sends web requests using an inputted lambda, then handles any rate limitting issues.
     """
