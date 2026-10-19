@@ -3,7 +3,7 @@ import re
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils.timezone import now
-from datetime import datetime
+from datetime import datetime, date
 
 
 from organisation.models import DepartmentUser
@@ -23,13 +23,13 @@ class AssetTagCategory(models.Model):
     name = models.CharField(max_length=255, unique=True, verbose_name="Name")
 
     @classmethod
-    def get_default_pk(cls):
+    def get_default_pk(cls) -> int:
         return AssetTagCategory.objects.get_or_create(name="Misc.")[0].pk
 
     def number_of_values(self) -> int:
         return len(self.tag_values.all())
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -57,7 +57,7 @@ class AssetTag(models.Model):
     def number_of_tagged_assets(self) -> int:
         return len(self.tagged_assets.all())
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.category.name}: {self.name}"
 
 
@@ -190,7 +190,7 @@ class Asset(models.Model):
 
         super(Asset, self).save(*args, **kwargs)
 
-    def update_from_tenable_data(self, tenable_data: dict | None = None, vuln_data: list | None = None):
+    def update_from_tenable_data(self, tenable_data: dict | None = None, vuln_data: list | None = None) -> None:
         """
         Updates internal fields using data found in tenable_data.
         If passed tenable_data as a parameter, the model's internal tenable_data is overridden first.
@@ -252,7 +252,7 @@ class Asset(models.Model):
 
         self.save()
 
-    def add_or_update_vuln(self, vuln: dict, refresh_stats=False):
+    def add_or_update_vuln(self, vuln: dict, refresh_stats=False) -> None:
         """
         Creates or updates a vulnerability linked to this asset via a tenable api vuln dict.
         Note, this method does not automatically update any total vuln stats.
@@ -270,7 +270,7 @@ class Asset(models.Model):
             if refresh_stats:
                 self.__refresh_vuln_stats()
 
-    def remove_vuln(self, finding_id: str, refresh_stats: bool=False):
+    def remove_vuln(self, finding_id: str, refresh_stats: bool=False) -> None:
         """
         Deletes an associated vulnerability.
         You can optionally set refresh_stats to True in order to have total_vulns, total_active_vulns, and total_critical_vulns updated to match any changes.
@@ -333,7 +333,7 @@ class Asset(models.Model):
 
         return vulns
 
-    def add_tag(self, tag: str, category: str):
+    def add_tag(self, tag: str, category: str) -> None:
         """
         Adds a tag to an asset. If the tag and/or category doesn't exist, they're created.
         """
@@ -345,7 +345,7 @@ class Asset(models.Model):
             )
             self.tags.add(found_tag)
 
-    def remove_tag(self, tag: str, category: str):
+    def remove_tag(self, tag: str, category: str) -> None:
         """
         Removes a specific tag from an asset.
         """
@@ -385,7 +385,7 @@ class Asset(models.Model):
         tags = [tag.name for tag in self.tags.filter(category__name__iexact=category)]
         return ", ".join(tags)
 
-    def __refresh_vuln_stats(self):
+    def __refresh_vuln_stats(self) -> None:
         """
         Refreshes total_vulns, total_active_vulns, and total_critical_vulns.
         """
@@ -399,7 +399,7 @@ class Asset(models.Model):
         self.total_active_vulns = len(active_vulns)
         self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Overrides the default __str__ method.
         """
@@ -450,7 +450,7 @@ class Vulnerability(models.Model):
     software_vulns = models.JSONField(verbose_name="Software Vulns", default=list)
     raw_vuln_data = models.JSONField(verbose_name="Raw Vuln Data", default=dict)
 
-    def update_from_raw_vuln_data(self, raw_vuln_data: dict | None = None):
+    def update_from_raw_vuln_data(self, raw_vuln_data: dict | None = None) -> None:
         """
         Updates all fields using raw tenable vulnerability data.
         If not passed in, the vulnerability's internal raw_vuln_data field is used instead.
@@ -486,82 +486,82 @@ class Vulnerability(models.Model):
 
     def __convert_iso(self, iso_date: str | None) -> datetime | None:
         """
-        Converts a given iso date string to a datetime, returns none if iso string is empty or None
+        Returns the datetime conversion of the given iso formattd string iso_date, otherwise if iso_date is None it returns None.
         """
         return datetime.fromisoformat(iso_date) if iso_date else None
 
     @property
-    def asset_name(self):
+    def asset_name(self) -> str:
         return self.asset.name
 
     @property
-    def cve(self):
+    def cve(self) -> str | None:
         if self.plugin and self.plugin.get("cve"):
             return ", ".join(self.plugin["cve"])
 
     @property
-    def cvss3_base_score(self):
+    def cvss3_base_score(self) -> float | None:
         return self.plugin.get("cvss3_base_score")
 
     @property
-    def exploitability_ease(self):
+    def exploitability_ease(self) -> str | None:
         return self.plugin.get("exploitability_ease")
 
     @property
-    def exploited_by_malware(self):
+    def exploited_by_malware(self) -> bool | None:
         return self.plugin.get("exploited_by_malware")
 
     @property
-    def exploited_by_nessus(self):
+    def exploited_by_nessus(self) -> str:
         return self.plugin.get("exploited_by_nessus")
 
     @property
-    def ipv4_addresses(self):
+    def ipv4_addresses(self) -> list:
         return self.asset.ipv4s
 
     @property
-    def operating_systems(self):
+    def operating_systems(self) -> list:
         return self.asset.operating_systems
 
     @property
-    def has_patch(self):
+    def has_patch(self) -> bool | None:
         return self.plugin.get("has_patch")
 
     @property
-    def patch_publication_date(self):
+    def patch_publication_date(self) -> date | None:
         if self.plugin.get("patch_publication_date"):
             return self.__convert_iso(self.plugin["patch_publication_date"]).date()
 
     @property
-    def plugin_description(self):
+    def plugin_description(self) -> str | None:
         return self.plugin.get("description")
 
     @property
-    def plugin_family(self):
+    def plugin_family(self) -> str | None:
         return self.plugin.get("family")
 
     @property
-    def plugin_id(self):
+    def plugin_id(self) -> str | None:
         return self.plugin.get("id")
 
     @property
-    def plugin_name(self):
+    def plugin_name(self) -> str | None:
         return self.plugin.get("name")
 
     @property
-    def plugin_output(self):
+    def plugin_output(self) -> str | None:
         return self.plugin.get("synopsis")
 
     @property
-    def solution(self):
+    def solution(self) -> str | None:
         return self.plugin.get("solution")
 
     @property
-    def vpr(self):
-        return str(self.plugin.get("vpr"))
+    def vpr(self) -> str | None:
+        return str(self.plugin.get("vpr",{}))
 
     @property
-    def vuln_age(self):
+    def vuln_age(self) -> str | None:
         """
         Retrieves a plain text representation of the vulnerability's age
         """
@@ -574,11 +574,11 @@ class Vulnerability(models.Model):
             return age_str
 
     @property
-    def workaround(self):
+    def workaround(self) -> str | None:
         return self.plugin.get("workaround")
 
     @property
-    def summary(self):
+    def summary(self) -> str:
         """
         Returns a plain-text summary of the vulnerability
         """
@@ -588,8 +588,8 @@ Asset: {self.asset_name}
 Severity: {self.get_severity_display()}
 State: {self.get_state_display()}
 Severity Modication Type: {self.get_severity_modification_type_display()}
-First Found: {self.first_found.strftime("%d/%m/%Y, %H:%M")}
-Last Found: {self.last_found.strftime("%d/%m/%Y, %H:%M")}
+First Found: {self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else ""}
+Last Found: {self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else ""}
 Age: {self.vuln_age}
 
 {self.plugin_name}
@@ -603,7 +603,7 @@ Solution:
 """
 
     @property
-    def html_summary(self):
+    def html_summary(self) -> str:
         """
         Returns a html formatted string summary of the vulnerability
         """
@@ -615,8 +615,8 @@ Solution:
 <b>Severity:</b> {self.get_severity_display()}<br>
 <b>State:</b> {self.get_state_display()}<br>
 <b>Severity Modication Type:</b> {self.get_severity_modification_type_display()}<br>
-<b>First found:</b> {self.first_found.strftime("%d/%m/%Y, %H:%M")}<br>
-<b>Last Found:</b> {self.last_found.strftime("%d/%m/%Y, %H:%M")}<br>
+<b>First found:</b> {self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else ""}<br>
+<b>Last Found:</b> {self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else ""}<br>
 <b>Age:</b> {self.vuln_age}<br> 
 <br>
 <hr>
@@ -631,4 +631,4 @@ Solution:
 
 
     def __str__(self):
-        return self.plugin_name
+        return self.plugin_name or "-"
