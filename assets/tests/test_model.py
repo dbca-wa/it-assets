@@ -191,9 +191,9 @@ class AssetModelTestCase(TestCase):
         self.assertEqual("macOS x.y", os)
         self.assertIsNone(ver)
 
-    def test_update_from_tenable_data(self):
+    def test_update_from_raw_data(self):
         """
-        Tests that update_from_tenable_data behaves as expected
+        Tests that update_from_raw_data behaves as expected
         """
         webapp_data = {
             "id": "webapp_id",
@@ -208,7 +208,7 @@ class AssetModelTestCase(TestCase):
             "types": ["webapp"],
         }
 
-        self.asset1.update_from_tenable_data(tenable_data=webapp_data)
+        self.asset1.update_from_raw_data(tenable_data=webapp_data)
         self.assertEqual(self.asset1.name, "example.dbca.wa.gov.au")
         self.assertTrue(self.asset1.has_tag(tag="TST", category="Custodian"))
         self.assertTrue(self.asset1.has_tag(tag="Web App", category="Devices"))
@@ -228,7 +228,7 @@ class AssetModelTestCase(TestCase):
             "types": ["host"],
         }
 
-        self.asset2.update_from_tenable_data(tenable_data=server_data)
+        self.asset2.update_from_raw_data(tenable_data=server_data)
         self.assertEqual(self.asset2.name, "example-server-001")
         self.assertTrue(self.asset2.has_tag(tag="TST2", category="Custodian"))
         self.assertTrue(self.asset2.has_tag(tag="Server", category="Devices"))
@@ -250,7 +250,7 @@ class AssetModelTestCase(TestCase):
             "types": ["host"],
         }
 
-        self.asset3.update_from_tenable_data(tenable_data=user_device)
+        self.asset3.update_from_raw_data(tenable_data=user_device)
         self.assertEqual(self.asset3.name, "example-device-name")
         self.assertTrue(self.asset3.has_tag(tag="User Device", category="Devices"))
         self.assertEqual(self.asset3.os, "Microsoft Windows 11 Enterprise")
@@ -276,12 +276,13 @@ class AssetModelTestCase(TestCase):
             "types": ["host"],
         }
 
-        self.asset1.update_from_tenable_data(tenable_data=switch_data)
+        self.asset1.update_from_raw_data(tenable_data=switch_data)
         self.assertEqual(self.asset1.name, "example-switch")
         self.assertEqual(self.asset1.os, "CISCO IOS 15\nCISCO IOS 12\nCisco IOS XE\nCISCO PIX")
         self.assertIsNone(self.asset1.os_version)
         self.assertTrue(self.asset1.has_tag(tag="Switch", category="Devices"))
 
+        # Example of printer or other device
         other_data = {
             "id": "other_id",
             "operating_systems": ["XEROX"],
@@ -292,11 +293,45 @@ class AssetModelTestCase(TestCase):
             "types": ["host"],
         }
 
-        self.asset1.update_from_tenable_data(tenable_data=other_data)
+        self.asset1.update_from_raw_data(tenable_data=other_data)
         self.assertIsNone(self.asset1.name)
         self.assertEqual(self.asset1.os, "XEROX")
         self.assertIsNone(self.asset1.os_version)
         self.assertTrue(self.asset1.has_tag(tag="Others", category="OS"))
+
+
+        # empty data test
+        empty_data = {
+            "id": "other_id",
+            "sources": [{"first_seen": "2026-04-29T04:41:22.032Z", "last_seen": "2026-09-30T03:10:24.967Z", "name": "NESSUS_SCAN"}],
+        }
+        self.asset1.update_from_raw_data(tenable_data=empty_data)
+        self.assertEqual(self.asset1.display_tags, "")
+        self.assertEqual(self.asset1.asset_type, "")
+        self.assertEqual(self.asset1.custodian, "")
+        self.assertIsNone(self.asset1.os_version)
+        self.assertIsNone(self.asset1.os)
+        self.assertEqual(self.asset1.operating_systems, "")
+        self.assertIsNone(self.asset1.name)
+
+        # Empty data, but in terms of empty arrays
+        empty_array_data = {
+            "id": "other_id",
+            "operating_systems": ["",None],
+            "sources": [{"first_seen": "2026-04-29T04:41:22.032Z", "last_seen": "2026-09-30T03:10:24.967Z", "name": "NESSUS_SCAN"}],
+            "tags":[],
+            "types": [],
+        }
+        self.asset1.update_from_raw_data(tenable_data=empty_array_data)
+        self.assertEqual(self.asset1.display_tags, "")
+        self.assertEqual(self.asset1.asset_type, "")
+        self.assertEqual(self.asset1.custodian, "")
+        self.assertIsNone(self.asset1.os_version)
+        self.assertIsNone(self.asset1.os)
+        self.assertEqual(self.asset1.operating_systems, "")
+        self.assertIsNone(self.asset1.name)
+
+
 
 
 class VulnerabilityModelTestCase(TestCase):
@@ -400,7 +435,7 @@ class VulnerabilityModelTestCase(TestCase):
         }
 
         # Add the vuln
-        asset1.update_from_tenable_data(vuln_data=[raw])
+        asset1.update_from_raw_data(vuln_data=[raw])
 
         # ===========================================
         #               General Tests
@@ -432,7 +467,7 @@ class VulnerabilityModelTestCase(TestCase):
         raw["plugin"]["vpr"]["drivers"]["age_of_vuln"]["lower_bound"] = 800
 
         # Runs it twice to test update vs replacement
-        asset1.update_from_tenable_data(vuln_data=[raw, raw])
+        asset1.update_from_raw_data(vuln_data=[raw, raw])
 
         # Test that a new vuln wasn't added, just reclassified to critical
         self.assertEqual(asset1.total_critical_vulns, 1)
@@ -450,15 +485,15 @@ class VulnerabilityModelTestCase(TestCase):
         # Adding 3 non-active vulns - shouldn't impact the active count, but should impact the general count
         raw["finding_id"] = "different_finding_id"
         raw["state"] = "FIXED"
-        asset1.update_from_tenable_data(vuln_data=[raw])
+        asset1.update_from_raw_data(vuln_data=[raw])
         raw["finding_id"] = "even_more_different_finding_id"
         raw["state"] = "OPEN"
         raw["severity_id"] = Severity.INFO
-        asset1.update_from_tenable_data(vuln_data=[raw])
+        asset1.update_from_raw_data(vuln_data=[raw])
         raw["finding_id"] = "extremely_diff_finding_id"
         raw["severity_id"] = Severity.CRITICAL
         raw["severity_modification_type"] = "ACCEPTED"
-        asset1.update_from_tenable_data(vuln_data=[raw])
+        asset1.update_from_raw_data(vuln_data=[raw])
 
         # Verifies that all 3 vulns were added, but only 1 vuln is active + critical
         self.assertEqual(asset1.total_critical_vulns, 1)

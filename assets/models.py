@@ -190,19 +190,21 @@ class Asset(models.Model):
 
         super(Asset, self).save(*args, **kwargs)
 
-    def update_from_tenable_data(self, tenable_data: dict | None = None, vuln_data: list | None = None) -> None:
+    def update_from_raw_data(self, tenable_data: dict = {}, vuln_data: list = []) -> None:
         """
-        Updates internal fields using data found in tenable_data.
-        If passed tenable_data as a parameter, the model's internal tenable_data is overridden first.
+        Updates internal fields using data found in tenable_data or vuln_data.
+        If tenable_data is passed in, it overrides the equivalent field before updating.
+        Vuln data may also be passed in to additionally update and create vulnerabilities tied to this asset.
         """
-        # Override internal tenable_data if passed in.
-        if tenable_data:
-            self.tenable_data = tenable_data
-            self.last_seen = now()
 
-        # Update internal fields
-        if self.tenable_data:
-            t = self.tenable_data
+        # Update asset data if any
+        if tenable_data:
+            # convenience rename
+            t = tenable_data
+            # Raw data set
+            self.tenable_data = t
+            # Meta-data update
+            self.last_seen = now()
             # Set ID
             self.tenable_id = t.get("id")
             # Retrieve Aliases & IPv4s
@@ -227,28 +229,24 @@ class Asset(models.Model):
             if aliases:
                 self.name = aliases[0]
                 self.aliases = list(set(aliases))  # set aliases without duplicates
-            # Set OS & OS Version
+            # Set OS & OS Version, and OS list
             self.os, self.os_version = (
-                self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
+                self.__split_tenable_os_and_version(t["operating_systems"][0]) if len(t.get("operating_systems",[]))>0 else (None, None)
             )
-            self.os_list = t.get("operating_systems")
+            self.os_list = [os for os in t.get("operating_systems",[]) if os] # filters out empty values
 
             # Replace tags
             self.tags.clear()
-            if self.tenable_data.get("tags"):
-                # Add new tags
-                for tag in self.tenable_data.get("tags"):
-                    self.add_tag(tag=tag["value"], category=tag["key"])
+            # Add new tags
+            for tag in self.tenable_data.get("tags", []):
+                self.add_tag(tag=tag["value"], category=tag["key"])
 
-        # Updates vulnerability data
-        self.total_vulns = 0
-        self.total_critical_vulns = 0
-        if vuln_data:
-            for vuln in vuln_data:
-                self.add_or_update_vuln(vuln)
+        # Updates vulnerability data if any
+        for vuln in vuln_data:
+            self.add_or_update_vuln(vuln)
 
-            # Refresh vulnerability stats to match the latest changes
-            self.__refresh_vuln_stats()
+        # Refresh vulnerability stats to match the latest changes if any
+        self.__refresh_vuln_stats()
 
         self.save()
 

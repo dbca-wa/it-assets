@@ -35,7 +35,7 @@ class Command(BaseCommand):
             assets = tenable_export_assets()
             vulns = self.get_vulns_per_asset()
 
-            # Init stats
+            # Init stats for logging
             count = 0
             assets_created = 0
             assets_updated = 0
@@ -46,9 +46,10 @@ class Command(BaseCommand):
             logger.info(f"Processing {total} found assets")
             for asset in assets:
                 count += 1
-                if self.is_valid_asset(asset):
+                # If it's a valid asset, add or update it the asset and any associated vulns
+                if self.passes_filter(asset):
                     found_asset, created = Asset.objects.get_or_create(tenable_id=asset["id"])
-                    found_asset.update_from_tenable_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id))
+                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id))
                     if created:
                         logger.info(
                             f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
@@ -66,15 +67,17 @@ class Command(BaseCommand):
         except Exception as exc:
             logger.warning("Failed to sync Tenable assets", exc_info=exc)
 
-    def is_valid_asset(self, asset):
-        # Temp rules for the asset mvp - should be changed later
-        # Rules to be valid:
-        # - Must have a device tag or be marked as a web app
-        # - Any device tags must not have "user device", "new device", or "Edge Firewall"
+    def passes_filter(self, asset: dict) -> bool:
+        """
+        Checks if the asset passes an arbitrary filter set by business rules.
+        Current applied business rules:
+            - The asset must have a device tag, or be collected via web app scan
+            - If the asset has a device tag, it must not be a user device, new device, or edge firewall
+        """
 
         valid = None
         filtered_devices = ["User Device", "New Device", "Edge Firewall"]
-        if "webapp" in asset.get("types"):
+        if "webapp" in str(asset.get("types")):
             valid = True
         else:
             # Gets all valid device tag values
