@@ -3,8 +3,9 @@ import requests
 import json
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from django.utils.timezone import localtime as now
 from django.conf import settings
 from assets.utils import get_with_retry, post_with_retry
 
@@ -97,7 +98,7 @@ def tenable_export_vulns() -> list:
                 "num_assets": 1000,
                 "include_software_vulns": False,
                 "filters": {
-                    "last_seen": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 1 week
+                    "last_seen": int((now() - timedelta(days=7)).timestamp()),  # seen within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
                 },
             },
@@ -117,7 +118,7 @@ def tenable_export_web_app_vulns() -> list:
                 "include_unlicensed": True,
                 "num_assets": 1000,
                 "filters": {
-                    "last_found": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 1 week
+                    "last_found": int((now() - timedelta(days=7)).timestamp()),  # seen within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
                 },
             },

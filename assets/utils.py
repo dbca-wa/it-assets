@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-from django.utils.timezone import now
+from django.utils.timezone import localtime as now
 
 from assets.models import Asset
 

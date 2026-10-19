@@ -2,7 +2,7 @@ import re
 
 from django.db import models
 from django.core.validators import RegexValidator
-from django.utils.timezone import now
+from django.utils.timezone import localtime as now
 from datetime import datetime, date
 
 

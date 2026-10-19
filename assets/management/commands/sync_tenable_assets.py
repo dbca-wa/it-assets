@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from django.utils import timezone
+from django.utils.timezone import localtime as now
 
 from django.core.management.base import BaseCommand
 
@@ -22,7 +22,7 @@ class Command(BaseCommand):
             # Prune aged-out vulns
             age_limit = settings.VULN_LAST_SEEN_LIMIT
             logger.info(f"Pruning vulns older than {age_limit} days")
-            aged_out_vulns = Vulnerability.objects.filter(last_found__lte=timezone.now()-timedelta(days=age_limit))
+            aged_out_vulns = Vulnerability.objects.filter(last_found__lte=now()-timedelta(days=age_limit))
             deleted = len(aged_out_vulns)
             if aged_out_vulns.exists():
                 aged_out_vulns.delete()
@@ -53,13 +53,13 @@ class Command(BaseCommand):
                         logger.info(
                             f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
                         )
-                        created += 1
+                        assets_created += 1
                     else:
                         logger.info(
                             f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
                         )
-                        updated += 1
-                    skipped += 1
+                        assets_updated += 1
+                    assets_skipped += 1
             logger.info(f"Successfully processed {total} department assets")
             logger.info(f"{assets_updated} UPDATED | {assets_created} CREATED | {assets_skipped} SKIPPED")
 

@@ -1,6 +1,7 @@
 import json
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
+from django.utils.timezone import localtime as now
 from django.contrib import admin
 from django.utils.html import mark_safe
 from django.urls import reverse
@@ -192,15 +193,15 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         def queryset(self, request, queryset):
             match self.value():
                 case "1":
-                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=1), datetime.now()))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=1), now()))
                 case "2":
-                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=2), datetime.now()- timedelta(weeks=1)))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=2), now()- timedelta(weeks=1)))
                 case "3":
-                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=3), datetime.now()- timedelta(weeks=2)))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=3), now()- timedelta(weeks=2)))
                 case "4":
-                    return queryset.filter(last_found__date__range=(datetime.now() - timedelta(weeks=4), datetime.now()- timedelta(weeks=3)))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=4), now()- timedelta(weeks=3)))
                 case "5":
-                    return queryset.filter(last_found__lte=datetime.now()-timedelta(weeks=4))
+                    return queryset.filter(last_found__lte=now()-timedelta(weeks=4))
                 case _:
                     return queryset
 
@@ -475,15 +476,15 @@ class AssetAdmin(admin.ModelAdmin):
         def queryset(self, request, queryset):
             match self.value():
                 case "1":
-                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=1), datetime.now()))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=1), now()))
                 case "2":
-                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=2), datetime.now()- timedelta(weeks=1)))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=2), now()- timedelta(weeks=1)))
                 case "3":
-                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=3), datetime.now()- timedelta(weeks=2)))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=3), now()- timedelta(weeks=2)))
                 case "4":
-                    return queryset.filter(last_seen__date__range=(datetime.now() - timedelta(weeks=4), datetime.now()- timedelta(weeks=3)))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=4), now()- timedelta(weeks=3)))
                 case "5":
-                    return queryset.filter(last_seen__lte=datetime.now()-timedelta(weeks=4))
+                    return queryset.filter(last_seen__lte=now()-timedelta(weeks=4))
                 case _:
                     return queryset
 
@@ -689,7 +690,7 @@ def pprint_json(data=None):
     return result
 
 
-def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool = False):
+def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool = False) -> HttpResponse:
     """
     Helper function for export actions to export vulnerabilities.
     """
@@ -704,8 +705,9 @@ def export_vulns_action(queryset, critical_only: bool = False, simple: bool = Fa
 
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = (
-        f"attachment; filename={exp_string}vulns_{date.today().isoformat()}_{datetime.now().strftime('%H%M')}.csv"
+        f"attachment; filename={exp_string}vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
     )
+
     if export_assets:
         return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple)
     else:
