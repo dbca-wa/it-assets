@@ -3,8 +3,8 @@ from django.urls import reverse
 from itassets.test_api import ApiTestCase
 from assets.tests.test_model import RandomAssetGenerator as Gen, RandomVulnGenerator as VGen
 from assets.enum_library import Severity, SeverityMT, State
-from assets.models import Vulnerability
 from itsystems.tests.test_model import create_random_record as gen_itsystem
+from django.contrib.auth.models import Permission
 
 import json
 from datetime import datetime
@@ -12,10 +12,27 @@ from datetime import datetime
 
 class AssetsAPITestCase(ApiTestCase):
     def setUp(self):
+        super().setUp()
         self.asset1, self.asset2, self.asset3 = Gen().generate(3)
         self.asset1.save()
         self.asset2.save()
         self.asset3.save()
+
+        # Gives permission for user to access API
+        perm = Permission.objects.get(codename="view_asset")
+        self.testuser.user_permissions.add(perm)
+        self.testuser.save()
+
+    def test_revoked_permissions(self):
+        # Gives permission for user to access API
+        perm = Permission.objects.get(codename="view_asset")
+        self.testuser.user_permissions.remove(perm)
+        self.testuser.save()
+
+        url = reverse("asset_api_resource")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 403)
+
 
     def test_populated(self):
         """
@@ -23,7 +40,6 @@ class AssetsAPITestCase(ApiTestCase):
         """
         url = reverse("asset_api_resource")
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.asset1.name)
         self.assertContains(resp, self.asset2.name)
         self.assertContains(resp, self.asset3.name)
@@ -57,7 +73,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Confirms that the data is visible when flagged
         url = "{}?tenable_data_only".format(reverse("asset_api_resource"))
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "test_tenable_data_key")
         self.assertContains(resp, "test_tenable_data_result")
         # Validates that it's exclusively showing the tenable data
@@ -68,7 +83,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Confirms that the data is hidden when not flagged
         url = reverse("asset_api_resource")
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "test_tenable_data_key")
         self.assertNotContains(resp, "test_tenable_data_result")
 
@@ -80,7 +94,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test pk found
         url = reverse("asset_api_resource", kwargs={"pk": self.asset1.pk})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -98,13 +111,11 @@ class AssetsAPITestCase(ApiTestCase):
         # Test name found
         url = reverse("asset_api_resource", query={"name": self.asset1.name})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.asset1.name)
 
         # Test name not found
         url = reverse("asset_api_resource", query={"name": self.asset1.name + "FAKENAME"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertEqual(json.loads(resp.content), [])
 
     def test_filter_tags(self):
@@ -122,7 +133,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag cat found
         url = reverse("asset_api_resource", query={"tag_cat": "tag_cat_1"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.asset1.name)
         self.assertContains(resp, self.asset3.name)
         self.assertNotContains(resp, self.asset2.name)
@@ -130,7 +140,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag cat not found
         url = reverse("asset_api_resource", query={"tag_cat": "tag_cat"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -138,7 +147,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag value found
         url = reverse("asset_api_resource", query={"tag": "tag_val"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.asset1.name)
         self.assertContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -146,7 +154,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag value not found
         url = reverse("asset_api_resource", query={"tag": "tag"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -154,7 +161,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag value in tag cat found
         url = reverse("asset_api_resource", query={"tag": "tag_val", "tag_cat": "tag_cat_1"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -162,7 +168,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag val found, but not cat
         url = reverse("asset_api_resource", query={"tag": "tag_val", "tag_cat": "tag"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -170,7 +175,6 @@ class AssetsAPITestCase(ApiTestCase):
         # Test tag cat found, but not tag val
         url = reverse("asset_api_resource", query={"tag": "tag", "tag_cat": "tag_cat_1"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
@@ -178,13 +182,13 @@ class AssetsAPITestCase(ApiTestCase):
         # Test assert none found
         url = reverse("asset_api_resource", query={"tag": "tag", "tag_cat": "tag"})
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
 
 class VulnerabilityAPITestCase(ApiTestCase):
     def setUp(self):
+        super().setUp()
         # Data set:
         # - Asset with singular vuln
         # - Asset with multiple vulns
@@ -229,6 +233,20 @@ class VulnerabilityAPITestCase(ApiTestCase):
         set_vuln(self.d_high_vuln, Severity.HIGH, SeverityMT.NONE, State.OPEN)
         set_vuln(self.d_critical_vuln, Severity.CRITICAL, SeverityMT.RECASTED, State.OPEN)
 
+        # Gives permission for user to access API
+        perm = Permission.objects.get(codename="view_vulnerability")
+        self.testuser.user_permissions.add(perm)
+        self.testuser.save()
+
+    def test_revoked_permissions(self):
+        # revokes permission for user to access API
+        perm = Permission.objects.get(codename="view_vulnerability")
+        self.testuser.user_permissions.remove(perm)
+        self.testuser.save()
+
+        url = reverse("asset_api_resource")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 403)
 
 
     def test_populated(self):
@@ -292,14 +310,17 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # Non existent severity filter
         url = reverse("vulnerability_api_resource", query={"severity": "SOMETHING_FAKE"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
         url = reverse("vulnerability_api_resource", query={"severity": "NOT_REAL"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
         url = reverse("vulnerability_api_resource", query={"severity": "GT_NOTHING"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
     def test_severity_mod_type_filter(self):
@@ -325,10 +346,12 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # Non existent severity mod type filter
         url = reverse("vulnerability_api_resource", query={"severity_mod_type": "SOMETHING_FAKE"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
         url = reverse("vulnerability_api_resource", query={"severity_mod_type": "NOT_REAL"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
     def test_state_filter(self):
@@ -354,10 +377,12 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # Non existent state filter
         url = reverse("vulnerability_api_resource", query={"state": "SOMETHING_FAKE"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
         url = reverse("vulnerability_api_resource", query={"state": "NOT_REAL"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
     def test_asset_filter(self):
@@ -383,6 +408,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # non-existent asset test
         url = reverse("vulnerability_api_resource", query={"asset": self.asset_vulns.name + "FAKE_VULN"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
     def test_it_system_filter(self):
@@ -415,6 +441,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # non-existent it-system test
         url = reverse("vulnerability_api_resource", query={"asset": self.itsystem_1.system_id + "FAKE_SYS"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
 
@@ -431,6 +458,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # Test non-existent finding_id
         url = reverse("vulnerability_api_resource", kwargs={"finding_id": self.d_critical_vuln.finding_id + "FAKE_STUFF"})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(0,len(json.loads(resp.content)))
 
 
@@ -444,12 +472,14 @@ class VulnerabilityAPITestCase(ApiTestCase):
         self.d_critical_vuln.save()
         url = reverse("vulnerability_api_resource", query={"tenable_data_only":""}, kwargs={"finding_id": self.d_critical_vuln.finding_id})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         self.assertEqual(self.d_critical_vuln.raw_vuln_data, json.loads(resp.content)[0])
         self.assertNotContains(resp,"age_in_days") # this field is unique to other field sets
 
         # Validates that without the flags, none of the extra data is present
         url = reverse("vulnerability_api_resource", kwargs={"finding_id": self.d_critical_vuln.finding_id})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         d = json.loads(resp.content)[0]
         # standard fields
         self.assertContains(resp,self.d_critical_vuln.finding_id)
@@ -484,6 +514,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
         # Validates that the "expanded_fields" flag provides the additional fields
         url = reverse("vulnerability_api_resource", query={"expanded_fields":"test"}, kwargs={"finding_id": self.d_critical_vuln.finding_id})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         d = json.loads(resp.content)[0]
         # standard fields
         self.assertContains(resp,self.d_critical_vuln.finding_id)
@@ -522,6 +553,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
         """
         url = reverse("vulnerability_api_resource", query={"state": "NOT_REOPENED","severity":"GT_INFO","severity_mod_type":"NOT_RECASTED", "asset":self.asset_vulns_and_systems.name})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         d = json.loads(resp.content)
 
         # should only contain 2 records
@@ -531,6 +563,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
 
         url = reverse("vulnerability_api_resource", query={"state": "NOT_REOPENED","severity":"GT_INFO","severity_mod_type":"NOT_RECASTED", "it_system":self.itsystem_2.system_id})
         resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
         d = json.loads(resp.content)
 
         # should only contain the same 2 records
