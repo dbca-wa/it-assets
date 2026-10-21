@@ -84,7 +84,7 @@ class VulnerabilityAPIResource(View):
     def get(self, request, *args, **kwargs) -> JsonResponse:
         """
         Returns a json object recorded vulns.
-        Provides filtering functionality on finding_id, severity, severity_md_type, state, plugin_name, plugin_family, asset name, and it system code
+        Provides filtering functionality on finding_id, severity, severity_md_type, state, asset name, and it system code
         Has an additional flag of "show_raw_data" that will modify the response to contain the raw tenable data used to generate the asset.
         """
         queryset = Vulnerability.objects.all()
@@ -102,6 +102,8 @@ class VulnerabilityAPIResource(View):
                 queryset = queryset.filter(severity__gt=self.SEVERITY_LOOKUP[sev_val[3:]])
             elif sev_val.startswith("NOT_") and sev_val[4:] in self.SEVERITY_LOOKUP: # Exclusion filter
                 queryset = queryset.exclude(severity=self.SEVERITY_LOOKUP[sev_val[4:]])
+            else: # non-existent 
+                queryset = Vulnerability.objects.none()
 
         # By Severity mod type
         if "severity_mod_type" in self.request.GET:
@@ -110,6 +112,8 @@ class VulnerabilityAPIResource(View):
                 queryset = queryset.filter(severity_modification_type=self.SEVERITY_MOD_TYPE_LOOKUP[sev_md_val])
             elif sev_md_val.startswith("NOT_") and sev_md_val[4:] in self.SEVERITY_MOD_TYPE_LOOKUP: # Exclusion filter
                 queryset = queryset.exclude(severity_modification_type=self.SEVERITY_MOD_TYPE_LOOKUP[sev_md_val[4:]])
+            else: # non-existent 
+                queryset = Vulnerability.objects.none()
 
         # By state
         if "state" in self.request.GET:
@@ -118,22 +122,15 @@ class VulnerabilityAPIResource(View):
                 queryset = queryset.filter(state=self.STATE_LOOKUP[state_val])
             elif state_val.startswith("NOT_") and state_val[4:] in self.STATE_LOOKUP: # Exclusion filter
                 queryset = queryset.exclude(state=self.STATE_LOOKUP[state_val[4:]])
-
-        # By plugin_name
-        if "plugin_name" in self.request.GET:
-            queryset = queryset.filter(plugin__name__icontains=self.request.GET["plugin_name"])
-
-        # by plugin_family
-        if "plugin_family" in self.request.GET:
-            queryset = queryset.filter(plugin__family__icontains=self.request.GET["plugin_family"])
-
+            else: # non-existent 
+                queryset = Vulnerability.objects.none()
         # by asset name
         if "asset" in self.request.GET:
             queryset = queryset.filter(asset__name__icontains=self.request.GET["asset"])
 
         # by it system code
         if "it_system" in self.request.GET:
-            queryset = queryset.filter(asset__systems__system_id=self.request.GET["asset"])
+            queryset = queryset.filter(asset__systems__system_id=self.request.GET["it_system"])
 
         queryset = queryset.order_by(
         "-last_found",

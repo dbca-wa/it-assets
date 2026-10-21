@@ -60,6 +60,7 @@ class Command(BaseCommand):
                             f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
                         )
                         assets_updated += 1
+                else:
                     assets_skipped += 1
             logger.info(f"Successfully processed {total} department assets")
             logger.info(f"{assets_updated} UPDATED | {assets_created} CREATED | {assets_skipped} SKIPPED")

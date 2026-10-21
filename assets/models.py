@@ -556,10 +556,6 @@ class Vulnerability(models.Model):
         return self.plugin.get("solution")
 
     @property
-    def vpr(self) -> str | None:
-        return str(self.plugin.get("vpr",{}))
-
-    @property
     def vuln_age(self) -> str | None:
         """
         Retrieves a plain text representation of the vulnerability's age

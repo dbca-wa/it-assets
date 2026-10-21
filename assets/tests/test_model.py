@@ -4,10 +4,15 @@ from organisation.models import DepartmentUser
 from itsystems.models import ITSystemRecord
 
 from django.test import TestCase
+from django.utils.crypto import get_random_string
+from django.utils.timezone import localtime as now
+from datetime import timedelta
+
 
 from mixer.backend.django import mixer
 
 from datetime import datetime
+from random import Random
 
 
 class AssetModelTestCase(TestCase):
@@ -509,10 +514,172 @@ class VulnerabilityModelTestCase(TestCase):
         self.assertTrue(asset1.has_vuln(finding_id="extremely_diff_finding_id"))
         self.assertTrue(asset1.has_vuln(finding_id="random_finding_id"))
 
+        # remove vuln check & refresh stats check
+        asset1.remove_vuln(finding_id="random_finding_id",refresh_stats=True)
+        self.assertEqual(asset1.total_critical_vulns, 0)
+        self.assertEqual(asset1.total_active_vulns, 0)
+        self.assertEqual(asset1.total_vulns, 3)
+
+
+    def test_vuln_properties(self):
+        """
+        Validates that vuln property fields retrieve data accurately.
+        Only tests property fields that have some level of logic that isn't just a plugin retrieval wrapper.
+        """
+
+        # Generate 2 random vulns attached to a generated asset.
+        # - vuln 1 is fully populated, vuln 2 is filled with None values
+        gen = RandomVulnGenerator()
+        vuln1, = gen.generate(generations=1,asset = RandomAssetGenerator().generate()[0])
+        vuln2, = gen.generate(generations=1,asset=vuln1.asset, empty=True)
+
+        # Test asset related properties
+        self.assertEqual(vuln1.asset_name, vuln1.asset.name)
+        self.assertEqual(vuln1.ipv4_addresses, vuln1.asset.ipv4s)
+        self.assertEqual(vuln1.operating_systems, vuln1.asset.operating_systems)
+
+        # Plugin related properties
+        # cve
+        self.assertEqual(vuln1.cve, ", ".join(vuln1.plugin["cve"]))
+        # patch publication date
+        self.assertEqual(vuln1.patch_publication_date,datetime.fromisoformat(vuln1.plugin["patch_publication_date"]).date())
+        # vuln age
+        va_obj = vuln1.plugin["vpr"]["drivers"]["age_of_vuln"]
+        if va_obj["lower_bound"]>= 730:
+            age_str = "More than 730 days"
+        else:
+            age_str = f"{va_obj["lower_bound"]}-{va_obj["upper_bound"]} days"
+        self.assertEqual(vuln1.vuln_age,age_str)
+        # vuln age in days
+        self.assertEqual(vuln1.age_in_days,(now() - vuln1.first_found).days)
+
+        # Summary verification
+        def assert_in_summary(field, vuln):
+            """Checks that field is in both summary properties"""
+            self.assertIn(str(field),vuln.html_summary)
+            self.assertIn(str(field),vuln.summary)
+
+        assert_in_summary(field=vuln1.asset_name,vuln=vuln1)
+        assert_in_summary(field=vuln1.get_severity_display(),vuln=vuln1)
+        assert_in_summary(field=vuln1.get_state_display(),vuln=vuln1)
+        assert_in_summary(field=vuln1.get_severity_modification_type_display(),vuln=vuln1)
+        assert_in_summary(field=vuln1.first_found.strftime("%d/%m/%Y, %H:%M"),vuln=vuln1)
+        assert_in_summary(field=vuln1.last_found.strftime("%d/%m/%Y, %H:%M"),vuln=vuln1)
+        assert_in_summary(field=vuln1.age_in_days,vuln=vuln1)
+        assert_in_summary(field=vuln1.plugin_name,vuln=vuln1)
+        assert_in_summary(field=vuln1.plugin_output,vuln=vuln1)
+        assert_in_summary(field=vuln1.solution,vuln=vuln1)
+
+        # Test asset related properties
+        self.assertEqual(vuln2.asset_name, vuln2.asset.name)
+        self.assertEqual(vuln2.ipv4_addresses, vuln2.asset.ipv4s)
+        self.assertEqual(vuln2.operating_systems, vuln2.asset.operating_systems)
+
+        # Plugin related properties
+        self.assertIsNone(vuln2.cve)
+        self.assertIsNone(vuln2.patch_publication_date)
+        self.assertIsNone(vuln2.vuln_age)
+        self.assertIsNone(vuln2.age_in_days)
+
 
 class RandomVulnGenerator:
-    pass
+    rand = Random()
+    tenable_id_inc = 0
 
+    def generate(self, asset: Asset, generations: int = 1, empty: bool = False) -> tuple[Vulnerability]:
+        """
+        generates a tuple of mock vulnerability objects. If empty is set to true it generates a vuln filled with none or empty values where possible.
+        """
+        if empty:
+            return tuple([self.__create_empty(asset) for i in range(generations)])
+            
+        else:
+            return tuple([self.__create(asset, self.rand) for i in range(generations)])
+
+    def __create(self, asset: Asset, rand: Random):
+        self.tenable_id_inc += 1
+        return mixer.blend(
+            Vulnerability,
+            asset = asset,
+            output = mixer.RANDOM,
+            plugin = {
+                "cve":[get_random_string(20),get_random_string(20),get_random_string(20)],
+                "cvss3_base_score":round(rand.uniform(0.0,10.0),1),
+                "exploitability_ease":get_random_string(20),
+                "exploited_by_malware":rand.choice([True,False]),
+                "exploited_by_nessus":rand.choice([True,False]),
+                "has_patch":rand.choice([True,False]),
+                "patch_publication_date":(now() - timedelta(days = rand.randint(0,30), hours = rand.randint(-24,0))).isoformat(),
+                "description":get_random_string(30),
+                "family":get_random_string(10),
+                "id":get_random_string(10),
+                "name":get_random_string(10),
+                "synopsis":get_random_string(30),
+                "solution":get_random_string(30),
+                "vpr":{
+                    "drivers":{
+                        "age_of_vuln":{
+                            "lower_bound":rand.randint(0,731),
+                            "upper_bound":rand.randint(0,731),
+                        },
+                    },
+                },
+                "workaround":get_random_string(30),
+            },
+            port = {
+                "port":rand.randint(0,150),
+                "protocol":rand.choice(["TCP","UDP"]),
+            },
+            scan = {
+                "schedule_uuid": get_random_string(30),
+                "started_at": (now() - timedelta(days = rand.randint(0,30), hours = rand.randint(-24,0))).isoformat(),
+                "target": f"{rand.randint(0,255)}.{rand.randint(0,255)}.{rand.randint(0,255)}.{rand.randint(0,255)}",
+                "uuid": get_random_string(30),
+            },
+            recast_reason = mixer.RANDOM,
+            recast_rule_uuid = mixer.RANDOM,
+            severity = rand.randint(0,4),
+            severity_default = rand.randint(0,4),
+            severity_modification_type = mixer.RANDOM,
+            first_found = mixer.RANDOM,
+            last_found = mixer.RANDOM,
+            last_fixed = mixer.RANDOM,
+            indexed = mixer.RANDOM,
+            state = mixer.RANDOM,
+            source = mixer.RANDOM,
+            finding_id = f"FINDING_ID_{self.tenable_id_inc}",
+            resurfaced_date = mixer.RANDOM,
+            time_taken_to_fix = mixer.RANDOM,
+            software_vulns = [],
+            raw_vuln_data = {},
+        )
+
+    def __create_empty(self, asset: Asset):
+        self.tenable_id_inc += 1
+        return mixer.blend(
+            Vulnerability,
+            asset = asset,
+            finding_id = self.tenable_id_inc,
+            output = None,
+            plugin = {},
+            port = {},
+            scan = {},
+            recast_reason = None,
+            recast_rule_uuid = None,
+            severity = None,
+            severity_default = None,
+            severity_modification_type = None,
+            first_found = None,
+            last_found = None,
+            last_fixed = None,
+            indexed = None,
+            state = None,
+            source = None,
+            resurfaced_date = None,
+            time_taken_to_fix = None,
+            software_vulns = [],
+            raw_vuln_data = {},
+        )
 
 class RandomAssetGenerator:
     tenable_id_inc = 0
@@ -521,7 +688,7 @@ class RandomAssetGenerator:
         self.tenable_id_inc += 1
         return mixer.blend(
             Asset,
-            tenable_id=self.tenable_id_inc,
+            tenable_id=f"TENABLE_ID_{self.tenable_id_inc}",
             name=mixer.RANDOM,
             os=mixer.RANDOM("Windows", "Linux", "MaxOS", "Other"),
             os_version=mixer.RANDOM,
@@ -530,5 +697,5 @@ class RandomAssetGenerator:
             systems=mixer.blend(ITSystemRecord),
         )
 
-    def generate(self, generations: int) -> tuple[Asset]:
+    def generate(self, generations: int = 1) -> tuple[Asset]:
         return tuple([self.__create() for i in range(generations)])
