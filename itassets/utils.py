@@ -2,7 +2,7 @@ import json
 import os
 import re
 from io import BytesIO
-from typing import BinaryIO, Dict
+from typing import BinaryIO
 
 import requests
 from azure.storage.blob import BlobServiceClient
@@ -11,7 +11,7 @@ from django.utils.encoding import smart_str
 from msal import ConfidentialClientApplication
 
 
-def ms_graph_client_token() -> Dict:
+def ms_graph_client_token() -> dict:
     """Uses the Microsoft msal library to obtain an access token for the Graph API.
     Ref: https://docs.microsoft.com/en-us/python/api/msal/msal.application.confidentialclientapplication
     """
@@ -66,7 +66,7 @@ def download_blob(out_file: BinaryIO, container: str, blob: str) -> BinaryIO:
     return out_file
 
 
-class ModelDescMixin(object):
+class ModelDescMixin:
     """A small mixin for the ModelAdmin class to add a description of the model to the
     admin changelist view context.
 
@@ -148,7 +148,7 @@ def humanise_bytes(bytes: int) -> str:
     """For a passed-in integer (bytes), return a human-readable string."""
     for x in ["B", "KB", "MB", "GB", "TB", "PB"]:
         if bytes < 1024.0:
-            return "{:3.1f} {}".format(bytes, x)
+            return f"{bytes:3.1f} {x}"
         bytes /= 1024.0
 
 
@@ -163,7 +163,7 @@ def smart_truncate(content, length=100, suffix="....(more)"):
         return " ".join(content[: length + 1].split(" ")[0:-1]) + suffix
 
 
-def get_blob_json(container: str, blob: str) -> Dict:
+def get_blob_json(container: str, blob: str) -> dict:
     """Convenience function to download an Azure blob which contains JSON data,
     parse it, and return the data. Pass in the container and blob names.
     """
