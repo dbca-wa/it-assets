@@ -10,7 +10,7 @@ from itassets import settings
 
 
 class Command(BaseCommand):
-    help = "Synchronises department assets with Tenable assets"
+    help = "Synchronises department assets and vulns with Tenable"
 
     def handle(self, *args, **options):
         """

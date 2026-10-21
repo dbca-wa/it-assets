@@ -19,6 +19,7 @@ resources:
   - cronjobs/storage-usage
   - cronjobs/update-ccm
   - cronjobs/itsystemsregister-contacts
+  - cronjobs/assets-sync-to-tenable
   - postgres_fdw_pvc.yaml
 secretGenerator:
   - name: itassets-env
