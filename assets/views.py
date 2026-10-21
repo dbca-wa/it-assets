@@ -7,12 +7,6 @@ from django.http import JsonResponse, HttpResponseForbidden
 from assets.models import Asset, AssetTag, Vulnerability
 from assets.enum_library import Severity, SeverityMT, State
 
-def has_permissions(user, codename: str) -> bool:
-    """
-    Checks if the user making the api call has the required permissions to access the specific api.
-    """
-    return user.user_permissions.filter(codename=codename).exists()
-
 class AssetAPIResource(View):
     """An API view that returns JSON of assets."""
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
@@ -22,7 +16,7 @@ class AssetAPIResource(View):
         Provides filtering functionality on ID, name, os, tag catgory, tag value.
         Has an additional flag of "show_tenable_data" that will modify the response to contain the raw tenable data used to generate the asset.
         """
-        if not has_permissions(request.user, "view_asset"):
+        if not request.user.has_perm("assets.view_asset"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
             queryset = Asset.objects.all()
@@ -95,7 +89,7 @@ class VulnerabilityAPIResource(View):
         Provides filtering functionality on finding_id, severity, severity_md_type, state, asset name, and it system code
         Has an additional flag of "show_raw_data" that will modify the response to contain the raw tenable data used to generate the asset.
         """
-        if not has_permissions(request.user, "view_vulnerability"):
+        if not request.user.has_perm("assets.view_vulnerability"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
             queryset = Vulnerability.objects.all()

@@ -521,22 +521,26 @@ class AssetAdmin(admin.ModelAdmin):
     #       Export actions & Config
     # =================================
 
-    @admin.action(permissions=["view"], description="Export Asset Vulns - Technical")
+    def has_vuln_permission(self, request):
+        """Only allows users to use the action if they can view vulns"""
+        return request.user.has_perm("assets.view_vulnerability")
+
+    @admin.action(permissions=["vuln"], description="Export Asset Vulns - Technical")
     def asset_export_as_csv_technical(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv"""
         return export_vulns_action(queryset=queryset, export_assets=True)
 
-    @admin.action(permissions=["view"], description="Export critical Asset Vulns - Technical")
+    @admin.action(permissions=["vuln"], description="Export critical Asset Vulns - Technical")
     def asset_export_critical_as_csv_technical(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv"""
         return export_vulns_action(queryset=queryset, critical_only=True, export_assets=True)
 
-    @admin.action(permissions=["view"], description="Export Asset Vulns - Simple")
+    @admin.action(permissions=["vuln"], description="Export Asset Vulns - Simple")
     def asset_export_as_csv_simple(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, simple=True, export_assets=True)
 
-    @admin.action(permissions=["view"], description="Export critical Asset Vulns - Simple")
+    @admin.action(permissions=["vuln"], description="Export critical Asset Vulns - Simple")
     def asset_export_critical_as_csv_simple(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_assets=True)
