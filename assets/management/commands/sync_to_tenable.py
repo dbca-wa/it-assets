@@ -6,7 +6,10 @@ from django.core.management.base import BaseCommand
 
 from assets.tenable_requests import tenable_export_assets, tenable_export_vulns, tenable_export_web_app_vulns
 from assets.models import Asset, Vulnerability
-from itassets import settings
+
+from django.conf import settings
+# from django.core import mail
+
 
 
 class Command(BaseCommand):
@@ -67,6 +70,20 @@ class Command(BaseCommand):
 
         except Exception as exc:
             logger.warning("Failed to sync Tenable assets", exc_info=exc)
+            raise exc
+            # # In the event of an exception, fail gracefully and alert the admins.
+            # subject = f"TENABLE SYNC: exception during the tenable sync process"
+            # logger.exception(subject)
+            # message = f"Exception:\n{str(exc)}\n"
+            # html_message = f"<p>Exception:</p><p>{str(exc)}\n</p>"
+            # mail.send_mail(
+            #     subject=subject,
+            #     message=message,
+            #     from_email=settings.NOREPLY_EMAIL,
+            #     recipient_list=settings.ADMIN_EMAILS,
+            #     html_message=html_message,
+            #     fail_silently=True,
+            # )
 
     def passes_filter(self, asset: dict) -> bool:
         """
