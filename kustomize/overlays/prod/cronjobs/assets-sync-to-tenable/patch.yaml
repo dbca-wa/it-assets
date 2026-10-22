@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: itassets-cronjob
+spec:
+  # AWST: 7am everyday
+  schedule: '0 23 * * *'
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: itassets-cronjob
+              args: ['manage.py', 'sync_to_tenable']
+              envFrom:
+                - secretRef:
+                    name: itassets-env-prod

@@ -76,6 +76,7 @@ INSTALLED_APPS = (
     "organisation",
     "registers",
     "itsystems",
+    "assets",
     "reversion",
 )
 
@@ -338,3 +339,14 @@ SENTRY_CRON_CHECK_ONPREM = env("SENTRY_CRON_CHECK_ONPREM", None)
 # FreshService settings
 FRESHSERVICE_ENDPOINT = env("FRESHSERVICE_ENDPOINT", None)
 FRESHSERVICE_API_KEY = env("FRESHSERVICE_API_KEY", None)
+
+# Tenable Keys
+TENABLE_ACCESS_KEY = env("TENABLE_ACCESS_KEY",None)
+TENABLE_SECRET_KEY = env("TENABLE_SECRET_KEY",None)
+
+# Tenable export settings
+TENABLE_EXPORT_CHECK_DELAY = env("TENABLE_EXPORT_CHECK_DELAY", 10)
+TENABLE_EXPORT_STATUS_CHECK_LIMIT = env("TENABLE_EXPORT_STATUS_CHECK_LIMIT", 40)
+
+# Vulnerability Settings
+VULN_LAST_SEEN_LIMIT = env("VULN_LAST_SEEN_LIMIT", 30)

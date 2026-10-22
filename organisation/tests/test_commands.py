@@ -44,6 +44,17 @@ class TerminatedUsersTestCase(TestCase):
             ]
         )
         self.user_terminated_after_grace.save()
+        self.user_terminated_then_rehired = create_test_user(
+            [
+                {
+                    "term_date": (datetime.now(tz=settings.TZ).date() + timedelta(weeks=-4)).strftime("%Y-%m-%d"),
+                },
+                {
+                    "term_date": None,
+                },
+            ]
+        )
+        self.user_terminated_then_rehired.save()
 
     @patch("organisation.management.commands.department_users_terminated_users_handling.remove_licenses")
     def test_remove_licenses_flag(self, mock_remove):
