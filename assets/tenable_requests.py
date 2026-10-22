@@ -11,10 +11,15 @@ from assets.utils import get_with_retry, post_with_retry
 
 LOGGER = logging.getLogger("assets")
 
-
 def get_tenable_key_string() -> str:
-    # Manual right now, but could be retrieved dynamically from azure key vault
-    return f"accessKey={os.environ['TENABLE_ACCESS_KEY']};secretKey={os.environ['TENABLE_SECRET_KEY']}"
+    """
+    Returns an auth key string used for tenable api requests
+    """
+    access_key = settings.TENABLE_ACCESS_KEY
+    secret_key = settings.TENABLE_SECRET_KEY
+    if not access_key or not secret_key:
+        raise Exception("TENABLE_ACCESS_KEY and TENABLE_SECRET_KEY must both be set.")
+    return f"accessKey={access_key};secretKey={secret_key}"
 
 
 class TenableExporter:
@@ -22,17 +27,16 @@ class TenableExporter:
     Provides a class for handling tenable export web requests.
     """
 
-    KEY = get_tenable_key_string()
-    DEFAULT_EXPORT_HEADERS = {"accept": "application/json", "content-type": "application/json", "X-ApiKeys": KEY}
-    DEFAULT_CHECK_AND_DOWNLOAD_HEADERS = {"accept": "application/json", "X-ApiKeys": KEY}
-
     def __init__(self, base_url: str, export_payload: dict, export_headers: dict | None = None, check_headers: dict | None = None, download_headers: dict | None = None, alt_export_url: str | None = None) -> None:
         self.base_url = base_url  # Mandatory
         self.export_payload = export_payload  # Mandatory
         self.alt_export_url = alt_export_url  # Optional
-        self.export_headers = export_headers if export_headers else self.DEFAULT_EXPORT_HEADERS
-        self.check_headers = check_headers if check_headers else self.DEFAULT_CHECK_AND_DOWNLOAD_HEADERS
-        self.download_headers = download_headers if download_headers else self.DEFAULT_CHECK_AND_DOWNLOAD_HEADERS
+        self.export_headers = self.headers_with_api_key(export_headers if export_headers else {"accept": "application/json", "content-type": "application/json"})
+        self.check_headers = self.headers_with_api_key(check_headers if check_headers else {"accept": "application/json"})
+        self.download_headers = self.headers_with_api_key(download_headers if download_headers else {"accept": "application/json"})
+
+    def headers_with_api_key(self, headers) -> dict:
+        return {**headers, "X-ApiKeys": get_tenable_key_string()}
 
     def initiate_export(self, retries: int = 0) -> dict | None:
         """

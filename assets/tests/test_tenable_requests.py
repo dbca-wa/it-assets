@@ -2,13 +2,19 @@ from requests.exceptions import HTTPError
 import logging
 
 from django.test import TestCase, override_settings
-from assets.tenable_requests import tenable_export_assets
+from assets.tenable_requests import tenable_export_assets, TenableExporter
 from unittest.mock import patch
 
 
+@override_settings(TENABLE_ACCESS_KEY="test-access-key", TENABLE_SECRET_KEY="test-secret-key")
 class TenableRequestsTestCase(TestCase):
     def setUp(self):
         logging.disable(logging.CRITICAL)
+
+    def test_api_key_header(self):
+        exporter = TenableExporter(base_url="https://cloud.tenable.com/assets/export", export_payload={})
+        self.assertEqual(exporter.export_headers["X-ApiKeys"], "accessKey=test-access-key;secretKey=test-secret-key")
+        self.assertEqual(exporter.check_headers["X-ApiKeys"], "accessKey=test-access-key;secretKey=test-secret-key")
 
     @override_settings(TENABLE_EXPORT_STATUS_CHECK_LIMIT=3)
     @patch("assets.tenable_requests.time.sleep")
