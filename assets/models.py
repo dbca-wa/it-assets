@@ -178,7 +178,6 @@ class Asset(models.Model):
         """Returns a string representation of each tag"""
         return ", ".join([f"{t.category.name}: {t.name}" for t in self.tags.all()]) if self.tags.all().exists() else ""
 
-
     def save(self, *args, **kwargs):
         """
         Overrides the default save method.
@@ -233,9 +232,9 @@ class Asset(models.Model):
                 self.aliases = list(set(aliases))  # set aliases without duplicates
             # Set OS & OS Version, and OS list
             self.os, self.os_version = (
-                self.__split_tenable_os_and_version(t["operating_systems"][0]) if len(t.get("operating_systems",[]))>0 else (None, None)
+                self.__split_tenable_os_and_version(t["operating_systems"][0]) if len(t.get("operating_systems", [])) > 0 else (None, None)
             )
-            self.os_list = [os for os in t.get("operating_systems",[]) if os] # filters out empty values
+            self.os_list = [os for os in t.get("operating_systems", []) if os]  # filters out empty values
 
             # Replace tags
             self.tags.clear()
@@ -270,7 +269,7 @@ class Asset(models.Model):
             if refresh_stats:
                 self.__refresh_vuln_stats()
 
-    def remove_vuln(self, finding_id: str, refresh_stats: bool=False) -> None:
+    def remove_vuln(self, finding_id: str, refresh_stats: bool = False) -> None:
         """
         Deletes an associated vulnerability.
         You can optionally set refresh_stats to True in order to have total_vulns, total_active_vulns, and total_critical_vulns updated to match any changes.
@@ -392,9 +391,7 @@ class Asset(models.Model):
         total_vulns = self.vulns.all()
         self.total_vulns = len(total_vulns)
         active_vulns = (
-            total_vulns.exclude(state=State.FIXED)
-            .exclude(severity_modification_type=SeverityMT.ACCEPTED)
-            .exclude(severity=Severity.INFO)
+            total_vulns.exclude(state=State.FIXED).exclude(severity_modification_type=SeverityMT.ACCEPTED).exclude(severity=Severity.INFO)
         )
         self.total_active_vulns = len(active_vulns)
         self.total_critical_vulns = len(active_vulns.filter(severity=Severity.CRITICAL))
@@ -563,10 +560,10 @@ class Vulnerability(models.Model):
         """
         if self.plugin.get("vpr") and self.plugin["vpr"].get("drivers"):
             age_dict = self.plugin["vpr"]["drivers"].get("age_of_vuln")
-            if age_dict.get("lower_bound",0) >= 730:
+            if age_dict.get("lower_bound", 0) >= 730:
                 age_str = "More than 730 days"
             else:
-                age_str = f"{age_dict.get('lower_bound',"?")}-{age_dict.get('upper_bound',"?")} days"
+                age_str = f"{age_dict.get('lower_bound', '?')}-{age_dict.get('upper_bound', '?')} days"
             return age_str
 
     @property
@@ -628,7 +625,6 @@ Solution:
 <b>Solution:</b><br> 
 {self.solution}<br>
 """
-
 
     def __str__(self):
         return self.plugin_name or "-"

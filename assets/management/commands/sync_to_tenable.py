@@ -11,7 +11,6 @@ from django.conf import settings
 # from django.core import mail
 
 
-
 class Command(BaseCommand):
     help = "Synchronises department assets and vulns with Tenable"
 
@@ -25,14 +24,13 @@ class Command(BaseCommand):
             # Prune aged-out vulns
             age_limit = settings.VULN_LAST_SEEN_LIMIT
             logger.info(f"Pruning vulns older than {age_limit} days")
-            aged_out_vulns = Vulnerability.objects.filter(last_found__lte=now()-timedelta(days=age_limit))
+            aged_out_vulns = Vulnerability.objects.filter(last_found__lte=now() - timedelta(days=age_limit))
             deleted = len(aged_out_vulns)
             if aged_out_vulns.exists():
                 aged_out_vulns.delete()
                 logger.info(f"Pruned {deleted} vulns")
             else:
-                logger.info(f"No vulns pruned")
-
+                logger.info("No vulns pruned")
 
             # Retrieve assets and all vulnerabilities
             assets = tenable_export_assets()
@@ -45,14 +43,14 @@ class Command(BaseCommand):
             assets_skipped = 0
             total = len(assets)
 
-            #Process assets
+            # Process assets
             logger.info(f"Processing {total} found assets")
             for asset in assets:
                 count += 1
                 # If it's a valid asset, add or update it the asset and any associated vulns
                 if self.passes_filter(asset):
                     found_asset, created = Asset.objects.get_or_create(tenable_id=asset["id"])
-                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id,[]))
+                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id, []))
                     if created:
                         logger.info(
                             f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
