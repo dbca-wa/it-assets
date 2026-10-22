@@ -170,6 +170,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 return queryset.exclude(severity_modification_type=SeverityMT.ACCEPTED)
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
+
     class LastFoundFilter(admin.SimpleListFilter):
         """
         A custom filter that allows users to filters by last_found within set week-by-week ranges
@@ -185,8 +186,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 ("2", "1-2 Weeks Ago"),
                 ("3", "2-3 Weeks Ago"),
                 ("4", "3-4 Weeks Ago"),
-                ("5", "4+ Weeks Ago"), 
-                ]
+                ("5", "4+ Weeks Ago"),
+            ]
 
             return filter_list
 
@@ -195,13 +196,13 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 case "1":
                     return queryset.filter(last_found__date__range=(now() - timedelta(weeks=1), now()))
                 case "2":
-                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=2), now()- timedelta(weeks=1)))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=2), now() - timedelta(weeks=1)))
                 case "3":
-                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=3), now()- timedelta(weeks=2)))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=3), now() - timedelta(weeks=2)))
                 case "4":
-                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=4), now()- timedelta(weeks=3)))
+                    return queryset.filter(last_found__date__range=(now() - timedelta(weeks=4), now() - timedelta(weeks=3)))
                 case "5":
-                    return queryset.filter(last_found__lte=now()-timedelta(weeks=4))
+                    return queryset.filter(last_found__lte=now() - timedelta(weeks=4))
                 case _:
                     return queryset
 
@@ -242,7 +243,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     @admin.display(description="Age in days", ordering="first_found")
     def age(self, obj):
-         return obj.age_in_days
+        return obj.age_in_days
 
     @admin.display(description="Summary")
     def summarise(self, obj):
@@ -336,9 +337,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         (
             None,
             {
-                "fields": (
-                    "summarise",
-                ),
+                "fields": ("summarise",),
             },
         ),
         (
@@ -476,8 +475,8 @@ class AssetAdmin(admin.ModelAdmin):
                 ("2", "1-2 Weeks Ago"),
                 ("3", "2-3 Weeks Ago"),
                 ("4", "3-4 Weeks Ago"),
-                ("5", "4+ Weeks Ago"), 
-                ]
+                ("5", "4+ Weeks Ago"),
+            ]
 
             return filter_list
 
@@ -486,13 +485,13 @@ class AssetAdmin(admin.ModelAdmin):
                 case "1":
                     return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=1), now()))
                 case "2":
-                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=2), now()- timedelta(weeks=1)))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=2), now() - timedelta(weeks=1)))
                 case "3":
-                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=3), now()- timedelta(weeks=2)))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=3), now() - timedelta(weeks=2)))
                 case "4":
-                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=4), now()- timedelta(weeks=3)))
+                    return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=4), now() - timedelta(weeks=3)))
                 case "5":
-                    return queryset.filter(last_seen__lte=now()-timedelta(weeks=4))
+                    return queryset.filter(last_seen__lte=now() - timedelta(weeks=4))
                 case _:
                     return queryset
 
@@ -515,7 +514,7 @@ class AssetAdmin(admin.ModelAdmin):
         return super().get_list_filter(request)
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (ITSystemRegisterFilter,LastSeenFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (ITSystemRegisterFilter, LastSeenFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
     # =================================
     #       Export actions & Config
@@ -597,11 +596,7 @@ class AssetAdmin(admin.ModelAdmin):
     #       Admin list & change view config
     # ==========================================
 
-    ordering = (
-        "-total_active_vulns",
-        "-total_critical_vulns",
-        "name"
-        )
+    ordering = ("-total_active_vulns", "-total_critical_vulns", "name")
 
     list_display = (
         "name",
@@ -680,10 +675,8 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Raw Data",
             {
-                "classes":["collapse"],
-                "fields": (
-                    "tenable_data_pprint",
-                ),
+                "classes": ["collapse"],
+                "fields": ("tenable_data_pprint",),
             },
         ),
     )
@@ -720,9 +713,7 @@ def export_vulns_action(queryset, critical_only: bool = False, simple: bool = Fa
     exp_string = "asset_" if export_assets else ""
 
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = (
-        f"attachment; filename={exp_string}vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
-    )
+    response["Content-Disposition"] = f"attachment; filename={exp_string}vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
 
     if export_assets:
         return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple)

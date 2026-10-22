@@ -1,7 +1,6 @@
 import logging
 import requests
 import json
-import os
 import time
 from datetime import timedelta
 
@@ -10,6 +9,7 @@ from django.conf import settings
 from assets.utils import get_with_retry, post_with_retry
 
 LOGGER = logging.getLogger("assets")
+
 
 def get_tenable_key_string() -> str:
     """
@@ -27,11 +27,21 @@ class TenableExporter:
     Provides a class for handling tenable export web requests.
     """
 
-    def __init__(self, base_url: str, export_payload: dict, export_headers: dict | None = None, check_headers: dict | None = None, download_headers: dict | None = None, alt_export_url: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        export_payload: dict,
+        export_headers: dict | None = None,
+        check_headers: dict | None = None,
+        download_headers: dict | None = None,
+        alt_export_url: str | None = None,
+    ) -> None:
         self.base_url = base_url  # Mandatory
         self.export_payload = export_payload  # Mandatory
         self.alt_export_url = alt_export_url  # Optional
-        self.export_headers = self.headers_with_api_key(export_headers if export_headers else {"accept": "application/json", "content-type": "application/json"})
+        self.export_headers = self.headers_with_api_key(
+            export_headers if export_headers else {"accept": "application/json", "content-type": "application/json"}
+        )
         self.check_headers = self.headers_with_api_key(check_headers if check_headers else {"accept": "application/json"})
         self.download_headers = self.headers_with_api_key(download_headers if download_headers else {"accept": "application/json"})
 
@@ -83,7 +93,7 @@ def tenable_export_assets() -> list:
                 "include_resource_tags": True,
                 "include_open_ports": False,
                 "chunk_size": 1000,
-                "filters": {"types": ["host", "webapp"]}, # includes web apps
+                "filters": {"types": ["host", "webapp"]},  # includes web apps
             },
         )
     )
@@ -109,6 +119,7 @@ def tenable_export_vulns() -> list:
             download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},
         )
     )
+
 
 def tenable_export_web_app_vulns() -> list:
     """

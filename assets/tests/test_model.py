@@ -304,7 +304,6 @@ class AssetModelTestCase(TestCase):
         self.assertIsNone(self.asset1.os_version)
         self.assertTrue(self.asset1.has_tag(tag="Others", category="OS"))
 
-
         # empty data test
         empty_data = {
             "id": "other_id",
@@ -322,9 +321,9 @@ class AssetModelTestCase(TestCase):
         # Empty data, but in terms of empty arrays
         empty_array_data = {
             "id": "other_id",
-            "operating_systems": ["",None],
+            "operating_systems": ["", None],
             "sources": [{"first_seen": "2026-04-29T04:41:22.032Z", "last_seen": "2026-09-30T03:10:24.967Z", "name": "NESSUS_SCAN"}],
-            "tags":[],
+            "tags": [],
             "types": [],
         }
         self.asset1.update_from_raw_data(tenable_data=empty_array_data)
@@ -335,8 +334,6 @@ class AssetModelTestCase(TestCase):
         self.assertIsNone(self.asset1.os)
         self.assertEqual(self.asset1.operating_systems, "")
         self.assertIsNone(self.asset1.name)
-
-
 
 
 class VulnerabilityModelTestCase(TestCase):
@@ -515,11 +512,10 @@ class VulnerabilityModelTestCase(TestCase):
         self.assertTrue(asset1.has_vuln(finding_id="random_finding_id"))
 
         # remove vuln check & refresh stats check
-        asset1.remove_vuln(finding_id="random_finding_id",refresh_stats=True)
+        asset1.remove_vuln(finding_id="random_finding_id", refresh_stats=True)
         self.assertEqual(asset1.total_critical_vulns, 0)
         self.assertEqual(asset1.total_active_vulns, 0)
         self.assertEqual(asset1.total_vulns, 3)
-
 
     def test_vuln_properties(self):
         """
@@ -530,8 +526,8 @@ class VulnerabilityModelTestCase(TestCase):
         # Generate 2 random vulns attached to a generated asset.
         # - vuln 1 is fully populated, vuln 2 is filled with None values
         gen = RandomVulnGenerator()
-        vuln1, = gen.generate(generations=1,asset = RandomAssetGenerator().generate()[0])
-        vuln2, = gen.generate(generations=1,asset=vuln1.asset, empty=True)
+        (vuln1,) = gen.generate(generations=1, asset=RandomAssetGenerator().generate()[0])
+        (vuln2,) = gen.generate(generations=1, asset=vuln1.asset, empty=True)
 
         # Test asset related properties
         self.assertEqual(vuln1.asset_name, vuln1.asset.name)
@@ -542,33 +538,33 @@ class VulnerabilityModelTestCase(TestCase):
         # cve
         self.assertEqual(vuln1.cve, ", ".join(vuln1.plugin["cve"]))
         # patch publication date
-        self.assertEqual(vuln1.patch_publication_date,datetime.fromisoformat(vuln1.plugin["patch_publication_date"]).date())
+        self.assertEqual(vuln1.patch_publication_date, datetime.fromisoformat(vuln1.plugin["patch_publication_date"]).date())
         # vuln age
         va_obj = vuln1.plugin["vpr"]["drivers"]["age_of_vuln"]
-        if va_obj["lower_bound"]>= 730:
+        if va_obj["lower_bound"] >= 730:
             age_str = "More than 730 days"
         else:
-            age_str = f"{va_obj["lower_bound"]}-{va_obj["upper_bound"]} days"
-        self.assertEqual(vuln1.vuln_age,age_str)
+            age_str = f"{va_obj['lower_bound']}-{va_obj['upper_bound']} days"
+        self.assertEqual(vuln1.vuln_age, age_str)
         # vuln age in days
-        self.assertEqual(vuln1.age_in_days,(now() - vuln1.first_found).days)
+        self.assertEqual(vuln1.age_in_days, (now() - vuln1.first_found).days)
 
         # Summary verification
         def assert_in_summary(field, vuln):
             """Checks that field is in both summary properties"""
-            self.assertIn(str(field),vuln.html_summary)
-            self.assertIn(str(field),vuln.summary)
+            self.assertIn(str(field), vuln.html_summary)
+            self.assertIn(str(field), vuln.summary)
 
-        assert_in_summary(field=vuln1.asset_name,vuln=vuln1)
-        assert_in_summary(field=vuln1.get_severity_display(),vuln=vuln1)
-        assert_in_summary(field=vuln1.get_state_display(),vuln=vuln1)
-        assert_in_summary(field=vuln1.get_severity_modification_type_display(),vuln=vuln1)
-        assert_in_summary(field=vuln1.first_found.strftime("%d/%m/%Y, %H:%M"),vuln=vuln1)
-        assert_in_summary(field=vuln1.last_found.strftime("%d/%m/%Y, %H:%M"),vuln=vuln1)
-        assert_in_summary(field=vuln1.age_in_days,vuln=vuln1)
-        assert_in_summary(field=vuln1.plugin_name,vuln=vuln1)
-        assert_in_summary(field=vuln1.plugin_output,vuln=vuln1)
-        assert_in_summary(field=vuln1.solution,vuln=vuln1)
+        assert_in_summary(field=vuln1.asset_name, vuln=vuln1)
+        assert_in_summary(field=vuln1.get_severity_display(), vuln=vuln1)
+        assert_in_summary(field=vuln1.get_state_display(), vuln=vuln1)
+        assert_in_summary(field=vuln1.get_severity_modification_type_display(), vuln=vuln1)
+        assert_in_summary(field=vuln1.first_found.strftime("%d/%m/%Y, %H:%M"), vuln=vuln1)
+        assert_in_summary(field=vuln1.last_found.strftime("%d/%m/%Y, %H:%M"), vuln=vuln1)
+        assert_in_summary(field=vuln1.age_in_days, vuln=vuln1)
+        assert_in_summary(field=vuln1.plugin_name, vuln=vuln1)
+        assert_in_summary(field=vuln1.plugin_output, vuln=vuln1)
+        assert_in_summary(field=vuln1.solution, vuln=vuln1)
 
         # Test asset related properties
         self.assertEqual(vuln2.asset_name, vuln2.asset.name)
@@ -592,7 +588,7 @@ class RandomVulnGenerator:
         """
         if empty:
             return tuple([self.__create_empty(asset) for i in range(generations)])
-            
+
         else:
             return tuple([self.__create(asset, self.rand) for i in range(generations)])
 
@@ -600,86 +596,87 @@ class RandomVulnGenerator:
         self.tenable_id_inc += 1
         return mixer.blend(
             Vulnerability,
-            asset = asset,
-            output = mixer.RANDOM,
-            plugin = {
-                "cve":[get_random_string(20),get_random_string(20),get_random_string(20)],
-                "cvss3_base_score":round(rand.uniform(0.0,10.0),1),
-                "exploitability_ease":get_random_string(20),
-                "exploited_by_malware":rand.choice([True,False]),
-                "exploited_by_nessus":rand.choice([True,False]),
-                "has_patch":rand.choice([True,False]),
-                "patch_publication_date":(now() - timedelta(days = rand.randint(0,30), hours = rand.randint(-24,0))).isoformat(),
-                "description":get_random_string(30),
-                "family":get_random_string(10),
-                "id":get_random_string(10),
-                "name":get_random_string(10),
-                "synopsis":get_random_string(30),
-                "solution":get_random_string(30),
-                "vpr":{
-                    "drivers":{
-                        "age_of_vuln":{
-                            "lower_bound":rand.randint(0,731),
-                            "upper_bound":rand.randint(0,731),
+            asset=asset,
+            output=mixer.RANDOM,
+            plugin={
+                "cve": [get_random_string(20), get_random_string(20), get_random_string(20)],
+                "cvss3_base_score": round(rand.uniform(0.0, 10.0), 1),
+                "exploitability_ease": get_random_string(20),
+                "exploited_by_malware": rand.choice([True, False]),
+                "exploited_by_nessus": rand.choice([True, False]),
+                "has_patch": rand.choice([True, False]),
+                "patch_publication_date": (now() - timedelta(days=rand.randint(0, 30), hours=rand.randint(-24, 0))).isoformat(),
+                "description": get_random_string(30),
+                "family": get_random_string(10),
+                "id": get_random_string(10),
+                "name": get_random_string(10),
+                "synopsis": get_random_string(30),
+                "solution": get_random_string(30),
+                "vpr": {
+                    "drivers": {
+                        "age_of_vuln": {
+                            "lower_bound": rand.randint(0, 731),
+                            "upper_bound": rand.randint(0, 731),
                         },
                     },
                 },
-                "workaround":get_random_string(30),
+                "workaround": get_random_string(30),
             },
-            port = {
-                "port":rand.randint(0,150),
-                "protocol":rand.choice(["TCP","UDP"]),
+            port={
+                "port": rand.randint(0, 150),
+                "protocol": rand.choice(["TCP", "UDP"]),
             },
-            scan = {
+            scan={
                 "schedule_uuid": get_random_string(30),
-                "started_at": (now() - timedelta(days = rand.randint(0,30), hours = rand.randint(-24,0))).isoformat(),
-                "target": f"{rand.randint(0,255)}.{rand.randint(0,255)}.{rand.randint(0,255)}.{rand.randint(0,255)}",
+                "started_at": (now() - timedelta(days=rand.randint(0, 30), hours=rand.randint(-24, 0))).isoformat(),
+                "target": f"{rand.randint(0, 255)}.{rand.randint(0, 255)}.{rand.randint(0, 255)}.{rand.randint(0, 255)}",
                 "uuid": get_random_string(30),
             },
-            recast_reason = mixer.RANDOM,
-            recast_rule_uuid = mixer.RANDOM,
-            severity = rand.randint(0,4),
-            severity_default = rand.randint(0,4),
-            severity_modification_type = mixer.RANDOM,
-            first_found = mixer.RANDOM,
-            last_found = mixer.RANDOM,
-            last_fixed = mixer.RANDOM,
-            indexed = mixer.RANDOM,
-            state = mixer.RANDOM,
-            source = mixer.RANDOM,
-            finding_id = f"FINDING_ID_{self.tenable_id_inc}",
-            resurfaced_date = mixer.RANDOM,
-            time_taken_to_fix = mixer.RANDOM,
-            software_vulns = [],
-            raw_vuln_data = {},
+            recast_reason=mixer.RANDOM,
+            recast_rule_uuid=mixer.RANDOM,
+            severity=rand.randint(0, 4),
+            severity_default=rand.randint(0, 4),
+            severity_modification_type=mixer.RANDOM,
+            first_found=mixer.RANDOM,
+            last_found=mixer.RANDOM,
+            last_fixed=mixer.RANDOM,
+            indexed=mixer.RANDOM,
+            state=mixer.RANDOM,
+            source=mixer.RANDOM,
+            finding_id=f"FINDING_ID_{self.tenable_id_inc}",
+            resurfaced_date=mixer.RANDOM,
+            time_taken_to_fix=mixer.RANDOM,
+            software_vulns=[],
+            raw_vuln_data={},
         )
 
     def __create_empty(self, asset: Asset):
         self.tenable_id_inc += 1
         return mixer.blend(
             Vulnerability,
-            asset = asset,
-            finding_id = self.tenable_id_inc,
-            output = None,
-            plugin = {},
-            port = {},
-            scan = {},
-            recast_reason = None,
-            recast_rule_uuid = None,
-            severity = None,
-            severity_default = None,
-            severity_modification_type = None,
-            first_found = None,
-            last_found = None,
-            last_fixed = None,
-            indexed = None,
-            state = None,
-            source = None,
-            resurfaced_date = None,
-            time_taken_to_fix = None,
-            software_vulns = [],
-            raw_vuln_data = {},
+            asset=asset,
+            finding_id=self.tenable_id_inc,
+            output=None,
+            plugin={},
+            port={},
+            scan={},
+            recast_reason=None,
+            recast_rule_uuid=None,
+            severity=None,
+            severity_default=None,
+            severity_modification_type=None,
+            first_found=None,
+            last_found=None,
+            last_fixed=None,
+            indexed=None,
+            state=None,
+            source=None,
+            resurfaced_date=None,
+            time_taken_to_fix=None,
+            software_vulns=[],
+            raw_vuln_data={},
         )
+
 
 class RandomAssetGenerator:
     tenable_id_inc = 0
