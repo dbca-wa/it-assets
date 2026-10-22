@@ -235,14 +235,17 @@ def __validate_csv(csv_file):
             csv_headers = raw_text.splitlines()[0].split(",")
             model_fields = __get_model_fields()
             all_headers_present = True
+            missing_headers = []
             for field in model_fields:
                 all_headers_present = field.name in csv_headers and all_headers_present
+                if field.name not in csv_headers:
+                    missing_headers.append(field.name)
             # Checks that all required headers are present
             if all_headers_present:
                 valid = True
                 msg = "CSV is Valid"
             else:
-                msg = "CSV Headers do not match the required format"
+                msg = f"CSV Headers do not match the required format. Missing header(s): {", ".join(missing_headers)}"
         else:
             msg = "File size is too large (>2MB)."
     else:
@@ -254,7 +257,7 @@ def __get_model_fields():
     """
     Retrieves data-entry relevant fields of the ITSystemRecord class.
     """
-    excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state"]
+    excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state", "related_assets"]
     return [x for x in ITSystemRecord._meta.get_fields() if x.name not in excluded_fields]
 
 

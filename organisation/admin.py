@@ -7,9 +7,12 @@ from django.core.exceptions import PermissionDenied
 from django.urls import path
 from django.utils.html import mark_safe
 
+from itassets.admin_filters import DropdownFilterChoices, DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from itassets.utils import ModelDescMixin
 from itsystems.admin import ITSystemRecordAdmin
 from itsystems.models import ITSystemRecord
+from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
+from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin, VulnerabilityAdmin
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport
@@ -41,6 +44,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
     class AssignedLicenceFilter(SimpleListFilter):
         title = "assigned licences"
         parameter_name = "assigned_licences"
+        template = DROPDOWN_TEMPLATE
 
         def lookups(self, request, model_admin):
             return (
@@ -70,7 +74,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "m365_licence",
         "account_type",
     )
-    list_filter = (AssignedLicenceFilter, "active", "account_type")
+    list_filter = (AssignedLicenceFilter, ("active", DropdownFilterBoolean), ("account_type", DropdownFilterChoices))
     model_description = DepartmentUser.__doc__
     search_fields = ("name", "email", "title", "employee_id", "ad_guid", "azure_guid")
     raw_id_fields = ("manager",)
@@ -449,3 +453,7 @@ service_desk_admin_site.register(CostCentre, CostCentreAdmin)
 service_desk_admin_site.register(DepartmentUser, DepartmentUserAdmin)
 service_desk_admin_site.register(Location, LocationAdmin)
 service_desk_admin_site.register(ITSystemRecord, ITSystemRecordAdmin)
+service_desk_admin_site.register(Asset, AssetAdmin)
+service_desk_admin_site.register(AssetTag, AssetTagAdmin)
+service_desk_admin_site.register(AssetTagCategory, AssetTagCategoryAdmin)
+service_desk_admin_site.register(Vulnerability, VulnerabilityAdmin)

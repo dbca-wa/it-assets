@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 from reversion.admin import VersionAdmin
 
+from itassets.admin_filters import DropdownFilterRelated, DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from .models import ITSystemRecord, Division, Seasonality, Status, Sensitivity, SystemType, Availability
 from .views import ExportRegisterAsCSV, ImportRegisterChangesFromCSV
 
@@ -49,6 +50,7 @@ class ITSystemRecordAdmin(VersionAdmin):
 
         title = _("Status")
         parameter_name = "status"
+        template = DROPDOWN_TEMPLATE
 
         def lookups(self, request, model_admin):
             status_list = Status.objects.all()
@@ -192,7 +194,15 @@ class ITSystemRecordAdmin(VersionAdmin):
 
     autocomplete_fields = ("system_owner", "technology_custodian", "information_custodian", "business_service_owner")
 
-    list_filter = (CustomStatusFilters, "division", "seasonality", "availability", "vital_records", "sensitivity", "system_type")
+    list_filter = (
+        CustomStatusFilters, 
+        ("division", DropdownFilterRelated),
+        ("seasonality", DropdownFilterRelated),
+        ("availability", DropdownFilterRelated),
+        ("vital_records", DropdownFilterBoolean),
+        ("sensitivity", DropdownFilterRelated),
+        ("system_type", DropdownFilterRelated),
+    )
 
     # Updates meta-data upon save.
     # Populates Created_* fields only during creation
