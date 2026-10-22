@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import re
 
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils.timezone import localtime as now
 from datetime import datetime, date
-
 
 from organisation.models import DepartmentUser
 from itsystems.models import ITSystemRecord
