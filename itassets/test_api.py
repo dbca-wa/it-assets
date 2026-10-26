@@ -5,7 +5,6 @@ from django.test import Client, TestCase
 from mixer.backend.django import mixer
 
 from organisation.models import CostCentre, DepartmentUser, Location
-from registers.models import ITSystem
 
 
 def random_dbca_email():
@@ -62,9 +61,3 @@ class ApiTestCase(TestCase):
         mixer.blend(DepartmentUser, active=True, email=self.testuser.email, cost_centre=None, ad_guid=uuid1)
         # Log in testuser by default.
         self.client.login(username="testuser", password="pass")
-
-        # Generate some IT Systems.
-        self.it_prod = mixer.blend(ITSystem, status=0, owner=self.user_permanent)  # Production
-        self.it_dev = mixer.blend(ITSystem, status=1, owner=self.user_contract)  # Development
-        self.it_leg = mixer.blend(ITSystem, status=2, owner=self.user_permanent)  # Production legacy
-        self.it_dec = mixer.blend(ITSystem, status=3, owner=self.user_permanent)  # Decommissioned
