@@ -440,7 +440,7 @@ class VulnerabilityAPITestCase(ApiTestCase):
         self.assertEqual(6, len(json.loads(resp.content)))
 
         # non-existent it-system test
-        url = reverse("vulnerability_api_resource", query={"asset": self.itsystem_1.system_id + "FAKE_SYS"})
+        url = reverse("vulnerability_api_resource", query={"it_system": self.itsystem_1.system_id + "FAKE_SYS"})
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(0, len(json.loads(resp.content)))

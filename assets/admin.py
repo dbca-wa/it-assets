@@ -154,9 +154,9 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
         def lookups(self, request, model_admin):
             filter_list = [
-                ("L", ">= Low"),
-                ("M", ">= Medium"),
-                ("H", ">= High"),
+                (f"GT_{Severity.INFO}", ">= Low"),
+                (f"GT_{Severity.LOW}", ">= Medium"),
+                (f"GT_{Severity.MEDIUM}", ">= High"),
             ]
             for key, val in Vulnerability.SEVERITY_CHOICES.items():
                 filter_list.append((key, _(val)))
@@ -164,16 +164,11 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             return filter_list
 
         def queryset(self, request, queryset):
-            match self.value():
-                case "L":
-                    return queryset.filter(severity__gte=Severity.LOW)
-                case "M":
-                    return queryset.filter(severity__gte=Severity.MEDIUM)
-                case "H":
-                    return queryset.filter(severity__gt=Severity.HIGH)
-                case _:
-                    if self.value() is not None:
-                        return queryset.filter(severity=self.value())
+            if self.value() is not None:
+                if self.value().startswith("GT_"):
+                    return queryset.filter(severity__gt=self.value()[3:])
+                else:
+                    return queryset.filter(severity=self.value())
 
     class SeverityModTypeFilter(admin.SimpleListFilter):
         """
@@ -203,7 +198,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         """
 
         title="Asset Type"
-        parameter_name = "asset"
+        parameter_name = "asset_type"
         template = DROPDOWN_TEMPLATE
 
         def lookups(self, request, model_admin):

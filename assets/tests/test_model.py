@@ -619,7 +619,7 @@ class RandomVulnGenerator:
                 "description": get_random_string(30),
                 "family": get_random_string(10),
                 "id": get_random_string(10),
-                "name": get_random_string(10),
+                "name": f"{get_random_string(10)}_{self.tenable_id_inc}", # ensures that plugin name is unique (helps with admin testing)
                 "synopsis": get_random_string(30),
                 "solution": get_random_string(30),
                 "vpr": {
