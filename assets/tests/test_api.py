@@ -62,7 +62,7 @@ class AssetsAPITestCase(ApiTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(json.loads(resp.content), [])
 
-    def test_show_tenable_data(self):
+    def test_tenable_data_only(self):
         """
         Tests that tenable data is hidden and show appropriately depending on the flag.
         """
