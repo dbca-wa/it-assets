@@ -12,7 +12,7 @@ from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
 from assets.enum_library import State, Severity, SeverityMT
 from assets.exports import export_asset_vulns, export_vulns
 from itsystems.models import ITSystemRecord
-from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly, DROPDOWN_TEMPLATE
+from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelatedOnly, DROPDOWN_TEMPLATE
 
 
 class AssetTagInline(admin.TabularInline):
@@ -118,7 +118,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             if self.value() == "none":
                 return queryset.filter(asset__systems__isnull=True)
             elif self.value() is not None:
-                return queryset.filter(asset__systems__pk__iexact=self.value())
+                return queryset.filter(asset__systems__pk__iexact=self.value()).distinct()
     class StateFilter(admin.SimpleListFilter):
         """
         Standard State filter but adds in the option to exclude "Fixed".
@@ -197,6 +197,34 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             elif self.value() is not None:
                 return queryset.filter(severity_modification_type=self.value())
 
+    class AssetTypeFilter(admin.SimpleListFilter):
+        """
+        Allows vuln filtering by asset type tag
+        """
+
+        title="Asset Type"
+        parameter_name = "asset"
+        template = DROPDOWN_TEMPLATE
+
+        def lookups(self, request, model_admin):
+            filter_list = [("any", "Not Empty")]
+            d_types = AssetTag.objects.filter(category__name="Devices").order_by("name")
+            for dt in d_types:
+                filter_list.append((dt.pk, _(dt.name)))
+            filter_list.append(("none", "-"))
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            if self.value() is not None:
+                if self.value() == "any":
+                    return queryset.filter(asset__tags__category__name="Devices").distinct()
+                elif self.value() == "none":
+                    return queryset.exclude(asset__tags__category__name="Devices")
+                else:
+                    return queryset.filter(asset__tags__id__exact=self.value()).distinct()
+
+
     class LastFoundFilter(admin.SimpleListFilter):
         """
         A custom filter that allows users to filters by last_found within set week-by-week ranges
@@ -235,7 +263,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # Set filters
     list_filter = (
         ITSystemRegisterFilter,
-        ("asset", DropdownFilterRelated),
+        ("asset", DropdownFilterRelatedOnly),
+        AssetTypeFilter,
         StateFilter,
         SeverityFilter,
         SeverityModTypeFilter,
@@ -308,8 +337,11 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     search_fields = (
         "asset__name",
         "finding_id",
-        "plugin",
+        "plugin__name",
+        "plugin__family",
     )
+
+    search_help_text = "Search by finding ID, plugin name, plugin family, or asset name"
 
     list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type", "last_found", "age")
 
@@ -457,17 +489,50 @@ class AssetAdmin(admin.ModelAdmin):
             return filter_list
 
         def queryset(self, request, queryset):
-            if self.value() == "any":
-                return queryset.filter(systems__isnull=False).distinct()
-            if self.value() == "none":
-                return queryset.filter(systems__isnull=True)
-            elif self.value() is not None:
-                return queryset.filter(systems__pk__iexact=self.value())
+            if self.value() is not None:
+                if self.value() == "any":
+                    return queryset.filter(systems__isnull=False).distinct()
+                elif self.value() == "none":
+                    return queryset.filter(systems__isnull=True)
+                else:
+                    return queryset.filter(systems__pk__iexact=self.value()).distinct()
+    class HasVulnsFilter(admin.SimpleListFilter):
+            """
+            A custom filter that allows users to filters by whether or not the asset has vulns
+            """
+    
+            template = DROPDOWN_TEMPLATE
+            title = "Vulnerabilities"
+            parameter_name = "vulns"
+    
+            def lookups(self, request, model_admin):
+                filter_list = [
+                    ("none", "None"),
+                    ("has_vulns", "Any"),
+                    ("has_active_vulns", "Active"),
+                    ("has_critical_vulns", "Active and Critical"),
+                ]
+    
+                return filter_list
+    
+            def queryset(self, request, queryset):
+                match self.value():
+                    case "none":
+                        return queryset.filter(total_vulns=0)
+                    case "has_vulns":
+                        return queryset.exclude(total_vulns=0)
+                    case "has_active_vulns":
+                        return queryset.filter(total_active_vulns__gt=0)
+                    case "has_critical_vulns":
+                        return queryset.filter(total_critical_vulns__gt=0)
+                    case _:
+                        return queryset
 
     class TagFilterTemplate(admin.SimpleListFilter):
         """
         A custom tag filter template class to allow for filtering on categorized tags.
         Child classes must provide a class string variable for title, parameter_name, and category.
+        Includes the additional Empty and Not Empty options
         """
 
         template = DROPDOWN_TEMPLATE
@@ -476,15 +541,24 @@ class AssetAdmin(admin.ModelAdmin):
             filter_list = []
 
             tag_category, _c = AssetTagCategory.objects.get_or_create(name=self.category)
-            location_tags = AssetTag.objects.filter(category=tag_category).order_by("name")
-            for tag in location_tags:
+            tag_vals = AssetTag.objects.filter(category=tag_category).order_by("name")
+            if len(tag_vals)>1:
+                filter_list.append(("any", "Not Empty"))
+            for tag in tag_vals:
                 filter_list.append((tag.pk, _(tag.name)))
+            filter_list.append(("none", "-"))
 
             return filter_list
 
         def queryset(self, request, queryset):
             if self.value() is not None:
-                return queryset.filter(tags__id__exact=self.value())
+                if self.value() == "any":
+                    return queryset.filter(tags__category__name=self.category).distinct()
+                elif self.value() == "none":
+                    return queryset.exclude(tags__category__name=self.category)
+                else:
+                    return queryset.filter(tags__id__exact=self.value()).distinct()
+
 
     class LastSeenFilter(admin.SimpleListFilter):
         """
@@ -540,7 +614,7 @@ class AssetAdmin(admin.ModelAdmin):
         return super().get_list_filter(request)
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (ITSystemRegisterFilter, LastSeenFilter, ("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
 
     # =================================
     #       Export actions & Config
@@ -638,7 +712,9 @@ class AssetAdmin(admin.ModelAdmin):
         "last_seen",
     )
 
-    search_fields = ("name", "description", "contacts__email", "systems__name", "tags__name", "os", "os_version")
+    search_fields = ("name", "description", "contacts__email", "systems__system_id","systems__name", "tags__name", "os_list")
+    search_help_text = "Search by name, description, OS, contact, IT System, or tag"
+
 
     autocomplete_fields = (
         "contacts",
