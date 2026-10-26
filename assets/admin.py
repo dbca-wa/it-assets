@@ -93,6 +93,32 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # ==========================================
     #       Custom Filter classes & Config
     # ==========================================
+    class ITSystemRegisterFilter(admin.SimpleListFilter):
+        """
+        Related only filter for IT systems, but includse a "Not Empty" option, which filters out empty options.
+        Only shows IT Systems that have vulnerable assets
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "IT System"
+        parameter_name = "asset_systems"
+
+        def lookups(self, request, model_admin):
+            filter_list = [("any", "Not Empty")]
+            for sys in ITSystemRecord.objects.exclude(related_assets=None).filter(related_assets__total_vulns__gt=0).distinct().order_by("system_id"):
+                filter_list.append((sys.pk, _(str(sys))))
+
+            filter_list.append(("none", "-"))
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            if self.value() == "any":
+                return queryset.filter(asset__systems__isnull=False).distinct()
+            if self.value() == "none":
+                return queryset.filter(asset__systems__isnull=True)
+            elif self.value() is not None:
+                return queryset.filter(asset__systems__pk__iexact=self.value())
     class StateFilter(admin.SimpleListFilter):
         """
         Standard State filter but adds in the option to exclude "Fixed".
@@ -208,7 +234,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     # Set filters
     list_filter = (
-        ("asset__systems", DropdownFilterRelatedOnly),
+        ITSystemRegisterFilter,
         ("asset", DropdownFilterRelated),
         StateFilter,
         SeverityFilter,
