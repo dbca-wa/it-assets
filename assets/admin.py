@@ -432,7 +432,7 @@ class AssetAdmin(admin.ModelAdmin):
 
         def queryset(self, request, queryset):
             if self.value() == "any":
-                return queryset.filter(systems__isnull=False)
+                return queryset.filter(systems__isnull=False).distinct()
             if self.value() == "none":
                 return queryset.filter(systems__isnull=True)
             elif self.value() is not None:
