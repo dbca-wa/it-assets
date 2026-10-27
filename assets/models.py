@@ -115,11 +115,6 @@ class Asset(models.Model):
         blank=True,
     )
     last_modified = models.DateTimeField(auto_now=True, verbose_name="Last Modified")
-    defender_data = models.JSONField(
-        default=dict,
-        null=True,
-        blank=True,
-    )
     tenable_data = models.JSONField(
         default=dict,
         null=True,
@@ -232,6 +227,7 @@ class Asset(models.Model):
             if aliases:
                 self.name = aliases[0]
                 self.aliases = list(set(aliases))  # set aliases without duplicates
+
             # Set OS & OS Version, and OS list
             self.os, self.os_version = (
                 self.__split_tenable_os_and_version(t["operating_systems"][0]) if len(t.get("operating_systems", [])) > 0 else (None, None)
@@ -243,6 +239,9 @@ class Asset(models.Model):
             # Add new tags
             for tag in self.tenable_data.get("tags", []):
                 self.add_tag(tag=tag["value"], category=tag["key"])
+            # For web apps, add a web app tag if it's not present
+            if "webapp" in tenable_data.get("types",[]) and not self.has_tag(tag="Web App", category="Devices"):
+                self.add_tag(tag="Web App", category="Devices")
 
         # Updates vulnerability data if any
         for vuln in vuln_data:

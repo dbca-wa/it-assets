@@ -74,7 +74,6 @@ INSTALLED_APPS = (
     "django_extensions",
     "webtemplate_dbca",
     "organisation",
-    "registers",
     "itsystems",
     "assets",
     "reversion",
