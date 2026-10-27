@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import JSONField
 from django.template.defaultfilters import linebreaksbr
 from django.utils.html import format_html
 from django.utils.timezone import localtime as now
@@ -633,3 +634,85 @@ Solution:
 
     def __str__(self):
         return self.plugin_name or "-"
+
+
+class Repository(models.Model):
+    """
+    Represents a managed code repository owned by the organisation,
+    allowing code maintenance and security advisories to be related to IT systems.
+    """
+
+    url = models.URLField(unique=True, verbose_name="URL", help_text="Code repository URL (https/ssh)")
+    it_system = models.ForeignKey(
+        ITSystemRecord,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="IT system",
+        help_text="IT system associated with this code repository",
+    )
+    modified = models.DateTimeField(auto_now=True, editable=False)
+
+    class Meta:
+        verbose_name_plural = "repositories"
+
+    def __str__(self) -> str:
+        return f"{self.it_system}: {self.url}"
+
+    def sync_dependabot_alerts(self, github_client=None) -> list[RepositoryAdvisory]:
+        """Synchronise open GitHub Dependabot alerts for this repository."""
+        from assets.utils import sync_github_repo_dependabot_alerts
+
+        return sync_github_repo_dependabot_alerts(self, github_client=github_client)
+
+    def advisory_severity_counts(self) -> str | None:
+        """Return a human-readable count of related advisories by severity, or None if no advisories exist."""
+        advisories = self.repositoryadvisory_set.all()
+        if not advisories.exists():
+            return None
+
+        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0}
+        for advisory in advisories:
+            severity = (advisory.severity or "unknown").strip().lower()
+            if severity in counts:
+                counts[severity] += 1
+            else:
+                counts["unknown"] += 1
+        parts = [f"{count} {name}" for name, count in counts.items() if count]
+        return ", ".join(parts) if parts else "0 unknown"
+
+
+class RepositoryAdvisory(models.Model):
+    """
+    Represents a security advisory raised against a code repository. Not intended to be user-editable.
+    """
+
+    repository = models.ForeignKey(Repository, on_delete=models.CASCADE, editable=False)
+    guid = models.CharField(max_length=64, unique=True, editable=False)
+    data = JSONField(default=dict, editable=False)
+    severity = models.CharField(max_length=64, null=True, blank=True, editable=False, db_index=True)
+
+    class Meta:
+        verbose_name_plural = "repository advisories"
+
+    def flatten_advisory(self):
+        """Flatten the advisory schema to a simple dict for reporting/export purposes."""
+        return {
+            "it_system": str(self.repository.it_system),
+            "repository": self.repository.url,
+            "alert_number": self.data["number"],
+            "state": self.data["state"],
+            "package": self.data["dependency"]["package"]["name"],
+            "ecosystem": self.data["dependency"]["package"]["ecosystem"],
+            "manifest_path": self.data["dependency"]["manifest_path"],
+            "scope": self.data["dependency"]["scope"],
+            "ghsa_id": self.data["security_advisory"]["ghsa_id"],
+            "cve_id": self.data["security_advisory"]["cve_id"],
+            "severity": self.data["security_advisory"]["severity"],
+            "summary": self.data["security_advisory"]["summary"],
+            "vulnerable_version_range": self.data["security_vulnerability"]["vulnerable_version_range"],
+            "first_patched_version": self.data["security_vulnerability"]["first_patched_version"]["identifier"],
+            "created_at": self.data["created_at"],
+            "fixed_at": self.data["fixed_at"],
+            "html_url": self.data["html_url"],
+        }
