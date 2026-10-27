@@ -124,6 +124,33 @@ class ITSystemRecord(models.Model):
         verbose_name = "IT System"
         verbose_name_plural = "IT Systems"
 
+    @classmethod
+    def get_model_fields(cls):
+        """
+        Retrieves data-entry relevant fields of the class.
+        """
+        return [
+            "system_id",
+            "name",
+            "status",
+            "division",
+            "description",
+            "link",
+            "business_service_owner",
+            "system_owner",
+            "technology_custodian",
+            "information_custodian",
+            "seasonality",
+            "availability",
+            "file_store_link",
+            "vital_records",
+            "disposal_authority",
+            "retention_and_disposal",
+            "ubcs",
+            "sensitivity",
+            "system_type",
+        ]
+
     # Standard IT System fields
     system_id = models.CharField(max_length=255, unique=True, verbose_name="System ID")
     name = models.CharField(max_length=255, verbose_name="Name")
