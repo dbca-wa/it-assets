@@ -701,6 +701,9 @@ class RandomAssetGenerator:
             description=mixer.RANDOM("16", "24.04", "10.1.8", "0.0.1"),
             contacts=mixer.blend(DepartmentUser),
             systems=mixer.blend(ITSystemRecord),
+            total_vulns = 0,
+            total_active_vulns = 0,
+            total_critical_vulns = 0
         )
 
     def generate(self, generations: int = 1) -> tuple[Asset]:
