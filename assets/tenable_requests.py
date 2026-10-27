@@ -114,6 +114,7 @@ def tenable_export_vulns() -> list:
                 "filters": {
                     "last_seen": int((now() - timedelta(days=7)).timestamp()),  # seen within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
+                    "state": ["OPEN", "REOPENED", "FIXED"], # forces tenable to return fixed vulns
                 },
             },
             download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},

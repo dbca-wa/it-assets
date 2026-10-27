@@ -198,6 +198,8 @@ class AssetModelTestCase(TestCase):
         """
         Tests that update_from_raw_data behaves as expected
         """
+
+        # Web app
         webapp_data = {
             "id": "webapp_id",
             "network": {
@@ -215,6 +217,14 @@ class AssetModelTestCase(TestCase):
         self.assertEqual(self.asset1.name, "example.dbca.wa.gov.au")
         self.assertTrue(self.asset1.has_tag(tag="TST", category="Custodian"))
         self.assertTrue(self.asset1.has_tag(tag="Web App", category="Devices"))
+        self.assertEqual(len(self.asset1.tags.all()),2)
+        self.asset1.save()
+        # Validates web app device tag auto-add
+        webapp_data["tags"] = []
+        self.asset1.update_from_raw_data(tenable_data=webapp_data)
+        self.assertEqual(self.asset1.name, "example.dbca.wa.gov.au")
+        self.assertTrue(self.asset1.has_tag(tag="Web App", category="Devices"))
+        self.assertEqual(len(self.asset1.tags.all()),1)
 
         server_data = {
             "id": "server_id",
@@ -608,7 +618,7 @@ class RandomVulnGenerator:
                 "description": get_random_string(30),
                 "family": get_random_string(10),
                 "id": get_random_string(10),
-                "name": get_random_string(10),
+                "name": f"{get_random_string(10)}_{self.tenable_id_inc}", # ensures that plugin name is unique (helps with admin testing)
                 "synopsis": get_random_string(30),
                 "solution": get_random_string(30),
                 "vpr": {

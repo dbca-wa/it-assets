@@ -48,7 +48,7 @@ class AssetAPIResource(View):
                 queryset = queryset.filter(tags__name__iexact=self.request.GET["tag"])
 
             # post-filter ordering for efficiency
-            queryset = queryset.order_by("-total_active_vulns", "-total_critical_vulns", "name")
+            queryset = queryset.distinct().order_by("-total_active_vulns", "-total_critical_vulns", "name")
 
             if "tenable_data_only" in self.request.GET:
                 assets = [asset.tenable_data for asset in queryset]
@@ -142,7 +142,7 @@ class VulnerabilityAPIResource(View):
             if "it_system" in self.request.GET:
                 queryset = queryset.filter(asset__systems__system_id=self.request.GET["it_system"])
 
-            queryset = queryset.order_by(
+            queryset = queryset.distinct().order_by(
                 "-last_found",
                 "-severity",
                 "first_found",
