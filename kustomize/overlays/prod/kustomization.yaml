@@ -16,7 +16,6 @@ resources:
   - cronjobs/deptusers-signins
   - cronjobs/deptusers-sync-ad
   - cronjobs/m365-licence-check
-  - cronjobs/storage-usage
   - cronjobs/update-ccm
   - cronjobs/itsystemsregister-contacts
   - cronjobs/assets-sync-to-tenable

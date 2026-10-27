@@ -3,8 +3,7 @@ kind: CronJob
 metadata:
   name: itassets-cronjob
 spec:
-  # AWST: 8am on friday
-  schedule: '0 0 * * 5'
+  schedule: '0 8 * * 5'
   jobTemplate:
     spec:
       template:
