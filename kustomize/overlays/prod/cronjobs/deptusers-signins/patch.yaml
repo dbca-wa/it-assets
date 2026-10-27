@@ -3,7 +3,6 @@ kind: CronJob
 metadata:
   name: itassets-cronjob
 spec:
-  # Every ten minutes
   schedule: '*/10 * * * *'
   jobTemplate:
     spec:

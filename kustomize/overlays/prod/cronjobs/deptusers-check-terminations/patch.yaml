@@ -3,8 +3,7 @@ kind: CronJob
 metadata:
   name: itassets-cronjob
 spec:
-  # AWST: 6pm every day
-  schedule: '0 10 * * *'
+  schedule: '0 18 * * *'
   jobTemplate:
     spec:
       template:
@@ -15,3 +14,4 @@ spec:
               envFrom:
                 - secretRef:
                     name: itassets-env-prod
+

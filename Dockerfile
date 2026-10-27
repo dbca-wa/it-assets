@@ -55,11 +55,10 @@ COPY --chown=nonroot:nonroot gunicorn.py manage.py pyproject.toml ./
 COPY --chown=nonroot:nonroot itassets ./itassets
 COPY --chown=nonroot:nonroot itsystems ./itsystems
 COPY --chown=nonroot:nonroot organisation ./organisation
-COPY --chown=nonroot:nonroot registers ./registers
 COPY --chown=nonroot:nonroot assets ./assets
 
 # Compile scripts and collect static files
-RUN python -m compileall manage.py itassets organisation itsystems registers assets \
+RUN python -m compileall manage.py itassets organisation itsystems assets \
   && python manage.py collectstatic --noinput
 
 # Run the project as the nonroot user
