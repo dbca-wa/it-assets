@@ -59,7 +59,7 @@ COPY --chown=nonroot:nonroot registers ./registers
 COPY --chown=nonroot:nonroot assets ./assets
 
 # Compile scripts and collect static files
-RUN python -m compileall manage.py itassets organisation itsystems registers \
+RUN python -m compileall manage.py itassets organisation itsystems registers assets \
   && python manage.py collectstatic --noinput
 
 # Run the project as the nonroot user

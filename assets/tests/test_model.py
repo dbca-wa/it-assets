@@ -1,18 +1,16 @@
-from assets.models import Asset, Vulnerability
-from assets.enum_library import State, Severity, SeverityMT
-from organisation.models import DepartmentUser
-from itsystems.models import ITSystemRecord
+from datetime import datetime, timedelta
+from random import Random
 
 from django.test import TestCase
 from django.utils.crypto import get_random_string
+from django.utils.html import escape
 from django.utils.timezone import localtime as now
-from datetime import timedelta
-
-
 from mixer.backend.django import mixer
 
-from datetime import datetime
-from random import Random
+from assets.enum_library import Severity, SeverityMT, State
+from assets.models import Asset, Vulnerability
+from itsystems.models import ITSystemRecord
+from organisation.models import DepartmentUser
 
 
 class AssetModelTestCase(TestCase):
@@ -552,7 +550,8 @@ class VulnerabilityModelTestCase(TestCase):
         # Summary verification
         def assert_in_summary(field, vuln):
             """Checks that field is in both summary properties"""
-            self.assertIn(str(field), vuln.html_summary)
+            # html_summary escapes payload values, summary does not.
+            self.assertIn(escape(str(field)), vuln.html_summary)
             self.assertIn(str(field), vuln.summary)
 
         assert_in_summary(field=vuln1.asset_name, vuln=vuln1)
