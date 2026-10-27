@@ -291,18 +291,14 @@ def sentry_excluded_exceptions(event, hint):
     and they are not errors that we want to capture.
     https://docs.sentry.io/platforms/python/configuration/filtering/#filtering-error-events
     """
-    if "exc_info" in hint and hint["exc_info"]:
+    if hint.get("exc_info"):
         # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
-        if hint["exc_info"][0] is OperationalError:
-            return None
-        # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
-        elif hint["exc_info"][0] is DisallowedHost:
-            return None
-        # Exclude Redis service connection or timeout errors.
-        elif hint["exc_info"][0] in [ConnectionError, TimeoutError]:
-            return None
-        # Exclude exceptions relating to creating a connection with the foreign database wrapper.
-        elif hint["exc_info"][0] in [FdwUnableToCreateExecution, FdwUnableToCreateReply]:
+        if (
+            hint["exc_info"][0] is OperationalError
+            or hint["exc_info"][0] is DisallowedHost
+            or hint["exc_info"][0] in [ConnectionError, TimeoutError]
+            or hint["exc_info"][0] in [FdwUnableToCreateExecution, FdwUnableToCreateReply]
+        ):
             return None
 
     return event
@@ -340,8 +336,8 @@ FRESHSERVICE_ENDPOINT = env("FRESHSERVICE_ENDPOINT", None)
 FRESHSERVICE_API_KEY = env("FRESHSERVICE_API_KEY", None)
 
 # Tenable Keys
-TENABLE_ACCESS_KEY = env("TENABLE_ACCESS_KEY",None)
-TENABLE_SECRET_KEY = env("TENABLE_SECRET_KEY",None)
+TENABLE_ACCESS_KEY = env("TENABLE_ACCESS_KEY", None)
+TENABLE_SECRET_KEY = env("TENABLE_SECRET_KEY", None)
 
 # Tenable export settings
 TENABLE_EXPORT_CHECK_DELAY = env("TENABLE_EXPORT_CHECK_DELAY", 10)

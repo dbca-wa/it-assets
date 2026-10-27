@@ -1,18 +1,18 @@
 import json
 from datetime import timedelta
 
-from django.utils.timezone import localtime as now
 from django.contrib import admin
-from django.utils.html import mark_safe
-from django.urls import reverse
-from django.utils.translation import gettext_lazy as _
 from django.http import HttpResponse
+from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.timezone import localtime as now
+from django.utils.translation import gettext_lazy as _
 
-from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
-from assets.enum_library import State, Severity, SeverityMT
+from assets.enum_library import Severity, SeverityMT, State
 from assets.exports import export_asset_vulns, export_vulns
+from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
+from itassets.admin_filters import DROPDOWN_TEMPLATE, DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly
 from itsystems.models import ITSystemRecord
-from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterRelatedOnly, DROPDOWN_TEMPLATE
 
 
 class AssetTagInline(admin.TabularInline):
@@ -34,7 +34,7 @@ class AssetTagInline(admin.TabularInline):
         num_assets = obj.number_of_tagged_assets()
         # Links to the 'assets' admin page, filtered for assets containing that exact tag value
         url = reverse("service_desk_admin:assets_asset_changelist", query={f"{obj.category.name.lower()}_tag": obj.pk})
-        return mark_safe(f"<a href='{url}'>{num_assets}</a>")
+        return format_html('<a href="{}">{}</a>', url, num_assets)
 
 
 @admin.register(AssetTagCategory)
@@ -73,7 +73,7 @@ class AssetTagCategoryAdmin(admin.ModelAdmin):
         total_assets = sum(set([len(x.tagged_assets.all()) for x in obj.tag_values.all()]))
         # Links to the 'assets' admin page, filtered for any asset that contains tags of that category
         url = reverse("service_desk_admin:assets_asset_changelist", query={"tags__category__id__exact": obj.pk})
-        return mark_safe(f"<a href='{url}'>{total_assets}</a>")
+        return format_html('<a href="{}">{}</a>', url, total_assets)
 
 
 @admin.register(AssetTag)
@@ -297,7 +297,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     @admin.display(description="Summary")
     def summarise(self, obj):
-        return mark_safe(obj.html_summary)
+        return obj.html_summary
 
     def plugin_pprint(self, obj=None):
         if obj and obj.plugin:
@@ -661,7 +661,7 @@ class AssetAdmin(admin.ModelAdmin):
             "service_desk_admin:assets_vulnerability_changelist",
             query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF"},
         )
-        return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
+        return format_html('<a href="{}">{}</a>', url, num_vulns)
 
     @admin.display(description="Active Critical Vulns", ordering="total_critical_vulns")
     def active_critical_vulns(self, obj):
@@ -674,7 +674,7 @@ class AssetAdmin(admin.ModelAdmin):
             "service_desk_admin:assets_vulnerability_changelist",
             query={"asset__id__exact": obj.pk, "severity_modification_type": "NA", "state": "NF", "severity": Severity.CRITICAL},
         )
-        return mark_safe(f"<a href='{url}'>{num_vulns}</a>")
+        return format_html('<a href="{}">{}</a>', url, num_vulns)
 
     def defender_data_pprint(self, obj=None):
         if obj and obj.defender_data:
@@ -786,14 +786,13 @@ class AssetAdmin(admin.ModelAdmin):
 
 def pprint_json(data=None):
     """
-    JSON pretty print, makes json fields more readable
+    JSON pretty print, makes json fields more readable.
+    The serialised value is escaped by format_html, so payload content
+    (hostnames, plugin output, banners, tags) cannot inject markup.
     """
-    result = ""
-    if data:
-        result = json.dumps(data, indent=4, sort_keys=True)
-        result = f"<pre>{result}</pre>"
-        result = mark_safe(result)
-    return result
+    if not data:
+        return ""
+    return format_html("<pre>{}</pre>", json.dumps(data, indent=4, sort_keys=True))
 
 
 def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool = False) -> HttpResponse:

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import re
+from datetime import date, datetime
 
-from django.db import models
 from django.core.validators import RegexValidator
+from django.db import models
+from django.template.defaultfilters import linebreaksbr
+from django.utils.html import format_html
 from django.utils.timezone import localtime as now
-from datetime import datetime, date
 
-from organisation.models import DepartmentUser
+from assets.enum_library import Severity, SeverityMT, State
 from itsystems.models import ITSystemRecord
-from assets.enum_library import State, Severity, SeverityMT
+from organisation.models import DepartmentUser
 
 
 class AssetTagCategory(models.Model):
@@ -184,7 +186,7 @@ class Asset(models.Model):
         if self.os == "":
             self.os = None
 
-        super(Asset, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def update_from_raw_data(self, tenable_data: dict = {}, vuln_data: list = []) -> None:
         """
@@ -287,7 +289,7 @@ class Asset(models.Model):
 
     def get_vulns(
         self, severity: int | None = None, severity_exclude_list: list[int] | None = None
-    ) -> models.query.QuerySet[Vulnerability]:  # noqa
+    ) -> models.query.QuerySet[Vulnerability]:
         """
         Returns a queryset of all vulnerabilities for this asset.
         Severity can be optionally specified to return vulns prefiltered for that specific severity.
@@ -309,7 +311,7 @@ class Asset(models.Model):
 
     def get_active_vulns(
         self, severity: int | None = None, severity_exclude_list: list[int] | None = [Severity.INFO]
-    ) -> models.query.QuerySet[Vulnerability]:  # noqa
+    ) -> models.query.QuerySet[Vulnerability]:
         """
         Returns a queryset of all vulnerabilities for this asset that don't have a 'fixed' state or 'accepted' severity mod type.
         Severity can be optionally specified to return vulns prefiltered for that specific severity.
@@ -583,7 +585,7 @@ Asset: {self.asset_name}
 
 Severity: {self.get_severity_display()}
 State: {self.get_state_display()}
-Severity Modication Type: {self.get_severity_modification_type_display()}
+Severity Modification Type: {self.get_severity_modification_type_display()}
 First Found: {self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else ""}
 Last Found: {self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else ""}
 Age: {self.age_in_days} days
@@ -601,29 +603,32 @@ Solution:
     @property
     def html_summary(self) -> str:
         """
-        Returns a html formatted string summary of the vulnerability
+        Returns an HTML formatted summary of the vulnerability.
+        All values are escaped by format_html; plugin text keeps its line
+        breaks via linebreaksbr.
         """
-        return f"""
-<h3>{self.asset_name}</h3>
-<br>
-<hr>
-<br>
-<b>Severity:</b> {self.get_severity_display()}<br>
-<b>State:</b> {self.get_state_display()}<br>
-<b>Severity Modication Type:</b> {self.get_severity_modification_type_display()}<br>
-<b>First found:</b> {self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else ""}<br>
-<b>Last Found:</b> {self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else ""}<br>
-<b>Age:</b> {self.age_in_days} days<br> 
-<br>
-<hr>
-<br>
-<b>{self.plugin_name}</b><br>
-<br>
-<b>Plugin Output:</b><br>
-{self.plugin_output}<br><br>
-<b>Solution:</b><br> 
-{self.solution}<br>
-"""
+        return format_html(
+            """<h3>{}</h3><br><hr><br>
+<b>Severity:</b> {}<br>
+<b>State:</b> {}<br>
+<b>Severity Modification Type:</b> {}<br>
+<b>First found:</b> {}<br>
+<b>Last Found:</b> {}<br>
+<b>Age:</b> {} days<br><br><hr><br>
+<b>{}</b><br><br>
+<b>Plugin Output:</b><br>{}<br><br>
+<b>Solution:</b><br>{}<br>""",
+            self.asset_name,
+            self.get_severity_display(),
+            self.get_state_display(),
+            self.get_severity_modification_type_display(),
+            self.first_found.strftime("%d/%m/%Y, %H:%M") if self.first_found else "",
+            self.last_found.strftime("%d/%m/%Y, %H:%M") if self.last_found else "",
+            self.age_in_days,
+            self.plugin_name,
+            linebreaksbr(self.plugin_output or ""),
+            linebreaksbr(self.solution or ""),
+        )
 
     def __str__(self):
         return self.plugin_name or "-"
