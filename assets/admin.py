@@ -10,7 +10,7 @@ from django.utils.translation import gettext_lazy as _
 
 from assets.enum_library import Severity, SeverityMT, State
 from assets.exports import export_asset_vulns, export_vulns
-from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
+from assets.models import Asset, AssetTag, AssetTagCategory, Repository, Vulnerability
 from itassets.admin_filters import DROPDOWN_TEMPLATE, DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly
 from itsystems.models import ITSystemRecord
 
@@ -815,3 +815,34 @@ def export_vulns_action(queryset, critical_only: bool = False, simple: bool = Fa
         return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple)
     else:
         return export_vulns(response=response, vulns=queryset, simple=simple)
+
+
+@admin.register(Repository)
+class RepositoryAdmin(admin.ModelAdmin):
+    list_display = ("url", "it_system", "advisory_counts", "system_owner", "technology_custodian", "modified")
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Run sync_dependabot_alerts() on initial creation
+        if not change:
+            obj.sync_dependabot_alerts()
+
+    @admin.action(permissions=["view"], description="Sync Dependabot alerts")
+    def sync_dependabot_alerts(self, request, queryset):
+        """Admin action to sync open Dependabot alerts for the selected repositories."""
+        for repository in queryset:
+            repository.sync_dependabot_alerts()
+
+        count = queryset.count()
+        self.message_user(request, f"Updated GitHub Dependabot alerts for {count} repository(s).")
+
+    actions = [sync_dependabot_alerts]
+
+    def advisory_counts(self, instance):
+        return instance.advisory_severity_counts() or ""
+
+    def system_owner(self, instance):
+        return instance.it_system.system_owner.name if instance.it_system.system_owner else ""
+
+    def technology_custodian(self, instance):
+        return instance.it_system.technology_custodian.name if instance.it_system.technology_custodian else ""

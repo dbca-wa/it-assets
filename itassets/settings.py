@@ -343,5 +343,9 @@ TENABLE_SECRET_KEY = env("TENABLE_SECRET_KEY", None)
 TENABLE_EXPORT_CHECK_DELAY = env("TENABLE_EXPORT_CHECK_DELAY", 10)
 TENABLE_EXPORT_STATUS_CHECK_LIMIT = env("TENABLE_EXPORT_STATUS_CHECK_LIMIT", 40)
 
-# Vulnerability Settings
+# Vulnerability settings
 VULN_LAST_SEEN_LIMIT = env("VULN_LAST_SEEN_LIMIT", 30)
+
+# GitHub organisation settings (required for private repositories)
+GITHUB_ORGANISATION = env("GITHUB_ORGANISATION", None)
+GITHUB_TOKEN = env("GITHUB_TOKEN", None)
