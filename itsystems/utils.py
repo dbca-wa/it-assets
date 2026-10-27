@@ -12,7 +12,7 @@ def export_csv(response):
     writer = csv.writer(response)
 
     # Writes headers into the CSV
-    headers = [field.name for field in __get_model_fields()]
+    headers = [field for field in ITSystemRecord.get_model_fields()]
     writer.writerow(headers)
 
     # Writes all record values into the csv
@@ -233,13 +233,13 @@ def __validate_csv(csv_file):
         if not csv_file.multiple_chunks():
             raw_text = csv_file.read().decode(encoding="utf-8", errors="replace")
             csv_headers = raw_text.splitlines()[0].split(",")
-            model_fields = __get_model_fields()
+            model_fields = ITSystemRecord.get_model_fields()
             all_headers_present = True
             missing_headers = []
             for field in model_fields:
-                all_headers_present = field.name in csv_headers and all_headers_present
-                if field.name not in csv_headers:
-                    missing_headers.append(field.name)
+                all_headers_present = field in csv_headers and all_headers_present
+                if field not in csv_headers:
+                    missing_headers.append(field)
             # Checks that all required headers are present
             if all_headers_present:
                 valid = True
@@ -251,14 +251,6 @@ def __validate_csv(csv_file):
     else:
         msg = "The selected file isn't a CSV"
     return {"valid": valid, "message": msg, "raw_text": raw_text}
-
-
-def __get_model_fields():
-    """
-    Retrieves data-entry relevant fields of the ITSystemRecord class.
-    """
-    excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state", "related_assets"]
-    return [x for x in ITSystemRecord._meta.get_fields() if x.name not in excluded_fields]
 
 
 def get_user_related_systems(user, hide_decommissioned=False, verbose_names=False):
