@@ -192,8 +192,8 @@ class VulnerabilityAPIResource(View):
                         "state": vuln.get_state_display(),
                         "severity": vuln.get_severity_display(),
                         "severity_modification_type": vuln.get_severity_modification_type_display(),
-                        "first_found": vuln.first_found,
-                        "last_found": vuln.last_found,
+                        "first_found": vuln.first_found.isoformat() if vuln.first_found is not None else None,
+                        "last_found": vuln.last_found.isoformat() if vuln.last_found is not None else None,
                         "age_in_days": vuln.age_in_days,
                         "plugin_name": vuln.plugin_name,
                         "plugin_family": vuln.plugin_family,
@@ -204,7 +204,7 @@ class VulnerabilityAPIResource(View):
                         "exploited_by_malware": vuln.exploited_by_malware,
                         "exploited_by_nessus": vuln.exploited_by_nessus,
                         "has_patch": vuln.has_patch,
-                        "patch_publication_date": vuln.patch_publication_date,
+                        "patch_publication_date": vuln.patch_publication_date.isoformat() if vuln.patch_publication_date is not None else None,
                         "Cvss3 base score": vuln.cvss3_base_score,
                     }
                     for vuln in queryset
