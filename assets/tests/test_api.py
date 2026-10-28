@@ -205,6 +205,8 @@ class VulnerabilityAPITestCase(ApiTestCase):
         self.asset_vuln_and_system.save()
         self.asset_vulns_and_systems.systems.set([self.itsystem_1, self.itsystem_2])
         self.asset_vulns_and_systems.save()
+        self.asset_vuln.systems.clear()
+        self.asset_vulns.systems.clear()
 
         # attach vulns to assets of various severities
         vgen = VGen()
