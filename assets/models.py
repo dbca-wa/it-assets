@@ -495,13 +495,12 @@ class Vulnerability(models.Model):
 
     @property
     def cve(self) -> str | None:
-        if self.plugin and self.plugin.get("cve"):
-            return ", ".join(self.plugin["cve"])
+        return ", ".join(self.plugin["cve"]) if self.plugin.get("cve") else None
 
     @property
     def cvss3_base_score(self) -> float | None:
         return self.plugin.get("cvss3_base_score")
-
+    
     @property
     def exploitability_ease(self) -> str | None:
         return self.plugin.get("exploitability_ease")
@@ -511,7 +510,7 @@ class Vulnerability(models.Model):
         return self.plugin.get("exploited_by_malware")
 
     @property
-    def exploited_by_nessus(self) -> str:
+    def exploited_by_nessus(self) -> bool | None:
         return self.plugin.get("exploited_by_nessus")
 
     @property
@@ -528,8 +527,7 @@ class Vulnerability(models.Model):
 
     @property
     def patch_publication_date(self) -> date | None:
-        if self.plugin.get("patch_publication_date"):
-            return self.__convert_iso(self.plugin["patch_publication_date"]).date()
+        return self.__convert_iso(self.plugin["patch_publication_date"]).date() if self.plugin.get("patch_publication_date") else None
 
     @property
     def plugin_description(self) -> str | None:
