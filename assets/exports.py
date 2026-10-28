@@ -8,17 +8,18 @@ import csv
 
 
 def export_asset_vulns(
-    response: HttpResponse, assets: Iterable[Asset], severity_exclude_list: list[int] | None = [Severity.INFO], simple: bool = False
+    response: HttpResponse, assets: Iterable[Asset], severity_exclude_list: list[int] | None = [], simple: bool = False
 ) -> HttpResponse:
     """
     Writes asset vulnerabilities to the http response as a csv.
-    severity_exclude_list can be optionally included to exclude specific vuln severity levels, default to hiding info level.
+    severity_exclude_list can be optionally included to exclude specific vuln severity levels, but always hides info level vulns.
     Set simple as true to return a simplified version for tech custodians.
     """
     writer = csv.writer(response)
 
     # Headers
-    __write_vuln_header(writer=writer, prefix_headers=["IT SYSTEM"], simple=simple)
+    it_system_header = "IT System" if simple else "IT_SYSTEMS"
+    __write_vuln_header(writer=writer, prefix_headers=[it_system_header], simple=simple)
 
     # Body
     for a in assets:
@@ -30,8 +31,7 @@ def export_asset_vulns(
 
 def export_vulns(response: HttpResponse, vulns: Iterable[Vulnerability], simple: bool = False) -> HttpResponse:
     """
-    Writes asset vulnerabilities to the http response as a csv.
-    severity_exclude_list can be optionally included to exclude specific vuln severity levels, default to hiding info level.
+    Writes vulnerabilities to the http response as a csv.
     Set simple as true to return a simplified version for tech custodians.
     """
     writer = csv.writer(response)
@@ -76,7 +76,7 @@ def __write_vuln_header(writer, prefix_headers=[], simple=False) -> None:
             "LAST_FOUND",
             "LAST_FIXED",
             "SOURCE",
-            "RESURFACEED_DATE",
+            "RESURFACED_DATE",
             "TIME_TAKEN_TO_FIX",
             "PLUGIN_ID",
             "PLUGIN_NAME",
@@ -123,11 +123,11 @@ def __write_vuln(writer, vuln, prefix_data=[], simple=False) -> None:
             vuln.get_severity_display(),
             vuln.get_severity_modification_type_display(),
             vuln.output,
-            vuln.first_found,
-            vuln.last_found,
-            vuln.last_fixed,
+            vuln.first_found.isoformat() if vuln.first_found is not None else None,
+            vuln.last_found.isoformat() if vuln.last_found is not None else None,
+            vuln.last_fixed.isoformat() if vuln.last_fixed is not None else None,
             vuln.source,
-            vuln.resurfaced_date,
+            vuln.resurfaced_date.isoformat() if vuln.resurfaced_date is not None else None,
             vuln.time_taken_to_fix,
             vuln.plugin_id,
             vuln.plugin_name,
@@ -137,7 +137,7 @@ def __write_vuln(writer, vuln, prefix_data=[], simple=False) -> None:
             vuln.plugin_description,
             vuln.solution,
             vuln.has_patch,
-            vuln.patch_publication_date,
+            vuln.patch_publication_date.isoformat() if vuln.patch_publication_date is not None else None,
             vuln.exploitability_ease,
             vuln.exploited_by_malware,
             vuln.exploited_by_nessus,

@@ -317,7 +317,7 @@ class Asset(models.Model):
         Returns a queryset of all vulnerabilities for this asset that don't have a 'fixed' state or 'accepted' severity mod type.
         Severity can be optionally specified to return vulns prefiltered for that specific severity.
         Severity exclude list can be specified to exclude different severity levels from the search
-        By default, this call excludes info level vulnerabilities.
+        This call excludes info level vulnerabilities.
         """
         # Filter for active vulns
         vulns = (
