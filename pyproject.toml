@@ -1,6 +1,6 @@
 [project]
 name = "itassets"
-version = "2.5.21"
+version = "2.5.22"
 description = "DBCA IT assets (both physical and knowledge-based) management system"
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -27,7 +27,7 @@ dependencies = [
   "sentry-sdk[django]==2.72.0",
   "redis==8.1.0",
   "django-storages[azure]==1.14.6",
-  "paramiko==4.0.0",                # Fix version (no upgrades) until Ascender SFTP updated
+  "paramiko==5.1.0",
   "pygithub==2.10.0",
   "django-reversion==6.4.0",
 ]
