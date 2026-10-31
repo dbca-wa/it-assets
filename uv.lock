@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13, <4.0"
 
 [[package]]
@@ -888,7 +888,7 @@ requires-dist = [
     { name = "requests", specifier = "==2.34.2" },
     { name = "sentry-sdk", extras = ["django"], specifier = "==2.72.0" },
     { name = "unicodecsv", specifier = "==0.14.1" },
-    { name = "webtemplate-dbca", specifier = "==1.9.0" },
+    { name = "webtemplate-dbca", specifier = "==1.9.1" },
     { name = "whitenoise", extras = ["brotli"], specifier = "==6.12.0" },
     { name = "xlsxwriter", specifier = "==3.2.9" },
 ]
@@ -1658,14 +1658,14 @@ wheels = [
 
 [[package]]
 name = "webtemplate-dbca"
-version = "1.9.0"
+version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/48/2e738d152f4802d632458a20cfebb9af360b01066fe980568a21fa913529/webtemplate_dbca-1.9.0.tar.gz", hash = "sha256:08436682c33a2feb7d2348b5e20843d420a47534ccc9433f815bcf2042cff567", size = 129896, upload-time = "2026-06-10T07:44:06.084Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/b8/435ed169278d3aef3dec37324a395e6aa6ab433d4eda7f27f6f66963de06/webtemplate_dbca-1.9.1.tar.gz", hash = "sha256:360ac304562b5d3d65a0b66be41b8a7d836370d68a7aafff437a11941d5d9700", size = 123619, upload-time = "2026-10-21T04:57:00.017Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/a4/8169ad34729a9991339ce2a804aa4c1fa491b5bb2b04b948c663b6e16ebf/webtemplate_dbca-1.9.0-py3-none-any.whl", hash = "sha256:050ed8d00e471ff3e48c7779fc894bff01aeeb1bb11b83910ee28560f468c1d3", size = 127940, upload-time = "2026-06-10T07:44:07.247Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/89/7871b9b20e3e1ed9dcc322ae5bf9e31ad87980d2644e47338f7e77f01f5e/webtemplate_dbca-1.9.1-py3-none-any.whl", hash = "sha256:44f31a08bfb8159c8d4f75e0d4fa7a7ee4a5f6626bbc5f87144091eb999e38ba", size = 124471, upload-time = "2026-10-21T04:56:58.839Z" },
 ]
 
 [[package]]
