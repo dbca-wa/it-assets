@@ -498,36 +498,36 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset.filter(systems__pk__iexact=self.value()).distinct()
 
     class HasVulnsFilter(admin.SimpleListFilter):
-        """
-        A custom filter that allows users to filters by whether or not the asset has vulns
-        """
+            """
+            A custom filter that allows users to filters by whether or not the asset has vulns
+            """
 
-        template = DROPDOWN_TEMPLATE
-        title = "Vulnerabilities"
-        parameter_name = "vulns"
+            template = DROPDOWN_TEMPLATE
+            title = "Vulnerabilities"
+            parameter_name = "vulns"
 
-        def lookups(self, request, model_admin):
-            filter_list = [
-                ("none", "None"),
-                ("has_vulns", "Any"),
-                ("has_active_vulns", "Active"),
-                ("has_critical_vulns", "Active and Critical"),
-            ]
+            def lookups(self, request, model_admin):
+                filter_list = [
+                    ("none", "None"),
+                    ("has_vulns", "Any"),
+                    ("has_active_vulns", "Actionable"),
+                    ("has_critical_vulns", "Actionable Critical"),
+                ]
 
-            return filter_list
+                return filter_list
 
-        def queryset(self, request, queryset):
-            match self.value():
-                case "none":
-                    return queryset.filter(total_vulns=0)
-                case "has_vulns":
-                    return queryset.exclude(total_vulns=0)
-                case "has_active_vulns":
-                    return queryset.filter(total_active_vulns__gt=0)
-                case "has_critical_vulns":
-                    return queryset.filter(total_critical_vulns__gt=0)
-                case _:
-                    return queryset
+            def queryset(self, request, queryset):
+                match self.value():
+                    case "none":
+                        return queryset.filter(total_vulns=0)
+                    case "has_vulns":
+                        return queryset.exclude(total_vulns=0)
+                    case "has_active_vulns":
+                        return queryset.filter(total_active_vulns__gt=0)
+                    case "has_critical_vulns":
+                        return queryset.filter(total_critical_vulns__gt=0)
+                    case _:
+                        return queryset
 
     class TagFilterTemplate(admin.SimpleListFilter):
         """
@@ -624,30 +624,30 @@ class AssetAdmin(admin.ModelAdmin):
         """Only allows users to use the action if they can view vulns"""
         return request.user.has_perm("assets.view_vulnerability")
 
-    @admin.action(permissions=["vuln"], description="Export Asset Vulns - Technical")
+    @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
     def asset_export_as_csv_technical(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv"""
         return export_vulns_action(queryset=queryset, export_assets=True)
 
-    @admin.action(permissions=["vuln"], description="Export critical Asset Vulns - Technical")
+    @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Technical")
     def asset_export_critical_as_csv_technical(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv"""
         return export_vulns_action(queryset=queryset, critical_only=True, export_assets=True)
 
-    @admin.action(permissions=["vuln"], description="Export Asset Vulns - Simple")
+    @admin.action(permissions=["vuln"], description="Export actionable Vulns - Simple")
     def asset_export_as_csv_simple(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, simple=True, export_assets=True)
 
-    @admin.action(permissions=["vuln"], description="Export critical Asset Vulns - Simple")
+    @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Simple")
     def asset_export_critical_as_csv_simple(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_assets=True)
 
     actions = [
         asset_export_as_csv_simple,
-        asset_export_critical_as_csv_simple,
         asset_export_as_csv_technical,
+        asset_export_critical_as_csv_simple,
         asset_export_critical_as_csv_technical,
     ]
 
@@ -655,7 +655,7 @@ class AssetAdmin(admin.ModelAdmin):
     #           Custom fields
     # ==================================
 
-    @admin.display(description="Active Vulns", ordering="total_active_vulns")
+    @admin.display(description="Actionable Vulns", ordering="total_active_vulns", )
     def active_vulns(self, obj):
         """
         Provides a count of all active vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
@@ -668,7 +668,7 @@ class AssetAdmin(admin.ModelAdmin):
         )
         return format_html('<a href="{}">{}</a>', url, num_vulns)
 
-    @admin.display(description="Active Critical Vulns", ordering="total_critical_vulns")
+    @admin.display(description="Actionable Critical Vulns", ordering="total_critical_vulns")
     def active_critical_vulns(self, obj):
         """
         Provides a count of all active critical vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
