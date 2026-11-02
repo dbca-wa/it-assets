@@ -38,6 +38,7 @@ class AddressBook(LoginRequiredMixin, ListView):
         queryset = (
             DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
+            .exclude(account_type__in=[7, 1])  # Exclude Volunteer and Alumni accounts
             .select_related(
                 "cost_centre",
             )
@@ -124,6 +125,7 @@ class DepartmentUserAPIResource(View):
         queryset = (
             DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
+            .exclude(account_type__in=[7, 1])  # Exclude Volunteer and Alumni accounts
             .select_related(
                 "manager",
                 "cost_centre",
