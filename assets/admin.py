@@ -498,36 +498,36 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset.filter(systems__pk__iexact=self.value()).distinct()
 
     class HasVulnsFilter(admin.SimpleListFilter):
-            """
-            A custom filter that allows users to filters by whether or not the asset has vulns
-            """
+        """
+        A custom filter that allows users to filters by whether or not the asset has vulns
+        """
 
-            template = DROPDOWN_TEMPLATE
-            title = "Vulnerabilities"
-            parameter_name = "vulns"
+        template = DROPDOWN_TEMPLATE
+        title = "Vulnerabilities"
+        parameter_name = "vulns"
 
-            def lookups(self, request, model_admin):
-                filter_list = [
-                    ("none", "None"),
-                    ("has_vulns", "Any"),
-                    ("has_active_vulns", "Actionable"),
-                    ("has_critical_vulns", "Actionable Critical"),
-                ]
+        def lookups(self, request, model_admin):
+            filter_list = [
+                ("none", "None"),
+                ("has_vulns", "Any"),
+                ("has_active_vulns", "Actionable"),
+                ("has_critical_vulns", "Actionable Critical"),
+            ]
 
-                return filter_list
+            return filter_list
 
-            def queryset(self, request, queryset):
-                match self.value():
-                    case "none":
-                        return queryset.filter(total_vulns=0)
-                    case "has_vulns":
-                        return queryset.exclude(total_vulns=0)
-                    case "has_active_vulns":
-                        return queryset.filter(total_active_vulns__gt=0)
-                    case "has_critical_vulns":
-                        return queryset.filter(total_critical_vulns__gt=0)
-                    case _:
-                        return queryset
+        def queryset(self, request, queryset):
+            match self.value():
+                case "none":
+                    return queryset.filter(total_vulns=0)
+                case "has_vulns":
+                    return queryset.exclude(total_vulns=0)
+                case "has_active_vulns":
+                    return queryset.filter(total_active_vulns__gt=0)
+                case "has_critical_vulns":
+                    return queryset.filter(total_critical_vulns__gt=0)
+                case _:
+                    return queryset
 
     class TagFilterTemplate(admin.SimpleListFilter):
         """
@@ -655,7 +655,10 @@ class AssetAdmin(admin.ModelAdmin):
     #           Custom fields
     # ==================================
 
-    @admin.display(description="Actionable Vulns", ordering="total_active_vulns", )
+    @admin.display(
+        description="Actionable Vulns",
+        ordering="total_active_vulns",
+    )
     def active_vulns(self, obj):
         """
         Provides a count of all active vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
