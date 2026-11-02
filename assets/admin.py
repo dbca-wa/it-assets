@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from assets.enum_library import Severity, SeverityMT, State
 from assets.exports import export_asset_vulns, export_vulns
 from assets.models import Asset, AssetTag, AssetTagCategory, Repository, Vulnerability
-from itassets.admin_filters import DROPDOWN_TEMPLATE, DropdownFilterAllValues, DropdownFilterRelated, DropdownFilterRelatedOnly
+from itassets.admin_filters import DROPDOWN_TEMPLATE, DropdownFilterAllValues, DropdownFilterRelatedOnly
 from itsystems.models import ITSystemRecord
 
 
@@ -105,7 +105,12 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
         def lookups(self, request, model_admin):
             filter_list = [("any", "Not Empty")]
-            for sys in ITSystemRecord.objects.exclude(related_assets=None).filter(related_assets__total_vulns__gt=0).distinct().order_by("system_id"):
+            for sys in (
+                ITSystemRecord.objects.exclude(related_assets=None)
+                .filter(related_assets__total_vulns__gt=0)
+                .distinct()
+                .order_by("system_id")
+            ):
                 filter_list.append((sys.pk, _(str(sys))))
 
             filter_list.append(("none", "-"))
@@ -119,6 +124,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 return queryset.filter(asset__systems__isnull=True)
             elif self.value() is not None:
                 return queryset.filter(asset__systems__pk__iexact=self.value()).distinct()
+
     class StateFilter(admin.SimpleListFilter):
         """
         Standard State filter but adds in the option to exclude "Fixed".
@@ -197,7 +203,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         Allows vuln filtering by asset type tag
         """
 
-        title="Asset Type"
+        title = "Asset Type"
         parameter_name = "asset_type"
         template = DROPDOWN_TEMPLATE
 
@@ -218,7 +224,6 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                     return queryset.exclude(asset__tags__category__name="Devices")
                 else:
                     return queryset.filter(asset__tags__id__exact=self.value()).distinct()
-
 
     class LastFoundFilter(admin.SimpleListFilter):
         """
@@ -491,37 +496,38 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset.filter(systems__isnull=True)
                 else:
                     return queryset.filter(systems__pk__iexact=self.value()).distinct()
+
     class HasVulnsFilter(admin.SimpleListFilter):
-            """
-            A custom filter that allows users to filters by whether or not the asset has vulns
-            """
-    
-            template = DROPDOWN_TEMPLATE
-            title = "Vulnerabilities"
-            parameter_name = "vulns"
-    
-            def lookups(self, request, model_admin):
-                filter_list = [
-                    ("none", "None"),
-                    ("has_vulns", "Any"),
-                    ("has_active_vulns", "Actionable"),
-                    ("has_critical_vulns", "Actionable Critical"),
-                ]
-    
-                return filter_list
-    
-            def queryset(self, request, queryset):
-                match self.value():
-                    case "none":
-                        return queryset.filter(total_vulns=0)
-                    case "has_vulns":
-                        return queryset.exclude(total_vulns=0)
-                    case "has_active_vulns":
-                        return queryset.filter(total_active_vulns__gt=0)
-                    case "has_critical_vulns":
-                        return queryset.filter(total_critical_vulns__gt=0)
-                    case _:
-                        return queryset
+        """
+        A custom filter that allows users to filters by whether or not the asset has vulns
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "Vulnerabilities"
+        parameter_name = "vulns"
+
+        def lookups(self, request, model_admin):
+            filter_list = [
+                ("none", "None"),
+                ("has_vulns", "Any"),
+                ("has_active_vulns", "Actionable"),
+                ("has_critical_vulns", "Actionable Critical"),
+            ]
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            match self.value():
+                case "none":
+                    return queryset.filter(total_vulns=0)
+                case "has_vulns":
+                    return queryset.exclude(total_vulns=0)
+                case "has_active_vulns":
+                    return queryset.filter(total_active_vulns__gt=0)
+                case "has_critical_vulns":
+                    return queryset.filter(total_critical_vulns__gt=0)
+                case _:
+                    return queryset
 
     class TagFilterTemplate(admin.SimpleListFilter):
         """
@@ -537,7 +543,7 @@ class AssetAdmin(admin.ModelAdmin):
 
             tag_category, _c = AssetTagCategory.objects.get_or_create(name=self.category)
             tag_vals = AssetTag.objects.filter(category=tag_category).order_by("name")
-            if len(tag_vals)>1:
+            if len(tag_vals) > 1:
                 filter_list.append(("any", "Not Empty"))
             for tag in tag_vals:
                 filter_list.append((tag.pk, _(tag.name)))
@@ -553,7 +559,6 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset.exclude(tags__category__name=self.category)
                 else:
                     return queryset.filter(tags__id__exact=self.value()).distinct()
-
 
     class LastSeenFilter(admin.SimpleListFilter):
         """
@@ -650,7 +655,10 @@ class AssetAdmin(admin.ModelAdmin):
     #           Custom fields
     # ==================================
 
-    @admin.display(description="Actionable Vulns", ordering="total_active_vulns", )
+    @admin.display(
+        description="Actionable Vulns",
+        ordering="total_active_vulns",
+    )
     def active_vulns(self, obj):
         """
         Provides a count of all active vulnerabilities of this asset, and includes a hyperlink to the pre-filtered admin vuln page for these assets.
@@ -707,9 +715,8 @@ class AssetAdmin(admin.ModelAdmin):
         "last_seen",
     )
 
-    search_fields = ("name", "description", "contacts__email", "systems__system_id","systems__name", "tags__name", "os_list")
+    search_fields = ("name", "description", "contacts__email", "systems__system_id", "systems__name", "tags__name", "os_list")
     search_help_text = "Search by name, description, OS, contact, IT System, or tag"
-
 
     autocomplete_fields = (
         "contacts",
@@ -827,7 +834,7 @@ class RepositoryAdmin(admin.ModelAdmin):
         if not change:
             obj.sync_dependabot_alerts()
 
-    @admin.action(permissions=["view"], description="Sync Dependabot alerts")
+    @admin.action(permissions=["view"], description="Sync GitHub Dependabot alerts")
     def sync_dependabot_alerts(self, request, queryset):
         """Admin action to sync open Dependabot alerts for the selected repositories."""
         for repository in queryset:

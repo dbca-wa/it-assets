@@ -7,7 +7,7 @@ source code repositories managed through our GitHub organisation
 
 This repository takes guidance relating to Secure Software Development from the
 [WA Government Cyber Security
-Policy](https://www.wa.gov.au/government/publications/2024-wa-government-cyber-security-policy).
+Policy](https://www.wa.gov.au/government/publications/wa-government-cyber-security-policy).
 
 If you believe that you have found a security vulnerability in any DBCA-managed
 repository, please report it to us as described below.
@@ -41,7 +41,7 @@ we prefer all communications to be in English.
 Updates and patches to this project which are related to identified security
 issues will be undertaken with reference to the "Patch applications" mitigation
 strategy as part of the [Essential Eight Maturity
-Model](https://www.cyber.gov.au/acsc/view-all-content/publications/essential-eight-maturity-model).
+Model](https://www.cyber.gov.au/publication/essential-eight-maturity-model).
 In practice this means that patches, updates or mitigations for security
 vulnerabilites will be applied on an ongoing basis during the normal development
 cycle. In general we aim to apply mitigations within two weeks of release, or

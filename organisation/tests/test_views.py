@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from django.urls import reverse
 
 from itassets.test_api import ApiTestCase
@@ -39,3 +41,14 @@ class ViewsTestCase(ApiTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.user_contract.name)
         self.assertNotContains(resp, self.user_permanent.name)
+
+    def test_view_user_accounts_excludes_future_job_start_date(self):
+        """Test users with a future job start date are hidden from the User Accounts view."""
+        self.user_contract.ascender_data = {"job_start_date": (date.today() + timedelta(days=1)).isoformat()}
+        self.user_contract.save(update_fields=["ascender_data"])
+
+        url = reverse("user_accounts")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, self.user_permanent.name)
+        self.assertNotContains(resp, self.user_contract.name)

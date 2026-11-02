@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import time
@@ -6,11 +7,14 @@ from collections.abc import Callable
 from urllib.parse import urlparse
 
 import requests
+from django.conf import settings
 from django.utils.timezone import localtime as now
-from github import Github
+from github import Github, GithubException
 from github.Auth import Token
 
 from assets.models import Asset, Repository, RepositoryAdvisory
+
+LOGGER = logging.getLogger("assets")
 
 
 def alias_get_or_create(aliases: list) -> tuple[Asset, bool]:
@@ -115,7 +119,16 @@ def sync_github_repo_dependabot_alerts(repository: Repository, github_client=Non
     current_open_ghsa_ids: set[str] = set()
     saved_alerts: list[RepositoryAdvisory] = []
 
-    for alert in github_repo.get_dependabot_alerts(state="open"):
+    try:
+        dependabot_alerts = github_repo.get_dependabot_alerts(state="open")
+    except GithubException as exc:
+        # Include the API's own message (e.g. "Dependabot alerts are disabled for this repository.")
+        # so the log explains why the alerts could not be retrieved.
+        api_message = exc.data.get("message") if isinstance(exc.data, dict) else None
+        LOGGER.warning(f"Error retrieving Dependabot alerts for {repository}: {api_message or exc} (status {exc.status})")
+        return []
+
+    for alert in dependabot_alerts:
         alert_data = getattr(alert, "raw_data", None) or getattr(alert, "_rawData", None) or {}
         security_advisory = alert_data.get("security_advisory") or {}
         ghsa_id = security_advisory.get("ghsa_id")
