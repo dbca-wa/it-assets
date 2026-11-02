@@ -70,10 +70,15 @@ class UserAccounts(LoginRequiredMixin, ListView):
     admin_view = False  # Custom argument for whether to display inactive accounts or not in the view.
 
     def get_queryset(self):
-        # Initial queryset: accounts associated with an active M365 account, having an E5 or F3 license assigned.
+        # Accounts associated with an active M365 account, having an E5 or F3 license assigned.
+        # Exclude accounts with an Ascender record having a job start date in the future.
         queryset = (
             DepartmentUser.objects.filter(active=True)
             .filter(Q(assigned_licences__contains=["MICROSOFT 365 E5"]) | Q(assigned_licences__contains=["MICROSOFT 365 F3"]))
+            .exclude(
+                ascender_data__job_start_date__isnull=False,
+                ascender_data__job_start_date__gt=date.today().isoformat(),
+            )
             .select_related("cost_centre")
             .order_by("name")
         )
