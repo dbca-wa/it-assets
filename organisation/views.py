@@ -289,17 +289,18 @@ class DepartmentUserExport(View):
         return response
 
 class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """A custom view to allow the user to import changes to the IT Systems Register via a csv"""
+    """A custom view to allow the user to provision an account without running the management command """
 
-    # Permissions locked to people that can already users
+    # Permissions locked to people that can already change users
     permission_required = ["organisation.change_departmentuser"]
     provision_url = "admin/organisation/departmentuser/provision_account.html"
 
-    def get(self, request, *args, **kwargs):
-        response = render(request, self.provision_url)
-        return response
+    def get(self, request, *args, **kwargs) -> HttpResponse:
+        """Displays form page"""
+        return render(request, self.provision_url)
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        """Processes results from the form and reports results to user"""
         try:
             new_user = ascender_user_import(
                 employee_id=request.POST["employee_id"],
