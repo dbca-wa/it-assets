@@ -4,13 +4,16 @@ from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase, override_settings
 from mixer.backend.django import mixer
+from psycopg import errors
 
 from itassets.test_api import random_dbca_email
 from organisation.ascender import (
+    _ascender_fetch_retry,
     _assign_licence_with_retry,
     _build_licence_payload,
     _check_licence_availability,
@@ -18,6 +21,7 @@ from organisation.ascender import (
     _resolve_names,
     _send_admin_failure_email,
     _wait_for_usage_location,
+    ascender_db_fetch,
     create_entra_id_user,
     department_user_create,
     generate_valid_dbca_email,
@@ -705,3 +709,87 @@ class CreateEntraIdUserTestCase(TestCase):
             result = create_entra_id_user(self.job, self.cc, self.next_week, self.manager, self.location, token=self.token)
         self.assertIsNone(result)
         self.assertTrue(AscenderActionLog.objects.filter(log__icontains="unable to generate unique email").exists())
+
+
+class AscenderFetchRetryTestCase(TestCase):
+    """Tests for the _ascender_fetch_retry helper, which handles transient Oracle
+    serialization failures (ORA-08177) reported via the Ascender foreign data wrapper.
+    """
+
+    @patch("organisation.ascender.sleep")
+    def test_returns_rows_on_first_attempt(self, mock_sleep):
+        """Rows are returned without any retry delay when the first query succeeds."""
+        result = _ascender_fetch_retry(lambda: iter([{"employee_id": "123456"}]))
+        self.assertEqual(result, [{"employee_id": "123456"}])
+        mock_sleep.assert_not_called()
+
+    @patch("organisation.ascender.sleep")
+    def test_retries_after_serialization_failure(self, mock_sleep):
+        """A serialization failure is retried, and the rows from the successful attempt are returned."""
+        attempts = {"count": 0}
+
+        def fetch():
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise errors.SerializationFailure("ORA-08177: can't serialize access for this transaction")
+            yield {"employee_id": "123456"}
+
+        result = _ascender_fetch_retry(fetch)
+        self.assertEqual(result, [{"employee_id": "123456"}])
+        self.assertEqual(attempts["count"], 2)
+        mock_sleep.assert_called_once_with(settings.FOREIGN_DB_RETRY_DELAY)
+
+    @patch("organisation.ascender.sleep")
+    def test_partial_results_are_discarded_on_retry(self, mock_sleep):
+        """Rows yielded before a mid-iteration failure are not returned; the query is re-run in full."""
+        attempts = {"count": 0}
+
+        def fetch():
+            attempts["count"] += 1
+            yield {"employee_id": "123456"}
+            if attempts["count"] == 1:
+                raise errors.SerializationFailure("ORA-08177: can't serialize access for this transaction")
+            yield {"employee_id": "234567"}
+
+        result = _ascender_fetch_retry(fetch)
+        self.assertEqual([row["employee_id"] for row in result], ["123456", "234567"])
+        self.assertEqual(attempts["count"], 2)
+
+    @patch("organisation.ascender.sleep")
+    def test_raises_after_max_attempts(self, mock_sleep):
+        """The exception is re-raised once every attempt has failed."""
+
+        def fetch():
+            raise errors.SerializationFailure("ORA-08177: can't serialize access for this transaction")
+            yield  # pragma: no cover
+
+        with self.assertRaises(errors.SerializationFailure):
+            _ascender_fetch_retry(fetch)
+        self.assertEqual(mock_sleep.call_count, settings.FOREIGN_DB_MAX_ATTEMPTS - 1)
+
+    @patch("organisation.ascender.sleep")
+    def test_does_not_retry_other_errors(self, mock_sleep):
+        """Non-transient errors are raised immediately, without consuming retry attempts."""
+
+        def fetch():
+            raise errors.UndefinedTable("relation does not exist")
+            yield  # pragma: no cover
+
+        with self.assertRaises(errors.UndefinedTable):
+            _ascender_fetch_retry(fetch)
+        mock_sleep.assert_not_called()
+
+    @patch("organisation.ascender.sleep")
+    @patch("organisation.ascender.get_ascender_db_connection")
+    @override_settings(FOREIGN_TABLE="test_ascender_view")
+    def test_ascender_db_fetch_closes_connection_on_failure(self, mock_connect, mock_sleep):
+        """Each failed attempt closes its connection, so retries don't leak connections."""
+        conn = MagicMock()
+        conn.cursor.return_value.execute.side_effect = errors.SerializationFailure("ORA-08177: can't serialize access for this transaction")
+        mock_connect.return_value = conn
+
+        with self.assertRaises(errors.SerializationFailure):
+            _ascender_fetch_retry(ascender_db_fetch)
+
+        self.assertEqual(mock_connect.call_count, settings.FOREIGN_DB_MAX_ATTEMPTS)
+        self.assertEqual(conn.close.call_count, settings.FOREIGN_DB_MAX_ATTEMPTS)

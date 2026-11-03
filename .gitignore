@@ -24,4 +24,4 @@ start_server
 *.swp
 .python-version
 *.csv
-.omo/
+.opencode/
