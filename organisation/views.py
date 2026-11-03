@@ -1,7 +1,8 @@
 from datetime import date, datetime
 
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.shortcuts import render
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -13,7 +14,7 @@ from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import CostCentre, DepartmentUser, Location
 from .reports import department_user_export, user_account_export
-
+from .ascender import ascender_user_import
 
 class AddressBook(LoginRequiredMixin, ListView):
     template_name = "organisation/address_book.html"
@@ -286,6 +287,43 @@ class DepartmentUserExport(View):
 
         response = department_user_export(response, users)
         return response
+
+class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """A custom view to allow the user to import changes to the IT Systems Register via a csv"""
+
+    # Permissions locked to people that can already users
+    permission_required = ["organisation.change_departmentuser"]
+    provision_url = "admin/organisation/departmentuser/provision_account.html"
+
+    def get(self, request, *args, **kwargs):
+        response = render(request, self.provision_url)
+        return response
+
+    def post(self, request, *args, **kwargs):
+        try:
+            new_user = ascender_user_import(
+                employee_id=request.POST["employee_id"],
+                ignore_job_start_date=True
+            )
+            if new_user:
+                created = True
+                message = f"Azure user account for '{new_user.name}' was successfully provisioned."
+            else:
+                created = False
+                message = f"Azure user account not provisioned. Run as management command to see logging info."
+        except Exception as exc:
+            new_user = None
+            created = False
+            message = f"Azure user account not provisioned - {type(exc).__name__} raised. Run as management command to see logging info."
+
+        return render(
+            request,
+            self.provision_url,
+            context={
+                "created": created,
+                "message": message
+                }
+            )
 
 
 class CostCentreAPIResource(View):
