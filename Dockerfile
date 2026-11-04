@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Args to centralise versions.
 ARG PYTHON_VERSION=3.13-debian13-dev
-ARG GCC_RUNTIME_VERSION=14.2.0-19+deb13u0+dhi5
+ARG GCC_RUNTIME_VERSION=14.2.0-19+deb13u0+dhi6
 
 # ---- Builder stage ----
 FROM dhi.io/python:${PYTHON_VERSION} AS builder
@@ -32,9 +32,9 @@ RUN uv sync --no-group dev --link-mode=copy --compile-bytecode --no-python-downl
 # ---- Runtime stage ----
 FROM dhi.io/python:${PYTHON_VERSION} AS runtime
 ARG GCC_RUNTIME_VERSION
-LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au \
+LABEL org.opencontainers.image.title="it-assets" \
   org.opencontainers.image.description="DBCA IT Assets System" \
-  org.opencontainers.image.source=https://github.com/dbca-wa/it-assets \
+  org.opencontainers.image.source="https://github.com/dbca-wa/it-assets" \
   org.opencontainers.image.vendor="DBCA" \
   org.opencontainers.image.authors="asi@dbca.wa.gov.au"
 
@@ -73,8 +73,10 @@ COPY --chown=nonroot:nonroot organisation ./organisation
 COPY --chown=nonroot:nonroot assets ./assets
 
 # Compile scripts and collect static files
-RUN python -m compileall manage.py itassets organisation itsystems assets \
-  && python manage.py collectstatic --noinput
+RUN <<EOF
+python -m compileall manage.py itassets organisation itsystems assets
+python manage.py collectstatic --noinput
+EOF
 
 # Run the project as the nonroot user
 USER nonroot

@@ -3,7 +3,7 @@ import re
 from collections.abc import Iterator
 from datetime import date, datetime
 from time import sleep
-from typing import List, Literal, Optional
+from typing import Literal
 
 import requests
 from django.conf import settings
@@ -11,7 +11,7 @@ from django.contrib.admin.models import ADDITION, LogEntry
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-from psycopg import Connection, connect, sql
+from psycopg import Connection, connect, errors, sql
 
 from itassets.utils import ms_graph_client_token
 from organisation.microsoft_products import MS_PRODUCTS
@@ -79,7 +79,7 @@ TERM_DATE_FOREIGN_TABLE_FIELDS = (
     (
         "term_process_date",
         lambda val: val.strftime("%Y-%m-%d") if val and val != DATE_MAX else None,
-    ),    
+    ),
 )
 
 STATUS_RANKING = [
@@ -219,6 +219,7 @@ def row_to_python(row):
 
     return record
 
+
 def row_to_python_term_date(row):
     """A convenience function to convert a row from the TERM_DATE_VW Ascender database to a
     Python dict, applying optional transforms to each column.
@@ -238,10 +239,41 @@ def row_to_python_term_date(row):
         else:
             record[field] = row[k]
 
-    return record    
+    return record
 
 
-def ascender_db_fetch(employee_id: Optional[str] = None) -> Iterator:
+def _ascender_fetch_retry(fetch_func, *args, **kwargs) -> list:
+    """Materialise the rows returned by an Ascender fetch generator, retrying the query on
+    transient serialization failures raised by the foreign data wrapper.
+
+    The Ascender database is exposed via a foreign data wrapper over a remote Oracle database.
+    Oracle can raise ORA-08177 (serialization failure) on the remote query when a concurrent
+    transaction modifies the data being read. This is transient, so queries are retried with
+    a short delay before being treated as a genuine failure.
+
+    The query is re-run from scratch on each attempt, so a partially-read result set is
+    never returned to the caller. If every attempt fails, the final exception is re-raised.
+    """
+    for attempt in range(1, settings.FOREIGN_DB_MAX_ATTEMPTS + 1):
+        try:
+            return list(fetch_func(*args, **kwargs))
+        except errors.SerializationFailure as exc:
+            if attempt >= settings.FOREIGN_DB_MAX_ATTEMPTS:
+                LOGGER.error(
+                    f"Ascender query failed after {attempt} attempts; serialization failure could not be resolved",
+                    exc_info=exc,
+                )
+                raise
+            LOGGER.warning(
+                f"Ascender query hit a serialization failure (attempt {attempt} of {settings.FOREIGN_DB_MAX_ATTEMPTS}); "
+                f"retrying in {settings.FOREIGN_DB_RETRY_DELAY} seconds: {exc}"
+            )
+            sleep(settings.FOREIGN_DB_RETRY_DELAY)
+
+    return []  # Unreachable, but keeps the return type predictable.
+
+
+def ascender_db_fetch(employee_id: str | None = None) -> Iterator:
     """Returns an iterator which yields all rows from the Ascender database query.
     Optionally pass employee_id to filter on a single employee.
     """
@@ -253,27 +285,33 @@ def ascender_db_fetch(employee_id: Optional[str] = None) -> Iterator:
             raise ValueError("Invalid employee ID value")
 
     conn = get_ascender_db_connection()
-    cur = conn.cursor()
-    columns = sql.SQL(",").join(sql.Identifier(f[0]) if isinstance(f, (list, tuple)) else sql.Identifier(f) for f in FOREIGN_TABLE_FIELDS)
-    schema = sql.Identifier(settings.FOREIGN_SCHEMA)
-    table = sql.Identifier(settings.FOREIGN_TABLE)
-    employee_no = sql.Identifier("employee_no")
-
-    if employee_id:
-        query = sql.SQL("SELECT {columns} FROM {schema}.{table} WHERE {employee_no} = %s").format(
-            columns=columns, schema=schema, table=table, employee_no=employee_no
+    try:
+        cur = conn.cursor()
+        columns = sql.SQL(",").join(
+            sql.Identifier(f[0]) if isinstance(f, (list, tuple)) else sql.Identifier(f) for f in FOREIGN_TABLE_FIELDS
         )
-        cur.execute(query, (employee_id,))
-    else:
-        query = sql.SQL("SELECT {columns} FROM {schema}.{table}").format(columns=columns, schema=schema, table=table)
-        cur.execute(query)
+        schema = sql.Identifier(settings.FOREIGN_SCHEMA)
+        table = sql.Identifier(settings.FOREIGN_TABLE)
+        employee_no = sql.Identifier("employee_no")
 
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
-        record = row_to_python(row)
-        yield record
+        if employee_id:
+            query = sql.SQL("SELECT {columns} FROM {schema}.{table} WHERE {employee_no} = %s").format(
+                columns=columns, schema=schema, table=table, employee_no=employee_no
+            )
+            cur.execute(query, (employee_id,))
+        else:
+            query = sql.SQL("SELECT {columns} FROM {schema}.{table}").format(columns=columns, schema=schema, table=table)
+            cur.execute(query)
+
+        while True:
+            row = cur.fetchone()
+            if row is None:
+                break
+            record = row_to_python(row)
+            yield record
+    finally:
+        # Close the connection even if the query fails, so that retries don't leak connections.
+        conn.close()
 
 
 def ascender_job_sort_key(record: dict) -> int:
@@ -303,14 +341,9 @@ def ascender_job_sort_key(record: dict) -> int:
 def ascender_employee_fetch(employee_id) -> tuple:
     """Returns a tuple: (employee_id, [sorted employee jobs])"""
     try:
-        ascender_records = ascender_db_fetch(employee_id)
+        jobs = _ascender_fetch_retry(ascender_db_fetch, employee_id)
     except ValueError:
         return (None, None)
-
-    jobs = []
-
-    for row in ascender_records:
-        jobs.append(row)
 
     # Sort the list of jobs in descending order of "score" from ascender_job_sort_key.
     jobs.sort(key=ascender_job_sort_key, reverse=True)
@@ -319,7 +352,7 @@ def ascender_employee_fetch(employee_id) -> tuple:
 
 def ascender_employees_fetch_all() -> dict:
     """Returns a dict: {'<employee_id>': [sorted employee jobs], ...}"""
-    ascender_records = ascender_db_fetch()
+    ascender_records = _ascender_fetch_retry(ascender_db_fetch)
     records = {}
 
     for row in ascender_records:
@@ -339,17 +372,14 @@ def ascender_employees_fetch_all() -> dict:
 def ascender_term_date_fetch_employee(employee_id) -> list:
     """returns a sorted list of termination date records"""
     try:
-        ascender_records = ascender_term_date_fetch(employee_id)
+        ascender_records = _ascender_fetch_retry(ascender_term_date_fetch, employee_id)
     except ValueError:
         return []
-    except Exception as exc: # Temporary overly broad exception handling for deployment
-        LOGGER.warning(f"Failure during term_date_data retrieval of {employee_id}",exc_info=exc)
+    except Exception as exc:  # Temporary overly broad exception handling for deployment
+        LOGGER.warning(f"Failure during term_date_data retrieval of {employee_id}", exc_info=exc)
         return []
 
-    term_records = []
-
-    for row in ascender_records:
-        term_records.append(row)
+    term_records = list(ascender_records)
 
     if len(term_records) > 0:
         # Sort the list of jobs in descending order of the termination date.
@@ -359,20 +389,21 @@ def ascender_term_date_fetch_employee(employee_id) -> list:
             LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Field 'term_date' missing from record")
         except TypeError:
             LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Invalid value for 'term_date' found within record")
-        except Exception as exc: # Temporary overly broad exception handling for deployment
+        except Exception as exc:  # Temporary overly broad exception handling for deployment
             LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id}", exc_info=exc)
     return term_records
+
 
 def ascender_term_date_fetch_all() -> dict:
     """Returns a dict: {'<employee_id>': [sorted termination records], ...}"""
     try:
-        ascender_records = ascender_term_date_fetch()
+        ascender_records = _ascender_fetch_retry(ascender_term_date_fetch)
     except ValueError:
         return {}
-    except Exception as exc: # Temporary overly broad exception handling for deployment
-        LOGGER.warning(f"Failure during term_date_data retrieval",exc_info=exc)
+    except Exception as exc:  # Temporary overly broad exception handling for deployment
+        LOGGER.warning("Failure during term_date_data retrieval", exc_info=exc)
         return {}
-    
+
     records = {}
 
     for row in ascender_records:
@@ -387,7 +418,7 @@ def ascender_term_date_fetch_all() -> dict:
                 LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Field 'term_date' missing from record")
             except TypeError:
                 LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id} - Invalid value for 'term_date' found within record")
-            except Exception as exc: # Temporary overly broad exception handling for deployment
+            except Exception as exc:  # Temporary overly broad exception handling for deployment
                 LOGGER.warning(f"Failed to sort TERM_DATE records of {employee_id}", exc_info=exc)
             records[employee_id] = term_record
         else:
@@ -397,7 +428,7 @@ def ascender_term_date_fetch_all() -> dict:
 
 
 def validate_ascender_user_account_rules(
-    job: dict, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, logging: bool = False
+    job: dict, ignore_job_start_date: bool = False, manager_override_email: str | None = None, logging: bool = False
 ) -> tuple | Literal[False]:
     """Given a passed-in Ascender record and any qualifiers, determine
     whether a new Entra ID account can be provisioned for that user.
@@ -638,7 +669,7 @@ def ascender_user_import_all():
 
 
 def ascender_user_import(
-    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: Optional[str] = None, position_no: Optional[str] = None
+    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: str | None = None, position_no: str | None = None
 ) -> DepartmentUser | None:
     """A convenience function to import a single Ascender employee and create an AD account for them.
     This is to allow easier manual intervention where a record goes in after the start date, or an
@@ -961,8 +992,8 @@ def create_entra_id_user(
     job_start_date: datetime,
     manager: DepartmentUser,
     location: Location,
-    token: Optional[dict] = None,
-    position_no: Optional[str] = None,
+    token: dict | None = None,
+    position_no: str | None = None,
 ) -> DepartmentUser | None:
     """Create a new Entra ID user account based on supplied Ascender job data.
 
@@ -1197,7 +1228,7 @@ def department_user_create(
     cc: CostCentre,
     location: Location,
     manager: DepartmentUser,
-    position_no: Optional[str] = None,
+    position_no: str | None = None,
 ) -> DepartmentUser:
     """This helper function is split from the Entra ID 'create' function to allow for unit testing.
     It creates a new DepartmentUser object, an initial Django admin LogEntry, an AscenderActionLog for record-keeping,
@@ -1250,7 +1281,7 @@ def new_user_creation_email(
     manager: DepartmentUser,
     licence_type: str,
     job_start_date: datetime,
-    job_end_date: Optional[datetime] = None,
+    job_end_date: datetime | None = None,
 ) -> bool:
     """This email function is split from the 'create' step so that it can be called again in the event of failure.
     Note that we can't call new_user.get_licence_type() because we probably haven't synced M365 licences to the department user yet.
@@ -1317,18 +1348,25 @@ OIM Service Desk\n"""
     return True
 
 
-def ascender_cc_manager_fetch() -> List[tuple]:
+def ascender_cc_manager_fetch() -> list[tuple]:
     """Returns all records from cc_manager_view."""
-    conn = get_ascender_db_connection()
-    cursor = conn.cursor()
-    schema = sql.Identifier(settings.FOREIGN_SCHEMA)
-    table = sql.Identifier(settings.FOREIGN_TABLE_CC_MANAGER)
-    query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
-    cursor.execute(query)
-    return cursor.fetchall()
+
+    def _fetch() -> Iterator:
+        conn = get_ascender_db_connection()
+        try:
+            cursor = conn.cursor()
+            schema = sql.Identifier(settings.FOREIGN_SCHEMA)
+            table = sql.Identifier(settings.FOREIGN_TABLE_CC_MANAGER)
+            query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
+            cursor.execute(query)
+            yield from cursor.fetchall()
+        finally:
+            conn.close()
+
+    return _ascender_fetch_retry(_fetch)
 
 
-def ascender_term_date_fetch(employee_id: Optional[str] = None) -> Iterator:
+def ascender_term_date_fetch(employee_id: str | None = None) -> Iterator:
     """Returns an iterator which yields all rows from the TERM_DATE_VW Ascender database query.
     Optionally pass employee_id to filter on a single employee.
     """
@@ -1340,23 +1378,27 @@ def ascender_term_date_fetch(employee_id: Optional[str] = None) -> Iterator:
             raise ValueError("Invalid employee ID value")
 
     conn = get_ascender_db_connection()
-    cur = conn.cursor()
-    schema = sql.Identifier(settings.FOREIGN_SCHEMA)
-    table = sql.Identifier(settings.FOREIGN_TABLE_TERM_DATE)
-    employee_no = sql.Identifier("employee_no")
+    try:
+        cur = conn.cursor()
+        schema = sql.Identifier(settings.FOREIGN_SCHEMA)
+        table = sql.Identifier(settings.FOREIGN_TABLE_TERM_DATE)
+        employee_no = sql.Identifier("employee_no")
 
-    if employee_id:
-        query = sql.SQL("SELECT * FROM {schema}.{table} WHERE {employee_no} = %s").format(
-            schema=schema, table=table, employee_no=employee_no
-        )
-        cur.execute(query, (employee_id,))
-    else:
-        query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
-        cur.execute(query)
+        if employee_id:
+            query = sql.SQL("SELECT * FROM {schema}.{table} WHERE {employee_no} = %s").format(
+                schema=schema, table=table, employee_no=employee_no
+            )
+            cur.execute(query, (employee_id,))
+        else:
+            query = sql.SQL("SELECT * FROM {schema}.{table}").format(schema=schema, table=table)
+            cur.execute(query)
 
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
-        record = row_to_python_term_date(row)
-        yield record
+        while True:
+            row = cur.fetchone()
+            if row is None:
+                break
+            record = row_to_python_term_date(row)
+            yield record
+    finally:
+        # Close the connection even if the query fails, so that retries don't leak connections.
+        conn.close()
