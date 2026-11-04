@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13, <4.0"
 
 [[package]]
@@ -546,7 +546,7 @@ wheels = [
 
 [[package]]
 name = "dbca-utils"
-version = "3.0.13"
+version = "3.0.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
@@ -554,9 +554,9 @@ dependencies = [
     { name = "psutil" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/fe/a433eb4c1ecc2905aee56fafca27a8fc28dec29f4f05b58ed9296f0c3a8a/dbca_utils-3.0.13.tar.gz", hash = "sha256:d90a3c909bb3c89f6310c5b6658dba01d2f0e73684a055dab187940971010b96", size = 27294, upload-time = "2026-07-29T07:10:54.402Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/02/cb0156a084aba3ae46478eaeccd215477bfcc678773580271b98b66cf37e/dbca_utils-3.0.15.tar.gz", hash = "sha256:761de30062ec523701e9c2967c79a81f800c80e3553283d971b8e41feb5a6d52", size = 18980, upload-time = "2026-10-21T00:40:25.364Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/03/0477641576e18dda6c01a5f0854b7af3dfaa32ea20ba941c8713d0246d8c/dbca_utils-3.0.13-py3-none-any.whl", hash = "sha256:c634a31a1549a3d35f2b4e330bce8f326e83709cf7f80f3fe99781594d636341", size = 23854, upload-time = "2026-07-29T07:10:53.292Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/2d/83039a0981d6a61a3521a6afca52d1d6bf8617f1327fc2b643dec6a76cf3/dbca_utils-3.0.15-py3-none-any.whl", hash = "sha256:2115603849d01eb12d9b31fc4c9331e74c38f7bf3859e36dc1a1ed41d4c87c5d", size = 19573, upload-time = "2026-10-21T00:40:24.086Z" },
 ]
 
 [[package]]
@@ -871,7 +871,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dbca-utils", specifier = "==3.0.13" },
+    { name = "dbca-utils", specifier = "==3.0.15" },
     { name = "dj-database-url", specifier = "==3.1.2" },
     { name = "django", specifier = "==5.2.17" },
     { name = "django-extensions", specifier = "==4.1" },
@@ -882,15 +882,15 @@ requires-dist = [
     { name = "paramiko", specifier = "==5.1.0" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = "==3.3.6" },
     { name = "pygithub", specifier = "==2.10.0" },
-    { name = "python-dateutil", specifier = "==2.9.0" },
+    { name = "python-dateutil", specifier = "==3.0.0" },
     { name = "python-dotenv", specifier = "==1.2.4" },
     { name = "redis", specifier = "==8.1.0" },
     { name = "requests", specifier = "==2.34.2" },
-    { name = "sentry-sdk", extras = ["django"], specifier = "==2.72.0" },
+    { name = "sentry-sdk", extras = ["django"], specifier = "==2.73.0" },
     { name = "unicodecsv", specifier = "==0.14.1" },
-    { name = "webtemplate-dbca", specifier = "==1.9.0" },
+    { name = "webtemplate-dbca", specifier = "==1.9.1" },
     { name = "whitenoise", extras = ["brotli"], specifier = "==6.12.0" },
-    { name = "xlsxwriter", specifier = "==3.2.9" },
+    { name = "xlsxwriter", specifier = "==3.3.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1346,14 +1346,15 @@ wheels = [
 
 [[package]]
 name = "python-dateutil"
-version = "2.9.0"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "six" },
+    { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d9/77/bd458a2e387e98f71de86dcc2ca2cab64489736004c80bc12b70da8b5488/python-dateutil-2.9.0.tar.gz", hash = "sha256:78e73e19c63f5b20ffa567001531680d939dc042bf7850431877645523c66709", size = 342990, upload-time = "2024-03-01T03:52:54.963Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/df/f15f80383f152452d8985b36d95cb8751f901a3e0ff4cd27f7e118f168e2/python_dateutil-3.0.0.tar.gz", hash = "sha256:7ebcb3c29a92f3ceafe79a7a48a5c45677e9e004bbeec5742ac0bbb00560b7a2", size = 271066, upload-time = "2026-10-21T23:41:45.075Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/7f/98d6f9ca8b731506c85785bbb8806c01f5966a4df6d68c0d1cf3b16967e1/python_dateutil-2.9.0-py2.py3-none-any.whl", hash = "sha256:cbf2f1da5e6083ac2fbfd4da39a25f34312230110440f424a14c7558bb85d82e", size = 230495, upload-time = "2024-03-01T03:52:51.479Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/17/cebee01d1c0c1441174cf0456ddc91b280d79acb65340c05e41d77866ee8/python_dateutil-3.0.0-py2.py3-none-any.whl", hash = "sha256:3c79630202e4152c6add678446984236efe4f57e84d8e892aab0637bab82e9fd", size = 94659, upload-time = "2026-10-21T23:41:43.431Z" },
 ]
 
 [[package]]
@@ -1451,15 +1452,15 @@ wheels = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.72.0"
+version = "2.73.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/c1/d2bbb2b03bdc2ef14b35e02b647b8489156c50b6e0b8bacc5fa303902e23/sentry_sdk-2.72.0.tar.gz", hash = "sha256:0d2ffbc28ee2e63cbaf3d015e93b448cffcc3ef3be03a44704ad36ade72faa95", size = 1069699, upload-time = "2026-10-12T13:08:11.195Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/3b/1e47acf2456781c26e12007379ecc154bf310b8f64d40390d78b791d55c3/sentry_sdk-2.73.0.tar.gz", hash = "sha256:4a2ab97b16e4693c325ab361c7bbbb346dbc7d0bc0150922d795a25bac8d5280", size = 1079078, upload-time = "2026-10-22T09:08:49.63Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/0b/0dd9686842d9dc49c3ee84cced31c54bceb0fb52a826be7d3d4fe30d882a/sentry_sdk-2.72.0-py3-none-any.whl", hash = "sha256:3e13ace4ffd0b3cc78288236edfc4e4bd90eb12a396cc5845fa10a58ff289f50", size = 544754, upload-time = "2026-10-12T13:08:01.619Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/88/cabf98d017d7b940720e514e5f8ee02e3e6f7495caf93c30735a38387ec4/sentry_sdk-2.73.0-py3-none-any.whl", hash = "sha256:0bcfa6928ea5adbb89591858b514d27adac27c7a3cccc31b20ed10e0b09eda9e", size = 549011, upload-time = "2026-10-22T09:08:47.88Z" },
 ]
 
 [package.optional-dependencies]
@@ -1658,14 +1659,14 @@ wheels = [
 
 [[package]]
 name = "webtemplate-dbca"
-version = "1.9.0"
+version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/48/2e738d152f4802d632458a20cfebb9af360b01066fe980568a21fa913529/webtemplate_dbca-1.9.0.tar.gz", hash = "sha256:08436682c33a2feb7d2348b5e20843d420a47534ccc9433f815bcf2042cff567", size = 129896, upload-time = "2026-06-10T07:44:06.084Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/b8/435ed169278d3aef3dec37324a395e6aa6ab433d4eda7f27f6f66963de06/webtemplate_dbca-1.9.1.tar.gz", hash = "sha256:360ac304562b5d3d65a0b66be41b8a7d836370d68a7aafff437a11941d5d9700", size = 123619, upload-time = "2026-10-21T04:57:00.017Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/a4/8169ad34729a9991339ce2a804aa4c1fa491b5bb2b04b948c663b6e16ebf/webtemplate_dbca-1.9.0-py3-none-any.whl", hash = "sha256:050ed8d00e471ff3e48c7779fc894bff01aeeb1bb11b83910ee28560f468c1d3", size = 127940, upload-time = "2026-06-10T07:44:07.247Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/89/7871b9b20e3e1ed9dcc322ae5bf9e31ad87980d2644e47338f7e77f01f5e/webtemplate_dbca-1.9.1-py3-none-any.whl", hash = "sha256:44f31a08bfb8159c8d4f75e0d4fa7a7ee4a5f6626bbc5f87144091eb999e38ba", size = 124471, upload-time = "2026-10-21T04:56:58.839Z" },
 ]
 
 [[package]]
@@ -1684,9 +1685,9 @@ brotli = [
 
 [[package]]
 name = "xlsxwriter"
-version = "3.2.9"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/46/2c/c06ef49dc36e7954e55b802a8b231770d286a9758b3d936bd1e04ce5ba88/xlsxwriter-3.2.9.tar.gz", hash = "sha256:254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c", size = 215940, upload-time = "2025-09-16T00:16:21.63Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/f2/98b45e52bc0330256bd4bb039cc44b28f838ad85602ce4f358f355d501bb/xlsxwriter-3.3.0.tar.gz", hash = "sha256:0a6bf2e4dcec8b29dd9b86d1e622132134c48bb6fd10f925fdfb229f0447199a", size = 221380, upload-time = "2026-10-22T00:26:03.317Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl", hash = "sha256:9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3", size = 175315, upload-time = "2025-09-16T00:16:20.108Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/9d/3d30eaaa7e06bdb6172f938b2661d64f8d899bdca54120384ecf3759488a/xlsxwriter-3.3.0-py3-none-any.whl", hash = "sha256:5f04772d43281da5109af66f39b65153359a203e896847c416476e709b024469", size = 179548, upload-time = "2026-10-22T00:26:02.009Z" },
 ]
