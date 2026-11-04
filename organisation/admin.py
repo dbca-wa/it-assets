@@ -7,6 +7,7 @@ from django.core.exceptions import PermissionDenied
 from django.urls import path
 from django.utils.html import mark_safe
 
+
 from itassets.admin_filters import DropdownFilterChoices, DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from itassets.utils import ModelDescMixin
 from itsystems.admin import ITSystemRecordAdmin
@@ -15,7 +16,8 @@ from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
 from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin, VulnerabilityAdmin
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
-from .views import DepartmentUserExport
+from .views import DepartmentUserExport, ProvisionAccountView
+
 
 
 class DepartmentUserForm(forms.ModelForm):
@@ -59,7 +61,6 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     return queryset.filter(assigned_licences=[])
                 else:
                     return queryset.filter(assigned_licences__contains=[self.value()])
-
     change_list_template = "admin/organisation/departmentuser/change_list.html"
     form = DepartmentUserForm
     list_display = (
@@ -382,10 +383,14 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 DepartmentUserExport.as_view(),
                 name=f"{info[0]}_{info[1]}_export",
             ),
+            path(
+                "provision_azure_account/",
+                ProvisionAccountView.as_view(),
+                name=f"{info[0]}_{info[1]}_provision",
+            )
         ] + urls
         return urls
-
-
+    
 @register(Location)
 class LocationAdmin(ModelAdmin):
     fields = ("name", "phone", "ascender_desc")

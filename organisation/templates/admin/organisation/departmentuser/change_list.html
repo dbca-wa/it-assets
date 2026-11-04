@@ -2,10 +2,30 @@
 {% block object-tools-items %}
     {% if not is_popup %}
         <li>
+            <a href="{% url 'service_desk_admin:organisation_departmentuser_provision' %}" onClick="openCenteredPopup(this.href); return false;">Provision azure account</a>
+                <script>
+                // Opens 600x400 popup in the centre of the screen.availHeight
+                function openCenteredPopup(href) {  
+                    const popupWidth = 600;  
+                    const popupHeight = 350;  
+                    
+                    const screenWidth = screen.availWidth;  
+                    const screenHeight = screen.availHeight;  
+                    
+                    const left = (screenWidth - popupWidth) / 2;  
+                    const top = (screenHeight - popupHeight) / 2; 
+                    
+                    const windowFeatures = `width=${popupWidth},height=${popupHeight},left=${left},top=${top}`;  
+                    
+                    window.open(href,'new', windowFeatures);
+                }  
+            </script>
+        </li>
+        <li>
             <a href="{% url 'service_desk_admin:organisation_departmentuser_export' %}?all=true">Download all Department Users</a>
         </li>
         <li>
-            <a href="{% url 'service_desk_admin:organisation_departmentuser_export' %}">Download active Department Users</a>
+            <a href="{% url 'service_desk_admin:organisation_departmentuser_export' %}" >Download active Department Users</a>
         </li>
     {% endif %}
     {{ block.super }}

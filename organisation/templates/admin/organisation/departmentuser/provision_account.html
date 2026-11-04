@@ -1,0 +1,34 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+{% endblock %}
+{% block content %}
+    <div>
+        <div>
+            <h1><b>Provision an Azure account</b></h1>
+            <p style="opacity:0.8;">
+                This function creates an Azure account for an existing member of staff.<br>
+                The staff member must have an active Ascender record, an E5 / F3 license, and no pre-existing Azure account.<br>
+            </p>
+            <hr>
+        </div>
+        <div style="padding:20px">
+            <form action="{% url 'admin:organisation_departmentuser_provision' %}" method="POST" enctype="multipart/form-data" class="form-horizontal"> 
+                {% csrf_token %}
+                <div class="form-group">
+                    <input type="number" class="form-control" name="employee_id" id="employee_id" placeholder="Employee ID*" style="width: 60vw" required>
+                    <button type="submit" class="form-control" style="padding: 6px;border: none;border-radius: 3px;cursor: pointer;">Create</button>
+                </div>
+            </form>
+                {% if message %}
+                <div>
+                    <br>
+                    {% if created %}
+                        <p style="color:Lime">{{message}}</p>
+                    {% else  %}
+                        <p style="color:Tomato">{{message}}</p>
+                    {% endif%}
+                </div>
+                {% endif %}
+        </div>
+    </div>
+{% endblock %} 

@@ -1,7 +1,8 @@
 from datetime import date, datetime
 
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.shortcuts import render
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -13,7 +14,7 @@ from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import CostCentre, DepartmentUser, Location
 from .reports import department_user_export, user_account_export
-
+from .ascender import ascender_user_import
 
 class AddressBook(LoginRequiredMixin, ListView):
     template_name = "organisation/address_book.html"
@@ -286,6 +287,46 @@ class DepartmentUserExport(View):
 
         response = department_user_export(response, users)
         return response
+
+class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """A custom view to allow the user to provision an account without running the management command """
+
+    # Permissions locked to people that can already change users
+    permission_required = ["organisation.change_departmentuser"]
+    provision_url = "admin/organisation/departmentuser/provision_account.html"
+
+    def get(self, request, *args, **kwargs) -> HttpResponse:
+        """Displays form page"""
+        return render(request, self.provision_url)
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        """Processes results from the form and reports results to user"""
+        try:
+            new_user = ascender_user_import(
+                employee_id=request.POST["employee_id"],
+                ignore_job_start_date=True
+            )
+            if new_user:
+                created = True
+                message = f"Azure user account for '{new_user.name}' was successfully provisioned."
+            else:
+                created = False
+                # Failure details kept to a minimum, as it would require re-working ascender_user_import or exposing the logger, both of which are kinda messy solutions.
+                message = f"Azure user account not provisioned. Run as management command to see logging info."
+        except Exception as exc:
+            new_user = None
+            created = False
+            # Error details kept minimal for now, but may expand in the future.
+            message = f"Azure user account not provisioned - '{type(exc).__name__}' raised. Run as management command to see logging info."
+
+        return render(
+            request,
+            self.provision_url,
+            context={
+                "created": created,
+                "message": message
+                }
+            )
 
 
 class CostCentreAPIResource(View):

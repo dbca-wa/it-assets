@@ -294,7 +294,6 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
             # Displays results
             response = render(request, "admin/itsystems/itsystemrecord/results.html", context=results)
         else:
-            print(results["validation"])
             # Displays error message
             response = render(request, "admin/itsystems/itsystemrecord/upload_csv.html", context=results["validation"])
         return response
