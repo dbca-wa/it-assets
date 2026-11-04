@@ -137,7 +137,7 @@ class Asset(models.Model):
     @property
     def associated_systems(self) -> str:
         """Provides a string representation of all associated IT Systems"""
-        return ", ".join([str(s) for s in self.systems.all()])
+        return ", ".join([str(s) for s in self.systems.all().order_by("system_id")])
 
     @property
     def operating_system(self) -> str:

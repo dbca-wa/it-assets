@@ -124,7 +124,7 @@ def create_test_division():
 
 
 # Creates a random ITSystemRecord object for testing
-def create_random_record():
+def create_random_record() -> ITSystemRecord:
     return mixer.blend(
         ITSystemRecord,
         system_id=mixer.RANDOM,

@@ -1,11 +1,38 @@
 from assets.models import Asset, Vulnerability
-from assets.enum_library import Severity
+from itsystems.models import ITSystemRecord
 
 from django.http import HttpResponse
 
 from typing import Iterable
 import csv
 
+def export_itsystem_vulns(
+    response: HttpResponse, systems: Iterable[ITSystemRecord], severity_exclude_list: list[int] | None = [], simple: bool = False
+) -> HttpResponse:
+    """
+    Writes assets vulnerabilities related to the passed in it-systems to the http response as a csv.
+    severity_exclude_list can be optionally included to exclude specific vuln severity levels, but always hides info level vulns.
+    Set simple as true to return a simplified version for tech custodians.
+    """
+    writer = csv.writer(response)
+
+    # Headers
+    it_system_header = "IT System" if simple else "IT_SYSTEMS"
+    __write_vuln_header(writer=writer, prefix_headers=[it_system_header], simple=simple)
+
+    # Body
+    # Retrieves all related assets ordered by system names
+    assets = Asset.objects.filter(systems__in=systems).order_by("systems__name")
+    for a in assets:
+        # Creates a "systems" label for the asset, which only includes related systems that are within the current query.
+        # ie; if an asset has another related system that's not in the queryset, that system isn't included in the label.
+        associated_systems = a.systems.filter(pk__in=systems).order_by("system_id")
+        associated_systems_str = ", ".join([str(s) for s in associated_systems])
+
+        for v in a.get_active_vulns(severity_exclude_list=severity_exclude_list):
+            __write_vuln(writer=writer, vuln=v, prefix_data=[associated_systems_str], simple=simple)
+
+    return response
 
 def export_asset_vulns(
     response: HttpResponse, assets: Iterable[Asset], severity_exclude_list: list[int] | None = [], simple: bool = False

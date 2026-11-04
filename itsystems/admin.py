@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
+from django.http import HttpResponse
+from django.utils.timezone import localtime as now
 
 from reversion.admin import VersionAdmin
-
 from itassets.admin_filters import DropdownFilterRelated, DropdownFilterBoolean, DROPDOWN_TEMPLATE
+from assets.exports import export_itsystem_vulns
+from assets.enum_library import Severity
 from .models import ITSystemRecord, Division, Seasonality, Status, Sensitivity, SystemType, Availability
 from .views import ExportRegisterAsCSV, ImportRegisterChangesFromCSV
 
@@ -75,6 +78,37 @@ class ITSystemRecordAdmin(VersionAdmin):
             status_list = Status.objects.all().filter(pk=self.value())
             if len(status_list) == 1:
                 return queryset.filter(status=status_list[0])
+
+    def has_vuln_permission(self, request):
+        """Only allows users to use the action if they can view vulns"""
+        return request.user.has_perm("assets.view_vulnerability")
+
+    @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
+    def itsystem_export_as_csv_technical(self, request, queryset):
+        """Exports all assets with their vulnerabilities as a csv"""
+        return export_vulns_action(queryset=queryset)
+
+    @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Technical")
+    def itsystem_export_critical_as_csv_technical(self, request, queryset):
+        """Exports all assets with their critical vulnerabilities as a csv"""
+        return export_vulns_action(queryset=queryset, critical_only=True)
+
+    @admin.action(permissions=["vuln"], description="Export actionable Vulns - Simple")
+    def itsystem_export_as_csv_simple(self, request, queryset):
+        """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
+        return export_vulns_action(queryset=queryset, simple=True)
+
+    @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Simple")
+    def itsystem_export_critical_as_csv_simple(self, request, queryset):
+        """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
+        return export_vulns_action(queryset=queryset, critical_only=True, simple=True)
+
+    actions = [
+        itsystem_export_as_csv_simple,
+        itsystem_export_as_csv_technical,
+        itsystem_export_critical_as_csv_simple,
+        itsystem_export_critical_as_csv_technical,
+    ]
 
     change_list_template = "admin/itsystems/itsystemrecord/change_list.html"
 
@@ -236,3 +270,19 @@ class ITSystemRecordAdmin(VersionAdmin):
             ),
         ] + urls
         return urls
+
+
+def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False) -> HttpResponse:
+    """
+    Helper function for export actions to export vulnerabilities.
+    """
+    # Set severity exclusions
+    if critical_only:
+        exclude_list = [Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
+    else:
+        exclude_list = [Severity.INFO]
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f"attachment; filename=itsystem_vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
+
+    return export_itsystem_vulns(response=response, systems=queryset, severity_exclude_list=exclude_list, simple=simple)

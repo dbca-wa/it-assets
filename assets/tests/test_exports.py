@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.test import TestCase
 
-from assets.exports import export_asset_vulns, export_vulns
+from assets.exports import export_asset_vulns, export_vulns, export_itsystem_vulns
 from assets.tests.test_model import RandomAssetGenerator as Gen, RandomVulnGenerator as VGen
 from assets.enum_library import Severity, SeverityMT, State
 from itsystems.tests.test_model import create_random_record as gen_itsystem
@@ -26,12 +26,14 @@ class ExportsTestCase(TestCase):
 
         # Generate 4 Assets
         self.asset_vuln, self.asset_vulns, self.asset_vuln_and_system, self.asset_vulns_and_systems = Gen().generate(4)
+        self.asset_vuln_and_system.systems.clear()
+        self.asset_vulns_and_systems.systems.clear()
+        self.asset_vuln.systems.clear()
+        self.asset_vulns.systems.clear()
         self.asset_vuln_and_system.systems.add(self.itsystem_1)
         self.asset_vuln_and_system.save()
         self.asset_vulns_and_systems.systems.set([self.itsystem_1, self.itsystem_2])
         self.asset_vulns_and_systems.save()
-        self.asset_vuln.systems.clear()
-        self.asset_vulns.systems.clear()
 
         # attach vulns to assets of various severities
         vgen = VGen()
@@ -221,3 +223,53 @@ class ExportsTestCase(TestCase):
 
         verification_list = list(Vulnerability.objects.exclude(severity__in=[Severity.INFO,Severity.LOW, Severity.CRITICAL]))
         self.assert_all_vulns_present_and_correct(csv_list,verification_list, include_it_system=True, simple=False)
+
+    def test_itsystem_vuln_export(self):
+        """
+        Tests that the it system vuln export accurately retrieves and labels assets with the correct it systems
+        """
+        resp = export_itsystem_vulns(response = HttpResponse(),systems = [self.itsystem_1.pk], simple=False)
+        csv_list = self.dict_list_conv(resp.content) 
+
+        # test all assets are present, and all related vulns present
+        assets = list(set([x["ASSET"] for x in csv_list]))
+        validation_assets = [str(self.asset_vuln_and_system), str(self.asset_vulns_and_systems)]
+        self.assertEqual(len(assets),len(validation_assets))
+        self.assertIn(assets[0], validation_assets)
+        self.assertIn(assets[1], validation_assets)
+        self.assertNotEqual(assets[0],assets[1])
+
+        # Verify that all vulns were accurately reported, and no additional vulns were found.
+        vulns = list(x["FINDING_ID"] for x in csv_list)
+        validation_vulns = [
+            self.d_low_vuln.finding_id,
+            self.d_medium_vuln.finding_id,
+            self.d_high_vuln.finding_id,
+            self.d_critical_vuln.finding_id,
+            self.b_critical_vuln.finding_id
+            ]
+        self.assertEqual(len(vulns), len(validation_vulns))
+        self.assertEqual(len(vulns), len(set(vulns))) # validate all unique
+        for required_vuln in validation_vulns:
+            self.assertIn(required_vuln,vulns)
+        for reported_vuln in vulns:
+            self.assertIn(reported_vuln, validation_vulns) 
+
+        # test system labels accurate for mono-system assets, and multi system assets with additional systems not included in the query
+        systems = list(set([x["IT_SYSTEMS"] for x in csv_list]))
+        self.assertEqual(len(systems),1)
+        self.assertEqual(systems[0], str(self.itsystem_1))
+
+        # test system labels accurate for multi-system asset
+        resp = export_itsystem_vulns(response = HttpResponse(),systems = [self.itsystem_1.pk, self.itsystem_2.pk], simple=False)
+        csv_list = self.dict_list_conv(resp.content) 
+        related_assets = [self.asset_vuln_and_system, self.asset_vulns_and_systems]
+
+        found_systems = list(set([x["IT_SYSTEMS"] for x in csv_list]))
+        system_names = list(set([x.associated_systems for x in related_assets]))
+
+        self.assertEqual(len(found_systems),2)
+        for reported_system in found_systems:
+            self.assertIn(reported_system, system_names)
+        for expected_system in system_names:
+            self.assertIn(expected_system, found_systems)
