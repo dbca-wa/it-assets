@@ -311,11 +311,13 @@ class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 message = f"Azure user account for '{new_user.name}' was successfully provisioned."
             else:
                 created = False
+                # Failure details kept to a minimum, as it would require re-working ascender_user_import or exposing the logger, both of which are kinda messy solutions.
                 message = f"Azure user account not provisioned. Run as management command to see logging info."
         except Exception as exc:
             new_user = None
             created = False
-            message = f"Azure user account not provisioned - {type(exc).__name__} raised. Run as management command to see logging info."
+            # Error details kept minimal for now, but may expand in the future.
+            message = f"Azure user account not provisioned - '{type(exc).__name__}' raised. Run as management command to see logging info."
 
         return render(
             request,
