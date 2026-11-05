@@ -295,6 +295,9 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # ==================================
     #           Custom fields
     # ==================================
+    @admin.display(description="IT Systems", ordering="asset__systems__name")
+    def systems(self, obj):
+        return obj.asset.associated_systems
 
     @admin.display(description="Age in days", ordering="first_found")
     def age(self, obj):
@@ -343,7 +346,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     search_help_text = "Search by finding ID, plugin name, plugin family, or asset name"
 
-    list_display = ("plugin_name", "asset__name", "severity", "state", "severity_modification_type", "last_found", "age")
+    list_display = ("plugin_name", "asset__name", "systems","severity", "state", "severity_modification_type", "last_found", "age")
 
     ordering = (
         "-last_found",
@@ -389,6 +392,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "port_pprint",
         "scan_pprint",
         "software_vulns_pprint",
+        "systems",
     )
 
     fieldsets = (
@@ -423,6 +427,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "asset",
+                    "systems",
                     "ipv4_addresses",
                     "operating_systems",
                 ),
