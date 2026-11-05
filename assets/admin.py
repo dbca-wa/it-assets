@@ -72,7 +72,7 @@ class AssetTagCategoryAdmin(admin.ModelAdmin):
         """
         total_assets = sum(set([len(x.tagged_assets.all()) for x in obj.tag_values.all()]))
         # Links to the 'assets' admin page, filtered for any asset that contains tags of that category
-        url = reverse("service_desk_admin:assets_asset_changelist", query={"tags__category__id__exact": obj.pk})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={f"{obj.name.lower()}_tag": "any"})
         return format_html('<a href="{}">{}</a>', url, total_assets)
 
 
