@@ -248,9 +248,15 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         self.asset_vulns_and_systems.last_seen = now()-timedelta(days=40) # 5+ weeks
         self.asset_vulns_and_systems.save()
 
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"5"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":">=4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns_and_systems])
+
+
+        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"<4"})
+        resp = self.client.get(url)
+        self.assert_contains_all_except(resp, [self.asset_vulns_and_systems])
+
 
 
     def test_filter_by_tag(self):
@@ -501,6 +507,12 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_high_vuln])
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":">=4"})
+        resp = self.client.get(url)
+        self.assert_contains_all_except(resp, [self.d_high_vuln, self.d_medium_vuln, self.d_low_vuln, self.d_info_vuln])
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"<4"})
+        resp = self.client.get(url)
+        self.assert_contains_only(resp, [self.d_high_vuln, self.d_medium_vuln, self.d_low_vuln, self.d_info_vuln])
 
 class PPrintJsonTestCase(SimpleTestCase):
     """
