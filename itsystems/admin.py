@@ -85,22 +85,22 @@ class ITSystemRecordAdmin(VersionAdmin):
 
     @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
     def itsystem_export_as_csv_technical(self, request, queryset):
-        """Exports all assets with their vulnerabilities as a csv"""
+        """Exports all related assets with their vulnerabilities as a csv"""
         return export_vulns_action(queryset=queryset)
 
     @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Technical")
     def itsystem_export_critical_as_csv_technical(self, request, queryset):
-        """Exports all assets with their critical vulnerabilities as a csv"""
+        """Exports all related assets with their critical vulnerabilities as a csv"""
         return export_vulns_action(queryset=queryset, critical_only=True)
 
     @admin.action(permissions=["vuln"], description="Export actionable Vulns - Simple")
     def itsystem_export_as_csv_simple(self, request, queryset):
-        """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
+        """Exports all related assets with their vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, simple=True)
 
     @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Simple")
     def itsystem_export_critical_as_csv_simple(self, request, queryset):
-        """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
+        """Exports all related assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, critical_only=True, simple=True)
 
     actions = [
