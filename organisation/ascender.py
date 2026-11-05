@@ -186,6 +186,18 @@ TERM_REASON_MAP = {
     "TA": "Transfer to another agency",
 }
 
+class AccountProvisioningError(Exception):
+    """Exception raised during account provisioning failures"""
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+def log_raise_error(message: str, raising: bool, logging: bool):
+    if logging:
+        LOGGER.warning(message)
+    if raising:
+        raise AccountProvisioningError(message)
 
 def get_ascender_db_connection() -> Connection:
     """Returns a database connection to the Ascender database."""
@@ -428,7 +440,7 @@ def ascender_term_date_fetch_all() -> dict:
 
 
 def validate_ascender_user_account_rules(
-    job: dict, ignore_job_start_date: bool = False, manager_override_email: str | None = None, logging: bool = False
+    job: dict, ignore_job_start_date: bool = False, manager_override_email: str | None = None, logging: bool = False, raising: bool = False
 ) -> tuple | Literal[False]:
     """Given a passed-in Ascender record and any qualifiers, determine
     whether a new Entra ID account can be provisioned for that user.
@@ -441,14 +453,12 @@ def validate_ascender_user_account_rules(
 
     # Only process non-FPC users.
     if "clevel1_id" in job and job["clevel1_id"] == "FPC":
-        if logging:
-            LOGGER.warning("FPC Ascender record, aborting")
+        log_raise_error(logging=logging,raising=raising, message="FPC Ascender record, aborting")
         return False
 
     # If a matching DepartmentUser already exists, skip.
     if DepartmentUser.objects.filter(employee_id=job["employee_id"]).exists():
-        if logging:
-            LOGGER.warning("Matching DepartmentUser object already exists, aborting")
+        log_raise_error(logging=logging,raising=raising, message="Matching DepartmentUser object already exists, aborting")
         return False
 
     # Parse job end date (if present). Ascender records "null" job end date using a date value
@@ -458,8 +468,7 @@ def validate_ascender_user_account_rules(
         job_end_date = datetime.strptime(job["job_end_date"], "%Y-%m-%d").date()
         # Short circuit: if job_end_date is in the past, skip account creation.
         if job_end_date < date.today():
-            if logging:
-                LOGGER.warning(f"Job end date {job_end_date.strftime('%d/%b/%Y')} is in the past, aborting")
+            log_raise_error(logging=logging,raising=raising, message=f"Job end date {job_end_date.strftime('%d/%b/%Y')} is in the past, aborting")
             return False
 
     # Start parsing required information for new account creation.
@@ -473,8 +482,7 @@ def validate_ascender_user_account_rules(
     # The valid licence type values stored in Ascender are ONPUL and CLDUL.
     # Short circuit: if there is no value for licence_type, skip account creation.
     if not job["licence_type"] or job["licence_type"] == "NULL":
-        if logging:
-            LOGGER.warning("No M365 licence type recorded in Ascender, aborting")
+        log_raise_error(logging=logging,raising=raising, message=f"No M365 licence type recorded in Ascender, aborting")
         return False
     elif job["licence_type"] and job["licence_type"] in ["ONPUL", "CLDUL"]:
         if job["licence_type"] == "ONPUL":
@@ -488,18 +496,15 @@ def validate_ascender_user_account_rules(
     if manager_override_email and DepartmentUser.objects.filter(email=manager_override_email).exists():
         manager = DepartmentUser.objects.get(email=manager_override_email)
     elif manager_override_email and not DepartmentUser.objects.filter(email=manager_override_email).exists():
-        if logging:
-            LOGGER.warning(f"Manager with email {manager_override_email} not present in IT Assets, aborting")
+        log_raise_error(logging=logging,raising=raising, message=f"Manager with email {manager_override_email} not present in IT Assets, aborting")
         return False
     elif job["manager_emp_no"] and DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
         manager = DepartmentUser.objects.get(employee_id=job["manager_emp_no"])
     elif job["manager_emp_no"] and not DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
-        if logging:
-            LOGGER.warning(f"Manager employee ID {job['manager_emp_no']} not present in IT Assets, aborting")
+        log_raise_error(logging=logging,raising=raising, message=f"Manager employee ID {job['manager_emp_no']} not present in IT Assets, aborting")
         return False
     elif not job["manager_emp_no"]:  # Short circuit: if there is no manager recorded, skip account creation.
-        if logging:
-            LOGGER.warning("No manager employee ID recorded in Ascender, aborting")
+        log_raise_error(logging=logging,raising=raising, message="No manager employee ID recorded in Ascender, aborting")
         return False
 
     # Rule: user must have a Cost Centre recorded (paypoint in Ascender).
@@ -519,14 +524,15 @@ def validate_ascender_user_account_rules(
             # In the event of an error (probably due to a duplicate code), fail gracefully and log the error.
             log = f"Exception during creation of new cost centre in new Entra ID account process, code {job['paypoint']}"
             LOGGER.exception(log)
+            if raising:
+                raise AccountProvisioningError(log)
             return False
 
     # Rule: user must have a job start date recorded.
     if job["job_start_date"]:
         job_start_date = datetime.strptime(job["job_start_date"], "%Y-%m-%d").date()
     else:  # Short circuit.
-        if logging:
-            LOGGER.warning("No job start date recorded, aborting")
+        log_raise_error(logging=logging,raising=raising, message="No job start date recorded, aborting")
         return False
 
     # Skippable rule: if job_start_date is in the past, skip account creation.
@@ -536,8 +542,7 @@ def validate_ascender_user_account_rules(
             LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
     else:
         if job_start_date < today:
-            if logging:
-                LOGGER.warning(f"Job start date {job_start_date.strftime('%d/%b/%Y')} is in the past, aborting")
+            log_raise_error(logging=logging,raising=raising, message=f"Job start date {job_start_date.strftime('%d/%b/%Y')} is in the past, aborting")
             return False
 
     # Rule: we set a limit for the number of days ahead of their starting date which we
@@ -548,8 +553,7 @@ def validate_ascender_user_account_rules(
         if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
             # Start start exceeds our limit, abort creating an AD account yet.
             log = f"Job future start date {job_start_date.strftime('%d/%b/%Y')} exceeds limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days, aborting"
-            if logging:
-                LOGGER.warning(log)
+            log_raise_error(logging=logging,raising=raising, message=log)
             return False
 
     # Rule: user must have a physical location recorded, and that location must exist in our database.
@@ -557,15 +561,17 @@ def validate_ascender_user_account_rules(
         location = Location.objects.get(ascender_desc=job["geo_location_desc"])
     else:
         if job["geo_location_desc"]:
-            LOGGER.warning(f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting")
+            log = f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting"
         else:
-            LOGGER.warning("No job physical location recorded, aborting")
+            log = "No job physical location recorded, aborting"
+        log_raise_error(logging=logging,raising=raising, message=log)
         return False
 
     # If all rules have passed, return a tuple containing required values.
     if cc and job_start_date and licence_type and manager and location:
         return (job, cc, job_start_date, licence_type, manager, location)
     else:
+        log_raise_error(logging=logging,raising=raising, message="Unexpected failure - All required values not retrieved")
         return False
 
 
@@ -669,7 +675,7 @@ def ascender_user_import_all():
 
 
 def ascender_user_import(
-    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: str | None = None, position_no: str | None = None
+    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: str | None = None, position_no: str | None = None, raising: bool = False
 ) -> DepartmentUser | None:
     """A convenience function to import a single Ascender employee and create an AD account for them.
     This is to allow easier manual intervention where a record goes in after the start date, or an
@@ -680,7 +686,7 @@ def ascender_user_import(
     LOGGER.info("Querying Ascender database for employee record")
     employee_id, jobs = ascender_employee_fetch(employee_id)
     if not jobs:
-        LOGGER.warning(f"Ascender employee ID {employee_id} import did not return jobs data")
+        log_raise_error(logging=True,raising=raising, message=f"Ascender employee ID {employee_id} import did not return jobs data")
         return None
 
     if position_no:
@@ -692,14 +698,14 @@ def ascender_user_import(
                 break
         # If we didn't match a position_no returned in the Ascender jobs, abort.
         if not job:
-            LOGGER.warning(f"Position no. {position_no} did not match any jobs in the Ascender employee record")
+            log_raise_error(logging=True,raising=raising, message=f"Position no. {position_no} did not match any jobs in the Ascender employee record")
             return None
     else:
         job = jobs[0]
 
-    rules_passed = validate_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True)
+    rules_passed = validate_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True, raising=raising)
     if not rules_passed:
-        LOGGER.warning(f"Ascender employee ID {employee_id} import did not pass all rules")
+        log_raise_error(logging=True,raising=raising, message=f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
 
     # Unpack the required values.
