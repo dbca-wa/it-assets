@@ -12,13 +12,19 @@
             <hr>
         </div>
         <div style="padding:20px">
-            <form action="{% url 'admin:organisation_departmentuser_provision' %}" method="POST" enctype="multipart/form-data" class="form-horizontal"> 
+            <form action="{% url 'admin:organisation_departmentuser_provision' %}" method="POST" enctype="multipart/form-data" class="form-horizontal" id="provision_form"> 
                 {% csrf_token %}
                 <div class="form-group">
                     <input type="number" class="form-control" name="employee_id" id="employee_id" placeholder="Employee ID*" style="width: 60vw" required>
-                    <button type="submit" class="form-control" style="padding: 6px;border: none;border-radius: 3px;cursor: pointer;">Create</button>
+                    <button type="button" id="submit_button" onclick="submitForm()" class="form-control" style="padding: 6px;border: none;border-radius: 3px;cursor: pointer;">Create</button>
                 </div>
             </form>
+            <script>
+                function submitForm() {
+                    document.getElementById("submit_button").disabled = true;
+                    document.getElementById("provision_form").submit();
+                }
+            </script>
                 {% if message %}
                 <div>
                     <br>

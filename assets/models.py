@@ -581,6 +581,7 @@ class Vulnerability(models.Model):
         """
         return f"""
 Asset: {self.asset_name}
+Systems: {self.asset.associated_systems}
 
 Severity: {self.get_severity_display()}
 State: {self.get_state_display()}
@@ -607,7 +608,9 @@ Solution:
         breaks via linebreaksbr.
         """
         return format_html(
-            """<h3>{}</h3><br><hr><br>
+            """<h3>{}</h3><br>
+<b>Systems:</b> {}<br>
+<br><hr><br>
 <b>Severity:</b> {}<br>
 <b>State:</b> {}<br>
 <b>Severity Modification Type:</b> {}<br>
@@ -618,6 +621,7 @@ Solution:
 <b>Plugin Output:</b><br>{}<br><br>
 <b>Solution:</b><br>{}<br>""",
             self.asset_name,
+            self.asset.associated_systems,
             self.get_severity_display(),
             self.get_state_display(),
             self.get_severity_modification_type_display(),

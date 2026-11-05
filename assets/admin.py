@@ -299,7 +299,6 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     def systems(self, obj):
         return obj.asset.associated_systems
 
-
     @admin.display(description="Age in days", ordering="first_found")
     def age(self, obj):
         return obj.age_in_days
@@ -393,6 +392,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "port_pprint",
         "scan_pprint",
         "software_vulns_pprint",
+        "systems",
     )
 
     fieldsets = (
@@ -427,6 +427,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "asset",
+                    "systems",
                     "ipv4_addresses",
                     "operating_systems",
                 ),
