@@ -14,7 +14,7 @@ from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import CostCentre, DepartmentUser, Location
 from .reports import department_user_export, user_account_export
-from .ascender import ascender_user_import
+from .ascender import ascender_user_import, AccountProvisioningError
 
 class AddressBook(LoginRequiredMixin, ListView):
     template_name = "organisation/address_book.html"
@@ -304,7 +304,8 @@ class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
         try:
             new_user = ascender_user_import(
                 employee_id=request.POST["employee_id"],
-                ignore_job_start_date=True
+                ignore_job_start_date=True,
+                raising=True
             )
             if new_user:
                 created = True
@@ -313,11 +314,15 @@ class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 created = False
                 # Failure details kept to a minimum, as it would require re-working ascender_user_import or exposing the logger, both of which are kinda messy solutions.
                 message = f"Azure user account not provisioned. Run as management command to see logging info."
+        except AccountProvisioningError as exc:
+            new_user = None
+            created = False
+            message = f"Azure user account not provisioned: {exc.message}"
         except Exception as exc:
             new_user = None
             created = False
             # Error details kept minimal for now, but may expand in the future.
-            message = f"Azure user account not provisioned - '{type(exc).__name__}' raised. Run as management command to see logging info."
+            message = f"Azure user account not provisioned: Unexpected '{type(exc).__name__}' raised. Run as management command to see logging info."
 
         return render(
             request,

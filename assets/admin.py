@@ -240,7 +240,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 ("2", "1-2 Weeks Ago"),
                 ("3", "2-3 Weeks Ago"),
                 ("4", "3-4 Weeks Ago"),
-                ("5", "4+ Weeks Ago"),
+                ("<4","<4 Weeks Ago"),
+                (">=4", ">=4 Weeks Ago"),
             ]
 
             return filter_list
@@ -255,7 +256,9 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                     return queryset.filter(last_found__date__range=(now() - timedelta(weeks=3), now() - timedelta(weeks=2)))
                 case "4":
                     return queryset.filter(last_found__date__range=(now() - timedelta(weeks=4), now() - timedelta(weeks=3)))
-                case "5":
+                case "<4":
+                    return queryset.filter(last_found__gt=now() - timedelta(weeks=4))
+                case ">=4":
                     return queryset.filter(last_found__lte=now() - timedelta(weeks=4))
                 case _:
                     return queryset
@@ -580,7 +583,8 @@ class AssetAdmin(admin.ModelAdmin):
                 ("2", "1-2 Weeks Ago"),
                 ("3", "2-3 Weeks Ago"),
                 ("4", "3-4 Weeks Ago"),
-                ("5", "4+ Weeks Ago"),
+                ("<4","<4 Weeks Ago"),
+                (">=4", ">=4 Weeks Ago"),
             ]
 
             return filter_list
@@ -595,7 +599,9 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=3), now() - timedelta(weeks=2)))
                 case "4":
                     return queryset.filter(last_seen__date__range=(now() - timedelta(weeks=4), now() - timedelta(weeks=3)))
-                case "5":
+                case "<4":
+                    return queryset.filter(last_seen__gt=now() - timedelta(weeks=4))
+                case ">=4":
                     return queryset.filter(last_seen__lte=now() - timedelta(weeks=4))
                 case _:
                     return queryset
@@ -750,7 +756,7 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Overview",
             {
-                "fields": ("name", "asset_type", "active_vulns", "active_critical_vulns", "description"),
+                "fields": ("name", "asset_type", "active_vulns", "active_critical_vulns", "description", "first_seen", "last_seen"),
             },
         ),
         (
@@ -776,9 +782,9 @@ class AssetAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Meta-Data",
+            "IT Assets Meta-Data",
             {
-                "fields": ("first_seen", "last_seen", "last_modified"),
+                "fields": ("last_modified",),
             },
         ),
         (
