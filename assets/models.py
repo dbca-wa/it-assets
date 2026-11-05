@@ -9,6 +9,7 @@ from django.db.models import JSONField
 from django.template.defaultfilters import linebreaksbr
 from django.utils.html import format_html
 from django.utils.timezone import localtime as now
+from github import Github
 
 from assets.enum_library import Severity, SeverityMT, State
 from itsystems.models import ITSystemRecord
@@ -241,7 +242,7 @@ class Asset(models.Model):
             for tag in self.tenable_data.get("tags", []):
                 self.add_tag(tag=tag["value"], category=tag["key"])
             # For web apps, add a web app tag if it's not present
-            if "webapp" in tenable_data.get("types",[]) and not self.has_tag(tag="Web App", category="Devices"):
+            if "webapp" in tenable_data.get("types", []) and not self.has_tag(tag="Web App", category="Devices"):
                 self.add_tag(tag="Web App", category="Devices")
 
         # Updates vulnerability data if any
@@ -500,7 +501,7 @@ class Vulnerability(models.Model):
     @property
     def cvss3_base_score(self) -> float | None:
         return self.plugin.get("cvss3_base_score")
-    
+
     @property
     def exploitability_ease(self) -> str | None:
         return self.plugin.get("exploitability_ease")
@@ -660,7 +661,7 @@ class Repository(models.Model):
     def __str__(self) -> str:
         return f"{self.it_system}: {self.url}"
 
-    def sync_dependabot_alerts(self, github_client=None) -> list[RepositoryAdvisory]:
+    def sync_dependabot_alerts(self, github_client: Github | None = None) -> list[RepositoryAdvisory]:
         """Synchronise open GitHub Dependabot alerts for this repository."""
         from assets.utils import sync_github_repo_dependabot_alerts
 
