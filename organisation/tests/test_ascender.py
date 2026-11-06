@@ -712,8 +712,9 @@ class CreateEntraIdUserTestCase(TestCase):
 
 
 class AscenderFetchRetryTestCase(TestCase):
-    """Tests for the _ascender_fetch_retry helper, which handles transient Oracle
-    serialization failures (ORA-08177) reported via the Ascender foreign data wrapper.
+    """Tests for the _ascender_fetch_retry helper, which handles transient Ascender foreign data
+    wrapper failures: Oracle serialization failures (ORA-08177) and loss of the remote listener
+    (ORA-12541 "TNS:no listener").
     """
 
     @patch("organisation.ascender.sleep")
@@ -736,6 +737,24 @@ class AscenderFetchRetryTestCase(TestCase):
 
         result = _ascender_fetch_retry(fetch)
         self.assertEqual(result, [{"employee_id": "123456"}])
+        self.assertEqual(attempts["count"], 2)
+        mock_sleep.assert_called_once_with(settings.FOREIGN_DB_RETRY_DELAY)
+
+    @patch("organisation.ascender.sleep")
+    def test_retries_after_connection_failure(self, mock_sleep):
+        """A foreign table connection failure (Oracle listener down) is retried like a serialization failure."""
+        attempts = {"count": 0}
+
+        def fetch():
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise errors.FdwUnableToEstablishConnection(
+                    'connection for foreign table "cc_manager_view" cannot be established\nDETAIL:  ORA-12541: TNS:no listener'
+                )
+            yield ("costcentre", "123456")
+
+        result = _ascender_fetch_retry(fetch)
+        self.assertEqual(result, [("costcentre", "123456")])
         self.assertEqual(attempts["count"], 2)
         mock_sleep.assert_called_once_with(settings.FOREIGN_DB_RETRY_DELAY)
 

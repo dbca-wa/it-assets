@@ -21,6 +21,15 @@ from organisation.utils import generate_password, ms_graph_get_subscribed_sku, m
 User = get_user_model()
 LOGGER = logging.getLogger("organisation")
 DATE_MAX = date(2049, 12, 31)
+# Ascender is queried through a foreign data wrapper over a remote Oracle database. The errors below
+# indicate a transient problem on the remote side, so the query is worth retrying rather than failing:
+# - SerializationFailure: ORA-08177, a concurrent transaction modified the data being read.
+# - FdwUnableToEstablishConnection: ORA-12541 "TNS:no listener" and similar, the Oracle listener is
+#   temporarily unreachable.
+ASCENDER_TRANSIENT_DB_ERRORS = (
+    errors.SerializationFailure,
+    errors.FdwUnableToEstablishConnection,
+)
 # The list below defines which columns to SELECT from the Ascender view, what to name the object
 # dict key after querying, plus how to parse the returned value of each column (if required).
 FOREIGN_TABLE_FIELDS = (
@@ -186,6 +195,7 @@ TERM_REASON_MAP = {
     "TA": "Transfer to another agency",
 }
 
+
 class AccountProvisioningError(Exception):
     """Exception raised during account provisioning failures"""
 
@@ -193,11 +203,13 @@ class AccountProvisioningError(Exception):
         self.message = message
         super().__init__(self.message)
 
+
 def log_raise_error(message: str, raising: bool, logging: bool):
     if logging:
         LOGGER.warning(message)
     if raising:
         raise AccountProvisioningError(message)
+
 
 def get_ascender_db_connection() -> Connection:
     """Returns a database connection to the Ascender database."""
@@ -256,12 +268,12 @@ def row_to_python_term_date(row):
 
 def _ascender_fetch_retry(fetch_func, *args, **kwargs) -> list:
     """Materialise the rows returned by an Ascender fetch generator, retrying the query on
-    transient serialization failures raised by the foreign data wrapper.
+    transient failures raised by the foreign data wrapper.
 
-    The Ascender database is exposed via a foreign data wrapper over a remote Oracle database.
-    Oracle can raise ORA-08177 (serialization failure) on the remote query when a concurrent
-    transaction modifies the data being read. This is transient, so queries are retried with
-    a short delay before being treated as a genuine failure.
+    Oracle can raise ORA-08177 (serialization failure) when a concurrent transaction modifies the
+    data being read, or ORA-12541 ("TNS:no listener") when the remote listener is briefly
+    unreachable. Both are transient, so queries are retried with a short delay before the failure
+    is treated as genuine (see `ASCENDER_TRANSIENT_DB_ERRORS`).
 
     The query is re-run from scratch on each attempt, so a partially-read result set is
     never returned to the caller. If every attempt fails, the final exception is re-raised.
@@ -269,16 +281,16 @@ def _ascender_fetch_retry(fetch_func, *args, **kwargs) -> list:
     for attempt in range(1, settings.FOREIGN_DB_MAX_ATTEMPTS + 1):
         try:
             return list(fetch_func(*args, **kwargs))
-        except errors.SerializationFailure as exc:
+        except ASCENDER_TRANSIENT_DB_ERRORS as exc:
             if attempt >= settings.FOREIGN_DB_MAX_ATTEMPTS:
                 LOGGER.error(
-                    f"Ascender query failed after {attempt} attempts; serialization failure could not be resolved",
+                    f"Ascender query failed after {attempt} attempts; transient database error could not be resolved",
                     exc_info=exc,
                 )
                 raise
             LOGGER.warning(
-                f"Ascender query hit a serialization failure (attempt {attempt} of {settings.FOREIGN_DB_MAX_ATTEMPTS}); "
-                f"retrying in {settings.FOREIGN_DB_RETRY_DELAY} seconds: {exc}"
+                f"Ascender query hit a transient database error (attempt {attempt} of "
+                f"{settings.FOREIGN_DB_MAX_ATTEMPTS}); retrying in {settings.FOREIGN_DB_RETRY_DELAY} seconds: {exc}"
             )
             sleep(settings.FOREIGN_DB_RETRY_DELAY)
 
@@ -337,7 +349,7 @@ def ascender_job_sort_key(record: dict) -> int:
     - If the job is not ended, the initial score is calculated using the end date times 100.
     - If the job has no end date recorded, the initial score is calculated using the DATE_MAX value times 10.
     """
-    today = datetime.now().date()
+    today = datetime.now(tz=settings.TZ).date()
 
     # Initial score from job_end_date.
     if record["job_end_date"] and record["job_end_date"] < today.strftime("%Y-%m-%d"):
@@ -453,12 +465,12 @@ def validate_ascender_user_account_rules(
 
     # Only process non-FPC users.
     if "clevel1_id" in job and job["clevel1_id"] == "FPC":
-        log_raise_error(logging=logging,raising=raising, message="FPC Ascender record, aborting")
+        log_raise_error(logging=logging, raising=raising, message="FPC Ascender record, aborting")
         return False
 
     # If a matching DepartmentUser already exists, skip.
     if DepartmentUser.objects.filter(employee_id=job["employee_id"]).exists():
-        log_raise_error(logging=logging,raising=raising, message="Matching DepartmentUser object already exists, aborting")
+        log_raise_error(logging=logging, raising=raising, message="Matching DepartmentUser object already exists, aborting")
         return False
 
     # Parse job end date (if present). Ascender records "null" job end date using a date value
@@ -467,8 +479,10 @@ def validate_ascender_user_account_rules(
     if job["job_end_date"] and datetime.strptime(job["job_end_date"], "%Y-%m-%d").date() != DATE_MAX:
         job_end_date = datetime.strptime(job["job_end_date"], "%Y-%m-%d").date()
         # Short circuit: if job_end_date is in the past, skip account creation.
-        if job_end_date < date.today():
-            log_raise_error(logging=logging,raising=raising, message=f"Job end date {job_end_date.strftime('%d/%b/%Y')} is in the past, aborting")
+        if job_end_date < datetime.now(tz=settings.TZ).date():
+            log_raise_error(
+                logging=logging, raising=raising, message=f"Job end date {job_end_date.strftime('%d/%b/%Y')} is in the past, aborting"
+            )
             return False
 
     # Start parsing required information for new account creation.
@@ -482,7 +496,7 @@ def validate_ascender_user_account_rules(
     # The valid licence type values stored in Ascender are ONPUL and CLDUL.
     # Short circuit: if there is no value for licence_type, skip account creation.
     if not job["licence_type"] or job["licence_type"] == "NULL":
-        log_raise_error(logging=logging,raising=raising, message=f"No M365 licence type recorded in Ascender, aborting")
+        log_raise_error(logging=logging, raising=raising, message="No M365 licence type recorded in Ascender, aborting")
         return False
     elif job["licence_type"] and job["licence_type"] in ["ONPUL", "CLDUL"]:
         if job["licence_type"] == "ONPUL":
@@ -496,15 +510,19 @@ def validate_ascender_user_account_rules(
     if manager_override_email and DepartmentUser.objects.filter(email=manager_override_email).exists():
         manager = DepartmentUser.objects.get(email=manager_override_email)
     elif manager_override_email and not DepartmentUser.objects.filter(email=manager_override_email).exists():
-        log_raise_error(logging=logging,raising=raising, message=f"Manager with email {manager_override_email} not present in IT Assets, aborting")
+        log_raise_error(
+            logging=logging, raising=raising, message=f"Manager with email {manager_override_email} not present in IT Assets, aborting"
+        )
         return False
     elif job["manager_emp_no"] and DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
         manager = DepartmentUser.objects.get(employee_id=job["manager_emp_no"])
     elif job["manager_emp_no"] and not DepartmentUser.objects.filter(employee_id=job["manager_emp_no"]).exists():
-        log_raise_error(logging=logging,raising=raising, message=f"Manager employee ID {job['manager_emp_no']} not present in IT Assets, aborting")
+        log_raise_error(
+            logging=logging, raising=raising, message=f"Manager employee ID {job['manager_emp_no']} not present in IT Assets, aborting"
+        )
         return False
     elif not job["manager_emp_no"]:  # Short circuit: if there is no manager recorded, skip account creation.
-        log_raise_error(logging=logging,raising=raising, message="No manager employee ID recorded in Ascender, aborting")
+        log_raise_error(logging=logging, raising=raising, message="No manager employee ID recorded in Ascender, aborting")
         return False
 
     # Rule: user must have a Cost Centre recorded (paypoint in Ascender).
@@ -532,17 +550,19 @@ def validate_ascender_user_account_rules(
     if job["job_start_date"]:
         job_start_date = datetime.strptime(job["job_start_date"], "%Y-%m-%d").date()
     else:  # Short circuit.
-        log_raise_error(logging=logging,raising=raising, message="No job start date recorded, aborting")
+        log_raise_error(logging=logging, raising=raising, message="No job start date recorded, aborting")
         return False
 
     # Skippable rule: if job_start_date is in the past, skip account creation.
-    today = date.today()
+    today = datetime.now(tz=settings.TZ).date()
     if ignore_job_start_date:
         if logging:
             LOGGER.info(f"Skipped check for job start date {job_start_date.strftime('%d/%b/%Y')} being in the past")
     else:
         if job_start_date < today:
-            log_raise_error(logging=logging,raising=raising, message=f"Job start date {job_start_date.strftime('%d/%b/%Y')} is in the past, aborting")
+            log_raise_error(
+                logging=logging, raising=raising, message=f"Job start date {job_start_date.strftime('%d/%b/%Y')} is in the past, aborting"
+            )
             return False
 
     # Rule: we set a limit for the number of days ahead of their starting date which we
@@ -553,7 +573,7 @@ def validate_ascender_user_account_rules(
         if diff.days > 0 and diff.days > settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS:
             # Start start exceeds our limit, abort creating an AD account yet.
             log = f"Job future start date {job_start_date.strftime('%d/%b/%Y')} exceeds limit of {settings.ASCENDER_CREATE_AZURE_AD_LIMIT_DAYS} days, aborting"
-            log_raise_error(logging=logging,raising=raising, message=log)
+            log_raise_error(logging=logging, raising=raising, message=log)
             return False
 
     # Rule: user must have a physical location recorded, and that location must exist in our database.
@@ -564,14 +584,14 @@ def validate_ascender_user_account_rules(
             log = f"Job physical location {job['geo_location_desc']} does not exist in IT Assets, aborting"
         else:
             log = "No job physical location recorded, aborting"
-        log_raise_error(logging=logging,raising=raising, message=log)
+        log_raise_error(logging=logging, raising=raising, message=log)
         return False
 
     # If all rules have passed, return a tuple containing required values.
     if cc and job_start_date and licence_type and manager and location:
         return (job, cc, job_start_date, licence_type, manager, location)
     else:
-        log_raise_error(logging=logging,raising=raising, message="Unexpected failure - All required values not retrieved")
+        log_raise_error(logging=logging, raising=raising, message="Unexpected failure - All required values not retrieved")
         return False
 
 
@@ -675,7 +695,11 @@ def ascender_user_import_all():
 
 
 def ascender_user_import(
-    employee_id: str, ignore_job_start_date: bool = False, manager_override_email: str | None = None, position_no: str | None = None, raising: bool = False
+    employee_id: str,
+    ignore_job_start_date: bool = False,
+    manager_override_email: str | None = None,
+    position_no: str | None = None,
+    raising: bool = False,
 ) -> DepartmentUser | None:
     """A convenience function to import a single Ascender employee and create an AD account for them.
     This is to allow easier manual intervention where a record goes in after the start date, or an
@@ -686,7 +710,7 @@ def ascender_user_import(
     LOGGER.info("Querying Ascender database for employee record")
     employee_id, jobs = ascender_employee_fetch(employee_id)
     if not jobs:
-        log_raise_error(logging=True,raising=raising, message=f"Ascender employee ID {employee_id} import did not return jobs data")
+        log_raise_error(logging=True, raising=raising, message=f"Ascender employee ID {employee_id} import did not return jobs data")
         return None
 
     if position_no:
@@ -698,14 +722,16 @@ def ascender_user_import(
                 break
         # If we didn't match a position_no returned in the Ascender jobs, abort.
         if not job:
-            log_raise_error(logging=True,raising=raising, message=f"Position no. {position_no} did not match any jobs in the Ascender employee record")
+            log_raise_error(
+                logging=True, raising=raising, message=f"Position no. {position_no} did not match any jobs in the Ascender employee record"
+            )
             return None
     else:
         job = jobs[0]
 
     rules_passed = validate_ascender_user_account_rules(job, ignore_job_start_date, manager_override_email, logging=True, raising=raising)
     if not rules_passed:
-        log_raise_error(logging=True,raising=raising, message=f"Ascender employee ID {employee_id} import did not pass all rules")
+        log_raise_error(logging=True, raising=raising, message=f"Ascender employee ID {employee_id} import did not pass all rules")
         return None
 
     # Unpack the required values.
@@ -887,7 +913,7 @@ def _wait_for_usage_location(guid: str, headers: dict, job: dict, email: str) ->
     """
     user_has_usage_location = False
     graph_user = None
-    timestamp = datetime.now()
+    timestamp = datetime.now(tz=settings.TZ)
     retry_delay = 1
     url = f"https://graph.microsoft.com/v1.0/users/{guid}"
     params = {"$select": "id,usageLocation"}
@@ -900,7 +926,7 @@ def _wait_for_usage_location(guid: str, headers: dict, job: dict, email: str) ->
         except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
             LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
 
-        timestamp = datetime.now()
+        timestamp = datetime.now(tz=settings.TZ)
 
         if graph_user and graph_user.get("usageLocation") == "AU":
             user_has_usage_location = True
@@ -943,7 +969,7 @@ def _assign_licence_with_retry(
     """
     user_has_license = False
     url = f"https://graph.microsoft.com/v1.0/users/{guid}/assignLicense"
-    timestamp = datetime.now()
+    timestamp = datetime.now(tz=settings.TZ)
     retry_delay = 1
     resp = None
 
@@ -955,7 +981,7 @@ def _assign_licence_with_retry(
         except (requests.exceptions.HTTPError, requests.exceptions.RequestException, Exception) as exc:
             LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
 
-        timestamp = datetime.now()
+        timestamp = datetime.now(tz=settings.TZ)
 
         if user_has_license:
             break

@@ -1,69 +1,59 @@
 # syntax=docker/dockerfile:1
 # Args to centralise versions.
+# PYTHON_VERSION is the DHI runtime tag.
 ARG PYTHON_VERSION=3.13-debian13-dev
-ARG GCC_RUNTIME_VERSION=14.2.0-19+deb13u0+dhi6
+ARG UV_VERSION=0.13
+
+# ---- Stages ----
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+FROM dhi.io/python:${PYTHON_VERSION} AS builder
 
 # ---- Builder stage ----
-FROM dhi.io/python:${PYTHON_VERSION} AS builder
-ARG GCC_RUNTIME_VERSION
-
-RUN <<EOF
-set -euxo pipefail
-apt-get update
-
-# Install the aligned GCC runtime family and dependent packages
-# in one transaction so APT cannot retain incompatible DHI revisions.
-apt-get install -y --allow-downgrades --no-install-recommends \
-  gcc-14-base="${GCC_RUNTIME_VERSION}" \
-  libgcc-s1="${GCC_RUNTIME_VERSION}" \
-  libstdc++6="${GCC_RUNTIME_VERSION}" \
-  libgfortran5="${GCC_RUNTIME_VERSION}" \
-  gdal-bin \
-  proj-bin \
-  gcc \
-  g++
-EOF
+# gcc is required: gunicorn[fast] -> gunicorn-h1c has no wheel for every
+# platform and builds its extension from source.
+COPY --from=uv /uv /bin/uv
 
 WORKDIR /app
-COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /bin/
-COPY pyproject.toml uv.lock ./
-RUN uv sync --no-group dev --link-mode=copy --compile-bytecode --no-python-downloads --frozen
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+  apt-get update && apt-get install -y --no-install-recommends gcc
+
+# Install only runtime dependencies into /app/.venv. The venv path must match
+# the runtime stage: uv writes absolute shebangs into console scripts such as
+# gunicorn.
+RUN --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  uv sync --locked --no-group dev --link-mode=copy --compile-bytecode --no-python-downloads
 
 # ---- Runtime stage ----
 FROM dhi.io/python:${PYTHON_VERSION} AS runtime
-ARG GCC_RUNTIME_VERSION
 LABEL org.opencontainers.image.title="it-assets" \
   org.opencontainers.image.description="DBCA IT Assets System" \
   org.opencontainers.image.source="https://github.com/dbca-wa/it-assets" \
   org.opencontainers.image.vendor="DBCA" \
   org.opencontainers.image.authors="asi@dbca.wa.gov.au"
 
-RUN <<EOF
-set -euxo pipefail
-apt-get update
-
-# Keep the complete GCC runtime dependency transaction together.
-apt-get install -y --allow-downgrades --no-install-recommends \
-  gcc-14-base="${GCC_RUNTIME_VERSION}" \
-  libgcc-s1="${GCC_RUNTIME_VERSION}" \
-  libstdc++6="${GCC_RUNTIME_VERSION}" \
-  libgfortran5="${GCC_RUNTIME_VERSION}" \
-  gdal-bin \
-  proj-bin
-
-ldconfig
-rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-EOF
-
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1 \
   PATH="/app/.venv/bin:$PATH"
 
-WORKDIR /app
+# GDAL/GEOS/PROJ runtime libraries for django.contrib.gis. The DHI base has no
+# /etc/ld.so.cache, so ldconfig is required for Django's ctypes-based lookup.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+  apt-get update && apt-get install -y --no-install-recommends \
+  libgdal36 \
+  libgeos-c1t64 \
+  libproj25 \
+  proj-data \
+  && ldconfig
 
-# Copy installed virtualenv from builder
-COPY --from=builder /app /app
+# Copy installed virtualenv from builder (same path, so console-script shebangs stay valid).
+WORKDIR /app
+COPY --from=builder --chown=nonroot:nonroot /app/.venv /app/.venv
 
 # Copy the remaining project files to finish building the project
 COPY --chown=nonroot:nonroot gunicorn.py manage.py pyproject.toml ./
@@ -74,7 +64,7 @@ COPY --chown=nonroot:nonroot assets ./assets
 
 # Compile scripts and collect static files
 RUN <<EOF
-python -m compileall manage.py itassets organisation itsystems assets
+python -m compileall -q manage.py itassets organisation itsystems assets
 python manage.py collectstatic --noinput
 EOF
 
