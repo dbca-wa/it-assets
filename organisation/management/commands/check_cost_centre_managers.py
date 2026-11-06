@@ -1,8 +1,8 @@
 import logging
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from organisation.ascender import ascender_cc_manager_fetch
+from organisation.ascender import ASCENDER_TRANSIENT_DB_ERRORS, ascender_cc_manager_fetch
 from organisation.models import CostCentre, DepartmentUser
 
 
@@ -12,7 +12,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger = logging.getLogger("organisation")
         logger.info("Querying Ascender database for cost centre manager information")
-        records = ascender_cc_manager_fetch()
+        try:
+            records = ascender_cc_manager_fetch()
+        except ASCENDER_TRANSIENT_DB_ERRORS as exc:
+            # The Ascender database is unreachable or otherwise temporarily unavailable (the query
+            # has already been retried). Fail the command with a clear message and non-zero exit
+            # status, rather than an unhandled traceback.
+            logger.error(f"Unable to query Ascender database for cost centre manager information: {exc}")
+            raise CommandError("Ascender database is unavailable; no cost centre managers were updated") from exc
 
         for record in records:
             cc_ascender_code = record[1]

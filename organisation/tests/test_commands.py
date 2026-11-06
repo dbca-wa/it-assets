@@ -8,6 +8,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from mixer.backend.django import mixer
+from psycopg import errors
 
 from organisation.management.commands.department_users_terminated_users_handling import Command
 from organisation.management.commands.organisation_generate_dummy_data import DIVISION_NAMES, EMP_STATUS
@@ -184,3 +185,57 @@ class GenerateDummyDataTestCase(TestCase):
         import organisation.management.commands.organisation_generate_dummy_data as cmd
 
         self.assertFalse(hasattr(cmd, "mixer"))
+
+
+class CheckCostCentreManagersTestCase(TestCase):
+    """Tests for the check_cost_centre_managers management command.
+
+    The Ascender view is mocked: each record is a row where index 1 is the cost centre code and
+    index 6 is the manager's employee ID.
+    """
+
+    def setUp(self):
+        self.cost_centre = mixer.blend(CostCentre, code="123456", ascender_code="123456", manager=None)
+        self.manager = mixer.blend(DepartmentUser, employee_id="100001")
+        self.other_user = mixer.blend(DepartmentUser, employee_id="100002")
+
+    @staticmethod
+    def record(cc_code, employee_id):
+        return ["", cc_code, "", "", "", "", employee_id]
+
+    @patch("organisation.management.commands.check_cost_centre_managers.ascender_cc_manager_fetch")
+    def test_updates_cost_centre_manager(self, mock_fetch):
+        """The matching cost centre manager is updated from Ascender data."""
+        mock_fetch.return_value = [self.record(self.cost_centre.ascender_code, self.manager.employee_id)]
+
+        call_command("check_cost_centre_managers")
+
+        self.cost_centre.refresh_from_db()
+        self.assertEqual(self.cost_centre.manager, self.manager)
+
+    @patch("organisation.management.commands.check_cost_centre_managers.ascender_cc_manager_fetch")
+    def test_skips_unknown_cost_centre_or_employee(self, mock_fetch):
+        """Records with an unmatched cost centre or employee ID are skipped without error."""
+        mock_fetch.return_value = [
+            self.record("999999", self.manager.employee_id),  # Unknown cost centre.
+            self.record(self.cost_centre.ascender_code, "999999"),  # Unknown employee.
+        ]
+
+        call_command("check_cost_centre_managers")
+
+        self.cost_centre.refresh_from_db()
+        self.assertIsNone(self.cost_centre.manager)
+
+    @patch("organisation.management.commands.check_cost_centre_managers.ascender_cc_manager_fetch")
+    def test_ascender_unavailable_raises_command_error(self, mock_fetch):
+        """A transient Ascender failure results in a CommandError, not an unhandled traceback."""
+        mock_fetch.side_effect = errors.FdwUnableToEstablishConnection(
+            'connection for foreign table "cc_manager_view" cannot be established\nDETAIL:  ORA-12541: TNS:no listener'
+        )
+
+        with self.assertRaises(CommandError) as context:
+            call_command("check_cost_centre_managers")
+
+        self.assertIn("Ascender database is unavailable", str(context.exception))
+        self.cost_centre.refresh_from_db()
+        self.assertIsNone(self.cost_centre.manager)
