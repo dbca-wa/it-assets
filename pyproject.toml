@@ -29,7 +29,7 @@ dependencies = [
   "django-storages[azure]==1.14.6",
   "paramiko==5.1.0",
   "pygithub==2.10.0",
-  "django-reversion==6.4.0",
+  "django-reversion==6.5.0",
 ]
 
 [dependency-groups]
