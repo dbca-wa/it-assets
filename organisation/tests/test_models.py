@@ -385,12 +385,19 @@ class DepartmentUserTerminationsTestCase(TestCase):
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=-2))
         self.assertEqual(self.user.past_term_date(), True)
 
-        # 1 valid + past_term_date check
+        # 1 valid + past_term_date check: Term date is yesterday - past_term_date should return true
+        self.user.term_date_data = [
+            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": (date.today()-timedelta(days=1)).strftime("%Y-%m-%d"), "term_process_date": None}
+        ]
+        self.assertEqual(self.user.get_term_date(), date.today()-timedelta(days=1))
+        self.assertEqual(self.user.past_term_date(), True)
+
+        # 1 valid + past_term_date check: Term date is today - past_term_date should return false
         self.user.term_date_data = [
             {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": date.today().strftime("%Y-%m-%d"), "term_process_date": None}
         ]
         self.assertEqual(self.user.get_term_date(), date.today())
-        self.assertEqual(self.user.past_term_date(), True)
+        self.assertEqual(self.user.past_term_date(), False)
 
 
 # ---------------------------------------------------------------------------

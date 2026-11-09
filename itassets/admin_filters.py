@@ -16,3 +16,6 @@ class DropdownFilterChoices(admin.ChoicesFieldListFilter):
 
 class DropdownFilterBoolean(admin.BooleanFieldListFilter):  
     template = DROPDOWN_TEMPLATE
+
+class DropdownFilterDate(admin.DateFieldListFilter):
+    template = DROPDOWN_TEMPLATE

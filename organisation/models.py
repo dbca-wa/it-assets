@@ -151,6 +151,16 @@ class DepartmentUser(models.Model):
         verbose_name="position no.",
         help_text="Optional Ascender position number to specify the user's current active job",
     )
+    ongoing = models.BooleanField(
+        default=True,
+        editable=False,
+        help_text="Employee has ongoing employment with the department / isn't terminated.",
+    )
+    termination_date = models.DateField(
+        null=True,
+        editable=False,
+        help_text="The employee's final day prior to being terminated across all jobs."
+    )
     term_date_data = models.JSONField(
         default=list,
         null=True,
@@ -158,7 +168,6 @@ class DepartmentUser(models.Model):
         editable=False,
         help_text="Cache of staff Ascender termination date data. May include 1 or more records if the user has/ had multiple jobs with the department.",
     )
-
     # On-premise AD data
     ad_guid = models.CharField(
         max_length=48,
@@ -460,18 +469,19 @@ class DepartmentUser(models.Model):
         return None
 
     def get_term_date(self) -> date | None:
-        """From Ascender data, return the latest termination date of a given user, if any."""
-        # Business rules:
-        # If a user has a job with a blank/ null term_date value, they aren't terminated
-        # If a user has user only has jobs with term_date values in the past, they are terminated
-
+        """
+        From Ascender data, return the latest termination date of a given user, if any.\n
+        Business rules:
+        - If a user has a job with a blank/ null term_date value, they aren't terminated
+        - If a user has user only has jobs with term_date values in the past, they are terminated
+        """
         if self.term_date_data and len(self.term_date_data) > 0:
-            # Get all jobs without a term date
+            # If the user has any jobs without a term date, return 'None'
             active_jobs = [x for x in self.term_date_data if (x["term_date"] is None or x["term_date"] == "")]
             if len(active_jobs) > 0:
                 return None
 
-            # Get all valid term dates
+            # If the user has any jobs with a term date, return the latest termination date
             valid_term_dates = [x["term_date"] for x in self.term_date_data if (x["term_date"] is not None and x["term_date"] != "")]
             if len(valid_term_dates) > 0:
                 # return latest date
@@ -480,7 +490,7 @@ class DepartmentUser(models.Model):
     def past_term_date(self) -> bool:
         """From Ascender data, return True if the user is past their termination date."""
         term_date = self.get_term_date()
-        return term_date is not None and term_date <= date.today()
+        return term_date is not None and term_date < date.today()
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
@@ -1220,7 +1230,7 @@ class DepartmentUser(models.Model):
                         LOGGER.info("NO ACTION (log only)")
 
     def update_from_ascender_data(self):
-        """For this DepartmentUser object, update the field values from cached Ascender data
+        """For this DepartmentUser object, update the field values from cached Ascender data and term_date_data
         (the source of truth for these values).
         """
         if not self.employee_id or not self.ascender_data:
@@ -1377,6 +1387,11 @@ class DepartmentUser(models.Model):
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.title = ascender_title
+
+        # Termination date
+        self.termination_date = self.get_term_date()
+        # Ongoing
+        self.ongoing = not self.past_term_date()
 
         self.save()
 
