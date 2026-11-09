@@ -69,13 +69,14 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "title",
         "employee_id",
         "active",
+        "ongoing",
         "cost_centre",
         "division",
         "unit",
         "m365_licence",
         "account_type",
     )
-    list_filter = (AssignedLicenceFilter, ("active", DropdownFilterBoolean), ("account_type", DropdownFilterChoices))
+    list_filter = (AssignedLicenceFilter, ("active", DropdownFilterBoolean),("ongoing", DropdownFilterBoolean), ("account_type", DropdownFilterChoices))
     model_description = DepartmentUser.__doc__
     search_fields = ("name", "email", "title", "employee_id", "ad_guid", "azure_guid")
     raw_id_fields = ("manager",)
@@ -110,6 +111,8 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "term_reason",
         "employee_id",
         "maiden_name",
+        "ongoing",
+        "termination_date",
     )
     fieldsets = (
         (
@@ -130,6 +133,8 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "job_start_date",
                     "job_end_date",
                     "extended_leave",
+                    "ongoing",
+                    "termination_date",
                     "term_reason",
                     "ascender_data_updated",
                 ),
