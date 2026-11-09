@@ -39,7 +39,7 @@ jobs:
           dotnet-version: '6.0.x'
 
       - name: Run Microsoft Security DevOps (Defender for Cloud)
-        uses: microsoft/security-devops-action@08976cb623803b1b36d7112d4ff9f59eae704de0 # v1.12.0
+        uses: microsoft/security-devops-action@cf28f87c67770dbaa208cce3665fafc849f77507 # v1.12.1
         with:
           tools: bandit,credscan
           categories: code,secrets
