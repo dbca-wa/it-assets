@@ -81,6 +81,7 @@ class Asset(models.Model):
     name = models.CharField(max_length=255, unique=False, null=True, blank=True, verbose_name="Name")
     aliases = models.JSONField(verbose_name="Alternate names", default=list, null=True, blank=True, editable=False)
     description = models.TextField(null=True, blank=True, verbose_name="Description")
+    notes = models.TextField(null=True, blank=True, verbose_name="Notes")
     contacts = models.ManyToManyField(
         DepartmentUser,
         blank=True,

@@ -756,7 +756,7 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Overview",
             {
-                "fields": ("name", "asset_type", "active_vulns", "active_critical_vulns", "description", "first_seen", "last_seen"),
+                "fields": ("name", "asset_type", "active_vulns", "active_critical_vulns", "description", "notes","first_seen", "last_seen"),
             },
         ),
         (
