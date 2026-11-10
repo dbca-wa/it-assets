@@ -63,6 +63,7 @@ class AssetAPIResource(View):
                         "name": asset.name,
                         "aliases": asset.aliases,
                         "description": asset.description,
+                        "notes": asset.notes,
                         "contacts": asset.asset_contacts,
                         "systems": asset.associated_systems,
                         "os": asset.os,
