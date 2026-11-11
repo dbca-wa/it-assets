@@ -80,6 +80,7 @@ class UserAccounts(LoginRequiredMixin, ListView):
                 ascender_data__job_start_date__isnull=False,
                 ascender_data__job_start_date__gt=date.today().isoformat(),
             )
+            .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
             .select_related("cost_centre")
             .order_by("name")
         )
