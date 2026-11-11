@@ -1,12 +1,12 @@
 import json
 from datetime import timedelta
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timezone import localtime as now
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, ngettext
 
 from assets.enum_library import Severity, SeverityMT, State
 from assets.exports import export_asset_vulns, export_vulns
@@ -478,6 +478,43 @@ class AssetAdmin(admin.ModelAdmin):
     # ==========================================
     #       Custom Filter classes & Config
     # ==========================================
+    class StatusFilter(admin.SimpleListFilter):
+        """
+        Provides a filter on status that defaults to active
+        """
+        template = DROPDOWN_TEMPLATE
+        title = "Status"
+        parameter_name = 'status'
+
+        def lookups(self, request, model_admin):
+            return [
+                (None, _('Active')),
+                ('decom', _('Decommissioned')),
+                ('all', _('All')),
+            ]
+
+        def choices(self, cl):
+            """
+            Sets the default choice to the first, ensuring that 'Active' is the default.
+            """
+            for lookup, title in self.lookup_choices:
+                yield {
+                    'selected': self.value() == lookup,
+                    'query_string': cl.get_query_string({
+                        self.parameter_name: lookup,
+                    }, []),
+                    'display': title,
+                }
+
+        def queryset(self, request, queryset):
+            match self.value():
+                case "decom":
+                    return queryset.filter(effective_to__isnull=False)
+                case "all":
+                    return queryset
+                case None:
+                    return queryset.filter(effective_to=None)
+            
     class ITSystemRegisterFilter(admin.SimpleListFilter):
         """
         Related only filter for IT systems, but includse a "Not Empty" option, which filters out empty options
@@ -624,8 +661,16 @@ class AssetAdmin(admin.ModelAdmin):
 
         return super().get_list_filter(request)
 
+    def get_queryset(self, request):
+        """Retrieves all assets regardless of the state"""
+        qs = Asset.all_states.all()
+        ordering = self.get_ordering(request)
+        if ordering:
+            qs = qs.order_by(*ordering)
+        return qs
+
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
+    list_filter_base = (StatusFilter,ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
 
     # =================================
     #       Export actions & Config
@@ -634,7 +679,7 @@ class AssetAdmin(admin.ModelAdmin):
     def has_vuln_permission(self, request):
         """Only allows users to use the action if they can view vulns"""
         return request.user.has_perm("assets.view_vulnerability")
-
+        
     @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
     def asset_export_as_csv_technical(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv"""
@@ -655,7 +700,29 @@ class AssetAdmin(admin.ModelAdmin):
         """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
         return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_assets=True)
 
+    @admin.action(permissions=["delete"], description="Decommission selected assets")
+    def decommission_asset(self, request, queryset):
+        """
+        An alternative 'delete' action that doesn't force by default, resulting in the asset being decomissioned.
+        """
+        for obj in queryset:
+            obj.delete()
+
+        # Notify user of decommission
+        decom = len(queryset)
+        self.message_user(
+            request,
+            ngettext(
+                "%d asset was successfully decomissioned.",
+                "%d assets were successfully decomissioned.",
+                decom,
+            )
+            % decom,
+            messages.SUCCESS,
+        )
+
     actions = [
+        decommission_asset,
         asset_export_as_csv_simple,
         asset_export_as_csv_technical,
         asset_export_critical_as_csv_simple,
@@ -666,6 +733,13 @@ class AssetAdmin(admin.ModelAdmin):
     #           Custom fields
     # ==================================
 
+    @admin.display(
+        description="Status",
+        ordering="effective_to",
+    )
+    def status(self, obj):
+        return obj.status
+    
     @admin.display(
         description="Actionable Vulns",
         ordering="total_active_vulns",
@@ -716,6 +790,7 @@ class AssetAdmin(admin.ModelAdmin):
         "name",
         "custodian",
         "asset_type",
+        "status",
         "os",
         "os_version",
         "asset_contacts",
@@ -750,13 +825,14 @@ class AssetAdmin(admin.ModelAdmin):
         "active_critical_vulns",
         "ipv4s",
         "operating_systems",
+        "status",
     )
 
     fieldsets = (
         (
             "Overview",
             {
-                "fields": ("name", "asset_type", "active_vulns", "active_critical_vulns", "description", "notes","first_seen", "last_seen"),
+                "fields": ("name", "asset_type","status", "active_vulns", "active_critical_vulns", "description", "notes","first_seen", "last_seen"),
             },
         ),
         (

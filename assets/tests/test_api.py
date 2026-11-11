@@ -1,10 +1,11 @@
 from django.urls import reverse
+from django.contrib.auth.models import Permission
 
 from itassets.test_api import ApiTestCase
 from assets.tests.test_model import RandomAssetGenerator as Gen, RandomVulnGenerator as VGen
+from assets.models import Asset
 from assets.enum_library import Severity, SeverityMT, State
 from itsystems.tests.test_model import create_random_record as gen_itsystem
-from django.contrib.auth.models import Permission
 
 import json
 from datetime import datetime
@@ -61,6 +62,44 @@ class AssetsAPITestCase(ApiTestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(json.loads(resp.content), [])
+
+    def test_json_response_contents(self):
+        """
+        Tests that the json response contains all required fields, and are accurately represented.
+        """
+        url = reverse("asset_api_resource")
+        resp = self.client.get(url)
+        asset_list = resp.json()
+
+        found_assets = []
+        # Validates that all fields are accurately reported
+        for asset in asset_list:
+            f_asset = Asset.objects.filter(pk=asset["id"])
+            self.assertTrue(f_asset.exists())
+            f_asset = f_asset[0]
+            self.assertEqual(f_asset.tenable_id, asset["tenable_id"])
+            self.assertEqual(f_asset.name, asset["name"])
+            self.assertEqual(f_asset.asset_type, asset["type"])
+            self.assertEqual(f_asset.status, asset["status"])
+            self.assertEqual(f_asset.first_seen.isoformat(), asset["first_seen"])
+            self.assertEqual(f_asset.last_seen.isoformat(), asset["last_seen"])
+            self.assertEqual(f_asset.description, asset["description"])
+            self.assertEqual(f_asset.notes, asset["notes"])
+            self.assertEqual([str(x) for x in f_asset.contacts.all()], asset["contacts"])
+            self.assertEqual([str(x) for x in f_asset.systems.all()], asset["systems"])
+            self.assertEqual(f_asset.os_list, asset["operating_systems"])
+            self.assertEqual(f_asset.ipv4_list, asset["ipv4s"])
+            self.assertEqual([{"category":x.category.name,"tag":x.name} for x in f_asset.tags.all()], asset["tags"])
+            self.assertEqual(f_asset.total_vulns, asset["total_vulns"])
+            self.assertEqual(f_asset.total_active_vulns, asset["actionable_vulns"])
+            self.assertEqual(f_asset.total_critical_vulns, asset["actionable_critical_vulns"])
+            found_assets.append(f_asset)
+
+        # Validates that all records are unique, and they contain the same number of records as the database
+        self.assertEqual(len(found_assets), len(set(found_assets))) # All records unique
+        self.assertEqual(len(found_assets),len(Asset.objects.all())) # Response size matches database
+
+
 
     def test_tenable_data_only(self):
         """
@@ -130,14 +169,14 @@ class AssetsAPITestCase(ApiTestCase):
         self.asset3.save()
 
         # Test tag cat found
-        url = reverse("asset_api_resource", query={"tag_cat": "tag_cat_1"})
+        url = reverse("asset_api_resource", query={"tag_category": "tag_cat_1"})
         resp = self.client.get(url)
         self.assertContains(resp, self.asset1.name)
         self.assertContains(resp, self.asset3.name)
         self.assertNotContains(resp, self.asset2.name)
 
         # Test tag cat not found
-        url = reverse("asset_api_resource", query={"tag_cat": "tag_cat"})
+        url = reverse("asset_api_resource", query={"tag_category": "tag_cat"})
         resp = self.client.get(url)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
@@ -158,33 +197,59 @@ class AssetsAPITestCase(ApiTestCase):
         self.assertNotContains(resp, self.asset3.name)
 
         # Test tag value in tag cat found
-        url = reverse("asset_api_resource", query={"tag": "tag_val", "tag_cat": "tag_cat_1"})
+        url = reverse("asset_api_resource", query={"tag": "tag_val", "tag_category": "tag_cat_1"})
         resp = self.client.get(url)
         self.assertContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
 
         # Test tag val found, but not cat
-        url = reverse("asset_api_resource", query={"tag": "tag_val", "tag_cat": "tag"})
+        url = reverse("asset_api_resource", query={"tag": "tag_val", "tag_category": "tag"})
         resp = self.client.get(url)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
 
         # Test tag cat found, but not tag val
-        url = reverse("asset_api_resource", query={"tag": "tag", "tag_cat": "tag_cat_1"})
+        url = reverse("asset_api_resource", query={"tag": "tag", "tag_category": "tag_cat_1"})
         resp = self.client.get(url)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
 
         # Test assert none found
-        url = reverse("asset_api_resource", query={"tag": "tag", "tag_cat": "tag"})
+        url = reverse("asset_api_resource", query={"tag": "tag", "tag_category": "tag"})
         resp = self.client.get(url)
         self.assertNotContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
 
+    def test_filter_status(self):
+        """
+        Test that decommissioned assets are hidden by default, but can be filtered for by status inclusively and exclusively.
+        """
+        self.asset1.delete()
+
+        # Hide decommissioned by default
+        url = reverse("asset_api_resource")
+        resp = self.client.get(url)
+        self.assertNotContains(resp, self.asset1.name)
+        self.assertContains(resp, self.asset2.name)
+        self.assertContains(resp, self.asset3.name)
+
+        # Decommission exclusive filter
+        url = reverse("asset_api_resource", query={"status":"decommissioned"})
+        resp = self.client.get(url)
+        self.assertContains(resp, self.asset1.name)
+        self.assertNotContains(resp, self.asset2.name)
+        self.assertNotContains(resp, self.asset3.name)
+
+        # All filter
+        url = reverse("asset_api_resource", query={"status":"all"})
+        resp = self.client.get(url)
+        self.assertContains(resp, self.asset1.name)
+        self.assertContains(resp, self.asset2.name)
+        self.assertContains(resp, self.asset3.name)
 
 class VulnerabilityAPITestCase(ApiTestCase):
     def setUp(self):
