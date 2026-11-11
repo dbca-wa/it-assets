@@ -30,7 +30,6 @@ class Command(BaseCommand):
             vulns = self.get_vulns_per_asset()
             # Update asset and vuln database
             self.update_assets_and_vulns(assets, vulns)
-        
 
         except Exception as exc:
             self.logger.warning("Failed to sync Tenable assets", exc_info=exc)
@@ -49,7 +48,7 @@ class Command(BaseCommand):
             #     fail_silently=True,
             # )
 
-    def update_assets_and_vulns(self, assets: list[Asset], vulns: list[dict[str,Vulnerability]]):
+    def update_assets_and_vulns(self, assets: list[Asset], vulns: list[dict[str, Vulnerability]]):
         """
         Loads all assets and vulnerabilities into the database, updating existing records and creating new ones where applicable.
         Separated into it's own method for easier testing.
@@ -84,8 +83,6 @@ class Command(BaseCommand):
 
         self.logger.info(f"Successfully processed {total} department assets")
         self.logger.info(f"{assets_updated} UPDATED | {assets_created} CREATED | {assets_skipped} SKIPPED")
-            
-
 
     def passes_filter(self, asset: dict) -> bool:
         """
@@ -112,7 +109,7 @@ class Command(BaseCommand):
                 valid = False
         return valid
 
-    def get_vulns_per_asset(self) -> list[dict[str,Vulnerability]]:
+    def get_vulns_per_asset(self) -> list[dict[str, Vulnerability]]:
         """
         Retrieves vulnerabilities for each asset, returning a the dict of vuln lists per asset uuid {tenable_uuid <str> : [{vuln},]}
         """

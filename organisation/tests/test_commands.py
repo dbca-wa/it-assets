@@ -32,7 +32,7 @@ class TerminatedUsersTestCase(TestCase):
         self.user_terminated = create_test_user(
             [
                 {
-                    "term_date": (datetime.now(tz=settings.TZ)-timedelta(days=1)).date().strftime("%Y-%m-%d"),
+                    "term_date": (datetime.now(tz=settings.TZ) - timedelta(days=1)).date().strftime("%Y-%m-%d"),
                 }
             ]
         )

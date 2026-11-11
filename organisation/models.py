@@ -157,9 +157,7 @@ class DepartmentUser(models.Model):
         help_text="Employee has ongoing employment with the department / isn't terminated.",
     )
     termination_date = models.DateField(
-        null=True,
-        editable=False,
-        help_text="The employee's final day prior to being terminated across all jobs."
+        null=True, editable=False, help_text="The employee's final day prior to being terminated across all jobs."
     )
     term_date_data = models.JSONField(
         default=list,

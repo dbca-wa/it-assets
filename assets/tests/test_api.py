@@ -89,17 +89,15 @@ class AssetsAPITestCase(ApiTestCase):
             self.assertEqual([str(x) for x in f_asset.systems.all()], asset["systems"])
             self.assertEqual(f_asset.os_list, asset["operating_systems"])
             self.assertEqual(f_asset.ipv4_list, asset["ipv4s"])
-            self.assertEqual([{"category":x.category.name,"tag":x.name} for x in f_asset.tags.all()], asset["tags"])
+            self.assertEqual([{"category": x.category.name, "tag": x.name} for x in f_asset.tags.all()], asset["tags"])
             self.assertEqual(f_asset.total_vulns, asset["total_vulns"])
             self.assertEqual(f_asset.total_active_vulns, asset["actionable_vulns"])
             self.assertEqual(f_asset.total_critical_vulns, asset["actionable_critical_vulns"])
             found_assets.append(f_asset)
 
         # Validates that all records are unique, and they contain the same number of records as the database
-        self.assertEqual(len(found_assets), len(set(found_assets))) # All records unique
-        self.assertEqual(len(found_assets),len(Asset.objects.all())) # Response size matches database
-
-
+        self.assertEqual(len(found_assets), len(set(found_assets)))  # All records unique
+        self.assertEqual(len(found_assets), len(Asset.objects.all()))  # Response size matches database
 
     def test_tenable_data_only(self):
         """
@@ -238,18 +236,19 @@ class AssetsAPITestCase(ApiTestCase):
         self.assertContains(resp, self.asset3.name)
 
         # Decommission exclusive filter
-        url = reverse("asset_api_resource", query={"status":"decommissioned"})
+        url = reverse("asset_api_resource", query={"status": "decommissioned"})
         resp = self.client.get(url)
         self.assertContains(resp, self.asset1.name)
         self.assertNotContains(resp, self.asset2.name)
         self.assertNotContains(resp, self.asset3.name)
 
         # All filter
-        url = reverse("asset_api_resource", query={"status":"all"})
+        url = reverse("asset_api_resource", query={"status": "all"})
         resp = self.client.get(url)
         self.assertContains(resp, self.asset1.name)
         self.assertContains(resp, self.asset2.name)
         self.assertContains(resp, self.asset3.name)
+
 
 class VulnerabilityAPITestCase(ApiTestCase):
     def setUp(self):

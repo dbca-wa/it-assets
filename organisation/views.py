@@ -16,6 +16,7 @@ from .models import CostCentre, DepartmentUser, Location
 from .reports import department_user_export, user_account_export
 from .ascender import ascender_user_import, AccountProvisioningError
 
+
 class AddressBook(LoginRequiredMixin, ListView):
     template_name = "organisation/address_book.html"
     model = DepartmentUser
@@ -289,8 +290,9 @@ class DepartmentUserExport(View):
         response = department_user_export(response, users)
         return response
 
+
 class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """A custom view to allow the user to provision an account without running the management command """
+    """A custom view to allow the user to provision an account without running the management command"""
 
     # Permissions locked to people that can already change users
     permission_required = ["organisation.change_departmentuser"]
@@ -303,18 +305,14 @@ class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs) -> HttpResponse:
         """Processes results from the form and reports results to user"""
         try:
-            new_user = ascender_user_import(
-                employee_id=request.POST["employee_id"],
-                ignore_job_start_date=True,
-                raising=True
-            )
+            new_user = ascender_user_import(employee_id=request.POST["employee_id"], ignore_job_start_date=True, raising=True)
             if new_user:
                 created = True
                 message = f"Azure user account for '{new_user.name}' was successfully provisioned."
             else:
                 created = False
                 # Failure details kept to a minimum, as it would require re-working ascender_user_import or exposing the logger, both of which are kinda messy solutions.
-                message = f"Azure user account not provisioned. Run as management command to see logging info."
+                message = "Azure user account not provisioned. Run as management command to see logging info."
         except AccountProvisioningError as exc:
             new_user = None
             created = False
@@ -325,14 +323,7 @@ class ProvisionAccountView(LoginRequiredMixin, PermissionRequiredMixin, View):
             # Error details kept minimal for now, but may expand in the future.
             message = f"Azure user account not provisioned: Unexpected '{type(exc).__name__}' raised. Run as management command to see logging info."
 
-        return render(
-            request,
-            self.provision_url,
-            context={
-                "created": created,
-                "message": message
-                }
-            )
+        return render(request, self.provision_url, context={"created": created, "message": message})
 
 
 class CostCentreAPIResource(View):

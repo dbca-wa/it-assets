@@ -1,9 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User
 from django.test import TestCase, SimpleTestCase
 from django.urls import reverse
 from mixer.backend.django import mixer
-from django.urls import reverse
 from django.utils.timezone import localtime as now
 
 from itsystems.tests.test_model import create_random_record as gen_itsystem
@@ -16,12 +14,14 @@ from datetime import timedelta
 
 User = get_user_model()
 
+
 class DepartmentAssetsAdminTestCase(TestCase):
     """
     Parent class for admin testing in the department assets app.
     Provides base data and some basic testing utils.
     Ineriting classes must set "test_list" in order to use the utils.
     """
+
     def setUp(self):
         super(DepartmentAssetsAdminTestCase, self).setUp()
         # Create & log in an admin user.
@@ -90,7 +90,7 @@ class DepartmentAssetsAdminTestCase(TestCase):
             self.d_low_vuln,
             self.d_medium_vuln,
             self.d_high_vuln,
-            self.d_critical_vuln
+            self.d_critical_vuln,
         ]
 
         # Loads up vuln stats
@@ -116,19 +116,19 @@ class DepartmentAssetsAdminTestCase(TestCase):
         """
         for item in self.test_list:
             if item in exception_list:
-                self.assertContains(resp,str(item), count=2) # should appear once in plain text and once within an action checkbox
+                self.assertContains(resp, str(item), count=2)  # should appear once in plain text and once within an action checkbox
             else:
                 self.assertNotContains(resp, str(item))
 
-    def assert_contains_all_except(self,resp, exclusion_list: list):
+    def assert_contains_all_except(self, resp, exclusion_list: list):
         """
         Asserts that response doesn't contain the assets in the exclusion list
         """
         for item in self.test_list:
             if item in exclusion_list:
-                self.assertNotContains(resp,str(item))
+                self.assertNotContains(resp, str(item))
             else:
-                self.assertContains(resp, str(item), count=2) # should appear once in plain text and once within an action checkbox
+                self.assertContains(resp, str(item), count=2)  # should appear once in plain text and once within an action checkbox
 
     def assert_contains_none(self, resp):
         """
@@ -142,7 +142,8 @@ class DepartmentAssetsAdminTestCase(TestCase):
         Asserts that response contained all assets
         """
         for item in self.test_list:
-            self.assertContains(resp, str(item), count=2) # should appear once in plain text and once within an action checkbox 
+            self.assertContains(resp, str(item), count=2)  # should appear once in plain text and once within an action checkbox
+
 
 class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
     def setUp(self):
@@ -161,19 +162,19 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         """
         Tests that asset it-system filtering only returns associated assets
         """
-        
+
         # Direct filter test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"systems":self.itsystem_2.pk})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"systems": self.itsystem_2.pk})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns_and_systems])
 
         # Not Empty Test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"systems":"any"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"systems": "any"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns_and_systems, self.asset_vuln_and_system])
-        
+
         # Empty Test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"systems":"none"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"systems": "none"})
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.asset_vulns_and_systems, self.asset_vuln_and_system])
 
@@ -200,22 +201,22 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         self.asset_vulns.save()
 
         # None
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"vulns":"none"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"vulns": "none"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vuln])
 
         # Not Empty Test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"vulns":"has_vulns"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"vulns": "has_vulns"})
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.asset_vuln])
-        
+
         # Active Test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"vulns":"has_active_vulns"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"vulns": "has_active_vulns"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns, self.asset_vulns_and_systems])
 
         # Active and critical test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"vulns":"has_critical_vulns"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"vulns": "has_critical_vulns"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns])
 
@@ -223,60 +224,57 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         """
         Tests that the last_seen filter accurately filters assets within week ranges.
         """
-        self.asset_vuln.last_seen = now()-timedelta(days=2) # 0-1 weeks
+        self.asset_vuln.last_seen = now() - timedelta(days=2)  # 0-1 weeks
         self.asset_vuln.save()
-        self.asset_vulns.last_seen = now()-timedelta(days=8) # 1-2 weeks
+        self.asset_vulns.last_seen = now() - timedelta(days=8)  # 1-2 weeks
         self.asset_vulns.save()
-        self.asset_vuln_and_system.last_seen = now()-timedelta(days=15) # 2-3 weeks
+        self.asset_vuln_and_system.last_seen = now() - timedelta(days=15)  # 2-3 weeks
         self.asset_vuln_and_system.save()
-        self.asset_vulns_and_systems.last_seen = now()-timedelta(days=24) # 3-4 weeks
+        self.asset_vulns_and_systems.last_seen = now() - timedelta(days=24)  # 3-4 weeks
         self.asset_vulns_and_systems.save()
 
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"1"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_seen": "1"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vuln])
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"2"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_seen": "2"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns])
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"3"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_seen": "3"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vuln_and_system])
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"4"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_seen": "4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns_and_systems])
 
-        self.asset_vulns_and_systems.last_seen = now()-timedelta(days=40) # 5+ weeks
+        self.asset_vulns_and_systems.last_seen = now() - timedelta(days=40)  # 5+ weeks
         self.asset_vulns_and_systems.save()
 
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":">=4"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_seen": ">=4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vulns_and_systems])
 
-
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"last_seen":"<4"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_seen": "<4"})
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.asset_vulns_and_systems])
-
-
 
     def test_filter_by_tag(self):
         # Test dynamic filter creation and filtering as per tag
         self.asset_vuln.add_tag(category="new_test_category", tag="NEW_TAG_VALUE")
         self.asset_vuln.save()
-        tag =self.asset_vuln.tags.get(name="NEW_TAG_VALUE")
+        tag = self.asset_vuln.tags.get(name="NEW_TAG_VALUE")
 
         # tag filter creation and filtering test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"new_test_category_tag":tag.pk})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"new_test_category_tag": tag.pk})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vuln])
 
         # any tag test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"new_test_category_tag":"any"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"new_test_category_tag": "any"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vuln])
 
         # No tag test
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"new_test_category_tag":"none"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"new_test_category_tag": "none"})
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.asset_vuln])
 
@@ -287,13 +285,13 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         self.asset_vuln.delete()
         url = reverse("service_desk_admin:assets_asset_changelist")
         resp = self.client.get(url)
-        self.assert_contains_all_except(resp,[self.asset_vuln])
+        self.assert_contains_all_except(resp, [self.asset_vuln])
 
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"status":"decom"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"status": "decom"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.asset_vuln])
 
-        url = reverse("service_desk_admin:assets_asset_changelist", query = {"status":"all"})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"status": "all"})
         resp = self.client.get(url)
         self.assert_contains_all(resp)
 
@@ -326,25 +324,26 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         # greater than filter
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"severity": f"GT_{Severity.MEDIUM}"})
         resp = self.client.get(url)
-        self.assert_contains_only(resp, [
-            self.a_high_vuln, 
-            self.c_high_vuln,
-            self.d_high_vuln,
-            self.b_critical_vuln,
-            self.c_critical_vuln,
-            self.d_critical_vuln,
-            ])
+        self.assert_contains_only(
+            resp,
+            [
+                self.a_high_vuln,
+                self.c_high_vuln,
+                self.d_high_vuln,
+                self.b_critical_vuln,
+                self.c_critical_vuln,
+                self.d_critical_vuln,
+            ],
+        )
 
         # Non existent severity filter
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"severity": "999999"})
         resp = self.client.get(url)
         self.assert_contains_none(resp)
 
-
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"severity": "GT_999999"})
         resp = self.client.get(url)
         self.assert_contains_none(resp)
-
 
     def test_severity_mod_type_filter(self):
         """
@@ -370,7 +369,6 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         resp = self.client.get(url)
         self.assert_contains_none(resp)
 
-
     def test_state_filter(self):
         """
         Validates that the severity filter works
@@ -379,7 +377,7 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         # standard filtering
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"state": f"{State.REOPENED}"})
         resp = self.client.get(url)
-        self.assert_contains_only(resp,[self.c_low_vuln, self.d_low_vuln])
+        self.assert_contains_only(resp, [self.c_low_vuln, self.d_low_vuln])
 
         # exclusion filter
         self.c_low_vuln.state = State.FIXED
@@ -407,16 +405,10 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         # multi vuln test
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset__id__exact": self.asset_vulns.pk})
         resp = self.client.get(url)
-        self.assert_contains_only(resp, [
-            self.c_info_vuln,
-            self.c_low_vuln,
-            self.c_medium_vuln,
-            self.c_high_vuln,
-            self.c_critical_vuln
-            ])
+        self.assert_contains_only(resp, [self.c_info_vuln, self.c_low_vuln, self.c_medium_vuln, self.c_high_vuln, self.c_critical_vuln])
 
         # non-existent asset test
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset__id__exact":9999999999})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset__id__exact": 9999999999})
         resp = self.client.get(url)
         self.assert_contains_none(resp)
 
@@ -444,16 +436,10 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         self.asset_vulns.add_tag(tag="TEST_DEVICE_TYPE_2", category="Devices")
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset_type": self.asset_vulns.tags.first().pk})
         resp = self.client.get(url)
-        self.assert_contains_only(resp, [
-            self.c_info_vuln,
-            self.c_low_vuln,
-            self.c_medium_vuln,
-            self.c_high_vuln,
-            self.c_critical_vuln
-            ])
+        self.assert_contains_only(resp, [self.c_info_vuln, self.c_low_vuln, self.c_medium_vuln, self.c_high_vuln, self.c_critical_vuln])
 
         # non-existent asset test
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset_type":9999999999})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset_type": 9999999999})
         resp = self.client.get(url)
         self.assert_contains_none(resp)
 
@@ -465,26 +451,15 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         resp = self.client.get(url)
 
         # Test that only related vulnerabilities are found: Vulns for asset "asset_vulns_and_systems"
-        self.assert_contains_only(resp,[
-            self.d_info_vuln,
-            self.d_low_vuln,
-            self.d_medium_vuln,
-            self.d_high_vuln,
-            self.d_critical_vuln
-        ])
+        self.assert_contains_only(resp, [self.d_info_vuln, self.d_low_vuln, self.d_medium_vuln, self.d_high_vuln, self.d_critical_vuln])
 
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset_systems": self.itsystem_1.pk})
         resp = self.client.get(url)
 
         # Test that only related vulnerabilities are found: Vulns for assets "asset_vulns_and_systems" and "asset_vuln_and_system"
-        self.assert_contains_only(resp,[
-            self.b_critical_vuln,
-            self.d_info_vuln,
-            self.d_low_vuln,
-            self.d_medium_vuln,
-            self.d_high_vuln,
-            self.d_critical_vuln
-        ])
+        self.assert_contains_only(
+            resp, [self.b_critical_vuln, self.d_info_vuln, self.d_low_vuln, self.d_medium_vuln, self.d_high_vuln, self.d_critical_vuln]
+        )
 
         # non-existent it-system test
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"asset_systems": 99999999999999})
@@ -497,38 +472,38 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         """
 
         for vuln in self.vuln_list:
-            vuln.last_found = now()-timedelta(weeks=5) # set everything to 5+ weeks
+            vuln.last_found = now() - timedelta(weeks=5)  # set everything to 5+ weeks
             vuln.save()
 
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"5"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": "5"})
         resp = self.client.get(url)
         self.assert_contains_all(resp)
 
-        self.d_info_vuln.last_found = now()-timedelta(days=2) # 0-1 weeks
+        self.d_info_vuln.last_found = now() - timedelta(days=2)  # 0-1 weeks
         self.d_info_vuln.save()
-        self.d_low_vuln.last_found = now()-timedelta(days=8) # 1-2 weeks
+        self.d_low_vuln.last_found = now() - timedelta(days=8)  # 1-2 weeks
         self.d_low_vuln.save()
-        self.d_medium_vuln.last_found = now()-timedelta(days=15) # 2-3 weeks
+        self.d_medium_vuln.last_found = now() - timedelta(days=15)  # 2-3 weeks
         self.d_medium_vuln.save()
-        self.d_high_vuln.last_found = now()-timedelta(days=24) # 3-4 weeks
+        self.d_high_vuln.last_found = now() - timedelta(days=24)  # 3-4 weeks
         self.d_high_vuln.save()
 
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"1"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": "1"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_info_vuln])
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"2"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": "2"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_low_vuln])
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"3"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": "3"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_medium_vuln])
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"4"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": "4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_high_vuln])
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":">=4"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": ">=4"})
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.d_high_vuln, self.d_medium_vuln, self.d_low_vuln, self.d_info_vuln])
-        url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"<4"})
+        url = reverse("service_desk_admin:assets_vulnerability_changelist", query={"last_found": "<4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_high_vuln, self.d_medium_vuln, self.d_low_vuln, self.d_info_vuln])
 
