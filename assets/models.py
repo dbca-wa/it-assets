@@ -17,14 +17,17 @@ from assets.enum_library import Severity, SeverityMT, State
 from itsystems.models import ITSystemRecord
 from organisation.models import DepartmentUser
 
+
 class ActiveManager(models.Manager):
     """Automatically filters for active assets only"""
 
     def get_queryset(self):
         return super().get_queryset().filter(effective_to=None)
 
+
 class DecommissionedManager(models.Manager):
     """Automatically filters for Decommissioned assets only"""
+
     def get_queryset(self):
         return super().get_queryset().filter(effective_to__isnull=False)
 
@@ -79,15 +82,15 @@ class AssetTag(models.Model):
         return f"{self.category.name}: {self.name}"
 
 
-
 class Asset(ActiveMixin):
     """
     Represents a physical or digital asset owned by the organisation.
     IE; a server, a user device, a web app, etc
     """
-    objects = ActiveManager() # Defaults to active only 
-    decommissioned = DecommissionedManager() # Shows decommissioned only
-    all_states = models.Manager() # Shows all
+
+    objects = ActiveManager()  # Defaults to active only
+    decommissioned = DecommissionedManager()  # Shows decommissioned only
+    all_states = models.Manager()  # Shows all
 
     class Meta(ActiveMixin.Meta):
         verbose_name = "Asset"

@@ -240,7 +240,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 ("2", "1-2 Weeks Ago"),
                 ("3", "2-3 Weeks Ago"),
                 ("4", "3-4 Weeks Ago"),
-                ("<4","<4 Weeks Ago"),
+                ("<4", "<4 Weeks Ago"),
                 (">=4", ">=4 Weeks Ago"),
             ]
 
@@ -349,7 +349,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     search_help_text = "Search by finding ID, plugin name, plugin family, or asset name"
 
-    list_display = ("plugin_name", "asset__name", "systems","severity", "state", "severity_modification_type", "last_found", "age")
+    list_display = ("plugin_name", "asset__name", "systems", "severity", "state", "severity_modification_type", "last_found", "age")
 
     ordering = (
         "-last_found",
@@ -482,15 +482,16 @@ class AssetAdmin(admin.ModelAdmin):
         """
         Provides a filter on status that defaults to active
         """
+
         template = DROPDOWN_TEMPLATE
         title = "Status"
-        parameter_name = 'status'
+        parameter_name = "status"
 
         def lookups(self, request, model_admin):
             return [
-                (None, _('Active')),
-                ('decom', _('Decommissioned')),
-                ('all', _('All')),
+                (None, _("Active")),
+                ("decom", _("Decommissioned")),
+                ("all", _("All")),
             ]
 
         def choices(self, cl):
@@ -499,11 +500,14 @@ class AssetAdmin(admin.ModelAdmin):
             """
             for lookup, title in self.lookup_choices:
                 yield {
-                    'selected': self.value() == lookup,
-                    'query_string': cl.get_query_string({
-                        self.parameter_name: lookup,
-                    }, []),
-                    'display': title,
+                    "selected": self.value() == lookup,
+                    "query_string": cl.get_query_string(
+                        {
+                            self.parameter_name: lookup,
+                        },
+                        [],
+                    ),
+                    "display": title,
                 }
 
         def queryset(self, request, queryset):
@@ -514,7 +518,7 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset
                 case None:
                     return queryset.filter(effective_to=None)
-            
+
     class ITSystemRegisterFilter(admin.SimpleListFilter):
         """
         Related only filter for IT systems, but includse a "Not Empty" option, which filters out empty options
@@ -620,7 +624,7 @@ class AssetAdmin(admin.ModelAdmin):
                 ("2", "1-2 Weeks Ago"),
                 ("3", "2-3 Weeks Ago"),
                 ("4", "3-4 Weeks Ago"),
-                ("<4","<4 Weeks Ago"),
+                ("<4", "<4 Weeks Ago"),
                 (">=4", ">=4 Weeks Ago"),
             ]
 
@@ -670,7 +674,7 @@ class AssetAdmin(admin.ModelAdmin):
         return qs
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (StatusFilter,ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
+    list_filter_base = (StatusFilter, ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
 
     # =================================
     #       Export actions & Config
@@ -679,7 +683,7 @@ class AssetAdmin(admin.ModelAdmin):
     def has_vuln_permission(self, request):
         """Only allows users to use the action if they can view vulns"""
         return request.user.has_perm("assets.view_vulnerability")
-        
+
     @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
     def asset_export_as_csv_technical(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv"""
@@ -739,7 +743,7 @@ class AssetAdmin(admin.ModelAdmin):
     )
     def status(self, obj):
         return obj.status
-    
+
     @admin.display(
         description="Actionable Vulns",
         ordering="total_active_vulns",
@@ -832,7 +836,17 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Overview",
             {
-                "fields": ("name", "asset_type","status", "active_vulns", "active_critical_vulns", "description", "notes","first_seen", "last_seen"),
+                "fields": (
+                    "name",
+                    "asset_type",
+                    "status",
+                    "active_vulns",
+                    "active_critical_vulns",
+                    "description",
+                    "notes",
+                    "first_seen",
+                    "last_seen",
+                ),
             },
         ),
         (

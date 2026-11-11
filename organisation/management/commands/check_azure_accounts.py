@@ -58,7 +58,7 @@ class Command(BaseCommand):
         for az in azure_users:
             try:
                 # Skip admin accounts
-                if not "@dpaw.onmicrosoft.com" in az["userPrincipalName"]:
+                if "@dpaw.onmicrosoft.com" not in az["userPrincipalName"]:
                     # No existing DepartmentUser is linked to this Entra ID user.
                     if not DepartmentUser.objects.filter(azure_guid=az["objectId"]).exists():
                         # EDGE CASE 1: a department user with matching email may already exist with a different azure_guid.
@@ -82,7 +82,10 @@ class Command(BaseCommand):
 
                         # EDGE CASE 2: a department user with matching employee ID may already exist with a different azure_guid.
                         # We'll need to correct this issue manually. Email a warning to admins and skip the account.
-                        if az["employeeId"] and DepartmentUser.objects.filter(employee_id=az["employeeId"], azure_guid__isnull=False).exists():
+                        if (
+                            az["employeeId"]
+                            and DepartmentUser.objects.filter(employee_id=az["employeeId"], azure_guid__isnull=False).exists()
+                        ):
                             existing_user = DepartmentUser.objects.filter(employee_id=az["employeeId"]).first()
                             message = f"Skipped {az['userPrincipalName']} ({az['objectId']}): employeeId exists and is already associated with {existing_user}"
                             logger.warning(message)

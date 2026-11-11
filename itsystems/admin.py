@@ -229,7 +229,7 @@ class ITSystemRecordAdmin(VersionAdmin):
     autocomplete_fields = ("system_owner", "technology_custodian", "information_custodian", "business_service_owner")
 
     list_filter = (
-        CustomStatusFilters, 
+        CustomStatusFilters,
         ("division", DropdownFilterRelated),
         ("seasonality", DropdownFilterRelated),
         ("availability", DropdownFilterRelated),

@@ -19,7 +19,6 @@ from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport, ProvisionAccountView
 
 
-
 class DepartmentUserForm(forms.ModelForm):
     class Meta:
         model = DepartmentUser
@@ -61,6 +60,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     return queryset.filter(assigned_licences=[])
                 else:
                     return queryset.filter(assigned_licences__contains=[self.value()])
+
     change_list_template = "admin/organisation/departmentuser/change_list.html"
     form = DepartmentUserForm
     list_display = (
@@ -76,7 +76,12 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "m365_licence",
         "account_type",
     )
-    list_filter = (AssignedLicenceFilter, ("active", DropdownFilterBoolean),("ongoing", DropdownFilterBoolean), ("account_type", DropdownFilterChoices))
+    list_filter = (
+        AssignedLicenceFilter,
+        ("active", DropdownFilterBoolean),
+        ("ongoing", DropdownFilterBoolean),
+        ("account_type", DropdownFilterChoices),
+    )
     model_description = DepartmentUser.__doc__
     search_fields = ("name", "email", "title", "employee_id", "ad_guid", "azure_guid")
     raw_id_fields = ("manager",)
@@ -392,10 +397,11 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 "provision_azure_account/",
                 ProvisionAccountView.as_view(),
                 name=f"{info[0]}_{info[1]}_provision",
-            )
+            ),
         ] + urls
         return urls
-    
+
+
 @register(Location)
 class LocationAdmin(ModelAdmin):
     fields = ("name", "phone", "ascender_desc")

@@ -21,11 +21,7 @@ class AssetAPIResource(View):
         if not request.user.has_perm("assets.view_asset"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Asset.all_states \
-                .prefetch_related("systems") \
-                .prefetch_related("contacts") \
-                .prefetch_related("tags") \
-                .all()
+            queryset = Asset.all_states.prefetch_related("systems").prefetch_related("contacts").prefetch_related("tags").all()
 
             # Queryset filtering.
             # By State - defaults to showing only active
@@ -72,7 +68,7 @@ class AssetAPIResource(View):
                         "name": asset.name,
                         "type": asset.asset_type,
                         "status": asset.status,
-                        "first_seen":asset.first_seen.isoformat() if asset.last_seen is not None else None,
+                        "first_seen": asset.first_seen.isoformat() if asset.last_seen is not None else None,
                         "last_seen": asset.last_seen.isoformat() if asset.last_seen is not None else None,
                         "description": asset.description,
                         "notes": asset.notes,
@@ -80,7 +76,7 @@ class AssetAPIResource(View):
                         "systems": [str(x) for x in asset.systems.all()],
                         "operating_systems": asset.os_list,
                         "ipv4s": asset.ipv4_list,
-                        "tags": [{"category":x.category.name,"tag":x.name} for x in asset.tags.all()],
+                        "tags": [{"category": x.category.name, "tag": x.name} for x in asset.tags.all()],
                         "total_vulns": asset.total_vulns,
                         "actionable_vulns": asset.total_active_vulns,
                         "actionable_critical_vulns": asset.total_critical_vulns,
@@ -115,11 +111,9 @@ class VulnerabilityAPIResource(View):
         if not request.user.has_perm("assets.view_vulnerability"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Vulnerability.objects \
-                .select_related("asset") \
-                .prefetch_related("asset__tags") \
-                .prefetch_related("asset__systems") \
-                .all()            # Queryset filtering.
+            queryset = (
+                Vulnerability.objects.select_related("asset").prefetch_related("asset__tags").prefetch_related("asset__systems").all()
+            )  # Queryset filtering.
             # By finding_id
             if "finding_id" in kwargs and kwargs["finding_id"]:
                 queryset = queryset.filter(finding_id=kwargs["finding_id"])
@@ -198,7 +192,9 @@ class VulnerabilityAPIResource(View):
                         "exploited_by_malware": vuln.exploited_by_malware,
                         "exploited_by_nessus": vuln.exploited_by_nessus,
                         "has_patch": vuln.has_patch,
-                        "patch_publication_date": vuln.patch_publication_date.isoformat() if vuln.patch_publication_date is not None else None,
+                        "patch_publication_date": vuln.patch_publication_date.isoformat()
+                        if vuln.patch_publication_date is not None
+                        else None,
                         "Cvss3 base score": vuln.cvss3_base_score,
                         "CVE": vuln.cve,
                         "workaround": vuln.workaround,
@@ -225,7 +221,9 @@ class VulnerabilityAPIResource(View):
                         "exploited_by_malware": vuln.exploited_by_malware,
                         "exploited_by_nessus": vuln.exploited_by_nessus,
                         "has_patch": vuln.has_patch,
-                        "patch_publication_date": vuln.patch_publication_date.isoformat() if vuln.patch_publication_date is not None else None,
+                        "patch_publication_date": vuln.patch_publication_date.isoformat()
+                        if vuln.patch_publication_date is not None
+                        else None,
                         "Cvss3 base score": vuln.cvss3_base_score,
                     }
                     for vuln in queryset
