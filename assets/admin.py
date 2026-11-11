@@ -805,8 +805,8 @@ class AssetAdmin(admin.ModelAdmin):
         "last_seen",
     )
 
-    search_fields = ("name", "description", "contacts__email", "systems__system_id", "systems__name", "tags__name", "os_list")
-    search_help_text = "Search by name, description, OS, contact, IT System, or tag"
+    search_fields = ("name", "description","notes", "contacts__email", "systems__system_id", "systems__name", "tags__name", "os_list")
+    search_help_text = "Search by name, description, notes, OS, contact, IT System, or tag"
 
     autocomplete_fields = (
         "contacts",
