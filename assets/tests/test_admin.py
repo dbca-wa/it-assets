@@ -280,6 +280,24 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.asset_vuln])
 
+    def test_decommissioned(self):
+        """
+        Tests that decommissioned assets are hidden by default, but can be filtered for exclusively or inclusively using the status filter.
+        """
+        self.asset_vuln.delete()
+        url = reverse("service_desk_admin:assets_asset_changelist")
+        resp = self.client.get(url)
+        self.assert_contains_all_except(resp,[self.asset_vuln])
+
+        url = reverse("service_desk_admin:assets_asset_changelist", query = {"status":"decom"})
+        resp = self.client.get(url)
+        self.assert_contains_only(resp, [self.asset_vuln])
+
+        url = reverse("service_desk_admin:assets_asset_changelist", query = {"status":"all"})
+        resp = self.client.get(url)
+        self.assert_contains_all(resp)
+
+
 class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
     def setUp(self):
         super().setUp()
@@ -513,6 +531,7 @@ class VulnerabilityAdminTestCase(DepartmentAssetsAdminTestCase):
         url = reverse("service_desk_admin:assets_vulnerability_changelist", query = {"last_found":"<4"})
         resp = self.client.get(url)
         self.assert_contains_only(resp, [self.d_high_vuln, self.d_medium_vuln, self.d_low_vuln, self.d_info_vuln])
+
 
 class PPrintJsonTestCase(SimpleTestCase):
     """
