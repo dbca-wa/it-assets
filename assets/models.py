@@ -159,7 +159,6 @@ class Asset(ActiveMixin):
         """removes all vulns, then decomissions the system if true, else hard deletes it"""
         self.vulns.all().delete()
         self.__refresh_vuln_stats()
-        self.tags.clear()
         return super().delete(*args, **kwargs)
 
     @property

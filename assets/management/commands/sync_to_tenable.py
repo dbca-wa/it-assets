@@ -66,18 +66,21 @@ class Command(BaseCommand):
             count += 1
             # If it's a valid asset, add or update it the asset and any associated vulns
             if self.passes_filter(asset):
-                found_asset, created = Asset.objects.get_or_create(tenable_id=asset["id"])
-                found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id, []))
-                if created:
-                    self.logger.info(
-                        f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
-                    )
-                    assets_created += 1
+                found_asset, created = Asset.all_states.get_or_create(tenable_id=asset["id"])
+                if found_asset.is_active(): # Ignores decommissioned assets
+                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id, []))
+                    if created:
+                        self.logger.info(
+                            f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
+                        )
+                        assets_created += 1
+                    else:
+                        self.logger.info(
+                            f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
+                        )
+                        assets_updated += 1
                 else:
-                    self.logger.info(
-                        f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
-                    )
-                    assets_updated += 1
+                    assets_skipped += 1
             else:
                 assets_skipped += 1
 

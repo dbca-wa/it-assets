@@ -197,7 +197,7 @@ class AssetModelTestCase(TestCase):
     def test_decommission(self):
         """
         Ensures that a non-force deletion decomissions an asset instead of deleting it.
-        A decomissioned asset should have it's tags cleared, all related vulns deleted, and have effective_to set to the time of deletion.
+        A decomissioned asset should have all related vulns deleted, and have effective_to set to the time of deletion.
         """
         # Add 2 tags
         self.asset1.add_tag(category="Example_cat", tag="Example_val")
@@ -225,10 +225,10 @@ class AssetModelTestCase(TestCase):
         self.assertFalse(Asset.objects.filter(pk=asset_1_pk).exists())
         self.assertTrue(Asset.decommissioned.filter(pk=asset_1_pk).exists())
         self.assertTrue(Asset.all_states.filter(pk=asset_1_pk).exists())
-        # Assert that tags were cleared
-        self.assertFalse(self.asset1.has_tag(category="Example_cat", tag="Example_val"))
-        self.assertFalse(self.asset1.has_tag(category="Example_cat_2", tag="Example_val_2"))
-        self.assertEqual(len(self.asset1.tags.all()), 0)
+        # Assert that tags were retained
+        self.assertTrue(self.asset1.has_tag(category="Example_cat", tag="Example_val"))
+        self.assertTrue(self.asset1.has_tag(category="Example_cat_2", tag="Example_val_2"))
+        self.assertEqual(len(self.asset1.tags.all()), 2)
         # Assert that vulns were removed
         self.assertEqual(len(self.asset1.vulns.all()), 0)
         self.assertEqual(self.asset1.total_vulns, 0)
