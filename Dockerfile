@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --locked --no-group dev --link-mode=copy --compile-bytecode --no-python-downloads
 
 # ---- Runtime stage ----
+# NOTE: the runtime stage requires the -dev base in order to provide a shell for the application
+# to run Django management commands.
 FROM dhi.io/python:${PYTHON_VERSION} AS runtime
 LABEL org.opencontainers.image.title="it-assets" \
   org.opencontainers.image.description="DBCA IT Assets System" \
