@@ -12,9 +12,24 @@ from django.utils.html import format_html
 from django.utils.timezone import localtime as now
 from github import Github
 
+from dbca_utils.models import ActiveMixin
 from assets.enum_library import Severity, SeverityMT, State
 from itsystems.models import ITSystemRecord
 from organisation.models import DepartmentUser
+
+
+class ActiveManager(models.Manager):
+    """Automatically filters for active assets only"""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(effective_to=None)
+
+
+class DecommissionedManager(models.Manager):
+    """Automatically filters for Decommissioned assets only"""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(effective_to__isnull=False)
 
 
 class AssetTagCategory(models.Model):
@@ -67,13 +82,17 @@ class AssetTag(models.Model):
         return f"{self.category.name}: {self.name}"
 
 
-class Asset(models.Model):
+class Asset(ActiveMixin):
     """
     Represents a physical or digital asset owned by the organisation.
     IE; a server, a user device, a web app, etc
     """
 
-    class Meta:
+    objects = ActiveManager()  # Defaults to active only
+    decommissioned = DecommissionedManager()  # Shows decommissioned only
+    all_states = models.Manager()  # Shows all
+
+    class Meta(ActiveMixin.Meta):
         verbose_name = "Asset"
         verbose_name_plural = "Assets"
 
@@ -81,6 +100,7 @@ class Asset(models.Model):
     name = models.CharField(max_length=255, unique=False, null=True, blank=True, verbose_name="Name")
     aliases = models.JSONField(verbose_name="Alternate names", default=list, null=True, blank=True, editable=False)
     description = models.TextField(null=True, blank=True, verbose_name="Description")
+    notes = models.TextField(null=True, blank=True, verbose_name="Notes")
     contacts = models.ManyToManyField(
         DepartmentUser,
         blank=True,
@@ -134,6 +154,16 @@ class Asset(models.Model):
     total_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Vulns", default=0)
     total_active_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Active Vulns", default=0)
     total_critical_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Critical Vulns", default=0)
+
+    def delete(self, *args, **kwargs):
+        """removes all vulns, then decomissions the system if true, else hard deletes it"""
+        self.vulns.all().delete()
+        self.__refresh_vuln_stats()
+        return super().delete(*args, **kwargs)
+
+    @property
+    def status(self) -> str:
+        return "Active" if self.is_active() else "Decommissioned"
 
     @property
     def asset_contacts(self) -> str:

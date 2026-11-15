@@ -30,7 +30,6 @@ class Command(BaseCommand):
             vulns = self.get_vulns_per_asset()
             # Update asset and vuln database
             self.update_assets_and_vulns(assets, vulns)
-        
 
         except Exception as exc:
             self.logger.warning("Failed to sync Tenable assets", exc_info=exc)
@@ -49,7 +48,7 @@ class Command(BaseCommand):
             #     fail_silently=True,
             # )
 
-    def update_assets_and_vulns(self, assets: list[Asset], vulns: list[dict[str,Vulnerability]]):
+    def update_assets_and_vulns(self, assets: list[Asset], vulns: list[dict[str, Vulnerability]]):
         """
         Loads all assets and vulnerabilities into the database, updating existing records and creating new ones where applicable.
         Separated into it's own method for easier testing.
@@ -67,25 +66,26 @@ class Command(BaseCommand):
             count += 1
             # If it's a valid asset, add or update it the asset and any associated vulns
             if self.passes_filter(asset):
-                found_asset, created = Asset.objects.get_or_create(tenable_id=asset["id"])
-                found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id, []))
-                if created:
-                    self.logger.info(
-                        f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
-                    )
-                    assets_created += 1
+                found_asset, created = Asset.all_states.get_or_create(tenable_id=asset["id"])
+                if found_asset.is_active(): # Ignores decommissioned assets
+                    found_asset.update_from_raw_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id, []))
+                    if created:
+                        self.logger.info(
+                            f"[{count}/{total}]: CREATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
+                        )
+                        assets_created += 1
+                    else:
+                        self.logger.info(
+                            f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
+                        )
+                        assets_updated += 1
                 else:
-                    self.logger.info(
-                        f"[{count}/{total}]: UPDATED asset {found_asset.pk} - {found_asset.name or ''} | Vulns [{len(found_asset.get_vulns())}]"
-                    )
-                    assets_updated += 1
+                    assets_skipped += 1
             else:
                 assets_skipped += 1
 
         self.logger.info(f"Successfully processed {total} department assets")
         self.logger.info(f"{assets_updated} UPDATED | {assets_created} CREATED | {assets_skipped} SKIPPED")
-            
-
 
     def passes_filter(self, asset: dict) -> bool:
         """
@@ -112,7 +112,7 @@ class Command(BaseCommand):
                 valid = False
         return valid
 
-    def get_vulns_per_asset(self) -> list[dict[str,Vulnerability]]:
+    def get_vulns_per_asset(self) -> list[dict[str, Vulnerability]]:
         """
         Retrieves vulnerabilities for each asset, returning a the dict of vuln lists per asset uuid {tenable_uuid <str> : [{vuln},]}
         """

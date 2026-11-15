@@ -12,6 +12,7 @@ from datetime import datetime
 import csv
 import io
 
+
 class ExportsTestCase(TestCase):
     def setUp(self):
         # Data set:
@@ -76,7 +77,7 @@ class ExportsTestCase(TestCase):
             self.d_low_vuln,
             self.d_medium_vuln,
             self.d_high_vuln,
-            self.d_critical_vuln
+            self.d_critical_vuln,
         ]
 
         # Loads up vuln stats
@@ -99,17 +100,19 @@ class ExportsTestCase(TestCase):
     def dict_list_conv(self, content: bytes) -> list[dict]:
         return list(csv.DictReader(io.StringIO(content.decode(encoding="utf-8", errors="replace"))))
 
-    def assert_all_vulns_present_and_correct(self, csv_list: list[dict], verification_list: list[Vulnerability], include_it_system: bool = False, simple: bool=True):
+    def assert_all_vulns_present_and_correct(
+        self, csv_list: list[dict], verification_list: list[Vulnerability], include_it_system: bool = False, simple: bool = True
+    ):
         found_vulns = set()
 
         for vuln in csv_list:
             asset_col = "Asset" if simple else "ASSET"
             plugin_name_col = "Type" if simple else "PLUGIN_NAME"
 
-            found_asset = Asset.objects.filter(name = vuln[asset_col])
+            found_asset = Asset.objects.filter(name=vuln[asset_col])
             self.assertTrue(found_asset.exists())
             found_asset = found_asset.first()
-            found_vuln = Vulnerability.objects.filter(plugin__name = vuln[plugin_name_col])
+            found_vuln = Vulnerability.objects.filter(plugin__name=vuln[plugin_name_col])
             self.assertTrue(found_vuln.exists())
             found_vuln = found_vuln.first()
 
@@ -160,84 +163,88 @@ class ExportsTestCase(TestCase):
                 self.assertEqual(found_vuln.workaround, vuln["WORKAROUND"])
 
         for vuln in verification_list:
-            self.assertIn(vuln.pk,found_vulns)
+            self.assertIn(vuln.pk, found_vulns)
 
     def test_simple_vuln_export(self):
         """
         Tests a standard simple vulnerability export, and ensures that all fields are accurately written to the csv
         """
-        resp = export_vulns(response = HttpResponse(),vulns=self.vuln_list, simple=True)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_vulns(response=HttpResponse(), vulns=self.vuln_list, simple=True)
+        csv_list = self.dict_list_conv(resp.content)
 
-        self.assert_all_vulns_present_and_correct(csv_list,self.vuln_list, simple=True)
+        self.assert_all_vulns_present_and_correct(csv_list, self.vuln_list, simple=True)
 
     def test_technical_vuln_export(self):
         """
         Tests a standard tecnical vulnerability export, and ensures that all fields are accurately written to the csv
         """
-        resp = export_vulns(response = HttpResponse(),vulns=self.vuln_list, simple=False)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_vulns(response=HttpResponse(), vulns=self.vuln_list, simple=False)
+        csv_list = self.dict_list_conv(resp.content)
 
-        self.assert_all_vulns_present_and_correct(csv_list,self.vuln_list, simple=False)
+        self.assert_all_vulns_present_and_correct(csv_list, self.vuln_list, simple=False)
 
     def test_simple_asset_vuln_export(self):
         """
         Tests a standard simple asset vulnerability export, and ensures that all fields are accurately written to the csv.
         """
-        resp = export_asset_vulns(response = HttpResponse(),assets=self.asset_list, simple=True)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_asset_vulns(response=HttpResponse(), assets=self.asset_list, simple=True)
+        csv_list = self.dict_list_conv(resp.content)
 
         # Verifies all present, and automatic info levele vuln exclusion
         verification_list = list(Vulnerability.objects.exclude(severity=Severity.INFO))
-        self.assert_all_vulns_present_and_correct(csv_list,verification_list, include_it_system=True, simple=True)
+        self.assert_all_vulns_present_and_correct(csv_list, verification_list, include_it_system=True, simple=True)
 
     def test_simple_asset_vuln_export_filters(self):
         """
         Tests performing a simple asset vuln export, but with a severity filter.
         Verifies that only assets outside of the excluded severities will be exported.
         """
-        resp = export_asset_vulns(response = HttpResponse(),assets=self.asset_list,severity_exclude_list=[Severity.MEDIUM,Severity.HIGH], simple=True)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_asset_vulns(
+            response=HttpResponse(), assets=self.asset_list, severity_exclude_list=[Severity.MEDIUM, Severity.HIGH], simple=True
+        )
+        csv_list = self.dict_list_conv(resp.content)
 
-        verification_list = list(Vulnerability.objects.exclude(severity__in=[Severity.INFO,Severity.MEDIUM, Severity.HIGH]))
-        self.assert_all_vulns_present_and_correct(csv_list,verification_list, include_it_system=True, simple=True)
+        verification_list = list(Vulnerability.objects.exclude(severity__in=[Severity.INFO, Severity.MEDIUM, Severity.HIGH]))
+        self.assert_all_vulns_present_and_correct(csv_list, verification_list, include_it_system=True, simple=True)
 
     def test_technical_asset_vuln_export(self):
         """
         Tests a standard technical asset vulnerability export, and ensures that all fields are accurately written to the csv.
         """
-        resp = export_asset_vulns(response = HttpResponse(),assets=self.asset_list, simple=False)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_asset_vulns(response=HttpResponse(), assets=self.asset_list, simple=False)
+        csv_list = self.dict_list_conv(resp.content)
 
         # Verifies all present, and automatic info levele vuln exclusion
         verification_list = list(Vulnerability.objects.exclude(severity=Severity.INFO))
-        self.assert_all_vulns_present_and_correct(csv_list,verification_list, include_it_system=False, simple=False)
+        self.assert_all_vulns_present_and_correct(csv_list, verification_list, include_it_system=False, simple=False)
 
     def test_technical_asset_vuln_export_filters(self):
         """
         Tests performing a technical asset vuln export, but with a severity filter.
         Verifies that only assets outside of the excluded severities will be exported.
         """
-        resp = export_asset_vulns(response = HttpResponse(),assets=self.asset_list,severity_exclude_list=[Severity.LOW,Severity.CRITICAL], simple=False)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_asset_vulns(
+            response=HttpResponse(), assets=self.asset_list, severity_exclude_list=[Severity.LOW, Severity.CRITICAL], simple=False
+        )
+        csv_list = self.dict_list_conv(resp.content)
 
-        verification_list = list(Vulnerability.objects.exclude(severity__in=[Severity.INFO,Severity.LOW, Severity.CRITICAL]))
-        self.assert_all_vulns_present_and_correct(csv_list,verification_list, include_it_system=True, simple=False)
+        verification_list = list(Vulnerability.objects.exclude(severity__in=[Severity.INFO, Severity.LOW, Severity.CRITICAL]))
+        self.assert_all_vulns_present_and_correct(csv_list, verification_list, include_it_system=True, simple=False)
 
     def test_itsystem_vuln_export(self):
         """
         Tests that the it system vuln export accurately retrieves and labels assets with the correct it systems
         """
-        resp = export_itsystem_vulns(response = HttpResponse(),systems = [self.itsystem_1.pk], simple=False)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_itsystem_vulns(response=HttpResponse(), systems=[self.itsystem_1.pk], simple=False)
+        csv_list = self.dict_list_conv(resp.content)
 
         # test all assets are present, and all related vulns present
         assets = list(set([x["ASSET"] for x in csv_list]))
         validation_assets = [str(self.asset_vuln_and_system), str(self.asset_vulns_and_systems)]
-        self.assertEqual(len(assets),len(validation_assets))
+        self.assertEqual(len(assets), len(validation_assets))
         self.assertIn(assets[0], validation_assets)
         self.assertIn(assets[1], validation_assets)
-        self.assertNotEqual(assets[0],assets[1])
+        self.assertNotEqual(assets[0], assets[1])
 
         # Verify that all vulns were accurately reported, and no additional vulns were found.
         vulns = list(x["FINDING_ID"] for x in csv_list)
@@ -246,29 +253,29 @@ class ExportsTestCase(TestCase):
             self.d_medium_vuln.finding_id,
             self.d_high_vuln.finding_id,
             self.d_critical_vuln.finding_id,
-            self.b_critical_vuln.finding_id
-            ]
+            self.b_critical_vuln.finding_id,
+        ]
         self.assertEqual(len(vulns), len(validation_vulns))
-        self.assertEqual(len(vulns), len(set(vulns))) # validate all unique
+        self.assertEqual(len(vulns), len(set(vulns)))  # validate all unique
         for required_vuln in validation_vulns:
-            self.assertIn(required_vuln,vulns)
+            self.assertIn(required_vuln, vulns)
         for reported_vuln in vulns:
-            self.assertIn(reported_vuln, validation_vulns) 
+            self.assertIn(reported_vuln, validation_vulns)
 
         # test system labels accurate for mono-system assets, and multi system assets with additional systems not included in the query
         systems = list(set([x["IT_SYSTEMS"] for x in csv_list]))
-        self.assertEqual(len(systems),1)
+        self.assertEqual(len(systems), 1)
         self.assertEqual(systems[0], str(self.itsystem_1))
 
         # test system labels accurate for multi-system asset
-        resp = export_itsystem_vulns(response = HttpResponse(),systems = [self.itsystem_1.pk, self.itsystem_2.pk], simple=False)
-        csv_list = self.dict_list_conv(resp.content) 
+        resp = export_itsystem_vulns(response=HttpResponse(), systems=[self.itsystem_1.pk, self.itsystem_2.pk], simple=False)
+        csv_list = self.dict_list_conv(resp.content)
         related_assets = [self.asset_vuln_and_system, self.asset_vulns_and_systems]
 
         found_systems = list(set([x["IT_SYSTEMS"] for x in csv_list]))
         system_names = list(set([x.associated_systems for x in related_assets]))
 
-        self.assertEqual(len(found_systems),2)
+        self.assertEqual(len(found_systems), 2)
         for reported_system in found_systems:
             self.assertIn(reported_system, system_names)
         for expected_system in system_names:

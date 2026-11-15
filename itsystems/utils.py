@@ -245,7 +245,7 @@ def __validate_csv(csv_file):
                 valid = True
                 msg = "CSV is Valid"
             else:
-                msg = f"CSV Headers do not match the required format. Missing header(s): {", ".join(missing_headers)}"
+                msg = f"CSV Headers do not match the required format. Missing header(s): {', '.join(missing_headers)}"
         else:
             msg = "File size is too large (>2MB)."
     else:

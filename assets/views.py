@@ -21,9 +21,17 @@ class AssetAPIResource(View):
         if not request.user.has_perm("assets.view_asset"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Asset.objects.all()
+            queryset = Asset.all_states.prefetch_related("systems").prefetch_related("contacts").prefetch_related("tags").all()
 
             # Queryset filtering.
+            # By State - defaults to showing only active
+            if "status" in self.request.GET:
+                if self.request.GET["status"] == "decommissioned":
+                    queryset = queryset.filter(effective_to__isnull=False)
+                elif not self.request.GET["status"] == "all":
+                    queryset = queryset.filter(effective_to=None)
+            else:
+                queryset = queryset.filter(effective_to=None)
             # By ID
             if "pk" in kwargs and kwargs["pk"]:
                 queryset = queryset.filter(pk=kwargs["pk"])
@@ -34,16 +42,16 @@ class AssetAPIResource(View):
             if "os" in self.request.GET:
                 queryset = queryset.filter(os__icontains=self.request.GET["os"])
             # By tag - case insensistive exact instead of os & name's "contains"
-            if "tag_cat" in self.request.GET and "tag" in self.request.GET:  # By tag within a specific category
+            if "tag_category" in self.request.GET and "tag" in self.request.GET:  # By tag within a specific category
                 found_tag = AssetTag.objects.filter(
-                    category__name__iexact=self.request.GET["tag_cat"], name__iexact=self.request.GET["tag"]
+                    category__name__iexact=self.request.GET["tag_category"], name__iexact=self.request.GET["tag"]
                 )
                 if found_tag.exists():
                     queryset = queryset.filter(tags=found_tag.first())
                 else:
                     queryset = Asset.objects.none()
-            elif "tag_cat" in self.request.GET:  # By any tag inside a tag category
-                queryset = queryset.filter(tags__category__name__iexact=self.request.GET["tag_cat"])
+            elif "tag_category" in self.request.GET:  # By any tag inside a tag category
+                queryset = queryset.filter(tags__category__name__iexact=self.request.GET["tag_category"])
             elif "tag" in self.request.GET:  # By a tag across any tag category
                 queryset = queryset.filter(tags__name__iexact=self.request.GET["tag"])
 
@@ -56,16 +64,22 @@ class AssetAPIResource(View):
                 assets = [
                     {
                         "id": asset.pk,
+                        "tenable_id": asset.tenable_id,
                         "name": asset.name,
-                        "aliases": asset.aliases,
+                        "type": asset.asset_type,
+                        "status": asset.status,
+                        "first_seen": asset.first_seen.isoformat() if asset.last_seen is not None else None,
+                        "last_seen": asset.last_seen.isoformat() if asset.last_seen is not None else None,
                         "description": asset.description,
-                        "contacts": asset.asset_contacts,
-                        "systems": asset.associated_systems,
-                        "os": asset.os,
-                        "os_version": asset.os_version,
-                        "tags": asset.display_tags,
-                        "active_vulns": asset.total_active_vulns,
-                        "critical_vulns": asset.total_critical_vulns,
+                        "notes": asset.notes,
+                        "contacts": [str(x) for x in asset.contacts.all()],
+                        "systems": [str(x) for x in asset.systems.all()],
+                        "operating_systems": asset.os_list,
+                        "ipv4s": asset.ipv4_list,
+                        "tags": [{"category": x.category.name, "tag": x.name} for x in asset.tags.all()],
+                        "total_vulns": asset.total_vulns,
+                        "actionable_vulns": asset.total_active_vulns,
+                        "actionable_critical_vulns": asset.total_critical_vulns,
                     }
                     for asset in queryset
                 ]
@@ -97,8 +111,9 @@ class VulnerabilityAPIResource(View):
         if not request.user.has_perm("assets.view_vulnerability"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Vulnerability.objects.all()
-            # Queryset filtering.
+            queryset = (
+                Vulnerability.objects.select_related("asset").prefetch_related("asset__tags").prefetch_related("asset__systems").all()
+            )  # Queryset filtering.
             # By finding_id
             if "finding_id" in kwargs and kwargs["finding_id"]:
                 queryset = queryset.filter(finding_id=kwargs["finding_id"])
@@ -177,7 +192,9 @@ class VulnerabilityAPIResource(View):
                         "exploited_by_malware": vuln.exploited_by_malware,
                         "exploited_by_nessus": vuln.exploited_by_nessus,
                         "has_patch": vuln.has_patch,
-                        "patch_publication_date": vuln.patch_publication_date.isoformat() if vuln.patch_publication_date is not None else None,
+                        "patch_publication_date": vuln.patch_publication_date.isoformat()
+                        if vuln.patch_publication_date is not None
+                        else None,
                         "Cvss3 base score": vuln.cvss3_base_score,
                         "CVE": vuln.cve,
                         "workaround": vuln.workaround,
@@ -204,7 +221,9 @@ class VulnerabilityAPIResource(View):
                         "exploited_by_malware": vuln.exploited_by_malware,
                         "exploited_by_nessus": vuln.exploited_by_nessus,
                         "has_patch": vuln.has_patch,
-                        "patch_publication_date": vuln.patch_publication_date.isoformat() if vuln.patch_publication_date is not None else None,
+                        "patch_publication_date": vuln.patch_publication_date.isoformat()
+                        if vuln.patch_publication_date is not None
+                        else None,
                         "Cvss3 base score": vuln.cvss3_base_score,
                     }
                     for vuln in queryset

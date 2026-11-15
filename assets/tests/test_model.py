@@ -194,6 +194,47 @@ class AssetModelTestCase(TestCase):
         self.assertEqual("macOS x.y", os)
         self.assertIsNone(ver)
 
+    def test_decommission(self):
+        """
+        Ensures that a non-force deletion decomissions an asset instead of deleting it.
+        A decomissioned asset should have all related vulns deleted, and have effective_to set to the time of deletion.
+        """
+        # Add 2 tags
+        self.asset1.add_tag(category="Example_cat", tag="Example_val")
+        self.asset1.add_tag(category="Example_cat_2", tag="Example_val_2")
+        self.assertTrue(self.asset1.has_tag(category="Example_cat", tag="Example_val"))
+        self.assertTrue(self.asset1.has_tag(category="Example_cat_2", tag="Example_val_2"))
+        self.assertEqual(len(self.asset1.tags.all()), 2)
+        # Add 2 vulns - actionable critical
+        vuln_1, vuln_2 = RandomVulnGenerator().generate(asset=self.asset1, generations=2)
+        vuln_1.state = State.OPEN
+        vuln_1.severity = Severity.CRITICAL
+        vuln_1.severity_modification_type = SeverityMT.NONE
+        vuln_1.save()
+        vuln_2.state = State.OPEN
+        vuln_2.severity = Severity.CRITICAL
+        vuln_2.severity_modification_type = SeverityMT.NONE
+        vuln_2.save()
+        self.assertEqual(len(self.asset1.vulns.all()), 2)
+        # "Delete" asset
+        self.assertEqual(self.asset1.status, "Active")
+        asset_1_pk = self.asset1.pk
+        self.asset1.delete()
+        self.assertEqual(self.asset1.status, "Decommissioned")
+        # Assert that asset is only visible in the correct manager
+        self.assertFalse(Asset.objects.filter(pk=asset_1_pk).exists())
+        self.assertTrue(Asset.decommissioned.filter(pk=asset_1_pk).exists())
+        self.assertTrue(Asset.all_states.filter(pk=asset_1_pk).exists())
+        # Assert that tags were retained
+        self.assertTrue(self.asset1.has_tag(category="Example_cat", tag="Example_val"))
+        self.assertTrue(self.asset1.has_tag(category="Example_cat_2", tag="Example_val_2"))
+        self.assertEqual(len(self.asset1.tags.all()), 2)
+        # Assert that vulns were removed
+        self.assertEqual(len(self.asset1.vulns.all()), 0)
+        self.assertEqual(self.asset1.total_vulns, 0)
+        self.assertEqual(self.asset1.total_active_vulns, 0)
+        self.assertEqual(self.asset1.total_critical_vulns, 0)
+
     def test_update_from_raw_data(self):
         """
         Tests that update_from_raw_data behaves as expected
@@ -217,14 +258,14 @@ class AssetModelTestCase(TestCase):
         self.assertEqual(self.asset1.name, "example.dbca.wa.gov.au")
         self.assertTrue(self.asset1.has_tag(tag="TST", category="Custodian"))
         self.assertTrue(self.asset1.has_tag(tag="Web App", category="Devices"))
-        self.assertEqual(len(self.asset1.tags.all()),2)
+        self.assertEqual(len(self.asset1.tags.all()), 2)
         self.asset1.save()
         # Validates web app device tag auto-add
         webapp_data["tags"] = []
         self.asset1.update_from_raw_data(tenable_data=webapp_data)
         self.assertEqual(self.asset1.name, "example.dbca.wa.gov.au")
         self.assertTrue(self.asset1.has_tag(tag="Web App", category="Devices"))
-        self.assertEqual(len(self.asset1.tags.all()),1)
+        self.assertEqual(len(self.asset1.tags.all()), 1)
 
         server_data = {
             "id": "server_id",
@@ -618,7 +659,7 @@ class RandomVulnGenerator:
                 "description": get_random_string(30),
                 "family": get_random_string(10),
                 "id": get_random_string(10),
-                "name": f"{get_random_string(10)}_{self.tenable_id_inc}", # ensures that plugin name is unique (helps with admin testing)
+                "name": f"{get_random_string(10)}_{self.tenable_id_inc}",  # ensures that plugin name is unique (helps with admin testing)
                 "synopsis": get_random_string(30),
                 "solution": get_random_string(30),
                 "vpr": {
@@ -689,8 +730,9 @@ class RandomVulnGenerator:
 
 class RandomAssetGenerator:
     tenable_id_inc = 0
+    rand = Random()
 
-    def __create(self):
+    def __create(self, rand: Random):
         self.tenable_id_inc += 1
         return mixer.blend(
             Asset,
@@ -701,10 +743,12 @@ class RandomAssetGenerator:
             description=mixer.RANDOM("16", "24.04", "10.1.8", "0.0.1"),
             contacts=mixer.blend(DepartmentUser),
             systems=mixer.blend(ITSystemRecord),
-            total_vulns = 0,
-            total_active_vulns = 0,
-            total_critical_vulns = 0
+            first_seen=now() - timedelta(days=rand.randint(0, 30), hours=rand.randint(-24, 0)),
+            last_seen=now() - timedelta(days=rand.randint(0, 30), hours=rand.randint(-24, 0)),
+            total_vulns=0,
+            total_active_vulns=0,
+            total_critical_vulns=0,
         )
 
     def generate(self, generations: int = 1) -> tuple[Asset]:
-        return tuple([self.__create() for i in range(generations)])
+        return tuple([self.__create(self.rand) for i in range(generations)])

@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from typing import Iterable
 import csv
 
+
 def export_itsystem_vulns(
     response: HttpResponse, systems: Iterable[ITSystemRecord], severity_exclude_list: list[int] | None = [], simple: bool = False
 ) -> HttpResponse:
@@ -33,6 +34,7 @@ def export_itsystem_vulns(
             __write_vuln(writer=writer, vuln=v, prefix_data=[associated_systems_str], simple=simple)
 
     return response
+
 
 def export_asset_vulns(
     response: HttpResponse, assets: Iterable[Asset], severity_exclude_list: list[int] | None = [], simple: bool = False
