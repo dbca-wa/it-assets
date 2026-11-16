@@ -81,10 +81,12 @@ jobs:
         id: bake
         uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         with:
+          files: docker-bake.hcl
+          targets: ci # CI-only target: gha cache + pull
           push: true
           set: |
-            app.tags=${{ env.GHCR_IMAGE }}:latest
-            ${{ steps.image_tag.outputs.has_version_tag == 'true' && format('app.tags={0}:{1}', env.GHCR_IMAGE, steps.image_tag.outputs.value) || '' }}
+            ci.tags=${{ env.GHCR_IMAGE }}:latest
+            ${{ steps.image_tag.outputs.has_version_tag == 'true' && format('ci.tags+={0}:{1}', env.GHCR_IMAGE, steps.image_tag.outputs.value) || '' }}
 
   scan:
     name: Docker image vulnerability scan
@@ -98,20 +100,18 @@ jobs:
       security-events: write
     timeout-minutes: 30
     steps:
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
+      - name: Run Anchore vulnerability scanner
+        id: scan
+        uses: anchore/scan-action@8576240a41341d866dbd7ebc72cd9fc0ef023f54 # v7.4.2
         with:
-          scan-type: 'image'
-          scanners: 'vuln'
-          image-ref: ${{ needs.build.outputs.image_ref }}
-          vuln-type: 'library'
-          severity: 'HIGH,CRITICAL'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          image: ${{ needs.build.outputs.image_ref }}
+          fail-build: false
+          output-format: sarif
+          severity-cutoff: high
+          only-fixed: true
+          cache-db: true
 
       - name: Upload scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: ${{ steps.scan.outputs.sarif }}
