@@ -55,7 +55,7 @@ class DepartmentUser(models.Model):
         (AccountType.ROLE_BASED_ACCOUNT, "Role-based account"),
         (AccountType.UNKNOWN, "Unknown"),
     )
-    # The following is a list of account types associated with
+    # The following is a list of account types associated with role-based and unknown accounts
     ACCOUNT_TYPE_NON_USERS = [
         AccountType.ROLE_BASED_ACCOUNT,
         AccountType.UNKNOWN,
