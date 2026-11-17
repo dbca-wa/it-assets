@@ -18,26 +18,32 @@ from .utils import compare_values, ms_graph_get_user, parse_ad_pwd_last_set, par
 
 LOGGER = logging.getLogger("organisation")
 
-# The following collection of
-
-class EmployeeManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_EMPLOYEES)
-
-class VolunteerManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_VOLUNTEERS)
-
-class UserManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_ALL_USERS)
-
-class NonUserManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USER)
-
 class DepartmentUser(models.Model):
     """Represents a user account managed in Active Directory / Entra ID."""
+
+    # Model managers to provide prefiltered querysets of department users.
+    
+    class EmployeeManager(models.Manager):
+        def get_queryset(self):
+            return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_EMPLOYEES)
+
+    class VolunteerManager(models.Manager):
+        def get_queryset(self):
+            return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_VOLUNTEERS)
+
+    class UserManager(models.Manager):
+        def get_queryset(self):
+            return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_ALL_USERS)
+
+    class NonUserManager(models.Manager):
+        def get_queryset(self):
+            return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USERS)
+
+    employees = EmployeeManager()
+    volunteers = VolunteerManager()
+    all_users = UserManager()
+    non_users = NonUserManager()
+    objects = models.Manager()
 
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
@@ -50,7 +56,7 @@ class DepartmentUser(models.Model):
         (AccountType.UNKNOWN, "Unknown"),
     )
     # The following is a list of account types associated with
-    ACCOUNT_TYPE_NON_USER = [
+    ACCOUNT_TYPE_NON_USERS = [
         AccountType.ROLE_BASED_ACCOUNT,
         AccountType.UNKNOWN,
     ]
@@ -67,13 +73,6 @@ class DepartmentUser(models.Model):
     ]
     # The following list represents a combination of all users
     ACCOUNT_TYPE_ALL_USERS = ACCOUNT_TYPE_EMPLOYEES + ACCOUNT_TYPE_VOLUNTEERS
-
-    # Prefiltered object managers for querying specific types of users
-    employees = EmployeeManager()
-    volunteers = VolunteerManager()
-    all_users = UserManager()
-    non_users = NonUserManager()
-    objects = models.Manager()
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -260,9 +259,7 @@ class DepartmentUser(models.Model):
                 self.account_type = AccountType.ALUMNI_OR_OTHER
             elif self.ascender_data["emp_status"] == "AO":
                 self.account_type = AccountType.VENDOR_OR_EXTERNAL
-            elif self.ascender_data["emp_status"] in ["SEAP", "SEAS"]:
-                self.account_type = AccountType.SEASONAL
-            elif self.ascender_data["emp_status"] in ["CAS", "CFA", "CFAS", "CCFA", "CFT", "CPA", "CPT", "CON", "NPAYT"]:
+            elif self.ascender_data["emp_status"] in ["CAS", "CFA", "CFAS", "CCFA", "CFT", "CPA", "CPT", "CON", "NPAYT", "SEAP", "SEAS"]:
                 self.account_type = AccountType.CONTRACT
             elif self.ascender_data["emp_status"] in ["PFA", "PFAS", "PFT", "PPA", "PPT"]:
                 self.account_type = AccountType.PERMANENT

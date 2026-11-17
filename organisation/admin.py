@@ -42,6 +42,56 @@ class DepartmentUserAdminForm(forms.ModelForm):
 
 @register(DepartmentUser)
 class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
+    class AccountTypeFilter(SimpleListFilter):
+        """
+        Provides additional account type grouping options while still providing the standard choice options
+        """
+        title = "Account Type"
+        parameter_name = "account_type"
+        template = DROPDOWN_TEMPLATE
+
+        def lookups(self, request, model_admin):
+            return (
+                ("A", "All"),
+                (None, "All User Accounts"),
+                ("E", "All Employee Accounts"),
+                ("V", "All Volunteer/Alumni Accounts"),
+                ("N", "All Non-User Accounts"),
+             ) + DepartmentUser.ACCOUNT_TYPE_CHOICES
+        
+        def choices(self, cl):
+            """
+            Sets the default choice to the first, ensuring that 'Active' is the default.
+            """
+            for lookup, title in self.lookup_choices:
+                yield {
+                    "selected": self.value() == lookup,
+                    "query_string": cl.get_query_string(
+                        {
+                            self.parameter_name: lookup,
+                        },
+                        [],
+                    ),
+                    "display": title,
+                }
+
+        def queryset(self, request, queryset):
+            if self.value():
+                match self.value():
+                    case None:
+                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_ALL_USERS)
+                    case "E":
+                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_EMPLOYEES)
+                    case "V":
+                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_VOLUNTEERS)
+                    case "N":
+                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USERS)
+                    case "A":
+                        return queryset
+                    case _:
+                        return queryset.filter(account_type=self.value())
+
+            
     class AssignedLicenceFilter(SimpleListFilter):
         title = "assigned licences"
         parameter_name = "assigned_licences"
@@ -80,7 +130,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         AssignedLicenceFilter,
         ("active", DropdownFilterBoolean),
         ("ongoing", DropdownFilterBoolean),
-        ("account_type", DropdownFilterChoices),
+        AccountTypeFilter,
     )
     model_description = DepartmentUser.__doc__
     search_fields = ("name", "email", "title", "employee_id", "ad_guid", "azure_guid")
