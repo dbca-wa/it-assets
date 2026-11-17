@@ -86,7 +86,7 @@ def _process_contact(flagged_users, record, field_name, user, logger):
     """
     If the user doesn't appear on the addressbook, the user is flagged.
     """
-    if user.account_type in DepartmentUser.ACCOUNT_TYPE_EXCLUDE or not user.active:
+    if user.account_type not in DepartmentUser.ACCOUNT_TYPE_EMPLOYEES or not user.active or user.is_term():
         system_str = str(record)
         user_str = str(user)
         status_str = user.get_account_type_display()

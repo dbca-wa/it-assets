@@ -17,38 +17,63 @@ from .enum_library import AccountType
 from .utils import compare_values, ms_graph_get_user, parse_ad_pwd_last_set, parse_windows_ts, title_except
 
 LOGGER = logging.getLogger("organisation")
-class UsersManager(models.Manager):
-    """Automatically filters for users with ascender records"""
 
+# The following collection of
+
+class EmployeeManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(effective_to=None)
+        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_EMPLOYEES)
 
-
-class NonUsersManager(models.Manager):
-    """Automatically filters for Decommissioned assets only"""
-
+class VolunteerManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(effective_to__isnull=False)
+        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_VOLUNTEERS)
+
+class UserManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_ALL_USERS)
+
+class NonUserManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USER)
 
 class DepartmentUser(models.Model):
     """Represents a user account managed in Active Directory / Entra ID."""
 
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
-        (AccountType.PERMANENT, "L1 User Account - Permanent"),
-        (AccountType.CONTRACT, "L1 User Account - Contract"),
-        (AccountType.SEASONAL, "L1 User Account - Seasonal"),
-        (AccountType.VENDOR_OR_EXTERNAL, "L1 User Account - Vendor/External"),
-        (AccountType.VOLUNTEER, "L1 User Account - Volunteer"),
-        (AccountType.ALUMNI_OR_OTHER, "L1 User Account - Alumni/Other"),
-        (AccountType.ROLE_BASED_ACCOUNT, "L1 Role Account - Role-based account"),
+        (AccountType.PERMANENT, "Permanent"),
+        (AccountType.CONTRACT, "Contract"),
+        (AccountType.VENDOR_OR_EXTERNAL, "Vendor/External"),
+        (AccountType.VOLUNTEER, "Volunteer"),
+        (AccountType.ALUMNI_OR_OTHER, "Alumni/Other"),
+        (AccountType.ROLE_BASED_ACCOUNT, "Role-based account"),
         (AccountType.UNKNOWN, "Unknown"),
     )
-    # The following is a list of account types to normally exclude from user queries.
-    ACCOUNT_TYPE_EXCLUDE = [
+    # The following is a list of account types associated with
+    ACCOUNT_TYPE_NON_USER = [
         AccountType.ROLE_BASED_ACCOUNT,
         AccountType.UNKNOWN,
     ]
+    # The following is a list of account types associated with paid staff
+    ACCOUNT_TYPE_EMPLOYEES = [
+        AccountType.PERMANENT,
+        AccountType.CONTRACT,
+        AccountType.VENDOR_OR_EXTERNAL,
+    ]
+    # The following is a list of account types associated with volunteers and alumni
+    ACCOUNT_TYPE_VOLUNTEERS = [
+        AccountType.VOLUNTEER,
+        AccountType.ALUMNI_OR_OTHER,
+    ]
+    # The following list represents a combination of all users
+    ACCOUNT_TYPE_ALL_USERS = ACCOUNT_TYPE_EMPLOYEES + ACCOUNT_TYPE_VOLUNTEERS
+
+    # Prefiltered object managers for querying specific types of users
+    employees = EmployeeManager()
+    volunteers = VolunteerManager()
+    all_users = UserManager()
+    non_users = NonUserManager()
+    objects = models.Manager()
 
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)

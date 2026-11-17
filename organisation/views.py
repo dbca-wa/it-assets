@@ -39,9 +39,7 @@ class AddressBook(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = (
-            DepartmentUser.objects.filter(active=True)
-            .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .exclude(account_type__in=[AccountType.VOLUNTEER, AccountType.ALUMNI_OR_OTHER])
+            DepartmentUser.employees.filter(active=True)
             .select_related(
                 "cost_centre",
             )
@@ -76,13 +74,12 @@ class UserAccounts(LoginRequiredMixin, ListView):
         # Accounts associated with an active M365 account, having an E5 or F3 license assigned.
         # Exclude accounts with an Ascender record having a job start date in the future.
         queryset = (
-            DepartmentUser.objects.filter(active=True)
+            DepartmentUser.all_users.filter(active=True)
             .filter(Q(assigned_licences__contains=["MICROSOFT 365 E5"]) | Q(assigned_licences__contains=["MICROSOFT 365 F3"]))
             .exclude(
                 ascender_data__job_start_date__isnull=False,
                 ascender_data__job_start_date__gt=date.today().isoformat(),
             )
-            .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
             .select_related("cost_centre")
             .order_by("name")
         )
@@ -132,9 +129,7 @@ class DepartmentUserAPIResource(View):
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         queryset = (
-            DepartmentUser.objects.filter(active=True)
-            .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .exclude(account_type__in=[AccountType.VOLUNTEER, AccountType.ALUMNI_OR_OTHER])  # Exclude Volunteer and Alumni accounts
+            DepartmentUser.employees.filter(active=True)
             .select_related(
                 "manager",
                 "cost_centre",
@@ -286,7 +281,7 @@ class DepartmentUserExport(View):
         if "all" in request.GET:  # Return all objects.
             users = DepartmentUser.objects.all()
         else:  # Default to active users only.
-            users = DepartmentUser.objects.filter(active=True).exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
+            users = DepartmentUser.all_users.filter(active=True)
 
         response = department_user_export(response, users)
         return response

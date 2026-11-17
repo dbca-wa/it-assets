@@ -1,6 +1,7 @@
 from django.test import TestCase, override_settings
 from itsystems.management.commands.it_systems_register_contact_notification import Command
 from .test_model import create_random_record
+from organisation.enum_library import AccountType
 
 
 class CommandsTestCase(TestCase):
@@ -26,20 +27,20 @@ class CommandsTestCase(TestCase):
         record3.save()
 
         # Record 1: Makes all valid
-        record1.business_service_owner.account_type = 2
+        record1.business_service_owner.account_type = AccountType.PERMANENT
         record1.business_service_owner.save()
-        record1.system_owner.account_type = 2
+        record1.system_owner.account_type = AccountType.PERMANENT
         record1.system_owner.save()
-        record1.technology_custodian.account_type = 2
+        record1.technology_custodian.account_type = AccountType.PERMANENT
         record1.technology_custodian.save()
-        record1.information_custodian.account_type = 2
+        record1.information_custodian.account_type = AccountType.PERMANENT
         record1.information_custodian.save()
 
         # Record 2: Removes a mandatory contact and a non-mandatory contact, and makes the rest valid
         record2.business_service_owner = None
-        record2.system_owner.account_type = 2
+        record2.system_owner.account_type = AccountType.PERMANENT
         record2.system_owner.save()
-        record2.technology_custodian.account_type = 2
+        record2.technology_custodian.account_type = AccountType.PERMANENT
         record2.technology_custodian.save()
         record2.information_custodian = None
         record2.save()
@@ -63,13 +64,13 @@ class CommandsTestCase(TestCase):
         self.assertNotIn(str(record1), msg.body)
 
         # Record 3: make all valid
-        record3.business_service_owner.account_type = 2
+        record3.business_service_owner.account_type = AccountType.PERMANENT
         record3.business_service_owner.save()
-        record3.system_owner.account_type = 2
+        record3.system_owner.account_type = AccountType.PERMANENT
         record3.system_owner.save()
-        record3.technology_custodian.account_type = 2
+        record3.technology_custodian.account_type = AccountType.PERMANENT
         record3.technology_custodian.save()
-        record3.information_custodian.account_type = 2
+        record3.information_custodian.account_type = AccountType.PERMANENT
         record3.information_custodian.save()
 
         # Record 2: make all valid
