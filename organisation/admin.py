@@ -61,7 +61,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         
         def choices(self, cl):
             """
-            Sets the default choice to the first, ensuring that 'Active' is the default.
+            Ensure's default choice is 'All User Accounts'
             """
             for lookup, title in self.lookup_choices:
                 yield {

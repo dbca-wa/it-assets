@@ -35,7 +35,7 @@ class Command(BaseCommand):
         if options.get("terminated_account_days") is not None:
             terminated_account_days = options["terminated_account_days"]
 
-        all_users = DepartmentUser.objects.all()
+        all_users = DepartmentUser.employees.all()
         users = all_users.exclude(term_date_data__iexact="[]")  # All users with non-blank termination date records
 
         # Init stat-tracking variables
