@@ -3,6 +3,7 @@ import logging
 from django.core.management.base import BaseCommand
 
 from organisation.models import DepartmentUser
+from organisation.enum_library import AccountType
 
 
 class Command(BaseCommand):
@@ -17,7 +18,7 @@ class Command(BaseCommand):
             du.active = False
             du.proxy_addresses = None
             du.assigned_licences = []
-            du.account_type = 14  # Unknown
+            du.account_type = AccountType.UNKNOWN
             du.ad_data = {}
             du.ad_data_updated = None
             du.azure_ad_data = {}

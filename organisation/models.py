@@ -13,29 +13,41 @@ from django.db.models import JSONField
 from itassets.utils import ms_graph_client_token, smart_truncate, upload_blob
 
 from .microsoft_products import MS_PRODUCTS
+from .enum_library import AccountType
 from .utils import compare_values, ms_graph_get_user, parse_ad_pwd_last_set, parse_windows_ts, title_except
 
 LOGGER = logging.getLogger("organisation")
+class UsersManager(models.Manager):
+    """Automatically filters for users with ascender records"""
 
+    def get_queryset(self):
+        return super().get_queryset().filter(effective_to=None)
+
+
+class NonUsersManager(models.Manager):
+    """Automatically filters for Decommissioned assets only"""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(effective_to__isnull=False)
 
 class DepartmentUser(models.Model):
     """Represents a user account managed in Active Directory / Entra ID."""
 
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
-        (2, "L1 User Account - Permanent"),
-        (0, "L1 User Account - Contract"),
-        (8, "L1 User Account - Seasonal"),
-        (6, "L1 User Account - Vendor/External"),
-        (7, "L1 User Account - Volunteer"),
-        (1, "L1 User Account - Alumni/Other"),
-        (9, "L1 Role Account - Role-based account"),
-        (14, "Unknown"),
+        (AccountType.PERMANENT, "L1 User Account - Permanent"),
+        (AccountType.CONTRACT, "L1 User Account - Contract"),
+        (AccountType.SEASONAL, "L1 User Account - Seasonal"),
+        (AccountType.VENDOR_OR_EXTERNAL, "L1 User Account - Vendor/External"),
+        (AccountType.VOLUNTEER, "L1 User Account - Volunteer"),
+        (AccountType.ALUMNI_OR_OTHER, "L1 User Account - Alumni/Other"),
+        (AccountType.ROLE_BASED_ACCOUNT, "L1 Role Account - Role-based account"),
+        (AccountType.UNKNOWN, "Unknown"),
     )
     # The following is a list of account types to normally exclude from user queries.
     ACCOUNT_TYPE_EXCLUDE = [
-        9,  # Role-based
-        14,  # Unknown, disabled
+        AccountType.ROLE_BASED_ACCOUNT,
+        AccountType.UNKNOWN,
     ]
 
     date_created = models.DateTimeField(auto_now_add=True)
@@ -152,7 +164,7 @@ class DepartmentUser(models.Model):
         help_text="Optional Ascender position number to specify the user's current active job",
     )
     ongoing = models.BooleanField(
-        default=True,
+        null=True,
         editable=False,
         help_text="Employee has ongoing employment with the department / isn't terminated.",
     )
@@ -217,18 +229,18 @@ class DepartmentUser(models.Model):
             if (self.employee_id.lower() == "n/a") or (self.employee_id.strip() == ""):
                 self.employee_id = None
         if self.account_type is None:
-            self.account_type = 14  # Unknown
+            self.account_type = AccountType.UNKNOWN 
         if self.ascender_data.get("emp_status"):
             if self.ascender_data["emp_status"] == "EXT":
-                self.account_type = 1  # Alumni/other
+                self.account_type = AccountType.ALUMNI_OR_OTHER
             elif self.ascender_data["emp_status"] == "AO":
-                self.account_type = 6  # Vendor/external
+                self.account_type = AccountType.VENDOR_OR_EXTERNAL
             elif self.ascender_data["emp_status"] in ["SEAP", "SEAS"]:
-                self.account_type = 8  # Seasonal
+                self.account_type = AccountType.SEASONAL
             elif self.ascender_data["emp_status"] in ["CAS", "CFA", "CFAS", "CCFA", "CFT", "CPA", "CPT", "CON", "NPAYT"]:
-                self.account_type = 0  # Contract
+                self.account_type = AccountType.CONTRACT
             elif self.ascender_data["emp_status"] in ["PFA", "PFAS", "PFT", "PPA", "PPT"]:
-                self.account_type = 2  # Permanent
+                self.account_type = AccountType.PERMANENT
         # Strip any invisible trailing carriage return characters from copy-pasted telephone numbers:
         if self.telephone:
             self.telephone = self.telephone.strip()
@@ -466,29 +478,39 @@ class DepartmentUser(models.Model):
 
         return None
 
+    def has_term_data(self) -> bool:
+        """Returns True if the user has ascender termination data"""
+        return self.term_date_data is not None and len(self.term_date_data)>0
+
     def get_term_date(self) -> date | None:
         """
         From Ascender data, return the latest termination date of a given user, if any.\n
-        Business rules:
-        - If a user has a job with a blank/ null term_date value, they aren't terminated
-        - If a user has user only has jobs with term_date values in the past, they are terminated
+        Business Rules:
+        - All staff have 1 or more termination records.
+        - The latest termination date across all jobs is the user's final day employed.
+        - If a user has 'null' or a blank value in any job's termination date, that position has no termination date.
         """
-        if self.term_date_data and len(self.term_date_data) > 0:
+        if self.has_term_data():
             # If the user has any jobs without a term date, return 'None'
-            active_jobs = [x for x in self.term_date_data if (x["term_date"] is None or x["term_date"] == "")]
+            active_jobs = [x for x in self.term_date_data if (x.get("term_date") is None or x["term_date"] == "")]
             if len(active_jobs) > 0:
                 return None
 
             # If the user has any jobs with a term date, return the latest termination date
-            valid_term_dates = [x["term_date"] for x in self.term_date_data if (x["term_date"] is not None and x["term_date"] != "")]
+            valid_term_dates = [x["term_date"] for x in self.term_date_data if (x.get("term_date") is not None and x["term_date"] != "")]
             if len(valid_term_dates) > 0:
                 # return latest date
                 return datetime.strptime(max(valid_term_dates), "%Y-%m-%d").date()
 
-    def past_term_date(self) -> bool:
-        """From Ascender data, return True if the user is past their termination date."""
-        term_date = self.get_term_date()
-        return term_date is not None and term_date < date.today()
+    def is_term(self) -> bool | None:
+        """
+        From Ascender data, returns True if a user is terminated, false if they're ongoing, and None if they have no termination data.\n
+        Business rules:
+        - If a user has a job with a blank/ null term_date value, they aren't terminated
+        - If a user has user only has jobs with term_date values in the past, they are terminated
+        """
+        if self.has_term_data():
+            return self.termination_date is not None and self.termination_date < date.today()
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
         """For this DepartmentUser, iterate through fields which need to be synced between IT Assets
@@ -1227,8 +1249,22 @@ class DepartmentUser(models.Model):
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
+    def update_from_ascender_term_data(self, save_after: bool = False):
+        """
+        For this DepartmentUser object, update the field values from cached termination ascender data.
+        If save_after is True, this record is saved after the operation.
+        """
+        # Termination date
+        self.termination_date = self.get_term_date()
+        # Ongoing
+        is_terminated = self.is_term()
+        self.ongoing = not is_terminated if is_terminated is not None else None
+
+        if save_after:
+            self.save()
+
     def update_from_ascender_data(self):
-        """For this DepartmentUser object, update the field values from cached Ascender data and term_date_data
+        """For this DepartmentUser object, update the field values from cached Ascender data
         (the source of truth for these values).
         """
         if not self.employee_id or not self.ascender_data:
@@ -1385,11 +1421,6 @@ class DepartmentUser(models.Model):
                 AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=self.ascender_data)
                 LOGGER.info(log)
                 self.title = ascender_title
-
-        # Termination date
-        self.termination_date = self.get_term_date()
-        # Ongoing
-        self.ongoing = not self.past_term_date()
 
         self.save()
 

@@ -15,6 +15,7 @@ from itassets.utils import get_next_pages, get_previous_pages
 from .models import CostCentre, DepartmentUser, Location
 from .reports import department_user_export, user_account_export
 from .ascender import ascender_user_import, AccountProvisioningError
+from .enum_library import AccountType
 
 
 class AddressBook(LoginRequiredMixin, ListView):
@@ -40,7 +41,7 @@ class AddressBook(LoginRequiredMixin, ListView):
         queryset = (
             DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .exclude(account_type__in=[7, 1])  # Exclude Volunteer and Alumni accounts
+            .exclude(account_type__in=[AccountType.VOLUNTEER, AccountType.ALUMNI_OR_OTHER])
             .select_related(
                 "cost_centre",
             )
@@ -133,7 +134,7 @@ class DepartmentUserAPIResource(View):
         queryset = (
             DepartmentUser.objects.filter(active=True)
             .exclude(account_type__in=DepartmentUser.ACCOUNT_TYPE_EXCLUDE)
-            .exclude(account_type__in=[7, 1])  # Exclude Volunteer and Alumni accounts
+            .exclude(account_type__in=[AccountType.VOLUNTEER, AccountType.ALUMNI_OR_OTHER])  # Exclude Volunteer and Alumni accounts
             .select_related(
                 "manager",
                 "cost_centre",

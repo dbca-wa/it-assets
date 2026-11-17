@@ -315,94 +315,114 @@ class DepartmentUserTerminationsTestCase(TestCase):
                 },
             ],
         )
-        self.user.save()
-        self.user_with_empties.save()
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.user_with_empties.update_from_ascender_term_data(save_after=True)
 
     def test_termination_date(self):
         # 3+ valid check, null & empty check, mixed valid & invalid check
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
-        self.assertEqual(self.user.past_term_date(), False)
-        self.assertEqual(self.user_with_empties.get_term_date(), None)
-        self.assertEqual(self.user_with_empties.past_term_date(), False)
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
+        self.assertEqual(self.user_with_empties.termination_date, None)
+        self.assertEqual(self.user_with_empties.is_term(), False)
+        self.assertEqual(self.user_with_empties.ongoing, True)
         # Empty values check
         self.user.term_date_data = []
-        self.assertEqual(self.user.get_term_date(), None)
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, None)
+        self.assertEqual(self.user.is_term(), None)
+        self.assertEqual(self.user.ongoing, None)
 
         # blank and None values check
         self.user.term_date_data = [
-            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": None, "term_process_date": None},
-            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": "", "term_process_date": None},
+            {"employee_no": self.user.employee_id, "job_no": 1, "term_date": None, "term_process_date": None},
+            {"employee_no": self.user.employee_id, "job_no": 1, "term_date": "", "term_process_date": None},
         ]
-        self.assertEqual(self.user.get_term_date(), None)
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, None)
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
 
         # 2 valid values check
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() + timedelta(weeks=1)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 4,
                 "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
+
 
         # Identical date check
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 4,
                 "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
+
 
         # 1 valid + past_term_date check
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() + timedelta(weeks=-2)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             }
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=-2))
-        self.assertEqual(self.user.past_term_date(), True)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() + timedelta(weeks=-2))
+        self.assertEqual(self.user.is_term(), True)
+        self.assertEqual(self.user.ongoing, False)
+
 
         # 1 valid + past_term_date check: Term date is yesterday - past_term_date should return true
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() - timedelta(days=1)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             }
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() - timedelta(days=1))
-        self.assertEqual(self.user.past_term_date(), True)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() - timedelta(days=1))
+        self.assertEqual(self.user.is_term(), True)
+        self.assertEqual(self.user.ongoing, False)
+
 
         # 1 valid + past_term_date check: Term date is today - past_term_date should return false
         self.user.term_date_data = [
-            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": date.today().strftime("%Y-%m-%d"), "term_process_date": None}
+            {"employee_no": self.user.employee_id, "job_no": 1, "term_date": date.today().strftime("%Y-%m-%d"), "term_process_date": None}
         ]
-        self.assertEqual(self.user.get_term_date(), date.today())
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today())
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
 
 
 # ---------------------------------------------------------------------------

@@ -670,11 +670,11 @@ def ascender_user_import_all():
                     },
                 )
 
-            # Cache the job record.
+            # Cache the job and termination records.
             user.ascender_data = job
             user.ascender_data_updated = timezone.localtime()
-            # Cache any termination date data.
             user.term_date_data = termination_records.get(employee_id)
+            user.update_from_ascender_term_data()
             user.update_from_ascender_data()  # This method calls save()
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
             # Ascender record does not exist in our database; conditionally create a new
