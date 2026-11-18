@@ -112,7 +112,7 @@ def tenable_export_vulns() -> list:
                 "num_assets": 1000,
                 "include_software_vulns": False,
                 "filters": {
-                    "last_seen": int((now() - timedelta(days=7)).timestamp()),  # seen within 1 week
+                    "since": int((now() - timedelta(days=7)).timestamp()),  # seen or fixed within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
                     "state": ["OPEN", "REOPENED", "FIXED"],  # forces tenable to return fixed vulns
                 },
@@ -134,8 +134,9 @@ def tenable_export_web_app_vulns() -> list:
                 "include_unlicensed": True,
                 "num_assets": 1000,
                 "filters": {
-                    "last_found": int((now() - timedelta(days=7)).timestamp()),  # seen within 1 week
+                    "since": int((now() - timedelta(days=7)).timestamp()),  # seen or fixed within 1 week
                     "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
+                    "state": ["OPEN", "REOPENED", "FIXED"],  # forces tenable to return fixed vulns
                 },
             },
             download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},

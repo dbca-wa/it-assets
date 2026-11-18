@@ -530,7 +530,11 @@ class AssetAdmin(admin.ModelAdmin):
 
         def lookups(self, request, model_admin):
             filter_list = [("any", "Not Empty")]
-            for sys in ITSystemRecord.objects.exclude(related_assets=None):
+            for sys in ( 
+                ITSystemRecord.objects.exclude(related_assets=None)
+                .distinct()
+                .order_by("system_id")
+            ):
                 filter_list.append((sys.pk, _(str(sys))))
 
             filter_list.append(("none", "-"))
