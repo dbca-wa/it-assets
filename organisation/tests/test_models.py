@@ -12,6 +12,7 @@ from mixer.backend.django import mixer
 from itassets.test_api import random_dbca_email
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import AscenderActionLog, CostCentre, DepartmentUser, DepartmentUserLog, Location
+from organisation.enum_library import AccountType
 
 # Disable non-critical logging output.
 logging.disable(logging.CRITICAL)
@@ -210,28 +211,28 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
         self.assertEqual(user.account_type, 14)
 
     def test_emp_status_ext_sets_alumni(self):
-        self.assertEqual(self._user_with_status("EXT").account_type, 1)
+        self.assertEqual(self._user_with_status("EXT").account_type, AccountType.ALUMNI_OR_OTHER)
 
     def test_emp_status_ao_sets_vendor(self):
-        self.assertEqual(self._user_with_status("AO").account_type, 6)
+        self.assertEqual(self._user_with_status("AO").account_type, AccountType.VENDOR_OR_EXTERNAL)
 
-    def test_emp_status_seap_sets_seasonal(self):
-        self.assertEqual(self._user_with_status("SEAP").account_type, 8)
+    def test_emp_status_seap_sets_contract(self):
+        self.assertEqual(self._user_with_status("SEAP").account_type, AccountType.CONTRACT)
 
-    def test_emp_status_seas_sets_seasonal(self):
-        self.assertEqual(self._user_with_status("SEAS").account_type, 8)
+    def test_emp_status_seas_sets_contract(self):
+        self.assertEqual(self._user_with_status("SEAS").account_type, AccountType.CONTRACT)
 
     def test_emp_status_cfa_sets_contract(self):
-        self.assertEqual(self._user_with_status("CFA").account_type, 0)
+        self.assertEqual(self._user_with_status("CFA").account_type, AccountType.CONTRACT)
 
     def test_emp_status_con_sets_contract(self):
-        self.assertEqual(self._user_with_status("CON").account_type, 0)
+        self.assertEqual(self._user_with_status("CON").account_type, AccountType.CONTRACT)
 
     def test_emp_status_pfa_sets_permanent(self):
-        self.assertEqual(self._user_with_status("PFA").account_type, 2)
+        self.assertEqual(self._user_with_status("PFA").account_type, AccountType.PERMANENT)
 
     def test_emp_status_pft_sets_permanent(self):
-        self.assertEqual(self._user_with_status("PFT").account_type, 2)
+        self.assertEqual(self._user_with_status("PFT").account_type, AccountType.PERMANENT)
 
     def test_telephone_stripped_on_save(self):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, telephone="  08 9999 0001\r\n")

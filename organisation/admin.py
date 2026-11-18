@@ -8,7 +8,7 @@ from django.urls import path
 from django.utils.html import mark_safe
 
 
-from itassets.admin_filters import DropdownFilterChoices, DropdownFilterBoolean, DROPDOWN_TEMPLATE
+from itassets.admin_filters import DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from itassets.utils import ModelDescMixin
 from itsystems.admin import ITSystemRecordAdmin
 from itsystems.models import ITSystemRecord

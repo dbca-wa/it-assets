@@ -128,6 +128,7 @@ def create_test_user(term_date_data):
         dir_sync_enabled=True,
         azure_guid=mixer.RANDOM,
         term_date_data=term_date_data,
+        account_type=2
     )
 
 
