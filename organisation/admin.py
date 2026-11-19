@@ -76,20 +76,19 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 }
 
         def queryset(self, request, queryset):
-            if self.value():
-                match self.value():
-                    case None:
-                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_ALL_USERS)
-                    case "E":
-                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_EMPLOYEES)
-                    case "V":
-                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_VOLUNTEERS)
-                    case "N":
-                        return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USERS)
-                    case "A":
-                        return queryset
-                    case _:
-                        return queryset.filter(account_type=self.value())
+            match self.value():
+                case None:
+                    return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_ALL_USERS)
+                case "E":
+                    return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_EMPLOYEES)
+                case "V":
+                    return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_VOLUNTEERS)
+                case "N":
+                    return queryset.filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USERS)
+                case "A":
+                    return queryset
+                case _:
+                    return queryset.filter(account_type=self.value())
 
             
     class AssignedLicenceFilter(SimpleListFilter):

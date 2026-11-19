@@ -265,7 +265,7 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
     
     def test_admin_account_sets_admin_account(self):
         admin_user = self._azure_only_user(
-            email = "example.person@dpaw.onmicrosoft.com",
+            email = "example.person-admin@dpaw.onmicrosoft.com",
             azure_ad_data = {}
         )
         self.assertEqual(admin_user.account_type, AccountType.ADMIN_ACCOUNT) 
