@@ -12,6 +12,7 @@ from mixer.backend.django import mixer
 from itassets.test_api import random_dbca_email
 from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import AscenderActionLog, CostCentre, DepartmentUser, DepartmentUserLog, Location
+from organisation.enum_library import AccountType
 
 # Disable non-critical logging output.
 logging.disable(logging.CRITICAL)
@@ -205,33 +206,36 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, ascender_data={"emp_status": emp_status})
         return user
 
+    def _azure_only_user(self, email, azure_ad_data):
+        return mixer.blend(DepartmentUser, email=email, ascender_data = {}, term_data=[], azure_ad_data=azure_ad_data, account_status=AccountType.UNKNOWN)
+
     def test_account_type_defaults_to_unknown_when_none(self):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, account_type=None, ascender_data={})
         self.assertEqual(user.account_type, 14)
 
     def test_emp_status_ext_sets_alumni(self):
-        self.assertEqual(self._user_with_status("EXT").account_type, 1)
+        self.assertEqual(self._user_with_status("EXT").account_type, AccountType.ALUMNI_OR_OTHER)
 
     def test_emp_status_ao_sets_vendor(self):
-        self.assertEqual(self._user_with_status("AO").account_type, 6)
+        self.assertEqual(self._user_with_status("AO").account_type, AccountType.VENDOR_OR_EXTERNAL)
 
-    def test_emp_status_seap_sets_seasonal(self):
-        self.assertEqual(self._user_with_status("SEAP").account_type, 8)
+    def test_emp_status_seap_sets_contract(self):
+        self.assertEqual(self._user_with_status("SEAP").account_type, AccountType.CONTRACT)
 
-    def test_emp_status_seas_sets_seasonal(self):
-        self.assertEqual(self._user_with_status("SEAS").account_type, 8)
+    def test_emp_status_seas_sets_contract(self):
+        self.assertEqual(self._user_with_status("SEAS").account_type, AccountType.CONTRACT)
 
     def test_emp_status_cfa_sets_contract(self):
-        self.assertEqual(self._user_with_status("CFA").account_type, 0)
+        self.assertEqual(self._user_with_status("CFA").account_type, AccountType.CONTRACT)
 
     def test_emp_status_con_sets_contract(self):
-        self.assertEqual(self._user_with_status("CON").account_type, 0)
+        self.assertEqual(self._user_with_status("CON").account_type, AccountType.CONTRACT)
 
     def test_emp_status_pfa_sets_permanent(self):
-        self.assertEqual(self._user_with_status("PFA").account_type, 2)
+        self.assertEqual(self._user_with_status("PFA").account_type, AccountType.PERMANENT)
 
     def test_emp_status_pft_sets_permanent(self):
-        self.assertEqual(self._user_with_status("PFT").account_type, 2)
+        self.assertEqual(self._user_with_status("PFT").account_type, AccountType.PERMANENT)
 
     def test_telephone_stripped_on_save(self):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, telephone="  08 9999 0001\r\n")
@@ -244,6 +248,56 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
     def test_employee_id_blank_string_cleared(self):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, employee_id="   ")
         self.assertFalse(user.employee_id)
+
+    def test_osvc_account_sets_role_based(self):
+        osvc_user = self._azure_only_user(
+            email = "osvc_automation_example@dbca.wa.gov.au",
+            azure_ad_data = {}
+        )
+        self.assertEqual(osvc_user.account_type, AccountType.ROLE_BASED_ACCOUNT)
+
+    def test_ops_account_sets_role_based(self):
+        osvc_user = self._azure_only_user(
+            email = "ops_automation_example@dbca.wa.gov.au",
+            azure_ad_data = {}
+        )
+        self.assertEqual(osvc_user.account_type, AccountType.ROLE_BASED_ACCOUNT) 
+    
+    def test_admin_account_sets_admin_account(self):
+        admin_user = self._azure_only_user(
+            email = "example.person@dpaw.onmicrosoft.com",
+            azure_ad_data = {}
+        )
+        self.assertEqual(admin_user.account_type, AccountType.ADMIN_ACCOUNT) 
+
+    def test_volunteer_account_sets_volunteer(self):
+        volunteer_user = self._azure_only_user(
+            email = "example.person@dbca.wa.gov.au",
+            azure_ad_data = {
+                "givenName":"example",
+                "surname":"person"
+            }
+        )
+        self.assertEqual(volunteer_user.account_type, AccountType.VOLUNTEER)     
+    
+    def test_unknown_account_sets_unknown(self):
+        unknown_user = self._azure_only_user(
+            email = "exampleAccount@dbca.wa.gov.au",
+            azure_ad_data = {}
+        )
+        self.assertEqual(unknown_user.account_type, AccountType.UNKNOWN) 
+
+    def test_partial_unknown_account_sets_unknown(self):
+        p_unknown_user = self._azure_only_user(
+            email = "example.person@dbca.wa.gov.au",
+            azure_ad_data = {
+                "givenName":None,
+                "surname":None
+            }
+        )
+        self.assertEqual(p_unknown_user.account_type, AccountType.UNKNOWN) 
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -315,94 +369,114 @@ class DepartmentUserTerminationsTestCase(TestCase):
                 },
             ],
         )
-        self.user.save()
-        self.user_with_empties.save()
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.user_with_empties.update_from_ascender_term_data(save_after=True)
 
     def test_termination_date(self):
         # 3+ valid check, null & empty check, mixed valid & invalid check
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
-        self.assertEqual(self.user.past_term_date(), False)
-        self.assertEqual(self.user_with_empties.get_term_date(), None)
-        self.assertEqual(self.user_with_empties.past_term_date(), False)
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
+        self.assertEqual(self.user_with_empties.termination_date, None)
+        self.assertEqual(self.user_with_empties.is_term(), False)
+        self.assertEqual(self.user_with_empties.ongoing, True)
         # Empty values check
         self.user.term_date_data = []
-        self.assertEqual(self.user.get_term_date(), None)
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, None)
+        self.assertEqual(self.user.is_term(), None)
+        self.assertEqual(self.user.ongoing, None)
 
         # blank and None values check
         self.user.term_date_data = [
-            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": None, "term_process_date": None},
-            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": "", "term_process_date": None},
+            {"employee_no": self.user.employee_id, "job_no": 1, "term_date": None, "term_process_date": None},
+            {"employee_no": self.user.employee_id, "job_no": 1, "term_date": "", "term_process_date": None},
         ]
-        self.assertEqual(self.user.get_term_date(), None)
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, None)
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
 
         # 2 valid values check
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() + timedelta(weeks=1)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 4,
                 "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
+
 
         # Identical date check
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 4,
                 "term_date": (date.today() + timedelta(weeks=4)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             },
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() + timedelta(weeks=4))
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
+
 
         # 1 valid + past_term_date check
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() + timedelta(weeks=-2)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             }
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=-2))
-        self.assertEqual(self.user.past_term_date(), True)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() + timedelta(weeks=-2))
+        self.assertEqual(self.user.is_term(), True)
+        self.assertEqual(self.user.ongoing, False)
+
 
         # 1 valid + past_term_date check: Term date is yesterday - past_term_date should return true
         self.user.term_date_data = [
             {
-                "employee_no": mixer.RANDOM,
+                "employee_no": self.user.employee_id,
                 "job_no": 1,
                 "term_date": (date.today() - timedelta(days=1)).strftime("%Y-%m-%d"),
                 "term_process_date": None,
             }
         ]
-        self.assertEqual(self.user.get_term_date(), date.today() - timedelta(days=1))
-        self.assertEqual(self.user.past_term_date(), True)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today() - timedelta(days=1))
+        self.assertEqual(self.user.is_term(), True)
+        self.assertEqual(self.user.ongoing, False)
+
 
         # 1 valid + past_term_date check: Term date is today - past_term_date should return false
         self.user.term_date_data = [
-            {"employee_no": mixer.RANDOM, "job_no": 1, "term_date": date.today().strftime("%Y-%m-%d"), "term_process_date": None}
+            {"employee_no": self.user.employee_id, "job_no": 1, "term_date": date.today().strftime("%Y-%m-%d"), "term_process_date": None}
         ]
-        self.assertEqual(self.user.get_term_date(), date.today())
-        self.assertEqual(self.user.past_term_date(), False)
+        self.user.update_from_ascender_term_data(save_after=True)
+        self.assertEqual(self.user.termination_date, date.today())
+        self.assertEqual(self.user.is_term(), False)
+        self.assertEqual(self.user.ongoing, True)
 
 
 # ---------------------------------------------------------------------------

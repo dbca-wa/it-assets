@@ -28,7 +28,7 @@ class TerminatedUsersTestCase(TestCase):
                 }
             ]
         )
-        self.user_not_terminated.save()
+        self.user_not_terminated.update_from_ascender_term_data(save_after=True)
         self.user_terminated = create_test_user(
             [
                 {
@@ -36,7 +36,7 @@ class TerminatedUsersTestCase(TestCase):
                 }
             ]
         )
-        self.user_terminated.save()
+        self.user_terminated.update_from_ascender_term_data(save_after=True)
         self.user_terminated_after_grace = create_test_user(
             [
                 {
@@ -44,7 +44,7 @@ class TerminatedUsersTestCase(TestCase):
                 }
             ]
         )
-        self.user_terminated_after_grace.save()
+        self.user_terminated_after_grace.update_from_ascender_term_data(save_after=True)
         self.user_terminated_then_rehired = create_test_user(
             [
                 {
@@ -55,7 +55,7 @@ class TerminatedUsersTestCase(TestCase):
                 },
             ]
         )
-        self.user_terminated_then_rehired.save()
+        self.user_terminated_then_rehired.update_from_ascender_term_data(save_after=True)
 
     @patch("organisation.management.commands.department_users_terminated_users_handling.remove_licenses")
     def test_remove_licenses_flag(self, mock_remove):
@@ -91,13 +91,13 @@ class TerminatedUsersTestCase(TestCase):
                 "term_date": "",
             }
         ]
-        self.user_terminated.save()
+        self.user_terminated.update_from_ascender_term_data(save_after=True)
         self.user_not_terminated.term_date_data = [
             {
                 "term_date": None,
             }
         ]
-        self.user_not_terminated.save()
+        self.user_not_terminated.update_from_ascender_term_data(save_after=True)
         cmd.handle(remove_licenses=True, terminated_account_days=14)
         mock_remove.assert_called_once()
 
@@ -106,11 +106,11 @@ class TerminatedUsersTestCase(TestCase):
         # Tests zero term data available
         cmd = Command()
         self.user_terminated.term_date_data = []
-        self.user_terminated.save()
+        self.user_terminated.update_from_ascender_term_data(save_after=True)
         self.user_not_terminated.term_date_data = []
-        self.user_not_terminated.save()
+        self.user_not_terminated.update_from_ascender_term_data(save_after=True)
         self.user_terminated_after_grace.term_date_data = []
-        self.user_terminated_after_grace.save()
+        self.user_terminated_after_grace.update_from_ascender_term_data(save_after=True)
         cmd.handle(remove_licenses=True, terminated_account_days=0)
         # ignorese invalid and still processes the valid
         mock_remove.assert_not_called()
@@ -128,6 +128,7 @@ def create_test_user(term_date_data):
         dir_sync_enabled=True,
         azure_guid=mixer.RANDOM,
         term_date_data=term_date_data,
+        account_type=2
     )
 
 

@@ -35,7 +35,7 @@ class Command(BaseCommand):
         if options.get("terminated_account_days") is not None:
             terminated_account_days = options["terminated_account_days"]
 
-        all_users = DepartmentUser.objects.all()
+        all_users = DepartmentUser.employees.all()
         users = all_users.exclude(term_date_data__iexact="[]")  # All users with non-blank termination date records
 
         # Init stat-tracking variables
@@ -48,9 +48,9 @@ class Command(BaseCommand):
         # Iterate through users w/ TERM_DATE records, stripping licenses of users past the termination grace period.
         for user in users:
             # If user is terminated
-            if user.past_term_date():
+            if user.is_term():
                 past_term_count += 1
-                days_past_term = (date.today() - user.get_term_date()).days
+                days_past_term = (date.today() - user.termination_date).days
                 # If the user is X days past their termination date, where X is the the terminated account tolerance.
                 if days_past_term >= terminated_account_days:
                     past_grace_period_count += 1

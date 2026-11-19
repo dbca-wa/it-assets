@@ -351,3 +351,6 @@ VULN_LAST_SEEN_LIMIT = env("VULN_LAST_SEEN_LIMIT", 30)
 # GitHub organisation settings (required for private repositories)
 GITHUB_ORGANISATION = env("GITHUB_ORGANISATION", None)
 GITHUB_TOKEN = env("GITHUB_TOKEN", None)
+
+# Service account prefixes
+SERVICE_ACCOUNT_PREFIXES = tuple(env("SERVICE_ACCOUNT_PREFIXES", "osvc_,ops_").split(","))  # Comma-separated tuple of prefixes associated with service accounts
