@@ -269,7 +269,7 @@ class DepartmentUser(models.Model):
         elif self.account_type == AccountType.UNKNOWN and (not self.has_ascender_data() and not self.has_term_data()):
             if self.email.startswith(settings.SERVICE_ACCOUNT_PREFIXES):
                 self.account_type = AccountType.ROLE_BASED_ACCOUNT
-            elif self.email.endswith("@dpaw.onmicrosoft.com"):
+            elif self.email.endswith("admin@dpaw.onmicrosoft.com"):
                 self.account_type = AccountType.ADMIN_ACCOUNT
             # Volunteer account - follows firstname.lastname@dbca.wa.gov.au pattern.
             elif self.email == f"{str(self.azure_ad_data.get("givenName")).lower()}.{str(self.azure_ad_data.get("surname")).lower()}@dbca.wa.gov.au":
