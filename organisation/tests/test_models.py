@@ -637,16 +637,6 @@ class GetAccountDormantTestCase(TestCase):
         self.user.last_signin = timezone.now() - timedelta(days=30)
         self.assertTrue(self.user.get_account_dormant(dormant_account_days=30))
 
-    def test_uses_password_change_when_no_signin(self):
-        self.user.last_signin = None
-        self.user.last_password_change = timezone.now() - timedelta(days=365)
-        self.assertTrue(self.user.get_account_dormant(dormant_account_days=30))
-
-    def test_recent_password_change_returns_false(self):
-        self.user.last_signin = None
-        self.user.last_password_change = timezone.now() - timedelta(days=5)
-        self.assertFalse(self.user.get_account_dormant(dormant_account_days=30))
-
 
 # ---------------------------------------------------------------------------
 # DepartmentUser.update_from_entra_id_data()

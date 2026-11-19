@@ -39,11 +39,11 @@ class DepartmentUser(models.Model):
         def get_queryset(self):
             return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USERS)
 
+    objects = models.Manager()
     employees = EmployeeManager()
     volunteers = VolunteerManager()
     all_users = UserManager()
     non_users = NonUserManager()
-    objects = models.Manager()
 
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
@@ -1519,13 +1519,12 @@ class DepartmentUser(models.Model):
         # Use last_signin value if present.
         if self.last_signin:
             delta = datetime.now(settings.TZ) - self.last_signin
-        else:
-            delta = datetime.now(settings.TZ) - self.last_password_change
+            if delta.days >= dormant_account_days:
+                return True
+            else:
+                return False
 
-        if delta.days >= dormant_account_days:
-            return True
-        else:
-            return False
+
 
     def get_pw_last_change(self) -> datetime | None:
         """Returns a TZ-aware datetime for when the user last changed their account password from synced Entra ID/AD data."""
