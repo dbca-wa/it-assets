@@ -57,7 +57,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                 ("E", "All Employee Accounts"),
                 ("V", "All Volunteer/Alumni Accounts"),
                 ("N", "All Non-User Accounts"),
-             ) + tuple(DepartmentUser.account_type.field.choices)
+             ) + tuple([(str(lookup), title) for lookup, title in DepartmentUser.ACCOUNT_TYPE_CHOICES])
         
         def choices(self, cl):
             """
@@ -65,7 +65,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             """
             for lookup, title in self.lookup_choices:
                 yield {
-                    "selected": self.value() == str(lookup),
+                    "selected": self.value() == lookup,
                     "query_string": cl.get_query_string(
                         {
                             self.parameter_name: lookup,
