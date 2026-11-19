@@ -39,11 +39,11 @@ class DepartmentUser(models.Model):
         def get_queryset(self):
             return super().get_queryset().filter(account_type__in=DepartmentUser.ACCOUNT_TYPE_NON_USERS)
 
+    objects = models.Manager()
     employees = EmployeeManager()
     volunteers = VolunteerManager()
     all_users = UserManager()
     non_users = NonUserManager()
-    objects = models.Manager()
 
     # The following choices are intended to match options in Ascender.
     ACCOUNT_TYPE_CHOICES = (
