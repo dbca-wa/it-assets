@@ -206,6 +206,9 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, ascender_data={"emp_status": emp_status})
         return user
 
+    def _azure_only_user(self, email, azure_ad_data):
+        return mixer.blend(DepartmentUser, email=email, ascender_data = {}, term_data=[], azure_ad_data=azure_ad_data, account_status=AccountType.UNKNOWN)
+
     def test_account_type_defaults_to_unknown_when_none(self):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, account_type=None, ascender_data={})
         self.assertEqual(user.account_type, 14)
@@ -245,6 +248,56 @@ class DepartmentUserSaveAccountTypeTestCase(TestCase):
     def test_employee_id_blank_string_cleared(self):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, employee_id="   ")
         self.assertFalse(user.employee_id)
+
+    def test_osvc_account_sets_role_based(self):
+        osvc_user = self._azure_only_user(
+            email = "osvc_automation_example@dbca.wa.gov.au",
+            azure_ad_data = {}
+        )
+        self.assertEqual(osvc_user.account_type, AccountType.ROLE_BASED_ACCOUNT)
+
+    def test_ops_account_sets_role_based(self):
+        osvc_user = self._azure_only_user(
+            email = "ops_automation_example@dbca.wa.gov.au",
+            azure_ad_data = {}
+        )
+        self.assertEqual(osvc_user.account_type, AccountType.ROLE_BASED_ACCOUNT) 
+    
+    def test_admin_account_sets_admin_account(self):
+        admin_user = self._azure_only_user(
+            email = "example.person@dpaw.onmicrosoft.com",
+            azure_ad_data = {}
+        )
+        self.assertEqual(admin_user.account_type, AccountType.ADMIN_ACCOUNT) 
+
+    def test_volunteer_account_sets_volunteer(self):
+        volunteer_user = self._azure_only_user(
+            email = "example.person@dbca.wa.gov.au",
+            azure_ad_data = {
+                "givenName":"example",
+                "surname":"person"
+            }
+        )
+        self.assertEqual(volunteer_user.account_type, AccountType.VOLUNTEER)     
+    
+    def test_unknown_account_sets_unknown(self):
+        unknown_user = self._azure_only_user(
+            email = "exampleAccount@dbca.wa.gov.au",
+            azure_ad_data = {}
+        )
+        self.assertEqual(unknown_user.account_type, AccountType.UNKNOWN) 
+
+    def test_partial_unknown_account_sets_unknown(self):
+        p_unknown_user = self._azure_only_user(
+            email = "example.person@dbca.wa.gov.au",
+            azure_ad_data = {
+                "givenName":None,
+                "surname":None
+            }
+        )
+        self.assertEqual(p_unknown_user.account_type, AccountType.UNKNOWN) 
+
+
 
 
 # ---------------------------------------------------------------------------

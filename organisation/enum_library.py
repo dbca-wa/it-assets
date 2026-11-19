@@ -8,3 +8,4 @@ class AccountType:
     ALUMNI_OR_OTHER = 1
     ROLE_BASED_ACCOUNT = 9
     UNKNOWN = 14
+    ADMIN_ACCOUNT = 15

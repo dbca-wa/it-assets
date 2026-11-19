@@ -52,12 +52,14 @@ class DepartmentUser(models.Model):
         (AccountType.VENDOR_OR_EXTERNAL, "Vendor/External"),
         (AccountType.VOLUNTEER, "Volunteer"),
         (AccountType.ALUMNI_OR_OTHER, "Alumni/Other"),
-        (AccountType.ROLE_BASED_ACCOUNT, "Role-based account"),
+        (AccountType.ROLE_BASED_ACCOUNT, "Role-based Account"),
+        (AccountType.ADMIN_ACCOUNT, "Admin Account"),
         (AccountType.UNKNOWN, "Unknown"),
     )
-    # The following is a list of account types associated with role-based and unknown accounts
+    # The following is a list of account types associated with role-based, admin, and unknown accounts
     ACCOUNT_TYPE_NON_USERS = [
         AccountType.ROLE_BASED_ACCOUNT,
+        AccountType.ADMIN_ACCOUNT,
         AccountType.UNKNOWN,
     ]
     # The following is a list of account types associated with paid staff
@@ -263,6 +265,16 @@ class DepartmentUser(models.Model):
                 self.account_type = AccountType.CONTRACT
             elif self.ascender_data["emp_status"] in ["PFA", "PFAS", "PFT", "PPA", "PPT"]:
                 self.account_type = AccountType.PERMANENT
+        # If there's no assigned account type and no ascender data or termination data
+        elif self.account_type == AccountType.UNKNOWN and (not self.has_ascender_data() and not self.has_term_data()):
+            if self.email.startswith(settings.SERVICE_ACCOUNT_PREFIXES):
+                self.account_type = AccountType.ROLE_BASED_ACCOUNT
+            elif self.email.endswith("@dpaw.onmicrosoft.com"):
+                self.account_type = AccountType.ADMIN_ACCOUNT
+            # Volunteer account - follows firstname.lastname@dbca.wa.gov.au pattern.
+            elif self.email == f"{str(self.azure_ad_data.get("givenName")).lower()}.{str(self.azure_ad_data.get("surname")).lower()}@dbca.wa.gov.au":
+                self.account_type = AccountType.VOLUNTEER
+
         # Strip any invisible trailing carriage return characters from copy-pasted telephone numbers:
         if self.telephone:
             self.telephone = self.telephone.strip()
@@ -499,6 +511,11 @@ class DepartmentUser(models.Model):
                 return TERM_REASON_MAP[self.ascender_data["term_reason"]]
 
         return None
+
+    def has_ascender_data(self) -> bool:
+        """Returns True if the user has ascender data"""
+        return self.ascender_data is not None and len(self.ascender_data)>0
+
 
     def has_term_data(self) -> bool:
         """Returns True if the user has ascender termination data"""
