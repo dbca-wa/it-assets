@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13, <4.0"
 
 [[package]]
@@ -640,14 +640,14 @@ wheels = [
 
 [[package]]
 name = "django-reversion"
-version = "6.5.1"
+version = "6.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/a7/62c39e46c5cd46a37cc88965c9c7a8878b8233009fba9debf67f89242ff8/django_reversion-6.5.1.tar.gz", hash = "sha256:eb0131db820416b61fabb75d0e813cc40d8cc30ab45a25df6c87ac9192266786", size = 82088, upload-time = "2026-11-02T21:14:30.471Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/a6/b24a987fb1ff3004205dd9adcc90e94370242c3284aaad29f5736bdbf90a/django_reversion-6.5.2.tar.gz", hash = "sha256:100fa722e9bf9cb68865b678f90e5415166c3798d839e10f8fced636bf63c09d", size = 83199, upload-time = "2026-11-12T14:30:31.448Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/d8/34bdd5a3348dce859bfd9c675f508ec982cf82cac41235a01423579b8130/django_reversion-6.5.1-py3-none-any.whl", hash = "sha256:c9625af1698655b7b502f7af2fb87f88b70bdd2cda3f27a5d3460af11bf807af", size = 92921, upload-time = "2026-11-02T21:14:29.431Z" },
+    { url = "https://files.pythonhosted.org/packages/01/a4/a121b28a45ba3ff85f1b4d1b7858fa41329e460637fbe942f358ca79e30f/django_reversion-6.5.2-py3-none-any.whl", hash = "sha256:34a18f45f9a735bb9f33bb5494773e69df11ff797e6b13c379dfdf529437cc8e", size = 93063, upload-time = "2026-11-12T14:30:30.339Z" },
 ]
 
 [[package]]
@@ -875,7 +875,7 @@ requires-dist = [
     { name = "dj-database-url", specifier = "==3.1.2" },
     { name = "django", specifier = "==5.2.17" },
     { name = "django-extensions", specifier = "==4.1" },
-    { name = "django-reversion", specifier = "==6.5.1" },
+    { name = "django-reversion", specifier = "==6.5.2" },
     { name = "django-storages", extras = ["azure"], specifier = "==1.14.6" },
     { name = "gunicorn", extras = ["fast"], specifier = "==26.2.0" },
     { name = "msal", specifier = "==1.39.0" },
