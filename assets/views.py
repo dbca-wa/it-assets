@@ -21,7 +21,7 @@ class AssetAPIResource(View):
         if not request.user.has_perm("assets.view_asset"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Asset.all_states.prefetch_related("systems").prefetch_related("contacts").prefetch_related("tags").all()
+            queryset = Asset.all_states.prefetch_related("systems").prefetch_related("projects").prefetch_related("contacts").prefetch_related("tags").all()
 
             # Queryset filtering.
             # By State - defaults to showing only active
@@ -41,6 +41,12 @@ class AssetAPIResource(View):
             # By OS
             if "os" in self.request.GET:
                 queryset = queryset.filter(os__icontains=self.request.GET["os"])
+            # by it system code
+            if "it_system" in self.request.GET:
+                queryset = queryset.filter(systems__system_id=self.request.GET["it_system"])
+            # by project id
+            if "project" in self.request.GET:
+                queryset = queryset.filter(projects__id=self.request.GET["project"])
             # By tag - case insensistive exact instead of os & name's "contains"
             if "tag_category" in self.request.GET and "tag" in self.request.GET:  # By tag within a specific category
                 found_tag = AssetTag.objects.filter(
@@ -74,6 +80,7 @@ class AssetAPIResource(View):
                         "notes": asset.notes,
                         "contacts": [str(x) for x in asset.contacts.all()],
                         "systems": [str(x) for x in asset.systems.all()],
+                        "projects": [str(x) for x in asset.projects.all()],
                         "operating_systems": asset.os_list,
                         "ipv4s": asset.ipv4_list,
                         "tags": [{"category": x.category.name, "tag": x.name} for x in asset.tags.all()],
@@ -112,7 +119,7 @@ class VulnerabilityAPIResource(View):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
             queryset = (
-                Vulnerability.objects.select_related("asset").prefetch_related("asset__tags").prefetch_related("asset__systems").all()
+                Vulnerability.objects.select_related("asset").prefetch_related("asset__tags").prefetch_related("asset__systems").prefetch_related("asset__projects").all()
             )  # Queryset filtering.
             # By finding_id
             if "finding_id" in kwargs and kwargs["finding_id"]:
@@ -157,6 +164,10 @@ class VulnerabilityAPIResource(View):
             if "it_system" in self.request.GET:
                 queryset = queryset.filter(asset__systems__system_id=self.request.GET["it_system"])
 
+            # by project id
+            if "project" in self.request.GET:
+                queryset = queryset.filter(asset__projects__id=self.request.GET["project"])
+
             queryset = queryset.distinct().order_by(
                 "-last_found",
                 "-severity",
@@ -171,6 +182,8 @@ class VulnerabilityAPIResource(View):
                     {
                         "finding_id": vuln.finding_id,
                         "asset": vuln.asset_name,
+                        "systems": [str(x) for x in vuln.asset.systems.all()],
+                        "projects": [str(x) for x in vuln.asset.projects.all()],
                         "state": vuln.get_state_display(),
                         "severity": vuln.get_severity_display(),
                         "severity_modification_type": vuln.get_severity_modification_type_display(),
@@ -206,6 +219,8 @@ class VulnerabilityAPIResource(View):
                     {
                         "finding_id": vuln.finding_id,
                         "asset": vuln.asset_name,
+                        "systems": [str(x) for x in vuln.asset.systems.all()],
+                        "projects": [str(x) for x in vuln.asset.projects.all()],
                         "state": vuln.get_state_display(),
                         "severity": vuln.get_severity_display(),
                         "severity_modification_type": vuln.get_severity_modification_type_display(),
