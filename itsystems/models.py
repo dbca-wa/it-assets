@@ -1,6 +1,7 @@
 from django.db import models
 from itassets.utils import smart_truncate
 
+from itsystems.enum_library import ProjectStage
 from organisation.models import DepartmentUser
 
 
@@ -496,3 +497,38 @@ class ITSystemRecord(models.Model):
                 raise DepartmentUser.DoesNotExist(message)
             user = None
         return user
+
+class Project(models.Model):
+    """
+    Represents a project tied to assets
+    """
+    PROJECT_STAGE_CHOICES = {
+        ProjectStage.UNKNOWN: "Unknown",
+        ProjectStage.NOT_STARTED:"Not Started",
+        ProjectStage.A2_PRE_DISCOVERY:"A2 - Pre-Discovery",
+        ProjectStage.A2_SHORT_PROCESS:"A2 - Short Process",
+        ProjectStage.B1_DISCOVERY:"B1 - Discovery",
+        ProjectStage.B2_DELIVERY:"B2 - Delivery",
+        ProjectStage.B3_CLOSURE:"B3 - Closure",
+        ProjectStage.CANCELLED:"Cancelled"
+    }
+
+    id = models.CharField(max_length=5, unique=True,primary_key=True, verbose_name="ID", help_text="The primary project ID, for example: P001, P123, or P999")
+    name = models.CharField(max_length=255, verbose_name="Name", help_text="The name of the project, not including the project ID.")
+    initiative_id = models.CharField(unique=True, verbose_name="Initiative ID", help_text="")
+    stage = models.PositiveSmallIntegerField(choices=PROJECT_STAGE_CHOICES, verbose_name="Stage", default=ProjectStage.UNKNOWN)
+    systems = models.ManyToManyField(
+        ITSystemRecord,
+        blank=True,
+        verbose_name="Associated IT Systems",
+        related_name="related_projects",
+        help_text="IT Systems associated with this project.",
+    )
+
+    @property
+    def associated_systems(self) -> str:
+        """Provides a string representation of all associated IT Systems"""
+        return ", ".join([str(s) for s in self.systems.all().order_by("system_id")])
+
+    def __str__(self) -> str:
+        return f"{self.id} - {self.name}"

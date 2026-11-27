@@ -14,7 +14,7 @@ from github import Github
 
 from dbca_utils.models import ActiveMixin
 from assets.enum_library import Severity, SeverityMT, State
-from itsystems.models import ITSystemRecord
+from itsystems.models import ITSystemRecord, Project
 from organisation.models import DepartmentUser
 
 
@@ -113,7 +113,7 @@ class Asset(ActiveMixin):
         blank=True,
         verbose_name="Associated IT Systems",
         related_name="related_assets",
-        help_text="IT Systems that use this asset",
+        help_text="IT Systems associated with this asset",
     )
     os = models.CharField(max_length=255, verbose_name="OS", null=True, blank=True)
     os_version = models.CharField(
@@ -174,6 +174,16 @@ class Asset(ActiveMixin):
     def associated_systems(self) -> str:
         """Provides a string representation of all associated IT Systems"""
         return ", ".join([str(s) for s in self.systems.all().order_by("system_id")])
+
+    @property
+    def projects(self):
+        """Provides all associated Projects"""
+        return Project.objects.filter(systems__in=self.systems.all()).order_by("id")
+
+    @property
+    def associated_projects(self) -> str:
+        """Provides a string representation of all associated Projects"""
+        return ", ".join([str(s) for s in self.projects])
 
     @property
     def operating_system(self) -> str:
@@ -614,6 +624,7 @@ class Vulnerability(models.Model):
         return f"""
 Asset: {self.asset_name}
 Systems: {self.asset.associated_systems}
+Projects: {self.asset.associated_projects}
 
 Severity: {self.get_severity_display()}
 State: {self.get_state_display()}
@@ -642,6 +653,7 @@ Solution:
         return format_html(
             """<h3>{}</h3><br>
 <b>Systems:</b> {}<br>
+<b>Projects:</b> {}<br>
 <br><hr><br>
 <b>Severity:</b> {}<br>
 <b>State:</b> {}<br>
@@ -654,6 +666,7 @@ Solution:
 <b>Solution:</b><br>{}<br>""",
             self.asset_name,
             self.asset.associated_systems,
+            self.asset.associated_projects,
             self.get_severity_display(),
             self.get_state_display(),
             self.get_severity_modification_type_display(),

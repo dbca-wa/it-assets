@@ -673,7 +673,7 @@ def ascender_user_import_all():
             # Cache the job and termination records.
             user.ascender_data = job
             user.ascender_data_updated = timezone.localtime()
-            user.term_date_data = termination_records.get(employee_id)
+            user.term_date_data = termination_records.get(employee_id,[])
             user.update_from_ascender_term_data()
             user.update_from_ascender_data()  # This method calls save()
         elif not DepartmentUser.objects.filter(employee_id=employee_id).exists():
@@ -691,7 +691,8 @@ def ascender_user_import_all():
 
             if cc and job_start_date and licence_type and manager and location:
                 LOGGER.info(f"Ascender employee ID {employee_id} does not exist and passed all rules; provisioning new account")
-                _ = create_entra_id_user(job, cc, job_start_date, manager, location, token)
+                term_record = termination_records.get(employee_id,[])
+                _ = create_entra_id_user(job, cc, job_start_date, manager, location, token, term=term_record)
 
 
 def ascender_user_import(
@@ -737,7 +738,8 @@ def ascender_user_import(
     # Unpack the required values.
     job, cc, job_start_date, licence_type, manager, location = rules_passed
     token = ms_graph_client_token()
-    return create_entra_id_user(job, cc, job_start_date, manager, location, token, position_no)
+    term_record = ascender_term_date_fetch_employee(employee_id)
+    return create_entra_id_user(job, cc, job_start_date, manager, location, token, position_no, term=term_record)
 
 
 def sanitise_name_values(first_name: str = "", second_name: str = "", surname: str = "", preferred_name: str = ""):
@@ -1026,6 +1028,7 @@ def create_entra_id_user(
     location: Location,
     token: dict | None = None,
     position_no: str | None = None,
+    term: list = []
 ) -> DepartmentUser | None:
     """Create a new Entra ID user account based on supplied Ascender job data.
 
@@ -1197,7 +1200,7 @@ def create_entra_id_user(
     LOGGER.info(f"New Entra ID account created from Ascender data ({email})")
 
     # Create the corresponding DepartmentUser linked to the Ascender record and Entra ID account.
-    new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager, position_no)
+    new_user = department_user_create(job, guid, email, display_name, title, cc, location, manager, position_no, term=term)
 
     # Email the new account's manager the provisioning checklist.
     email_sent = new_user_creation_email(new_user, manager, licence_type, job_start_date, job_end_date)
@@ -1261,6 +1264,7 @@ def department_user_create(
     location: Location,
     manager: DepartmentUser,
     position_no: str | None = None,
+    term: list = []
 ) -> DepartmentUser:
     """This helper function is split from the Entra ID 'create' function to allow for unit testing.
     It creates a new DepartmentUser object, an initial Django admin LogEntry, an AscenderActionLog for record-keeping,
@@ -1281,8 +1285,13 @@ def department_user_create(
         manager=manager,
         ascender_data=job,
         ascender_data_updated=timezone.localtime(),
+        term_date_data = term,
         position_no=position_no,
     )
+
+    # Populates termination related fields if the user has term data
+    if new_user.has_term_data():
+        new_user.update_from_ascender_term_data(save_after=True)
 
     # Create an admin log entry for initial creation of the new user.
     try:

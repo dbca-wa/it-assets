@@ -10,8 +10,8 @@ from django.utils.html import mark_safe
 
 from itassets.admin_filters import DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from itassets.utils import ModelDescMixin
-from itsystems.admin import ITSystemRecordAdmin
-from itsystems.models import ITSystemRecord
+from itsystems.admin import ITSystemRecordAdmin, ProjectAdmin
+from itsystems.models import ITSystemRecord, Project
 from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
 from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin, VulnerabilityAdmin
 
@@ -522,3 +522,4 @@ service_desk_admin_site.register(Asset, AssetAdmin)
 service_desk_admin_site.register(AssetTag, AssetTagAdmin)
 service_desk_admin_site.register(AssetTagCategory, AssetTagCategoryAdmin)
 service_desk_admin_site.register(Vulnerability, VulnerabilityAdmin)
+service_desk_admin_site.register(Project, ProjectAdmin)

@@ -230,6 +230,31 @@ class AscenderTestCase(TestCase):
         )
         self.assertEqual(new_user.position_no, "0000000001")
 
+    def test_department_user_create_termination_data(self):
+        """Test that the department_user_create function correctly applies termination data"""
+        new_user = department_user_create(
+            job=self.ascender_data,
+            azure_guid=str(uuid4()),
+            email=self.email,
+            display_name=self.display_name,
+            title=self.title,
+            cc=self.cc,
+            location=self.location,
+            manager=self.manager,
+            position_no="0000000001",
+            term=[ 
+                {
+                    "employee_id": "0000000001",
+                    "job_no": "01",
+                    "term_date": None,
+                    "term_process_date": None
+                }
+            ]
+        )
+        self.assertTrue(new_user.ongoing)
+        self.assertFalse(new_user.is_term())
+        self.assertEqual(new_user.termination_date,None)
+
     def test_new_user_creation_email_sends(self):
         """Test the new_user_creation_email function"""
         new_user = self.create_new_user()

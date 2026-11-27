@@ -41,6 +41,9 @@ class AssetAPIResource(View):
             # By OS
             if "os" in self.request.GET:
                 queryset = queryset.filter(os__icontains=self.request.GET["os"])
+            # by it system code
+            if "it_system" in self.request.GET:
+                queryset = queryset.filter(systems__system_id=self.request.GET["it_system"])
             # By tag - case insensistive exact instead of os & name's "contains"
             if "tag_category" in self.request.GET and "tag" in self.request.GET:  # By tag within a specific category
                 found_tag = AssetTag.objects.filter(
@@ -74,6 +77,7 @@ class AssetAPIResource(View):
                         "notes": asset.notes,
                         "contacts": [str(x) for x in asset.contacts.all()],
                         "systems": [str(x) for x in asset.systems.all()],
+                        # "projects": [str(x) for x in asset.projects.all()],
                         "operating_systems": asset.os_list,
                         "ipv4s": asset.ipv4_list,
                         "tags": [{"category": x.category.name, "tag": x.name} for x in asset.tags.all()],
@@ -171,6 +175,8 @@ class VulnerabilityAPIResource(View):
                     {
                         "finding_id": vuln.finding_id,
                         "asset": vuln.asset_name,
+                        "systems": [str(x) for x in vuln.asset.systems.all()],
+                        # "projects": [str(x) for x in vuln.asset.projects.all()],
                         "state": vuln.get_state_display(),
                         "severity": vuln.get_severity_display(),
                         "severity_modification_type": vuln.get_severity_modification_type_display(),
@@ -206,6 +212,8 @@ class VulnerabilityAPIResource(View):
                     {
                         "finding_id": vuln.finding_id,
                         "asset": vuln.asset_name,
+                        "systems": [str(x) for x in vuln.asset.systems.all()],
+                        # "projects": [str(x) for x in vuln.asset.projects.all()],
                         "state": vuln.get_state_display(),
                         "severity": vuln.get_severity_display(),
                         "severity_modification_type": vuln.get_severity_modification_type_display(),

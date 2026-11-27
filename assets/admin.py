@@ -10,8 +10,8 @@ from django.utils.translation import gettext_lazy as _, ngettext
 
 from assets.enum_library import Severity, SeverityMT, State
 from assets.exports import export_asset_vulns, export_vulns
-from assets.models import Asset, AssetTag, AssetTagCategory, Repository, Vulnerability
-from itassets.admin_filters import DROPDOWN_TEMPLATE, DropdownFilterAllValues, DropdownFilterRelatedOnly
+from assets.models import Asset, AssetTag, AssetTagCategory, Repository, Vulnerability, Project
+from itassets.admin_filters import DROPDOWN_TEMPLATE, DropdownFilterAllValues, DropdownFilterRelatedOnly, DropdownFilterChoices
 from itsystems.models import ITSystemRecord
 
 
@@ -124,6 +124,38 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 return queryset.filter(asset__systems__isnull=True)
             elif self.value() is not None:
                 return queryset.filter(asset__systems__pk__iexact=self.value()).distinct()
+
+    class ProjectFilter(admin.SimpleListFilter):
+        """
+        Related only filter for projects, but includse a "Not Empty" option, which filters out empty options.
+        Only shows projects that have vulnerable assets
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "Projects"
+        parameter_name = "asset_projects"
+
+        def lookups(self, request, model_admin):
+            filter_list = [("any", "Not Empty")]
+            for proj in (
+                Project.objects.filter(systems__related_assets__isnull=False)
+                .filter(systems__related_assets__total_vulns__gt=0)
+                .distinct()
+                .order_by("id")
+            ):
+                filter_list.append((proj.pk, _(str(proj))))
+
+            filter_list.append(("none", "-"))
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            if self.value() == "any":
+                return queryset.filter(asset__systems__related_projects__isnull=False).distinct()
+            if self.value() == "none":
+                return queryset.filter(asset__systems__related_projects__isnull=True)
+            elif self.value() is not None:
+                return queryset.filter(asset__systems__related_projects__pk__iexact=self.value()).distinct()
 
     class StateFilter(admin.SimpleListFilter):
         """
@@ -266,6 +298,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     # Set filters
     list_filter = (
         ITSystemRegisterFilter,
+        ProjectFilter,
         ("asset", DropdownFilterRelatedOnly),
         AssetTypeFilter,
         StateFilter,
@@ -301,6 +334,10 @@ class VulnerabilityAdmin(admin.ModelAdmin):
     @admin.display(description="IT Systems", ordering="asset__systems__name")
     def systems(self, obj):
         return obj.asset.associated_systems
+
+    @admin.display(description="Projects", ordering="asset__systems__related_projects__id")
+    def projects(self, obj):
+        return obj.asset.associated_projects
 
     @admin.display(description="Age in days", ordering="first_found")
     def age(self, obj):
@@ -349,7 +386,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     search_help_text = "Search by finding ID, plugin name, plugin family, or asset name"
 
-    list_display = ("plugin_name", "asset__name", "systems", "severity", "state", "severity_modification_type", "last_found", "age")
+    list_display = ("plugin_name", "asset__name", "systems","projects", "severity", "state", "severity_modification_type", "last_found", "age")
 
     ordering = (
         "-last_found",
@@ -396,6 +433,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         "scan_pprint",
         "software_vulns_pprint",
         "systems",
+        "projects",
     )
 
     fieldsets = (
@@ -431,6 +469,7 @@ class VulnerabilityAdmin(admin.ModelAdmin):
                 "fields": (
                     "asset",
                     "systems",
+                    "projects",
                     "ipv4_addresses",
                     "operating_systems",
                 ),
@@ -549,6 +588,38 @@ class AssetAdmin(admin.ModelAdmin):
                     return queryset.filter(systems__isnull=True)
                 else:
                     return queryset.filter(systems__pk__iexact=self.value()).distinct()
+
+
+    class ProjectFilter(admin.SimpleListFilter):
+        """
+        Related only filter for Projects, but includse a "Not Empty" option, which filters out empty options
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "Projects"
+        parameter_name = "projects"
+
+        def lookups(self, request, model_admin):
+            filter_list = [("any", "Not Empty")]
+            for proj in ( 
+                Project.objects.filter(systems__related_assets__isnull=False)
+                .distinct()
+                .order_by("id")
+            ):
+                filter_list.append((proj.pk, _(str(proj))))
+
+            filter_list.append(("none", "-"))
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            if self.value() is not None:
+                if self.value() == "any":
+                    return queryset.filter(systems__related_projects__isnull=False).distinct()
+                elif self.value() == "none":
+                    return queryset.filter(systems__related_projects__isnull=True)
+                else:
+                    return queryset.filter(systems__related_projects__pk__iexact=self.value()).distinct()
 
     class HasVulnsFilter(admin.SimpleListFilter):
         """
@@ -678,7 +749,7 @@ class AssetAdmin(admin.ModelAdmin):
         return qs
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (StatusFilter, ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
+    list_filter_base = (StatusFilter, ITSystemRegisterFilter,ProjectFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
 
     # =================================
     #       Export actions & Config
@@ -691,22 +762,22 @@ class AssetAdmin(admin.ModelAdmin):
     @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
     def asset_export_as_csv_technical(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv"""
-        return export_vulns_action(queryset=queryset, export_assets=True)
+        return export_vulns_action(queryset=queryset, export_mode = "A")
 
     @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Technical")
     def asset_export_critical_as_csv_technical(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv"""
-        return export_vulns_action(queryset=queryset, critical_only=True, export_assets=True)
+        return export_vulns_action(queryset=queryset, critical_only=True, export_mode = "A")
 
     @admin.action(permissions=["vuln"], description="Export actionable Vulns - Simple")
     def asset_export_as_csv_simple(self, request, queryset):
         """Exports all assets with their vulnerabilities as a csv, but simplified for tech custodians"""
-        return export_vulns_action(queryset=queryset, simple=True, export_assets=True)
+        return export_vulns_action(queryset=queryset, simple=True, export_mode = "A")
 
     @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Simple")
     def asset_export_critical_as_csv_simple(self, request, queryset):
         """Exports all assets with their critical vulnerabilities as a csv, but simplified for tech custodians"""
-        return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_assets=True)
+        return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_mode = "A")
 
     @admin.action(permissions=["delete"], description="Decommission selected assets")
     def decommission_asset(self, request, queryset):
@@ -803,13 +874,14 @@ class AssetAdmin(admin.ModelAdmin):
         "os_version",
         "asset_contacts",
         "associated_systems",
+        "associated_projects",
         "display_tags",
         "active_vulns",
         "active_critical_vulns",
         "last_seen",
     )
 
-    search_fields = ("name", "description","notes", "contacts__email", "systems__system_id", "systems__name", "tags__name", "os_list")
+    search_fields = ("name", "description","notes", "contacts__email", "systems__system_id", "systems__name","tags__name", "os_list")
     search_help_text = "Search by name, description, notes, OS, contact, IT System, or tag"
 
     autocomplete_fields = (
@@ -834,6 +906,7 @@ class AssetAdmin(admin.ModelAdmin):
         "ipv4s",
         "operating_systems",
         "status",
+        "associated_projects"
     )
 
     fieldsets = (
@@ -860,6 +933,7 @@ class AssetAdmin(admin.ModelAdmin):
                     "custodian",
                     "contacts",
                     "systems",
+                    "associated_projects",
                     "tags",
                 ),
             },
@@ -889,7 +963,7 @@ class AssetAdmin(admin.ModelAdmin):
             },
         ),
     )
-
+    
 
 # ==========================================
 #           Helper functions
@@ -907,7 +981,7 @@ def pprint_json(data=None):
     return format_html("<pre>{}</pre>", json.dumps(data, indent=4, sort_keys=True))
 
 
-def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets: bool = False) -> HttpResponse:
+def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_assets=False) -> HttpResponse:
     """
     Helper function for export actions to export vulnerabilities.
     """
@@ -917,11 +991,13 @@ def export_vulns_action(queryset, critical_only: bool = False, simple: bool = Fa
     else:
         exclude_list = [Severity.INFO]
 
-    # Prepends "asset_" to filename if it's an asset export
-    exp_string = "asset_" if export_assets else ""
+    if export_assets:
+        name_prefix = "asset_"
+    else:
+        name_prefix = ""
 
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f"attachment; filename={exp_string}vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
+    response["Content-Disposition"] = f"attachment; filename={name_prefix}vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
 
     if export_assets:
         return export_asset_vulns(response=response, assets=queryset, severity_exclude_list=exclude_list, simple=simple)

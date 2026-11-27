@@ -1,11 +1,10 @@
-from assets.models import Asset, Vulnerability
+from assets.models import Asset, Vulnerability, Project
 from itsystems.models import ITSystemRecord
 
 from django.http import HttpResponse
 
 from typing import Iterable
 import csv
-
 
 def export_itsystem_vulns(
     response: HttpResponse, systems: Iterable[ITSystemRecord], severity_exclude_list: list[int] | None = [], simple: bool = False
@@ -19,7 +18,8 @@ def export_itsystem_vulns(
 
     # Headers
     it_system_header = "IT System" if simple else "IT_SYSTEMS"
-    __write_vuln_header(writer=writer, prefix_headers=[it_system_header], simple=simple)
+    project_header = "Project" if simple else "PROJECTS"
+    __write_vuln_header(writer=writer, prefix_headers=[it_system_header, project_header], simple=simple)
 
     # Body
     # Retrieves all related assets ordered by system names
@@ -31,10 +31,38 @@ def export_itsystem_vulns(
         associated_systems_str = ", ".join([str(s) for s in associated_systems])
 
         for v in a.get_active_vulns(severity_exclude_list=severity_exclude_list):
-            __write_vuln(writer=writer, vuln=v, prefix_data=[associated_systems_str], simple=simple)
+            __write_vuln(writer=writer, vuln=v, prefix_data=[associated_systems_str, a.associated_projects], simple=simple)
 
     return response
 
+def export_project_vulns(
+    response: HttpResponse, projects: Iterable[Project], severity_exclude_list: list[int] | None = [], simple: bool = False
+) -> HttpResponse:
+    """
+    Writes assets vulnerabilities related to the passed in projects to the http response as a csv.
+    severity_exclude_list can be optionally included to exclude specific vuln severity levels, but always hides info level vulns.
+    Set simple as true to return a simplified version for tech custodians.
+    """
+    writer = csv.writer(response)
+
+    # Headers
+    project_header = "Project" if simple else "PROJECTS"
+    it_system_header = "IT System" if simple else "IT_SYSTEMS"
+    __write_vuln_header(writer=writer, prefix_headers=[project_header, it_system_header], simple=simple)
+
+    # Body
+    # Retrieves all related assets ordered by system names
+    assets = Asset.objects.filter(projects__in=projects).order_by("id")
+    for a in assets:
+        # Creates a "systems" label for the asset, which only includes related systems that are within the current query.
+        # ie; if an asset has another related system that's not in the queryset, that system isn't included in the label.
+        associated_projects = a.projects.filter(pk__in=projects).order_by("id")
+        associated_projects_str = ", ".join([str(p) for p in associated_projects])
+
+        for v in a.get_active_vulns(severity_exclude_list=severity_exclude_list):
+            __write_vuln(writer=writer, vuln=v, prefix_data=[associated_projects_str, a.associated_systems], simple=simple)
+
+    return response
 
 def export_asset_vulns(
     response: HttpResponse, assets: Iterable[Asset], severity_exclude_list: list[int] | None = [], simple: bool = False
@@ -48,12 +76,13 @@ def export_asset_vulns(
 
     # Headers
     it_system_header = "IT System" if simple else "IT_SYSTEMS"
-    __write_vuln_header(writer=writer, prefix_headers=[it_system_header], simple=simple)
+    project_header = "Project" if simple else "PROJECTS"
+    __write_vuln_header(writer=writer, secondary_headers=[it_system_header, project_header], simple=simple)
 
     # Body
     for a in assets:
         for v in a.get_active_vulns(severity_exclude_list=severity_exclude_list):
-            __write_vuln(writer=writer, vuln=v, prefix_data=[a.associated_systems], simple=simple)
+            __write_vuln(writer=writer, vuln=v, secondary_data=[a.associated_systems, a.associated_projects], simple=simple)
 
     return response
 
@@ -66,16 +95,18 @@ def export_vulns(response: HttpResponse, vulns: Iterable[Vulnerability], simple:
     writer = csv.writer(response)
 
     # Headers
-    __write_vuln_header(writer=writer, simple=simple)
+    it_system_header = "IT System" if simple else "IT_SYSTEMS"
+    project_header = "Project" if simple else "PROJECTS"
+    __write_vuln_header(writer=writer, simple=simple, secondary_headers=[it_system_header,project_header])
 
     # Body
     for v in vulns:
-        __write_vuln(writer=writer, vuln=v, simple=simple)
+        __write_vuln(writer=writer, vuln=v, simple=simple, secondary_data=[v.asset.associated_systems,v.asset.associated_projects])
 
     return response
 
 
-def __write_vuln_header(writer, prefix_headers=[], simple=False) -> None:
+def __write_vuln_header(writer, prefix_headers=[], secondary_headers=[], simple=False) -> None:
     """
     Writes headers to a csv, allowing for additional headers to be prepended using prefix_headers
     Allows for an alternative simple version. If simple headers are used, simple vulns must also be used
@@ -84,6 +115,7 @@ def __write_vuln_header(writer, prefix_headers=[], simple=False) -> None:
         # Simplified version for tech custodians
         headers = prefix_headers + [
             "Asset",  # asset_name
+        ] + secondary_headers + [
             "Severity",  # severity
             "Type",  # plugin_name
             "Problem",  # plugin_output
@@ -96,6 +128,7 @@ def __write_vuln_header(writer, prefix_headers=[], simple=False) -> None:
         # Technical version
         headers = prefix_headers + [
             "ASSET",
+        ] + secondary_headers + [
             "FINDING_ID",
             "STATE",
             "SEVERITY",
@@ -126,7 +159,7 @@ def __write_vuln_header(writer, prefix_headers=[], simple=False) -> None:
     writer.writerow(headers)
 
 
-def __write_vuln(writer, vuln, prefix_data=[], simple=False) -> None:
+def __write_vuln(writer, vuln, prefix_data=[], secondary_data=[], simple=False) -> None:
     """
     Writes vulnerabilities to a csv, allowing for additional data to be prepended using prefix_data.
     Allows for an alternative simple version. If simple vulns are used, simple headers must also have been used.
@@ -135,6 +168,7 @@ def __write_vuln(writer, vuln, prefix_data=[], simple=False) -> None:
         # Simplified version for tech custodians
         vulns = prefix_data + [
             vuln.asset_name,
+        ] + secondary_data + [
             vuln.get_severity_display(),
             vuln.plugin_name,
             vuln.plugin_output,
@@ -147,6 +181,7 @@ def __write_vuln(writer, vuln, prefix_data=[], simple=False) -> None:
         # Technical version
         vulns = prefix_data + [
             vuln.asset_name,
+        ] + secondary_data + [
             vuln.finding_id,
             vuln.get_state_display(),
             vuln.get_severity_display(),

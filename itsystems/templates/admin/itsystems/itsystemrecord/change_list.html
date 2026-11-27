@@ -2,6 +2,12 @@
 {% block object-tools-items %}
     {% if not is_popup %}
         <li>
+            <a href="{% url 'admin:itsystems_itsystemrecord_quarterlyexport' %}">Quarterly Export</a>
+        </li>   
+        <li>
+            <a href="{% url 'admin:itsystems_project_export' %}">Export Projects to CSV</a>
+        </li>         
+        <li>
             <a href="{% url 'admin:itsystems_itsystemrecord_export' %}">Export to CSV</a>
         </li>
         <li>
