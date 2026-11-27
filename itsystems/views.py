@@ -18,7 +18,7 @@ from django.db.utils import IntegrityError
 
 from itassets.utils import get_next_pages, get_previous_pages
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType, DepartmentUser
-from .utils import export_csv, import_csv, get_or_none, replace_contact, edit_record_from_dict, get_unique_users
+from .utils import export_csv, import_csv, get_or_none, replace_contact, edit_record_from_dict, get_unique_users, export_quarterly_csv, export_projects_csv
 
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
@@ -272,6 +272,40 @@ class ExportRegisterAsCSV(LoginRequiredMixin, View):
         export_csv(response)
         return response
 
+class ExportQuarterlyAsCSV(LoginRequiredMixin, View):
+    """A custom view to return a representation of the IT Systems Register as a csv"""
+
+    def get(self, request, *args, **kwargs):
+        # Creates a http response to hold the CSV
+        attachment_header = (
+            'attachment; filename="quarterly_export_'
+            + str(date.today().isoformat())
+            + "_"
+            + str(datetime.now().strftime("%H%M"))
+            + '.csv"'
+        )
+        response = HttpResponse(content_type="text/csv", headers={"Content-Disposition": attachment_header})
+        # Writes register to the response as a CSV
+        export_quarterly_csv(response)
+        return response
+
+
+class ExportProjectsAsCSV(LoginRequiredMixin, View):
+    """A custom view to return a representation of the IT Systems Register as a csv"""
+
+    def get(self, request, *args, **kwargs):
+        # Creates a http response to hold the CSV
+        attachment_header = (
+            'attachment; filename="projects_'
+            + str(date.today().isoformat())
+            + "_"
+            + str(datetime.now().strftime("%H%M"))
+            + '.csv"'
+        )
+        response = HttpResponse(content_type="text/csv", headers={"Content-Disposition": attachment_header})
+        # Writes register to the response as a CSV
+        export_projects_csv(response)
+        return response
 
 class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, View):
     """A custom view to allow the user to import changes to the IT Systems Register via a csv"""

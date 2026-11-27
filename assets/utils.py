@@ -12,10 +12,19 @@ from django.utils.timezone import localtime as now
 from github import Github, GithubException
 from github.Auth import Token
 
-from assets.models import Asset, Repository, RepositoryAdvisory
+from assets.models import Asset, Repository, RepositoryAdvisory, AssetTag, AssetTagCategory
 
 LOGGER = logging.getLogger("assets")
 
+
+def get_seol_assets():
+    """
+    Retrieves all assets tagged as SEOL
+    """
+    seol_tag_category, _ = AssetTagCategory.objects.get_or_create(name="SEoL")
+    seol_tags = AssetTag.objects.filter(category__pk=seol_tag_category.pk)
+    if seol_tags.exists():
+        return Asset.objects.filter(tags__in=seol_tags)
 
 def alias_get_or_create(aliases: list) -> tuple[Asset, bool]:
     """

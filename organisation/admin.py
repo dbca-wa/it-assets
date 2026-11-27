@@ -10,10 +10,10 @@ from django.utils.html import mark_safe
 
 from itassets.admin_filters import DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from itassets.utils import ModelDescMixin
-from itsystems.admin import ITSystemRecordAdmin
-from itsystems.models import ITSystemRecord
-from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability, Project
-from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin, VulnerabilityAdmin, ProjectAdmin
+from itsystems.admin import ITSystemRecordAdmin, ProjectAdmin
+from itsystems.models import ITSystemRecord, Project
+from assets.models import Asset, AssetTag, AssetTagCategory, Vulnerability
+from assets.admin import AssetAdmin, AssetTagAdmin, AssetTagCategoryAdmin, VulnerabilityAdmin
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport, ProvisionAccountView

@@ -6,7 +6,6 @@ from django.http import HttpResponse
 from typing import Iterable
 import csv
 
-
 def export_itsystem_vulns(
     response: HttpResponse, systems: Iterable[ITSystemRecord], severity_exclude_list: list[int] | None = [], simple: bool = False
 ) -> HttpResponse:

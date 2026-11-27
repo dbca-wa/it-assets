@@ -5,11 +5,11 @@ from django.http import HttpResponse
 from django.utils.timezone import localtime as now
 
 from reversion.admin import VersionAdmin
-from itassets.admin_filters import DropdownFilterRelated, DropdownFilterBoolean, DROPDOWN_TEMPLATE
-from assets.exports import export_itsystem_vulns
+from itassets.admin_filters import DropdownFilterRelated, DropdownFilterRelatedOnly, DropdownFilterBoolean, DropdownFilterChoices, DROPDOWN_TEMPLATE
+from assets.exports import export_itsystem_vulns, export_project_vulns
 from assets.enum_library import Severity
-from .models import ITSystemRecord, Division, Seasonality, Status, Sensitivity, SystemType, Availability
-from .views import ExportRegisterAsCSV, ImportRegisterChangesFromCSV
+from .models import ITSystemRecord, Division, Seasonality, Status, Sensitivity, SystemType, Availability, Project
+from .views import ExportRegisterAsCSV, ImportRegisterChangesFromCSV, ExportProjectsAsCSV, ExportQuarterlyAsCSV
 
 
 @admin.register(Division)
@@ -268,14 +268,112 @@ class ITSystemRecordAdmin(VersionAdmin):
                 ExportRegisterAsCSV.as_view(),
                 name=f"{info[0]}_{info[1]}_export",
             ),
+            path(
+                "quarterly_export/",
+                ExportQuarterlyAsCSV.as_view(),
+                name=f"{info[0]}_{info[1]}_quarterlyexport",
+            ),
+        ] + urls
+        return urls
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+
+    # =================================
+    #       Export actions & Config
+    # =================================
+
+    def has_vuln_permission(self, request):
+        """Only allows users to use the action if they can view vulns"""
+        return request.user.has_perm("assets.view_vulnerability")
+
+    @admin.action(permissions=["vuln"], description="Export actionable Vulns - Technical")
+    def project_export_as_csv_technical(self, request, queryset):
+        """Exports all projects with their vulnerabilities as a csv"""
+        return export_vulns_action(queryset=queryset, export_projects=True)
+
+    @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Technical")
+    def project_export_critical_as_csv_technical(self, request, queryset):
+        """Exports all projects with their critical vulnerabilities as a csv"""
+        return export_vulns_action(queryset=queryset, critical_only=True, export_projects=True)
+
+    @admin.action(permissions=["vuln"], description="Export actionable Vulns - Simple")
+    def project_export_as_csv_simple(self, request, queryset):
+        """Exports all projects with their vulnerabilities as a csv, but simplified for tech custodians"""
+        return export_vulns_action(queryset=queryset, simple=True, export_projects=True)
+
+    @admin.action(permissions=["vuln"], description="Export actionable critical Vulns - Simple")
+    def project_export_critical_as_csv_simple(self, request, queryset):
+        """Exports all projects with their critical vulnerabilities as a csv, but simplified for tech custodians"""
+        return export_vulns_action(queryset=queryset, critical_only=True, simple=True, export_projects=True)
+    
+    actions = [
+        project_export_as_csv_technical,
+        project_export_critical_as_csv_technical,
+        project_export_as_csv_simple,
+        project_export_critical_as_csv_simple,
+    ]
+
+    readonly_fields = ("associated_systems",)
+    list_display = ("id","name","initiative_id","stage", "associated_systems")
+
+    autocomplete_fields = ("systems",)
+
+    search_fields = (
+        "id",
+        "name",
+        "initiative_id",
+    )
+
+    search_help_text = "Search by ID, Name, or Initiative ID"
+
+    list_filter = (("stage",DropdownFilterChoices),("systems", DropdownFilterRelatedOnly))
+
+    fieldsets = (
+        (
+            "Project Info",
+            {
+                "fields": (
+                    "id",
+                    "name",
+                    "initiative_id",
+                ),
+            },
+        ),
+        (
+            "Associations",
+            {
+                "fields": (
+                    "systems",
+                ),
+            },
+        ),
+    )
+
+
+    def get_urls(self):
+        urls = super().get_urls()
+        info = self.opts.app_label, self.opts.model_name
+        urls = [
+            path(
+                "export/",
+                ExportProjectsAsCSV.as_view(),
+                name=f"{info[0]}_{info[1]}_export",
+            ),
         ] + urls
         return urls
 
 
-def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False) -> HttpResponse:
+def export_vulns_action(queryset, critical_only: bool = False, simple: bool = False, export_projects=False) -> HttpResponse:
     """
     Helper function for export actions to export vulnerabilities.
     """
+
+    if export_projects:
+        name_prefix = "project"
+    else:
+        name_prefix = "itsystem"
+
     # Set severity exclusions
     if critical_only:
         exclude_list = [Severity.INFO, Severity.LOW, Severity.MEDIUM, Severity.HIGH]
@@ -283,6 +381,9 @@ def export_vulns_action(queryset, critical_only: bool = False, simple: bool = Fa
         exclude_list = [Severity.INFO]
 
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f"attachment; filename=itsystem_vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
+    response["Content-Disposition"] = f"attachment; filename={name_prefix}_vulns_{now().strftime('%Y-%m-%d_%H%M')}.csv"
 
-    return export_itsystem_vulns(response=response, systems=queryset, severity_exclude_list=exclude_list, simple=simple)
+    if export_projects:
+        return export_project_vulns(response=response, projects=queryset, severity_exclude_list=exclude_list, simple=simple)
+    else:
+        return export_itsystem_vulns(response=response, systems=queryset, severity_exclude_list=exclude_list, simple=simple)

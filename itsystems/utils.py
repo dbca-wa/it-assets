@@ -1,9 +1,11 @@
 import csv
 import io
 import reversion
-from .models import ITSystemRecord
+
+from .models import ITSystemRecord, Project
 from .models import DepartmentUser
 
+from assets.utils import get_seol_assets
 
 def export_csv(response):
     """
@@ -20,6 +22,52 @@ def export_csv(response):
     for record in records:
         record_vals = record.to_array()
         writer.writerow(record_vals)
+
+def export_quarterly_csv(response):
+    """
+    Exports the IT Systems Register to a csv, writing it into a HttpResponse object passed to it.
+    """
+    writer = csv.writer(response)
+
+    # Writes headers into the CSV
+    quarterly_headers = ["projects", "assets", "seol_assets", "has_seol_assets", "has_projects"]
+    headers = [field for field in ITSystemRecord.get_model_fields()] + quarterly_headers
+    writer.writerow(headers)
+
+    # Writes all record values into the csv
+    records = ITSystemRecord.objects.all()
+    seol_assets = get_seol_assets()
+    for record in records:
+        system_seol_assets = seol_assets.filter(systems__pk=record.pk)
+        projects = record.related_projects.all()
+        additional_data = [
+            ", ".join([str(x) for x in projects]), # projects
+            ", ".join([str(x) for x in record.related_assets.all()]), # assets
+            ", ".join([str(x) for x in system_seol_assets]), # seol_assets
+            str(system_seol_assets.exists()), # has_seol_assets
+            str(projects.exists()), # has_projects
+        ]
+        record_vals = list(record.to_array()) + additional_data
+        writer.writerow(record_vals)
+
+def export_projects_csv(response):
+    writer = csv.writer(response)
+
+    # Writes all 
+    quarterly_headers = ["ID", "Name", "Initiative ID", "Stage", "Associated IT Systems"]
+    writer.writerow(quarterly_headers)
+    projects = Project.objects.all()
+
+    for proj in projects:
+        rows = [
+            proj.id, # ID
+            proj.name, #name
+            proj.initiative_id, # initiative_id
+            proj.get_stage_display(), # stage
+            ", ".join([str(x) for x in proj.systems.all()]) # associated IT Systems
+        ]
+        writer.writerow(rows)
+
 
 
 def import_csv(request):

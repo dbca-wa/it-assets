@@ -13,8 +13,8 @@ from django.utils.timezone import localtime as now
 from github import Github
 
 from dbca_utils.models import ActiveMixin
-from assets.enum_library import Severity, SeverityMT, State, ProjectStatus
-from itsystems.models import ITSystemRecord
+from assets.enum_library import Severity, SeverityMT, State
+from itsystems.models import ITSystemRecord, Project
 from organisation.models import DepartmentUser
 
 
@@ -81,32 +81,6 @@ class AssetTag(models.Model):
     def __str__(self) -> str:
         return f"{self.category.name}: {self.name}"
 
-class Project(models.Model):
-    """
-    Represents a project tied to assets
-    """
-    PROJECT_STATUS_CHOICES = {
-        ProjectStatus.UNKNOWN: "Unknown",
-        ProjectStatus.NOT_STARTED:"Not Started",
-        ProjectStatus.A2_PRE_DISCOVERY:"A2 - Pre-Discovery",
-        ProjectStatus.A2_SHORT_PROCESS:"A2 - Short Process",
-        ProjectStatus.B1_DISCOVERY:"B1 - Discovery",
-        ProjectStatus.B2_DELIVERY:"B2 - Delivery",
-        ProjectStatus.B3_CLOSURE:"B3 - Closure",
-        ProjectStatus.CANCELLED:"Cancelled"
-    }
-
-    id = models.CharField(max_length=5, unique=True,primary_key=True, verbose_name="ID", help_text="The primary project ID, for example: P001, P123, or P999")
-    name = models.CharField(max_length=255, verbose_name="Name", help_text="The name of the project, not including the project ID.")
-    initiative_id = models.CharField(unique=True, verbose_name="Initiative ID", help_text="")
-    status = models.PositiveSmallIntegerField(choices=PROJECT_STATUS_CHOICES, verbose_name="Status", default=ProjectStatus.UNKNOWN)
-
-    def __str__(self) -> str:
-        """
-        Overrides the default __str__ method.
-        """
-        return f"{self.id} - {self.name}"
-
 
 class Asset(ActiveMixin):
     """
@@ -140,13 +114,6 @@ class Asset(ActiveMixin):
         verbose_name="Associated IT Systems",
         related_name="related_assets",
         help_text="IT Systems associated with this asset",
-    )
-    projects = models.ManyToManyField(
-        Project,
-        blank=True,
-        verbose_name="Associated Projects",
-        related_name="related_assets",
-        help_text="Projects associated with this asset"
     )
     os = models.CharField(max_length=255, verbose_name="OS", null=True, blank=True)
     os_version = models.CharField(
@@ -209,9 +176,14 @@ class Asset(ActiveMixin):
         return ", ".join([str(s) for s in self.systems.all().order_by("system_id")])
 
     @property
+    def projects(self):
+        """Provides all associated Projects"""
+        return Project.objects.filter(systems__in=self.systems.all()).order_by("id")
+
+    @property
     def associated_projects(self) -> str:
         """Provides a string representation of all associated Projects"""
-        return ", ".join([str(s) for s in self.projects.all().order_by("id")])
+        return ", ".join([str(s) for s in self.projects])
 
     @property
     def operating_system(self) -> str:
